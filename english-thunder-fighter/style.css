@@ -73,6 +73,9 @@ canvas { position: absolute; inset: 0; display: block; touch-action: none; }
   font-size: 10px; color: #fff; text-shadow: 0 0 4px #000;
 }
 
+#logo-img { max-width: min(430px, 80%); border-radius: 14px; margin-bottom: -4px;
+  filter: drop-shadow(0 0 22px rgba(80,160,255,0.45)); }
+
 /* 触屏专用元素与更大按钮 */
 .touch-only { display: none; }
 @media (pointer: coarse) {
