@@ -10,8 +10,9 @@
 | --- | --- | --- |
 | 🚀 雷霆战机 · 英语风暴 | 2D 弹幕射击 × 背单词/练语法，击毁携带正确答案的敌机 | [english-thunder-fighter](english-thunder-fighter/) |
 | 🐍 贪吃蛇背单词 · WORD SNAKE | 贪吃蛇 × 拼单词/选词填空，按顺序吃字母拼出单词 | [english-word-snake](english-word-snake/) |
+| 🐦 飞鸟背单词 · FLAPPY WORDS | Flappy Bird × 拼单词/闯关选择，扇翅膀穿越管道，收集字母气泡或穿过正确答案门洞 | [english-flappy-word](english-flappy-word/) |
 
-两款游戏均支持：初中高三档难度、键盘 + 触屏操作、音效、最高分记录（localStorage）。
+三款游戏均支持：初中高三档难度、键盘 + 触屏操作、音效、最高分记录（localStorage）。
 
 ## 目录结构
 
@@ -20,7 +21,8 @@ mini-games/
 ├── index.html                  # 合集首页
 ├── style.css
 ├── english-thunder-fighter/    # 雷霆战机（自包含：index.html + css + js + assets）
-└── english-word-snake/         # 贪吃蛇背单词（同上）
+├── english-word-snake/         # 贪吃蛇背单词（同上）
+└── english-flappy-word/        # 飞鸟背单词（同上）
 ```
 
 ## 添加新游戏

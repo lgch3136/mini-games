@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a1a2f">
+<title>飞鸟背单词 · FLAPPY WORDS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game"></canvas>
+
+  <!-- 游戏 HUD -->
+  <div id="hud" class="hidden">
+    <div id="question-bar">
+      <div id="q-top">
+        <span id="q-kind">拼单词</span>
+        <span id="q-target">?</span>
+      </div>
+      <div id="q-bottom">
+        <span id="q-progress"></span>
+        <span id="q-feedback"></span>
+      </div>
+    </div>
+    <div id="hud-top">
+      <div class="left">
+        <div class="stat-chip">⭐ <span id="score">0</span></div>
+        <div class="stat-chip hidden" id="combo-box">🔥 连击 x<span id="combo">0</span></div>
+        <div class="stat-chip">关卡 <span id="level">1</span></div>
+        <div class="stat-chip" id="hearts">❤️❤️❤️</div>
+      </div>
+      <div class="right">
+        <button class="hud-btn" id="hint-btn" title="提示 (H，扣15分)">💡</button>
+        <button class="hud-btn" id="mute-btn" title="静音 (M)">🔊</button>
+        <button class="hud-btn" id="pause-btn" title="暂停 (P)">⏸</button>
+      </div>
+    </div>
+    <div id="hint-bar">🖱 点击 / 空格 / ⬆ 扇翅膀 · 💡 H 提示 · P 暂停 · M 静音</div>
+  </div>
+
+  <!-- 主菜单 -->
+  <div id="menu" class="overlay">
+    <img id="logo-img" src="assets/logo.png" alt="FLAPPY WORDS" style="display:none"
+         onload="this.style.display='block'" onerror="this.style.display='none'">
+    <h1>飞鸟背单词</h1>
+    <h2>FLAPPY WORDS</h2>
+    <p class="sub">扇动翅膀 · 穿越管道 · 拼出单词 · 攻克语法</p>
+    <div id="mode-select">
+      <button class="mode-btn selected" data-mode="spell">🔤 拼单词<br><small>看中文释义，飞过字母气泡按顺序拼单词</small></button>
+      <button class="mode-btn" data-mode="choose">🚪 闯关选择<br><small>看题目，穿过写有正确答案的门洞</small></button>
+    </div>
+    <div id="diff-select">
+      <button class="diff-btn selected" data-diff="easy">🟢 初级<br><small>小学词汇 · 基础语法</small></button>
+      <button class="diff-btn" data-diff="medium">🟡 中级<br><small>初中词汇 · 核心语法</small></button>
+      <button class="diff-btn" data-diff="hard">🔴 高级<br><small>高中词汇 · 难点语法</small></button>
+    </div>
+    <button class="btn" id="start-btn">🐦 开始游戏</button>
+    <div id="howto">
+      <p>🎯 <b style="color:#7dd3fc;">拼单词</b>：顶部显示中文释义和字母进度，途中飘来的字母气泡<b>都是当前需要的下一个字母</b>，碰到即收集，按顺序拼出单词（无干扰项、无惩罚）。</p>
+      <p>🎯 <b style="color:#7dd3fc;">闯关选择</b>：题目在顶部，墙壁上有上下两个门洞，各挂一个选项——穿过<b>正确答案</b>的门洞得分，穿错扣 1 条命。</p>
+      <p>🐦 撞到管道、墙壁或地面都会扣命，共 3 条命。💡 H 提示（扣 15 分）：拼单词显示完整单词；闯关模式高亮正确门洞。</p>
+      <p>⭐ 每完成 5 个单词/题目升 1 关：速度加快并回复 1 条命。连击有额外加分。📱 触屏点按扇翅膀。</p>
+    </div>
+    <div id="highscore">🏆 最高分 <span id="hs-value">0</span></div>
+  </div>
+
+  <!-- 游戏结束 -->
+  <div id="over" class="overlay hidden">
+    <h1>💥 游戏结束</h1>
+    <div id="over-stats"></div>
+    <div class="btn-row">
+      <button class="btn" id="retry-btn">🔁 再来一局</button>
+      <button class="btn secondary" id="menu-btn">🏠 返回主菜单</button>
+    </div>
+  </div>
+
+  <!-- 暂停 -->
+  <div id="paused" class="overlay hidden">
+    <h1>⏸ 已暂停</h1>
+    <p class="sub">按 P 或 Esc 继续</p>
+    <div class="btn-row">
+      <button class="btn" id="resume-btn">▶️ 继续游戏</button>
+      <button class="btn secondary" id="pause-menu-btn">🏠 返回主菜单</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
