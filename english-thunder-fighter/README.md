@@ -2,6 +2,8 @@
 
 一款把 2D 射击游戏与英语学习结合起来的网页小游戏：**边打飞机，边记单词，边练语法**。
 
+🔗 在线游玩：https://lgch3136.github.io/mini-games/english-thunder-fighter/
+
 ## 运行方式
 
 直接用浏览器打开 `index.html` 即可（无需服务器）：

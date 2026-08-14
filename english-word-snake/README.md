@@ -2,6 +2,8 @@
 
 一款把经典贪吃蛇与英语学习结合起来的网页小游戏：**蛇形走位，吃掉字母，拼出单词，攻克语法**。
 
+🔗 在线游玩：https://lgch3136.github.io/mini-games/english-word-snake/
+
 ## 运行方式
 
 直接用浏览器打开 `index.html` 即可（无需服务器）：
