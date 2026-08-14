@@ -823,7 +823,7 @@ function drawStars(dt) {
 
 function drawSprite(name, w, h, alpha) {
   const img = Sprites[name];
-  if (!img) return false;
+  if (!img || !img.width || !img.height) return false;   // 图片异常时回退矢量绘制
   ctx.save();
   if (alpha !== undefined) ctx.globalAlpha = alpha;
   const hh = w * (img.height / img.width);
@@ -835,7 +835,7 @@ function drawSprite(name, w, h, alpha) {
 function drawPlayer() {
   const p = Game.player;
   const isWreck = Game.state === 'over';
-  const blink = !isWreck && p.invuln > 0 && (Math.floor(p.invuln * 12) % 2 === 0);
+  const blink = !isWreck && p.invuln > 0 && p.spawnRing <= 0 && (Math.floor(p.invuln * 12) % 2 === 0);
   ctx.save();
   ctx.translate(p.x, p.y);
   if (isWreck) {
