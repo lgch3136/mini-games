@@ -1054,7 +1054,8 @@ function resize() {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
-  ctx.setTransform(canvas.width / W, 0, 0, canvas.width / W, 0, 0);
+  // 分别按实际宽高缩放：任何窗口比例下世界都完整可见（不会裁掉底部）
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   lastW = w; lastH = h; lastDpr = dpr;
   layoutGrid();
 }

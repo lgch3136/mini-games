@@ -782,15 +782,15 @@ function render(dt) {
   drawFloaters();
   ctx.restore();
 
-  // 版本水印（画布内，任何缩放下截图可见，用于确认加载的代码版本）
+  // 版本水印（画布右下角，避免被 HUD 遮挡）
   ctx.save();
-  ctx.font = '700 13px ui-monospace, monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = 'rgba(255,220,90,0.9)';
+  ctx.font = '700 14px ui-monospace, monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillStyle = 'rgba(255,220,90,0.95)';
   ctx.shadowColor = 'rgba(0,0,0,0.9)';
   ctx.shadowBlur = 4;
-  ctx.fillText('v20260814e', 8, 8);
+  ctx.fillText('v20260814f', W - 10, H - 50);
   ctx.restore();
 }
 
@@ -1205,7 +1205,8 @@ function resize() {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
-  ctx.setTransform(canvas.width / W, 0, 0, canvas.width / W, 0, 0);
+  // 分别按实际宽高缩放：任何窗口比例下世界都完整可见（不会裁掉底部）
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   lastW = w; lastH = h; lastDpr = dpr;
 }
 window.addEventListener('resize', resize);
