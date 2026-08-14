@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#05070f">
+<title>雷霆战机 · 英语风暴</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game"></canvas>
+
+  <!-- 游戏 HUD -->
+  <div id="hud" class="hidden">
+    <div id="question-bar">
+      <div id="q-top">
+        <span id="q-kind">词汇</span>
+        <span id="q-prompt">?</span>
+      </div>
+      <div id="q-bottom">
+        <span id="q-hint">击毁携带正确答案的敌机</span>
+        <span id="q-feedback"></span>
+      </div>
+    </div>
+    <div id="hud-top">
+      <div class="left">
+        <div class="stat-chip">⭐ <span id="score">0</span></div>
+        <div class="stat-chip hidden" id="combo-box">🔥 连击 x<span id="combo">0</span></div>
+        <div class="stat-chip">关卡 <span id="level">1</span></div>
+      </div>
+      <div class="right">
+        <div class="stat-chip">💣 <span id="bombs">1</span><span class="key">[空格]</span></div>
+        <button class="hud-btn touch-only" id="bomb-btn" title="放炸弹清屏">💣<span id="bomb-touch">1</span></button>
+        <button class="hud-btn" id="mute-btn" title="静音 (M)">🔊</button>
+        <button class="hud-btn" id="pause-btn" title="暂停 (P)">⏸</button>
+      </div>
+    </div>
+    <div id="hp-wrap"><div id="hp-bar"></div><span id="hp-text">100</span></div>
+  </div>
+
+  <!-- 主菜单 -->
+  <div id="menu" class="overlay">
+    <h1>雷霆战机</h1>
+    <h2>英语风暴</h2>
+    <p class="sub">边打飞机 · 边记单词 · 边练语法</p>
+    <div id="diff-select">
+      <button class="diff-btn selected" data-diff="easy">🟢 初级<br><small>小学词汇 · 基础语法</small></button>
+      <button class="diff-btn" data-diff="medium">🟡 中级<br><small>初中词汇 · 核心语法</small></button>
+      <button class="diff-btn" data-diff="hard">🔴 高级<br><small>高中词汇 · 难点语法</small></button>
+    </div>
+    <button class="btn" id="start-btn">🚀 开始战斗</button>
+    <div id="howto">
+      <p>🎯 敌机身上挂着题目选项，击毁<b style="color:#7dffa8;">正确答案</b>得分；击毁<b style="color:#ff8f8f;">错误答案</b>会扣血，放走敌机也会扣血。</p>
+      <p>⬆⬇⬅➡ / WASD 移动战机（自动开火）· 📱 触屏：手指拖动战机，点 💣 按钮放炸弹</p>
+      <p>💣 空格键放炸弹清屏 · P 暂停 · M 静音 · 🔥 拾取补给增强火力</p>
+    </div>
+    <div id="highscore">🏆 最高分 <span id="hs-value">0</span></div>
+  </div>
+
+  <!-- 游戏结束 -->
+  <div id="over" class="overlay hidden">
+    <h1>💥 战斗结束</h1>
+    <div id="over-stats"></div>
+    <div class="btn-row">
+      <button class="btn" id="retry-btn">🔁 再来一局</button>
+      <button class="btn secondary" id="menu-btn">🏠 返回主菜单</button>
+    </div>
+  </div>
+
+  <!-- 暂停 -->
+  <div id="paused" class="overlay hidden">
+    <h1>⏸ 已暂停</h1>
+    <p class="sub">按 P 或 Esc 继续</p>
+    <div class="btn-row">
+      <button class="btn" id="resume-btn">▶️ 继续战斗</button>
+      <button class="btn secondary" id="pause-menu-btn">🏠 返回主菜单</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

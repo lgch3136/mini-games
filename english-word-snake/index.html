@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#03100b">
+<title>贪吃蛇背单词 · WORD SNAKE</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game"></canvas>
+
+  <!-- 游戏 HUD -->
+  <div id="hud" class="hidden">
+    <div id="question-bar">
+      <div id="q-top">
+        <span id="q-kind">拼单词</span>
+        <span id="q-target">?</span>
+      </div>
+      <div id="q-bottom">
+        <span id="q-progress"></span>
+        <span id="q-feedback"></span>
+      </div>
+    </div>
+    <div id="hud-top">
+      <div class="left">
+        <div class="stat-chip">⭐ <span id="score">0</span></div>
+        <div class="stat-chip hidden" id="combo-box">🔥 连击 x<span id="combo">0</span></div>
+        <div class="stat-chip">关卡 <span id="level">1</span></div>
+        <div class="stat-chip" id="hearts">❤️❤️❤️</div>
+      </div>
+      <div class="right">
+        <button class="hud-btn" id="hint-btn" title="提示：显示单词并高亮下一个字母 (H，扣20分)">💡</button>
+        <button class="hud-btn" id="mute-btn" title="静音 (M)">🔊</button>
+        <button class="hud-btn" id="pause-btn" title="暂停 (P)">⏸</button>
+      </div>
+    </div>
+    <div id="hint-bar">⬆⬇⬅➡ / WASD / 滑动·点按 转向 · 按顺序吃字母拼单词 · 撞墙/撞自己扣血 · 💡 H 提示</div>
+  </div>
+
+  <!-- 主菜单 -->
+  <div id="menu" class="overlay">
+    <img id="logo-img" src="assets/logo.png" alt="WORD SNAKE" style="display:none"
+         onload="this.style.display='block'" onerror="this.style.display='none'">
+    <h1>贪吃蛇背单词</h1>
+    <h2>WORD SNAKE</h2>
+    <p class="sub">蛇形走位 · 吃掉字母 · 拼出单词 · 攻克语法</p>
+    <div id="mode-select">
+      <button class="mode-btn selected" data-mode="spell">🔤 拼单词<br><small>看中文释义，按顺序吃字母拼单词</small></button>
+      <button class="mode-btn" data-mode="choose">✅ 选词填空<br><small>看题目，吃掉正确选项（语法+词义）</small></button>
+    </div>
+    <div id="diff-select">
+      <button class="diff-btn selected" data-diff="easy">🟢 初级<br><small>小学词汇 · 基础语法</small></button>
+      <button class="diff-btn" data-diff="medium">🟡 中级<br><small>初中词汇 · 核心语法</small></button>
+      <button class="diff-btn" data-diff="hard">🔴 高级<br><small>高中词汇 · 难点语法</small></button>
+    </div>
+    <button class="btn" id="start-btn">🐍 开始游戏</button>
+    <div id="howto">
+      <p>🎯 <b style="color:#7dffa8;">拼单词</b>：顶部显示中文释义（开头会闪现英文单词），把散落在地上的字母<b>按顺序</b>吃掉拼出单词。吃错字母会扣血。</p>
+      <p>🎯 <b style="color:#7dffa8;">选词填空</b>：吃掉写着<b>正确答案</b>的方块；吃错扣血。</p>
+      <p>🐍 撞到自己或撞墙都会扣血；共有 3 条命。📱 触屏：滑动转向，或点按蛇的周围方向转向。</p>
+      <p>💡 H 键提示：显示单词并高亮下一个字母（扣 20 分）· 吃补给：⭐加分 ❤️回血 🐢减速 ✂️变短 · P 暂停 · M 静音</p>
+    </div>
+    <div id="highscore">🏆 最高分 <span id="hs-value">0</span></div>
+  </div>
+
+  <!-- 游戏结束 -->
+  <div id="over" class="overlay hidden">
+    <h1>💥 游戏结束</h1>
+    <div id="over-stats"></div>
+    <div class="btn-row">
+      <button class="btn" id="retry-btn">🔁 再来一局</button>
+      <button class="btn secondary" id="menu-btn">🏠 返回主菜单</button>
+    </div>
+  </div>
+
+  <!-- 暂停 -->
+  <div id="paused" class="overlay hidden">
+    <h1>⏸ 已暂停</h1>
+    <p class="sub">按 P 或 Esc 继续</p>
+    <div class="btn-row">
+      <button class="btn" id="resume-btn">▶️ 继续游戏</button>
+      <button class="btn secondary" id="pause-menu-btn">🏠 返回主菜单</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
