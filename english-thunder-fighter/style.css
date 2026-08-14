@@ -88,9 +88,10 @@ canvas { position: absolute; inset: 0; display: block; touch-action: none; }
 .overlay {
   position: absolute; inset: 0; z-index: 10;
   background: rgba(3,6,18,0.88); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 14px; text-align: center; padding: 18px; overflow: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 11px; text-align: center; padding: 12px; overflow: auto;
 }
+.overlay::before, .overlay::after { content: ''; margin: auto; min-height: 10px; }
 .overlay h1 { font-size: clamp(26px, 5vw, 40px); letter-spacing: 4px; }
 #menu h1 {
   font-size: clamp(34px, 7vw, 58px); letter-spacing: 10px; font-weight: 900;

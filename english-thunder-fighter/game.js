@@ -158,6 +158,7 @@ const Game = {
   _lastCombo: 0,
   _minY: 120,
   _nextLayoutCheck: 0,
+  fireHeld: false,
 };
 
 for (let i = 0; i < 110; i++) {
@@ -181,7 +182,8 @@ const KEYMAP = {
 window.addEventListener('keydown', (ev) => {
   if (ev.code === 'Space' || ev.code.startsWith('Arrow')) ev.preventDefault();
   if (KEYMAP[ev.code]) { keys.add(KEYMAP[ev.code]); Game.player.pointer = false; }
-  if (ev.code === 'Space') { SFX.ensure(); useBomb(); }
+  if (ev.code === 'Space' || ev.code === 'KeyJ') { SFX.ensure(); Game.fireHeld = true; }
+  if (ev.code === 'KeyB' || ev.code === 'KeyX') { SFX.ensure(); useBomb(); }
   if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
   if (ev.code === 'KeyM') toggleMute();
   if (ev.code === 'Enter') {
@@ -190,7 +192,10 @@ window.addEventListener('keydown', (ev) => {
     else if (Game.state === 'paused') resumeGame();
   }
 });
-window.addEventListener('keyup', (ev) => { if (KEYMAP[ev.code]) keys.delete(KEYMAP[ev.code]); });
+window.addEventListener('keyup', (ev) => {
+  if (KEYMAP[ev.code]) keys.delete(KEYMAP[ev.code]);
+  if (ev.code === 'Space' || ev.code === 'KeyJ') Game.fireHeld = false;
+});
 
 function pointerPos(ev) {
   const r = canvas.getBoundingClientRect();
@@ -214,12 +219,15 @@ canvas.addEventListener('pointermove', (ev) => {
 });
 canvas.addEventListener('pointerdown', (ev) => {
   SFX.ensure();
+  Game.fireHeld = true;   // 按住即开火（手动射击）
   if (ev.pointerType !== 'touch' || Game.state !== 'playing') return;
   const pos = pointerPos(ev);
   Game.player.px = clamp(pos.x, 30, W - 30);
   Game.player.py = clamp(pos.y, Game._minY, H - 46);
   Game.player.pointer = true;
 });
+window.addEventListener('pointerup', () => { Game.fireHeld = false; });
+window.addEventListener('pointercancel', () => { Game.fireHeld = false; });
 canvas.addEventListener('touchmove', (ev) => ev.preventDefault(), { passive: false });
 
 /* ---------------- 按钮 ---------------- */
@@ -615,8 +623,9 @@ function update(dt) {
   p.invuln = Math.max(0, p.invuln - dt);
   p.double = Math.max(0, p.double - dt);
 
-  p.fireTimer -= dt;
-  if (p.fireTimer <= 0) {
+  // 手动开火：按住空格/J 或按住触屏/鼠标才射击
+  p.fireTimer = Math.max(0, p.fireTimer - dt);
+  if (Game.fireHeld && p.fireTimer <= 0) {
     p.fireTimer = p.fireInterval;
     const offs = p.double > 0 ? [-9, 9] : [0];
     for (const o of offs) Game.bullets.push({ x: p.x + o, y: p.y - 22, vy: -560, r: 4 });

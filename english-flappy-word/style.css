@@ -74,12 +74,14 @@ canvas { position: absolute; inset: 0; display: block; touch-action: none; }
 .overlay {
   position: absolute; inset: 0; z-index: 10;
   background: rgba(3,12,22,0.88); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; text-align: center; padding: 16px; overflow: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 10px; text-align: center; padding: 12px; overflow: auto;
 }
+/* 内容放得下时上下居中；放不下时从顶部开始可滚动 */
+.overlay::before, .overlay::after { content: ''; margin: auto; min-height: 10px; }
 .overlay h1 { font-size: clamp(26px, 5vw, 40px); letter-spacing: 4px; }
 #menu h1 {
-  font-size: clamp(32px, 6.5vw, 54px); letter-spacing: 8px; font-weight: 900;
+  font-size: clamp(28px, 5.5vw, 46px); letter-spacing: 8px; font-weight: 900;
   background: linear-gradient(180deg, #ffffff, #bae6fd 55%, #38bdf8);
   -webkit-background-clip: text; background-clip: text; color: transparent;
   filter: drop-shadow(0 0 16px rgba(56,189,248,0.5));
@@ -88,13 +90,13 @@ canvas { position: absolute; inset: 0; display: block; touch-action: none; }
   font-size: clamp(18px, 3.5vw, 26px); letter-spacing: 12px; color: #ffd166;
   text-shadow: 0 0 14px rgba(255,209,102,0.6); margin-top: -6px;
 }
-#logo-img { max-width: min(300px, 68%); border-radius: 14px; margin-bottom: -4px;
+#logo-img { max-width: min(210px, 55%); border-radius: 14px; margin-bottom: -4px;
   filter: drop-shadow(0 0 22px rgba(56,189,248,0.45)); }
 .sub { color: #a8c6e4; font-size: 14px; letter-spacing: 2px; }
 
 #mode-select, #diff-select { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .mode-btn, .diff-btn {
-  cursor: pointer; padding: 11px 18px; border-radius: 12px;
+  cursor: pointer; padding: 9px 16px; border-radius: 12px;
   border: 1px solid rgba(147,197,253,0.4); background: rgba(10,32,52,0.85);
   color: #dff0ff; font-size: 15px; font-weight: 600; letter-spacing: 1px;
   transition: all .15s;
@@ -122,9 +124,9 @@ canvas { position: absolute; inset: 0; display: block; touch-action: none; }
 .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 
 #howto {
-  font-size: 13px; color: #c3d9ec; line-height: 1.9;
+  font-size: 12px; color: #c3d9ec; line-height: 1.65;
   background: rgba(6,24,40,0.65); border: 1px solid rgba(147,197,253,0.25);
-  border-radius: 12px; padding: 12px 20px; max-width: 560px; text-align: left;
+  border-radius: 12px; padding: 9px 16px; max-width: 520px; text-align: left;
 }
 #highscore { font-size: 15px; color: #ffd166; }
 #highscore span { font-size: 19px; font-weight: 800; }
