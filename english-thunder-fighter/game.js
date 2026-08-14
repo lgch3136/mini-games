@@ -148,7 +148,7 @@ const Game = {
   player: {
     x: W / 2, y: H - 90, r: 15,
     fireTimer: 0, fireInterval: 0.15,
-    double: 0, invuln: 0,
+    double: 0, invuln: 0, spawnRing: 0,
     px: W / 2, py: H - 90,  // 指针目标
     pointer: false,
   },
@@ -622,6 +622,7 @@ function update(dt) {
   p.y = clamp(p.y, Game._minY, H - 46);
   p.invuln = Math.max(0, p.invuln - dt);
   p.double = Math.max(0, p.double - dt);
+  p.spawnRing = Math.max(0, p.spawnRing - dt);
 
   // 手动开火：按住空格/J 或按住触屏/鼠标才射击
   p.fireTimer = Math.max(0, p.fireTimer - dt);
@@ -768,7 +769,7 @@ function render(dt) {
   drawEnemies();
   drawEnemyBullets();
   drawBullets();
-  if (Game.state !== 'over') drawPlayer();
+  drawPlayer();   // 任何状态都绘制战机：死亡后以残骸态保留在爆炸位置
   drawParticles();
   drawShockwaves();
   drawFloaters();
@@ -815,10 +816,16 @@ function drawSprite(name, w, h, alpha) {
 
 function drawPlayer() {
   const p = Game.player;
-  const blink = p.invuln > 0 && (Math.floor(p.invuln * 12) % 2 === 0);
+  const isWreck = Game.state === 'over';
+  const blink = !isWreck && p.invuln > 0 && (Math.floor(p.invuln * 12) % 2 === 0);
   ctx.save();
   ctx.translate(p.x, p.y);
-  ctx.globalAlpha = blink ? 0.35 : 0.9;
+  if (isWreck) {
+    ctx.rotate(0.5);
+    ctx.globalAlpha = 0.55;
+  } else {
+    ctx.globalAlpha = blink ? 0.35 : 0.9;
+  }
 
   // 引擎火焰（有贴图时从贴图尾部喷出）
   const hasSprite = !!Sprites.player;
@@ -867,6 +874,30 @@ function drawPlayer() {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 28 + Math.sin(Game.time * 5) * 2, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
+  }
+
+  // 出生指引：开局 3 秒内金色脉冲环 + 上指箭头
+  if (!isWreck && p.spawnRing > 0) {
+    ctx.save();
+    const pulse = 1 + Math.sin(Game.time * 6) * 0.1;
+    ctx.strokeStyle = 'rgba(255,209,102,' + (0.9 * Math.min(1, p.spawnRing)) + ')';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#ffd166';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 44 * pulse, 0, Math.PI * 2);
+    ctx.stroke();
+    // 上指箭头
+    const ay = p.y - 74 - Math.sin(Game.time * 5) * 6;
+    ctx.fillStyle = '#ffd166';
+    ctx.shadowColor = '#ffd166';
+    ctx.beginPath();
+    ctx.moveTo(p.x, ay);
+    ctx.lineTo(p.x - 12, ay + 20);
+    ctx.lineTo(p.x + 12, ay + 20);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
   }
 }
@@ -1084,7 +1115,7 @@ function startGame() {
   Game.particles.length = 0; Game.shockwaves.length = 0; Game.floaters.length = 0;
   const p = Game.player;
   p.x = p.px = W / 2; p.y = p.py = H - 90;
-  p.double = 0; p.invuln = 1.5; p.pointer = false;
+  p.double = 0; p.invuln = 1.5; p.pointer = false; p.spawnRing = 3;
   els.menu.classList.add('hidden');
   els.over.classList.add('hidden');
   els.paused.classList.add('hidden');
