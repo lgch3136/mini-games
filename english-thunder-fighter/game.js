@@ -214,7 +214,7 @@ canvas.addEventListener('pointermove', (ev) => {
   if (ev.pointerType !== 'touch' || Game.state !== 'playing') return;   // 仅触屏拖动，鼠标不参与
   const pos = pointerPos(ev);
   Game.player.px = clamp(pos.x, 30, W - 30);
-  Game.player.py = clamp(pos.y, Game._minY, H - 46);
+  Game.player.py = Math.max(Math.min(pos.y, H - 46), Math.min(Game._minY, H - 46));
   Game.player.pointer = true;
 });
 canvas.addEventListener('pointerdown', (ev) => {
@@ -223,7 +223,7 @@ canvas.addEventListener('pointerdown', (ev) => {
   if (ev.pointerType !== 'touch' || Game.state !== 'playing') return;
   const pos = pointerPos(ev);
   Game.player.px = clamp(pos.x, 30, W - 30);
-  Game.player.py = clamp(pos.y, Game._minY, H - 46);
+  Game.player.py = Math.max(Math.min(pos.y, H - 46), Math.min(Game._minY, H - 46));
   Game.player.pointer = true;
 });
 window.addEventListener('pointerup', () => { Game.fireHeld = false; });
@@ -616,10 +616,10 @@ function update(dt) {
   }
   p.x = clamp(p.x, 30, W - 30);
   if (Game.time > Game._nextLayoutCheck) {
-    Game._minY = hudClearanceY();
+    Game._minY = Math.min(H - 80, hudClearanceY());   // 上限保护：防止 min>max 导致钳制反转
     Game._nextLayoutCheck = Game.time + 0.5;
   }
-  p.y = clamp(p.y, Game._minY, H - 46);
+  p.y = Math.max(Math.min(p.y, H - 46), Math.min(Game._minY, H - 46));   // 显式顺序钳制，绝不越界
   p.invuln = Math.max(0, p.invuln - dt);
   p.double = Math.max(0, p.double - dt);
   p.spawnRing = Math.max(0, p.spawnRing - dt);
