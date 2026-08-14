@@ -781,6 +781,17 @@ function render(dt) {
   drawShockwaves();
   drawFloaters();
   ctx.restore();
+
+  // 版本水印（画布内，任何缩放下截图可见，用于确认加载的代码版本）
+  ctx.save();
+  ctx.font = '700 13px ui-monospace, monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(255,220,90,0.9)';
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 4;
+  ctx.fillText('v20260814e', 8, 8);
+  ctx.restore();
 }
 
 function drawNebula() {
