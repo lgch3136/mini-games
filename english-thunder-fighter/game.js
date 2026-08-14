@@ -1180,6 +1180,28 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
+/* ---------------- 菜单自动缩放：任何窗口尺寸下都能完整显示 ---------------- */
+(function installMenuFit() {
+  const menu = $id('menu');
+  if (!menu) return;
+  const fit = () => {
+    const wrap = $id('game-wrap');
+    if (!wrap) return;
+    menu.style.transform = '';
+    const avail = wrap.getBoundingClientRect().height;
+    const content = menu.scrollHeight;
+    if (content > avail && content > 0 && avail > 0) {
+      const scale = Math.max(0.55, avail / content);
+      menu.style.transformOrigin = 'top center';
+      menu.style.transform = 'scale(' + scale.toFixed(3) + ')';
+    }
+  };
+  fit();
+  window.addEventListener('resize', fit);
+  setInterval(fit, 600);
+  window.addEventListener('load', fit);
+})();
+
 updateHighScore();
 els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
 

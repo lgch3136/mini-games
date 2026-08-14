@@ -1078,6 +1078,49 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
+/* ---------------- 菜单自动缩放：任何窗口尺寸下都能完整显示 ---------------- */
+(function installMenuFit() {
+  const menu = $id('menu');
+  if (!menu) return;
+  const fit = () => {
+    const wrap = $id('game-wrap');
+    if (!wrap) return;
+    menu.style.transform = '';
+    const avail = wrap.getBoundingClientRect().height;
+    const content = menu.scrollHeight;
+    if (content > avail && content > 0 && avail > 0) {
+      const scale = Math.max(0.55, avail / content);
+      menu.style.transformOrigin = 'top center';
+      menu.style.transform = 'scale(' + scale.toFixed(3) + ')';
+    }
+  };
+  fit();
+  window.addEventListener('resize', fit);
+  setInterval(fit, 600);
+  window.addEventListener('load', fit);
+})();
+
+/* ---------------- 诊断角标（本地调试） ---------------- */
+(function installDebugChip() {
+  const el = $id('dbg-chip');
+  if (!el) return;
+  const tick = () => {
+    const wr = wrap.getBoundingClientRect();
+    const menu = els.menu;
+    const mr = menu.getBoundingClientRect();
+    el.textContent =
+      'win ' + window.innerWidth + 'x' + window.innerHeight +
+      ' dpr ' + window.devicePixelRatio +
+      ' wrap ' + Math.round(wr.width) + 'x' + Math.round(wr.height) + ' @' + Math.round(wr.top) +
+      ' menu ' + menu.scrollHeight + '/' + menu.clientHeight +
+      ' menuBox ' + Math.round(mr.top) + '..' + Math.round(mr.bottom) +
+      ' vis ' + (menu.clientHeight >= menu.scrollHeight ? 'FIT' : 'OVERFLOW');
+  };
+  tick();
+  setInterval(tick, 500);
+  window.addEventListener('resize', tick);
+})();
+
 updateHighScore();
 els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
 
