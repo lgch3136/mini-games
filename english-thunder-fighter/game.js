@@ -620,6 +620,13 @@ function update(dt) {
     Game._nextLayoutCheck = Game.time + 0.5;
   }
   p.y = Math.max(Math.min(p.y, H - 46), Math.min(Game._minY, H - 46));   // 显式顺序钳制，绝不越界
+  // 自愈保险：任何异常坐标立即复位到出生点（战机永不消失）
+  if (!(p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H)) {
+    p.x = W / 2;
+    p.y = H - 90;
+    p.px = p.x;
+    p.py = p.y;
+  }
   p.invuln = Math.max(0, p.invuln - dt);
   p.double = Math.max(0, p.double - dt);
   p.spawnRing = Math.max(0, p.spawnRing - dt);
