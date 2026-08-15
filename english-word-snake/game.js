@@ -143,6 +143,7 @@ const Game = {
   particles: [], floaters: [],
   stats: { words: 0, correctLetters: 0, wrongEats: 0 },
   _barKey: '',
+  _hudKey: '',
   _lastCombo: 0,
 };
 
@@ -180,32 +181,36 @@ window.addEventListener('keyup', (ev) => { if (KEYMAP[ev.code]) keys.delete(KEYM
 
 // 触屏滑动
 let touchStart = null;
+function commitSwipe(t) {
+  if (!touchStart) return false;
+  const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return false;
+  touchStart = null;
+  if (Math.abs(dx) > Math.abs(dy)) pushDir(dx > 0 ? DIRS.right : DIRS.left);
+  else pushDir(dy > 0 ? DIRS.down : DIRS.up);
+  return true;
+}
 canvas.addEventListener('touchstart', (ev) => {
   SFX.ensure();
   const t = ev.touches[0];
   touchStart = { x: t.clientX, y: t.clientY };
 }, { passive: true });
+canvas.addEventListener('touchmove', (ev) => { commitSwipe(ev.touches[0]); }, { passive: true });
 canvas.addEventListener('touchend', (ev) => {
   if (!touchStart) return;
   const t = ev.changedTouches[0];
-  const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+  if (commitSwipe(t)) return;
   touchStart = null;
-  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) {
-    // 点按转向：朝点击位置的方向转
-    const rect = canvas.getBoundingClientRect();
-    const sc = W / rect.width;
-    const head = Game.snake[0];
-    const hx = (head.x * CELL + CELL / 2) * (rect.width / W);
-    const hy = (GRID_Y + head.y * CELL + CELL / 2) * (rect.height / H);
-    const vx = t.clientX - rect.left - hx;
-    const vy = t.clientY - rect.top - hy;
-    if (Math.max(Math.abs(vx), Math.abs(vy)) < 20) return;
-    if (Math.abs(vx) > Math.abs(vy)) pushDir(vx > 0 ? DIRS.right : DIRS.left);
-    else pushDir(vy > 0 ? DIRS.down : DIRS.up);
-    return;
-  }
-  if (Math.abs(dx) > Math.abs(dy)) pushDir(dx > 0 ? DIRS.right : DIRS.left);
-  else pushDir(dy > 0 ? DIRS.down : DIRS.up);
+  // 点按转向：朝点击位置的方向转
+  const rect = canvas.getBoundingClientRect();
+  const head = Game.snake[0];
+  const hx = (head.x * CELL + CELL / 2) * (rect.width / W);
+  const hy = (GRID_Y + head.y * CELL + CELL / 2) * (rect.height / H);
+  const vx = t.clientX - rect.left - hx;
+  const vy = t.clientY - rect.top - hy;
+  if (Math.max(Math.abs(vx), Math.abs(vy)) < 20) return;
+  if (Math.abs(vx) > Math.abs(vy)) pushDir(vx > 0 ? DIRS.right : DIRS.left);
+  else pushDir(vy > 0 ? DIRS.down : DIRS.up);
 }, { passive: true });
 
 /* ---------------- 按钮 ---------------- */
@@ -582,8 +587,8 @@ function update(dt) {
   Game.slowTimer = Math.max(0, Game.slowTimer - dt);
   Game.hintUntil = Math.max(0, Game.hintUntil - dt);
 
-  if (Game.time > Game.feedbackUntil) {
-    els.qFeedback.textContent = '';
+  if (Game.feedbackText && Game.time > Game.feedbackUntil) {
+    Game.feedbackText = '';
     Game._barKey = '';
   }
 
@@ -930,6 +935,9 @@ function updateWordBar() {
 }
 
 function updateHud() {
+  const key = Game.score + '|' + Game.level + '|' + Game.hp + '|' + Game.combo;
+  if (key === Game._hudKey) return;
+  Game._hudKey = key;
   els.score.textContent = Game.score;
   els.level.textContent = Game.level;
   els.hearts.textContent = '❤️'.repeat(Math.max(0, Game.hp)) + '🖤'.repeat(Math.max(0, Game.maxHp - Game.hp));
@@ -959,6 +967,7 @@ function hsKey() {
 function startGame() {
   Game.state = 'playing';
   Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0;
+  Game._hudKey = '';
   Game.hp = 3;
   Game.level = 1;
   Game.wordsDone = 0;
@@ -1073,7 +1082,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
   if (wrap.clientWidth !== lastW || wrap.clientHeight !== lastH || dpr !== lastDpr) resize();
   if (Game.state === 'playing') {
     update(dt);
@@ -1093,6 +1102,11 @@ if (/[?&]selftest/.test(location.search)) {
   try {
     let ok = true;
     render(0);   // 菜单态蛇为空时，渲染不能终止主循环
+    // 滑动一旦越过阈值就应立即入队，无需等待手指抬起
+    Game.dir = DIRS.right;
+    touchStart = { x: 0, y: 0 };
+    ok = ok && commitSwipe({ clientX: 0, clientY: 30 }) && touchStart === null && Game.queue[0] === DIRS.down;
+    Game.queue.length = 0;
     // 逻辑 tick 必须保留移动前的位置，供帧间平滑插值
     Game.mode = 'spell';
     Game.difficulty = 'easy';
