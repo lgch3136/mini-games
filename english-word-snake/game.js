@@ -137,6 +137,7 @@ const Game = {
   word: null,
   tiles: [],
   snake: [],
+  prevSnake: [],
   dir: { x: 1, y: 0 },
   queue: [],
   particles: [], floaters: [],
@@ -546,6 +547,7 @@ function currentInterval() {
 
 function tick() {
   if (Game.state !== 'playing' || Game.time < Game.freezeUntil) return;
+  Game.prevSnake = Game.snake.map((seg) => ({ x: seg.x, y: seg.y }));
   while (Game.queue.length) {
     const d = Game.queue.shift();
     if (d.x === -Game.dir.x && d.y === -Game.dir.y) continue;
@@ -814,10 +816,15 @@ function drawSnake() {
   if (!s.length) return;
   const blink = Game.invuln > 0 && (Math.floor(Game.invuln * 10) % 2 === 0);
   const cc = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  const move = Game.time < Game.freezeUntil ? 1 : clamp(1 - Game.tickTimer / currentInterval(), 0, 1);
+  let hx = 0, hy = 0;
   for (let i = s.length - 1; i >= 0; i--) {
     const seg = s[i];
+    const prev = Game.prevSnake[i] || seg;
     const t = s.length > 1 ? i / (s.length - 1) : 0;
-    const cx = seg.x * CELL + CELL / 2, cy = GRID_Y + seg.y * CELL + CELL / 2;
+    const cx = (prev.x + (seg.x - prev.x) * move) * CELL + CELL / 2;
+    const cy = GRID_Y + (prev.y + (seg.y - prev.y) * move) * CELL + CELL / 2;
+    if (i === 0) { hx = cx; hy = cy; }
     const size = CELL - 4 - t * 6;
     const grad = ctx.createLinearGradient(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
     if (i === 0) {
@@ -842,8 +849,6 @@ function drawSnake() {
     ctx.stroke();
   }
   // 眼睛
-  const head = s[0];
-  const hx = head.x * CELL + CELL / 2, hy = GRID_Y + head.y * CELL + CELL / 2;
   const d = Game.dir;
   const ex = d.x, ey = d.y;
   const px = -ey, py = ex;   // 垂直方向
@@ -986,6 +991,7 @@ function startGame() {
   Game.snake = [];
   const sx = 12, sy = Math.floor(ROWS / 2);
   for (let i = 0; i < 5; i++) Game.snake.push({ x: sx - i, y: sy });
+  Game.prevSnake = Game.snake.map((seg) => ({ x: seg.x, y: seg.y }));
   Game.word = null;
   els.menu.classList.add('hidden');
   els.over.classList.add('hidden');
@@ -1017,6 +1023,7 @@ function backToMenu() {
   els.menu.classList.remove('hidden');
   Game.tiles.length = 0;
   Game.snake.length = 0;
+  Game.prevSnake.length = 0;
   updateHighScore();
 }
 
@@ -1113,6 +1120,13 @@ if (/[?&]selftest/.test(location.search)) {
   try {
     let ok = true;
     render(0);   // 菜单态蛇为空时，渲染不能终止主循环
+    // 逻辑 tick 必须保留移动前的位置，供帧间平滑插值
+    Game.mode = 'spell';
+    Game.difficulty = 'easy';
+    startGame();
+    const startHeadX = Game.snake[0].x;
+    tick();
+    ok = ok && Array.isArray(Game.prevSnake) && Game.prevSnake[0].x === startHeadX && Game.snake[0].x === startHeadX + 1;
     // 提前误吃重复字母后，后续仍必须保留足量正确答案
     Game.mode = 'spell';
     Game.difficulty = 'easy';
