@@ -810,6 +810,7 @@ function drawTiles() {
 
 function drawSnake() {
   const s = Game.snake;
+  if (!s.length) return;
   const blink = Game.invuln > 0 && (Math.floor(Game.invuln * 10) % 2 === 0);
   const cc = (v) => Math.max(0, Math.min(255, Math.round(v)));
   for (let i = s.length - 1; i >= 0; i--) {
@@ -1087,10 +1088,12 @@ requestAnimationFrame(frame);
     const wrap = $id('game-wrap');
     if (!wrap) return;
     menu.style.transform = '';
+    menu.style.height = '';
     const avail = wrap.getBoundingClientRect().height;
     const content = menu.scrollHeight;
     if (content > avail && content > 0 && avail > 0) {
       const scale = Math.max(0.55, avail / content);
+      menu.style.height = content + 'px';
       menu.style.transformOrigin = 'top center';
       menu.style.transform = 'scale(' + scale.toFixed(3) + ')';
     }
@@ -1101,27 +1104,6 @@ requestAnimationFrame(frame);
   window.addEventListener('load', fit);
 })();
 
-/* ---------------- 诊断角标（本地调试） ---------------- */
-(function installDebugChip() {
-  const el = $id('dbg-chip');
-  if (!el) return;
-  const tick = () => {
-    const wr = wrap.getBoundingClientRect();
-    const menu = els.menu;
-    const mr = menu.getBoundingClientRect();
-    el.textContent =
-      'win ' + window.innerWidth + 'x' + window.innerHeight +
-      ' dpr ' + window.devicePixelRatio +
-      ' wrap ' + Math.round(wr.width) + 'x' + Math.round(wr.height) + ' @' + Math.round(wr.top) +
-      ' menu ' + menu.scrollHeight + '/' + menu.clientHeight +
-      ' menuBox ' + Math.round(mr.top) + '..' + Math.round(mr.bottom) +
-      ' vis ' + (menu.clientHeight >= menu.scrollHeight ? 'FIT' : 'OVERFLOW');
-  };
-  tick();
-  setInterval(tick, 500);
-  window.addEventListener('resize', tick);
-})();
-
 updateHighScore();
 els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
 
@@ -1129,6 +1111,7 @@ els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
 if (/[?&]selftest/.test(location.search)) {
   try {
     let ok = true;
+    render(0);   // 菜单态蛇为空时，渲染不能终止主循环
     // 拼单词模式：按顺序吃掉全部字母
     Game.mode = 'spell';
     Game.difficulty = 'easy';
