@@ -395,6 +395,7 @@ function eatTile(tile) {
       if (Game.word.index >= Game.word.letters.length) completeWord();
       else updateWordBar();
     } else {
+      if (tile.isWord) Game.tiles.push(tile);
       wrongEat(tile.isWord ? '✗ 顺序不对' : '✗ 不是这个字母', cx, cy);
     }
   } else {
@@ -1112,6 +1113,21 @@ if (/[?&]selftest/.test(location.search)) {
   try {
     let ok = true;
     render(0);   // 菜单态蛇为空时，渲染不能终止主循环
+    // 提前误吃重复字母后，后续仍必须保留足量正确答案
+    Game.mode = 'spell';
+    Game.difficulty = 'easy';
+    startGame();
+    Game.word = { mode: 'spell', en: 'afternoon', zh: '下午', letters: 'afternoon'.split(''), index: 0, done: false, revealUntil: 0 };
+    spawnTiles();
+    const earlyN = Game.tiles.find((t) => t.type === 'letter' && t.letter === 'n');
+    ok = ok && Game.tiles.filter((t) => t.type === 'letter' && t.letter === 'n').length === 2 && !!earlyN;
+    if (earlyN) eatTile(earlyN);
+    for (const letter of 'afternoo') {
+      const tile = Game.tiles.find((t) => t.type === 'letter' && t.letter === letter);
+      if (!tile) { ok = false; break; }
+      eatTile(tile);
+    }
+    ok = ok && Game.word.index === 8 && Game.tiles.some((t) => t.type === 'letter' && t.letter === 'n');
     // 拼单词模式：按顺序吃掉全部字母
     Game.mode = 'spell';
     Game.difficulty = 'easy';
