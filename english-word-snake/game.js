@@ -316,14 +316,6 @@ function spawnTiles() {
       const c = take();
       Game.tiles.push({ x: c.x, y: c.y, type: 'letter', letter, isWord: true, correct: true, phase: rand(0, 6) });
     }
-    const alpha = 'abcdefghijklmnopqrstuvwxyz';
-    const excl = new Set(Game.word.letters);
-    const pool = alpha.split('').filter((l) => !excl.has(l));
-    const n = 6 + Math.min(4, Game.level);
-    for (let i = 0; i < n; i++) {
-      const c = take();
-      Game.tiles.push({ x: c.x, y: c.y, type: 'letter', letter: pool[randInt(pool.length)], isWord: false, correct: false, phase: rand(0, 6) });
-    }
   } else {
     for (const opt of Game.word.options) {
       const c = take();
@@ -1114,6 +1106,7 @@ if (/[?&]selftest/.test(location.search)) {
     startGame();
     Game.word = { mode: 'spell', en: 'afternoon', zh: '下午', letters: 'afternoon'.split(''), index: 0, done: false, revealUntil: 0 };
     spawnTiles();
+    ok = ok && Game.tiles.length === Game.word.letters.length && Game.tiles.every((t) => t.type === 'letter' && t.isWord);
     const earlyN = Game.tiles.find((t) => t.type === 'letter' && t.letter === 'n');
     ok = ok && Game.tiles.filter((t) => t.type === 'letter' && t.letter === 'n').length === 2 && !!earlyN;
     if (earlyN) eatTile(earlyN);
