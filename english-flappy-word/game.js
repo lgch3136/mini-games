@@ -816,6 +816,7 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+new ResizeObserver(resize).observe($id('game-wrap'));
 resize();
 
 /* ---------------- 主循环 ---------------- */
@@ -992,28 +993,6 @@ if (/[?&]probe/.test(location.search)) {
   })();
 }
 
-/* ---------------- 诊断角标（本地调试） ---------------- */
-(function installDebugChip() {
-  const el = $id('dbg-chip');
-  if (!el) return;
-  const tick = () => {
-    const wrap = $id('game-wrap');
-    const wr = wrap.getBoundingClientRect();
-    const menu = $id('menu');
-    const mr = menu.getBoundingClientRect();
-    el.textContent =
-      'win ' + window.innerWidth + 'x' + window.innerHeight +
-      ' dpr ' + window.devicePixelRatio +
-      ' wrap ' + Math.round(wr.width) + 'x' + Math.round(wr.height) + ' @' + Math.round(wr.top) +
-      ' menu ' + menu.scrollHeight + '/' + menu.clientHeight +
-      ' menuBox ' + Math.round(mr.top) + '..' + Math.round(mr.bottom) +
-      ' vis ' + (menu.clientHeight >= menu.scrollHeight ? 'FIT' : 'OVERFLOW');
-  };
-  tick();
-  setInterval(tick, 500);
-  window.addEventListener('resize', tick);
-})();
-
 /* ---------------- 启动 ---------------- */
 $id('hs-value').textContent = loadHS();
 if (!TEST_MODE) requestAnimationFrame(loop);
@@ -1026,17 +1005,18 @@ if (!TEST_MODE) requestAnimationFrame(loop);
     const wrap = $id('game-wrap');
     if (!wrap) return;
     menu.style.transform = '';
+    menu.style.height = '';
     const avail = wrap.getBoundingClientRect().height;
     const content = menu.scrollHeight;
     if (content > avail && content > 0 && avail > 0) {
       const scale = Math.max(0.55, avail / content);
+      menu.style.height = content + 'px';
       menu.style.transformOrigin = 'top center';
       menu.style.transform = 'scale(' + scale.toFixed(3) + ')';
     }
   };
   fit();
   window.addEventListener('resize', fit);
-  setInterval(fit, 600);
+  new ResizeObserver(fit).observe($id('game-wrap'));
   window.addEventListener('load', fit);
 })();
-

@@ -7,13 +7,14 @@ body {
   color: #eaf4ff;
   overflow: hidden;
   user-select: none; -webkit-user-select: none;
-  height: 100vh; width: 100vw;
+  height: 100vh; height: 100dvh; width: 100vw;
 }
 .hidden { display: none !important; }
 
 #game-wrap {
   position: relative;
   width: min(94vw, calc(94vh * 0.636));
+  width: min(94vw, calc(94dvh * 0.636));
   aspect-ratio: 420 / 660;
   border-radius: 14px;
   overflow: hidden;
@@ -21,7 +22,7 @@ body {
   border: 1px solid rgba(147,197,253,0.25);
   background: #062033;
 }
-canvas { position: absolute; inset: 0; display: block; touch-action: none; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
 /* ---------- HUD ---------- */
 #hud { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; }

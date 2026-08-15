@@ -7,13 +7,14 @@ body {
   color: #e8f1ff;
   overflow: hidden;
   user-select: none; -webkit-user-select: none;
-  height: 100vh; width: 100vw;
+  height: 100vh; height: 100dvh; width: 100vw;
 }
 .hidden { display: none !important; }
 
 #game-wrap {
   position: relative;
   width: min(96vw, calc(92vh * 1.40625));
+  width: min(96vw, calc(92dvh * 1.40625));
   aspect-ratio: 900 / 640;
   border-radius: 14px;
   overflow: hidden;

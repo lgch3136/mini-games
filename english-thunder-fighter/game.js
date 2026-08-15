@@ -1238,17 +1238,19 @@ requestAnimationFrame(frame);
     const wrap = $id('game-wrap');
     if (!wrap) return;
     menu.style.transform = '';
+    menu.style.height = '';
     const avail = wrap.getBoundingClientRect().height;
     const content = menu.scrollHeight;
     if (content > avail && content > 0 && avail > 0) {
       const scale = Math.max(0.55, avail / content);
+      menu.style.height = content + 'px';
       menu.style.transformOrigin = 'top center';
       menu.style.transform = 'scale(' + scale.toFixed(3) + ')';
     }
   };
   fit();
   window.addEventListener('resize', fit);
-  setInterval(fit, 600);
+  new ResizeObserver(fit).observe($id('game-wrap'));
   window.addEventListener('load', fit);
 })();
 

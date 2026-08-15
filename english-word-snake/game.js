@@ -1108,7 +1108,7 @@ requestAnimationFrame(frame);
   };
   fit();
   window.addEventListener('resize', fit);
-  setInterval(fit, 600);
+  new ResizeObserver(fit).observe($id('game-wrap'));
   window.addEventListener('load', fit);
 })();
 
