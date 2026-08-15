@@ -24,7 +24,7 @@ const els = {
   menu: $id('menu'), over: $id('over'), paused: $id('paused'),
   overStats: $id('over-stats'), hsValue: $id('hs-value'),
   muteBtn: $id('mute-btn'), pauseBtn: $id('pause-btn'),
-  bombBtn: $id('bomb-btn'), bombTouch: $id('bomb-touch'),
+  bombBtn: $id('bomb-btn'), bombTouch: $id('bomb-touch'), fireBtn: $id('fire-btn'),
 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -197,11 +197,6 @@ window.addEventListener('keyup', (ev) => {
   if (ev.code === 'Space' || ev.code === 'KeyJ') Game.fireHeld = false;
 });
 
-function pointerPos(ev) {
-  const r = canvas.getBoundingClientRect();
-  return { x: (ev.clientX - r.left) * W / r.width, y: (ev.clientY - r.top) * H / r.height };
-}
-
 /* 计算题目栏下方的最小飞行高度（逻辑坐标），避免战机躲进 HUD */
 function hudClearanceY() {
   const scale = wrap.clientWidth / W || 1;
@@ -210,25 +205,70 @@ function hudClearanceY() {
   const barBottom = qb.getBoundingClientRect().bottom - wrapTop;
   return Math.max(120, (barBottom + 16) / scale + 30);
 }
+let movePointerId = null, moveStart = null, firePointerId = null;
+
+function updateTouchMove(ev) {
+  if (ev.pointerId !== movePointerId || !moveStart) return;
+  const r = canvas.getBoundingClientRect();
+  Game.player.px = clamp(moveStart.px + (ev.clientX - moveStart.x) * W / r.width, 30, W - 30);
+  Game.player.py = Math.max(Math.min(moveStart.py + (ev.clientY - moveStart.y) * H / r.height, H - 46), Math.min(Game._minY, H - 46));
+}
+
+function releaseTouchControls() {
+  movePointerId = null;
+  moveStart = null;
+  firePointerId = null;
+  Game.fireHeld = false;
+  els.fireBtn.classList.remove('active');
+}
+
 canvas.addEventListener('pointermove', (ev) => {
-  if (ev.pointerType !== 'touch' || Game.state !== 'playing') return;   // 仅触屏拖动，鼠标不参与
-  const pos = pointerPos(ev);
-  Game.player.px = clamp(pos.x, 30, W - 30);
-  Game.player.py = Math.max(Math.min(pos.y, H - 46), Math.min(Game._minY, H - 46));
-  Game.player.pointer = true;
+  if (ev.pointerType === 'touch' && Game.state === 'playing') updateTouchMove(ev);
 });
 canvas.addEventListener('pointerdown', (ev) => {
+  if (Game.state !== 'playing') return;
   SFX.ensure();
-  Game.fireHeld = true;   // 按住即开火（手动射击）
-  if (ev.pointerType !== 'touch' || Game.state !== 'playing') return;
-  const pos = pointerPos(ev);
-  Game.player.px = clamp(pos.x, 30, W - 30);
-  Game.player.py = Math.max(Math.min(pos.y, H - 46), Math.min(Game._minY, H - 46));
+  if (ev.pointerType !== 'touch') { Game.fireHeld = true; return; }
+  const r = canvas.getBoundingClientRect();
+  if (ev.clientX - r.left > r.width * 0.68 || movePointerId !== null) return;
+  movePointerId = ev.pointerId;
+  moveStart = { x: ev.clientX, y: ev.clientY, px: Game.player.x, py: Game.player.y };
   Game.player.pointer = true;
+  try { canvas.setPointerCapture(ev.pointerId); } catch (err) { /* 合成事件没有可捕获指针 */ }
+  updateTouchMove(ev);
 });
-window.addEventListener('pointerup', () => { Game.fireHeld = false; });
-window.addEventListener('pointercancel', () => { Game.fireHeld = false; });
+const endTouchMove = (ev) => {
+  if (ev.pointerId !== movePointerId) return;
+  movePointerId = null;
+  moveStart = null;
+};
+canvas.addEventListener('pointerup', endTouchMove);
+canvas.addEventListener('pointercancel', endTouchMove);
+window.addEventListener('pointerup', endTouchMove);
+window.addEventListener('pointercancel', endTouchMove);
+window.addEventListener('pointerup', (ev) => { if (ev.pointerType !== 'touch') Game.fireHeld = false; });
+window.addEventListener('pointercancel', (ev) => { if (ev.pointerType !== 'touch') Game.fireHeld = false; });
 canvas.addEventListener('touchmove', (ev) => ev.preventDefault(), { passive: false });
+
+const stopTouchFire = (ev) => {
+  if (ev.pointerId !== firePointerId) return;
+  firePointerId = null;
+  Game.fireHeld = false;
+  els.fireBtn.classList.remove('active');
+};
+els.fireBtn.addEventListener('pointerdown', (ev) => {
+  if (Game.state !== 'playing' || firePointerId !== null) return;
+  ev.preventDefault();
+  SFX.ensure();
+  firePointerId = ev.pointerId;
+  Game.fireHeld = true;
+  els.fireBtn.classList.add('active');
+  try { els.fireBtn.setPointerCapture(ev.pointerId); } catch (err) { /* 合成事件没有可捕获指针 */ }
+});
+els.fireBtn.addEventListener('pointerup', stopTouchFire);
+els.fireBtn.addEventListener('pointercancel', stopTouchFire);
+window.addEventListener('pointerup', stopTouchFire);
+window.addEventListener('pointercancel', stopTouchFire);
 
 /* ---------------- 按钮 ---------------- */
 document.querySelectorAll('.diff-btn').forEach((btn) => {
@@ -790,7 +830,7 @@ function render(dt) {
   ctx.fillStyle = 'rgba(255,220,90,0.95)';
   ctx.shadowColor = 'rgba(0,0,0,0.9)';
   ctx.shadowBlur = 4;
-  ctx.fillText('v20260814f', W - 10, H - 50);
+  ctx.fillText('v20260815e', W - 10, H - 50);
   ctx.restore();
 }
 
@@ -1117,6 +1157,7 @@ function updateHighScore() {
 /* ---------------- 流程控制 ---------------- */
 function startGame() {
   Game.state = 'playing';
+  releaseTouchControls();
   Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0;
   Game.hp = 100; Game.shield = 0; Game.bombs = 1;
   Game.level = 1;
@@ -1144,6 +1185,7 @@ function startGame() {
 
 function togglePause() {
   if (Game.state === 'playing') {
+    releaseTouchControls();
     Game.state = 'paused';
     els.paused.classList.remove('hidden');
   } else if (Game.state === 'paused') {
@@ -1156,6 +1198,7 @@ function togglePause() {
 function resumeGame() { if (Game.state === 'paused') togglePause(); }
 
 function backToMenu() {
+  releaseTouchControls();
   Game.state = 'menu';
   els.hud.classList.add('hidden');
   els.over.classList.add('hidden');
@@ -1167,6 +1210,7 @@ function backToMenu() {
 }
 
 function gameOver() {
+  releaseTouchControls();
   Game.state = 'over';
   explode(Game.player.x, Game.player.y, '#4f9dff', 70, 2.4);
   explode(Game.player.x, Game.player.y, '#ffd166', 40, 1.8);
@@ -1230,30 +1274,6 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
-/* ---------------- 菜单自动缩放：任何窗口尺寸下都能完整显示 ---------------- */
-(function installMenuFit() {
-  const menu = $id('menu');
-  if (!menu) return;
-  const fit = () => {
-    const wrap = $id('game-wrap');
-    if (!wrap) return;
-    menu.style.transform = '';
-    menu.style.height = '';
-    const avail = wrap.getBoundingClientRect().height;
-    const content = menu.scrollHeight;
-    if (content > avail && content > 0 && avail > 0) {
-      const scale = Math.max(0.55, avail / content);
-      menu.style.height = content + 'px';
-      menu.style.transformOrigin = 'top center';
-      menu.style.transform = 'scale(' + scale.toFixed(3) + ')';
-    }
-  };
-  fit();
-  window.addEventListener('resize', fit);
-  new ResizeObserver(fit).observe($id('game-wrap'));
-  window.addEventListener('load', fit);
-})();
-
 updateHighScore();
 els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
 
@@ -1266,7 +1286,19 @@ if (/[?&]selftest/.test(location.search)) {
     const correct = Game.enemies.find((e) => e.option && e.option.correct);
     if (correct) killEnemy(correct, false);
     for (let i = 0; i < 10; i++) { update(1 / 60); updateFx(1 / 60); }
-    if (Game.score > 0 && Game.stats.correct === 1) document.title = 'SELFTEST-OK';
+    const rect = canvas.getBoundingClientRect();
+    Game.fireHeld = false;
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 91, pointerType: 'touch', clientX: rect.left + 20, clientY: rect.top + rect.height / 2 }));
+    const startPx = Game.player.px;
+    canvas.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 91, pointerType: 'touch', clientX: rect.left + 100, clientY: rect.top + rect.height / 2 }));
+    const moveOnly = !Game.fireHeld && Game.player.pointer && Game.player.px > startPx;
+    els.fireBtn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 92, pointerType: 'touch' }));
+    const separateFire = Game.fireHeld && movePointerId === 91 && firePointerId === 92;
+    els.fireBtn.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 92, pointerType: 'touch' }));
+    const fireReleased = !Game.fireHeld && movePointerId === 91 && firePointerId === null;
+    canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 91, pointerType: 'touch' }));
+    const inputOk = moveOnly && separateFire && fireReleased && movePointerId === null;
+    if (Game.score > 0 && Game.stats.correct === 1 && inputOk) document.title = 'SELFTEST-OK';
     else document.title = 'SELFTEST-FAIL';
   } catch (err) {
     document.title = 'SELFTEST-ERR:' + err.message;

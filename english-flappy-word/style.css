@@ -153,3 +153,25 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .stat-row { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(147,197,253,0.25); padding: 6px 0; }
 .stat-row:last-child { border-bottom: none; }
 .stat-row b { color: #ffd166; font-size: 16px; }
+
+@media (max-width: 600px) and (orientation: portrait) {
+  #game-wrap { border: 0; border-radius: 0; box-shadow: none; }
+  .overlay {
+    position: fixed; inset: 0; width: 100vw; height: 100dvh !important; min-height: 100dvh;
+    transform: none !important; gap: 9px; padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    overflow-y: auto; backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  .overlay::before, .overlay::after { display: none; }
+  #over, #paused { justify-content: center; }
+  #logo-img { width: auto; max-width: min(190px, 48vw); max-height: 104px; margin: 0; object-fit: contain; }
+  #menu h1 { font-size: 29px; letter-spacing: 4px; }
+  #menu h2 { font-size: 17px; letter-spacing: 7px; margin-top: -3px; }
+  .sub { font-size: 12px; letter-spacing: 1px; }
+  #mode-select, #diff-select { display: grid; width: min(100%, 420px); gap: 8px; }
+  #mode-select { grid-template-columns: 1fr; }
+  #diff-select { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mode-btn, .diff-btn { min-width: 0; width: 100%; min-height: 54px; padding: 9px 8px; font-size: 14px; }
+  .mode-btn small, .diff-btn small { font-size: 10px; line-height: 1.35; }
+  .btn { width: min(100%, 320px); padding: 12px 20px; }
+  #howto { width: min(100%, 420px); padding: 10px 12px; font-size: 12px; line-height: 1.55; }
+}

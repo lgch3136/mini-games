@@ -996,27 +996,3 @@ if (/[?&]probe/.test(location.search)) {
 /* ---------------- 启动 ---------------- */
 $id('hs-value').textContent = loadHS();
 if (!TEST_MODE) requestAnimationFrame(loop);
-
-/* ---------------- 菜单自动缩放：任何窗口尺寸下都能完整显示 ---------------- */
-(function installMenuFit() {
-  const menu = $id('menu');
-  if (!menu) return;
-  const fit = () => {
-    const wrap = $id('game-wrap');
-    if (!wrap) return;
-    menu.style.transform = '';
-    menu.style.height = '';
-    const avail = wrap.getBoundingClientRect().height;
-    const content = menu.scrollHeight;
-    if (content > avail && content > 0 && avail > 0) {
-      const scale = Math.max(0.55, avail / content);
-      menu.style.height = content + 'px';
-      menu.style.transformOrigin = 'top center';
-      menu.style.transform = 'scale(' + scale.toFixed(3) + ')';
-    }
-  };
-  fit();
-  window.addEventListener('resize', fit);
-  new ResizeObserver(fit).observe($id('game-wrap'));
-  window.addEventListener('load', fit);
-})();

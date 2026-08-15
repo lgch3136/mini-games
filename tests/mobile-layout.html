@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MOBILE-LAYOUT-RUNNING</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; display: flex; gap: 12px; background: #d9dde5; overflow: auto; }
+  iframe { flex: 0 0 393px; width: 393px; height: 700px; border: 0; background: #fff; }
+</style>
+<iframe title="snake" src="../english-word-snake/index.html?mobile-layout-test"></iframe>
+<iframe title="thunder" src="../english-thunder-fighter/index.html?mobile-layout-test"></iframe>
+<iframe title="flappy" src="../english-flappy-word/index.html?mobile-layout-test"></iframe>
+<script>
+  const frames = [...document.querySelectorAll('iframe')];
+  function verify(attempt = 0) {
+    const ready = frames.every((frame) => frame.contentDocument?.querySelector('#menu'));
+    if (!ready && attempt < 100) { setTimeout(() => verify(attempt + 1), 50); return; }
+    const ok = frames.every((frame) => {
+      const view = frame.contentWindow;
+      const menu = frame.contentDocument.querySelector('#menu');
+      if (!menu) return false;
+      const rect = menu.getBoundingClientRect();
+      return Math.abs(rect.width - view.innerWidth) < 2 &&
+        Math.abs(rect.height - view.innerHeight) < 2 &&
+        view.getComputedStyle(menu).transform === 'none';
+    });
+    document.title = ok ? 'MOBILE-LAYOUT-OK' : 'MOBILE-LAYOUT-FAIL';
+  }
+  verify();
+</script>

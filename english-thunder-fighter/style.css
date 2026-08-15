@@ -58,6 +58,18 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 .hud-btn:hover { border-color: #ffd166; }
 
+#fire-btn {
+  display: none; position: absolute; right: 18px; bottom: 26px; z-index: 2;
+  width: 76px; height: 76px; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,209,102,0.75); border-radius: 50%;
+  background: rgba(80,45,12,0.9); color: #fff4c2;
+  font-family: inherit; font-size: 15px; font-weight: 800; line-height: 1;
+  letter-spacing: 2px; pointer-events: auto; touch-action: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 6px 18px rgba(0,0,0,0.28);
+  transition: transform .12s, background .12s;
+}
+#fire-btn.active, #fire-btn:active { transform: scale(.94); background: rgba(132,72,14,0.96); }
+
 #hp-wrap {
   position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
   width: 44%; height: 14px;
@@ -84,6 +96,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .hud-btn { width: 48px; height: 44px; font-size: 19px; }
   .stat-chip { font-size: 14px; }
 }
+@media (pointer: coarse), (max-width: 600px) { #fire-btn { display: flex; } }
 
 /* ---------- 覆盖层 ---------- */
 .overlay {
@@ -152,3 +165,23 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .stat-row { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(120,160,220,0.25); padding: 6px 0; }
 .stat-row:last-child { border-bottom: none; }
 .stat-row b { color: #ffd166; font-size: 16px; }
+
+@media (max-width: 600px) and (orientation: portrait) {
+  #game-wrap { width: 100vw; border: 0; border-radius: 0; box-shadow: none; }
+  .overlay {
+    position: fixed; inset: 0; width: 100vw; height: 100dvh !important; min-height: 100dvh;
+    transform: none !important; gap: 9px; padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    overflow-y: auto; backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  .overlay::before, .overlay::after { display: none; }
+  #over, #paused { justify-content: center; }
+  #logo-img { width: auto; max-width: min(290px, 78vw); max-height: 96px; margin: 0; object-fit: contain; }
+  #menu h1 { font-size: 30px; letter-spacing: 4px; }
+  #menu h2 { font-size: 17px; letter-spacing: 7px; margin-top: -3px; }
+  .sub { font-size: 12px; letter-spacing: 1px; }
+  #diff-select { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(100%, 420px); gap: 8px; }
+  .diff-btn { min-width: 0; width: 100%; min-height: 56px; padding: 9px 6px; font-size: 14px; }
+  .diff-btn small { font-size: 10px; line-height: 1.35; }
+  .btn { width: min(100%, 320px); padding: 12px 20px; }
+  #howto { width: min(100%, 420px); padding: 10px 12px; font-size: 12px; line-height: 1.6; }
+}
