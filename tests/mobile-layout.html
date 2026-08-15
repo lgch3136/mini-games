@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>MOBILE-LAYOUT-RUNNING</title>
+<title>MOBILE-GAME-LAYOUT-RUNNING</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; display: flex; gap: 12px; background: #d9dde5; overflow: auto; }
@@ -11,10 +11,14 @@
 <iframe title="flappy" src="../english-flappy-word/index.html?mobile-layout-test"></iframe>
 <script>
   const frames = [...document.querySelectorAll('iframe')];
+  const within = (inner, outer) =>
+    inner.left >= outer.left - 1 && inner.right <= outer.right + 1 &&
+    inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1;
+
   function verify(attempt = 0) {
     const ready = frames.every((frame) => frame.contentDocument?.querySelector('#menu'));
     if (!ready && attempt < 100) { setTimeout(() => verify(attempt + 1), 50); return; }
-    const ok = frames.every((frame) => {
+    const menusFit = frames.every((frame) => {
       const view = frame.contentWindow;
       const menu = frame.contentDocument.querySelector('#menu');
       if (!menu) return false;
@@ -23,7 +27,26 @@
         Math.abs(rect.height - view.innerHeight) < 2 &&
         view.getComputedStyle(menu).transform === 'none';
     });
-    document.title = ok ? 'MOBILE-LAYOUT-OK' : 'MOBILE-LAYOUT-FAIL';
+    if (!menusFit && attempt < 100) { setTimeout(() => verify(attempt + 1), 50); return; }
+    if (!menusFit) { document.title = 'MOBILE-GAME-LAYOUT-FAIL:menu'; return; }
+
+    frames.forEach((frame) => frame.contentDocument.querySelector('#start-btn').click());
+    setTimeout(() => {
+      const gamesFit = frames.every((frame) => {
+        const view = frame.contentWindow;
+        const doc = frame.contentDocument;
+        const wrap = doc.querySelector('#game-wrap');
+        const hud = doc.querySelector('#hud');
+        const wrapRect = wrap.getBoundingClientRect();
+        const controls = [...hud.children].filter((el) => view.getComputedStyle(el).display !== 'none');
+        return Math.abs(wrapRect.width - view.innerWidth) < 2 &&
+          Math.abs(wrapRect.height - view.innerHeight) < 2 &&
+          view.getComputedStyle(wrap).aspectRatio === 'auto' &&
+          hud.scrollWidth <= hud.clientWidth + 1 &&
+          controls.every((el) => within(el.getBoundingClientRect(), wrapRect));
+      });
+      document.title = gamesFit ? 'MOBILE-GAME-LAYOUT-OK' : 'MOBILE-GAME-LAYOUT-FAIL:game';
+    }, 150);
   }
   verify();
 </script>

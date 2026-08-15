@@ -8,7 +8,7 @@
    ============================================================ */
 
 /* ---------------- 基础 ---------------- */
-const W = 900, H = 640;
+let W = 900, H = 640;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -340,9 +340,11 @@ function spawnQuestionWave() {
   const eliteIdx = (Game.questionIndex % 5 === 3) ? randInt(n) : -1;
   const conf = DIFF_CONF[Game.difficulty];
   const speedBase = conf.speed * (1 + (Game.level - 1) * 0.09);
+  const jitter = Math.min(45, W / (n + 1) * 0.28);
+  const edge = W < 600 ? Math.max(62, W * 0.17) : 60;
   Game.question.options.forEach((opt, i) => {
     const enemy = {
-      x: clamp(W * (i + 1) / (n + 1) + rand(-45, 45), 60, W - 60),
+      x: clamp(W * (i + 1) / (n + 1) + rand(-jitter, jitter), edge, W - edge),
       y: -50 - i * rand(80, 120),
       r: 22, hp: 1, maxHp: 1,
       vy: speedBase + rand(-12, 18),
@@ -747,6 +749,7 @@ function updateEnemies(dt) {
 
     e.y += e.vy * dt;
     e.x += Math.sin(e.t * e.wf + e.phase) * e.amp * 0.5 * dt;
+    e.x = clamp(e.x, e.option && W < 600 ? Math.max(62, W * 0.17) : 30, W - (e.option && W < 600 ? Math.max(62, W * 0.17) : 30));
 
     const canFire = Game.level >= (Game.difficulty === 'easy' ? 2 : 1);
     if (canFire && e.y > 30 && e.y < H * 0.85) {
@@ -822,15 +825,15 @@ function render(dt) {
   drawFloaters();
   ctx.restore();
 
-  // 版本水印（画布右下角，避免被 HUD 遮挡）
+  // 版本水印放左下，避开手机的开火键和血条
   ctx.save();
   ctx.font = '700 14px ui-monospace, monospace';
-  ctx.textAlign = 'right';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
   ctx.fillStyle = 'rgba(255,220,90,0.95)';
   ctx.shadowColor = 'rgba(0,0,0,0.9)';
   ctx.shadowBlur = 4;
-  ctx.fillText('v20260815e', W - 10, H - 50);
+  ctx.fillText('v20260815f', 8, H - 8);
   ctx.restore();
 }
 
@@ -963,7 +966,7 @@ function drawPlayer() {
 function drawLabel(text, x, y, size) {
   ctx.font = '600 ' + size + 'px "PingFang SC","Microsoft YaHei",system-ui,sans-serif';
   const tw = ctx.measureText(text).width;
-  const w = Math.min(tw + 16, 190);
+  const w = Math.min(tw + 16, W < 600 ? Math.max(76, W * 0.32) : 190);
   const h = 21;
   ctx.fillStyle = 'rgba(8,14,34,0.88)';
   roundRectPath(x - w / 2, y - h / 2, w, h, 7);
@@ -975,7 +978,7 @@ function drawLabel(text, x, y, size) {
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text.length > 26 ? text.slice(0, 25) + '…' : text, x, y + 1);
+  ctx.fillText(text.length > 26 ? text.slice(0, 25) + '…' : text, x, y + 1, w - 10);
 }
 
 function drawEnemies() {
@@ -1246,7 +1249,19 @@ function toggleMute() {
 let lastW = 0, lastH = 0, lastDpr = 0;
 function resize() {
   const w = wrap.clientWidth, h = wrap.clientHeight;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+  const nextW = portrait ? w : 900;
+  const nextH = portrait ? h : 640;
+  if (nextW !== W || nextH !== H) {
+    const sx = nextW / W, sy = nextH / H;
+    const p = Game.player;
+    p.x *= sx; p.px *= sx; p.y *= sy; p.py *= sy;
+    [Game.stars, Game.bullets, Game.enemyBullets, Game.enemies, Game.powerups, Game.particles, Game.shockwaves, Game.floaters]
+      .forEach((items) => items.forEach((item) => { item.x *= sx; item.y *= sy; }));
+    W = nextW; H = nextH;
+    Game._nextLayoutCheck = 0;
+  }
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
   // 分别按实际宽高缩放：任何窗口比例下世界都完整可见（不会裁掉底部）

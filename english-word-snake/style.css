@@ -149,7 +149,17 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .stat-row b { color: #ffd166; font-size: 16px; }
 
 @media (max-width: 600px) and (orientation: portrait) {
-  #game-wrap { width: 100vw; border: 0; border-radius: 0; box-shadow: none; }
+  #game-wrap { width: 100vw; height: 100dvh; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
+  #question-bar { width: calc(100% - 16px); margin-top: max(8px, env(safe-area-inset-top)); padding: 7px 10px; max-height: none; }
+  #q-top { gap: 6px; }
+  #q-target { max-width: calc(100vw - 92px); font-size: 17px; }
+  #q-bottom { gap: 6px; font-size: 11px; }
+  #hud-top { flex-direction: column; padding: 5px 8px; gap: 5px; }
+  #hud-top .left, #hud-top .right { max-width: 100%; flex-wrap: wrap; justify-content: center; gap: 4px; }
+  .stat-chip { padding: 3px 7px; font-size: 11px; }
+  #hearts { font-size: 12px; letter-spacing: 0; }
+  .hud-btn { width: 38px; height: 38px; font-size: 16px; }
+  #hint-bar { max-width: calc(100% - 16px); margin: 0 auto 5px; padding: 3px 8px; font-size: 10px; line-height: 1.35; text-align: center; white-space: normal; }
   .overlay {
     position: fixed; inset: 0; width: 100vw; height: 100dvh !important; min-height: 100dvh;
     transform: none !important; gap: 9px; padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));

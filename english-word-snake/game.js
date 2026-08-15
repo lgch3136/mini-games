@@ -8,8 +8,8 @@
    ============================================================ */
 
 /* ---------------- 基础 ---------------- */
-const COLS = 30, CELL = 30;
-const W = COLS * CELL, H = 640;                    // 900 x 640
+let COLS = 30, CELL = 30;
+let W = COLS * CELL, H = 640;                      // 桌面基准 900 x 640，手机按视口重算
 let GRID_Y = 120, ROWS = 16;                       // 动态布局，避开顶部 HUD
 
 const canvas = document.getElementById('game');
@@ -989,7 +989,7 @@ function startGame() {
   Game.queue.length = 0;
   Game.dir = { x: 1, y: 0 };
   Game.snake = [];
-  const sx = 12, sy = Math.floor(ROWS / 2);
+  const sx = Math.min(12, Math.max(4, Math.floor(COLS * 0.4))), sy = Math.floor(ROWS / 2);
   for (let i = 0; i < 5; i++) Game.snake.push({ x: sx - i, y: sy });
   Game.prevSnake = Game.snake.map((seg) => ({ x: seg.x, y: seg.y }));
   Game.word = null;
@@ -1060,7 +1060,12 @@ function toggleMute() {
 let lastW = 0, lastH = 0, lastDpr = 0;
 function resize() {
   const w = wrap.clientWidth, h = wrap.clientHeight;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+  W = portrait ? w : 900;
+  H = portrait ? h : 640;
+  COLS = portrait ? Math.max(10, Math.round(W / 30)) : 30;
+  CELL = W / COLS;
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
   // 分别按实际宽高缩放：任何窗口比例下世界都完整可见（不会裁掉底部）

@@ -13,11 +13,11 @@ const canvas = $id('game');
 const ctx = canvas.getContext('2d');
 const TAU = Math.PI * 2;
 
-const W = 420;           // 逻辑宽度
-const H = 660;           // 逻辑高度
+let W = 420;             // 桌面基准逻辑尺寸，手机按视口重算
+let H = 660;
 const GROUND_H = 88;
-const GROUND_Y = H - GROUND_H;
-const BIRD_X = 132;
+let GROUND_Y = H - GROUND_H;
+let BIRD_X = 132;
 const BIRD_R = 19;
 const GRAVITY = 1450;
 const FLAP_V = -420;
@@ -700,7 +700,7 @@ function startGame() {
   Game.dist = 0; Game.time = 0; Game.speed = baseSpeed();
   Game.pipes = []; Game.walls = []; Game.bubbles = []; Game.particles = []; Game.texts = [];
   Game.nextX = W + 260; Game.patternIdx = 0; Game.bubbleNextX = W + 180;
-  Game.bird.y = H * 0.42; Game.bird.vy = 0; Game.bird.rot = 0; Game.bird.inv = 0;
+  Game.bird.x = BIRD_X; Game.bird.y = H * 0.42; Game.bird.vy = 0; Game.bird.rot = 0; Game.bird.inv = 0;
   Game.flash = 0; Game.shake = 0; Game.hintUntil = 0; Game.feedback = ''; Game.feedbackUntil = 0;
   if (Game.mode === 'spell') newWord(); else newQuestion();
   $id('menu').classList.add('hidden');
@@ -809,6 +809,13 @@ function resize() {
   const wrap = $id('game-wrap');
   const cw = wrap.clientWidth || 420, ch = wrap.clientHeight || 660;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+  W = portrait ? cw : 420;
+  H = portrait ? ch : 660;
+  GROUND_Y = H - GROUND_H;
+  BIRD_X = portrait ? Math.min(132, W * 0.32) : 132;
+  Game.bird.x = BIRD_X;
+  Game.bird.y = Math.min(Game.bird.y, GROUND_Y - BIRD_R);
   canvas.width = Math.max(1, Math.round(cw * dpr));
   canvas.height = Math.max(1, Math.round(ch * dpr));
   canvas.style.width = cw + 'px';
