@@ -84,8 +84,8 @@ function loadSprite(src, cb) {
       }
       cx.putImageData(new ImageData(d, c.width, c.height), 0, 0);
       const out = new Image();
-      out.onload = () => { cb(out); assetDone(); };
-      out.onerror = () => { cb(img); assetDone(); };
+      out.onload = () => { cb(out.width && out.height ? out : null); assetDone(); };
+      out.onerror = () => { cb(null); assetDone(); };
       out.src = c.toDataURL();
     } catch (e) { cb(img); assetDone(); }
   };
@@ -417,7 +417,7 @@ function step(dt) {
 
 /* ---------------- 渲染 ---------------- */
 function drawBackground() {
-  if (Assets.bg) {
+  if (Assets.bg && Assets.bg.width && Assets.bg.height) {
     const bw = (Assets.bg.width / Assets.bg.height) * H;
     const off = (Game.dist * 0.18) % bw;
     ctx.drawImage(Assets.bg, -off, 0, bw, H);
@@ -463,7 +463,7 @@ function drawPipes() {
     if (sx > W + 60 || sx + p.w < -60) continue;
     const topH = p.gapY - p.gapH / 2;
     const botH = GROUND_Y - (p.gapY + p.gapH / 2);
-    if (Assets.pipe) {
+    if (Assets.pipe && Assets.pipe.width && Assets.pipe.height) {
       ctx.save();
       ctx.translate(sx, p.gapY - p.gapH / 2); ctx.scale(1, -1);
       ctx.drawImage(Assets.pipe, 0, 0, p.w, topH);
@@ -571,7 +571,7 @@ function drawBird() {
   ctx.translate(b.x, b.y);
   ctx.rotate(b.rot);
   if (b.inv > 0 && Math.floor(Game.time * 12) % 2 === 0) ctx.globalAlpha = 0.35;
-  if (Assets.bird) {
+  if (Assets.bird && Assets.bird.width && Assets.bird.height) {
     const sq = 1 + Math.sin(Game.time * 18) * 0.045;
     ctx.scale(sq, 2 - sq);
     ctx.drawImage(Assets.bird, -s / 2, -s / 2, s, s);
