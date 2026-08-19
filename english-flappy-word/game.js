@@ -99,8 +99,9 @@ loadSprite('assets/pipe.png', (i) => { Assets.pipe = i; });
 /* ---------------- 音效 ---------------- */
 const SFX = {
   ctx: null,
-  muted: (function () { try { return localStorage.getItem('flappy-words-muted') === '1'; } catch (e) { return false; } })(),
+  muted: window.ArcadeAudio ? ArcadeAudio.muted : (function () { try { return localStorage.getItem('flappy-words-muted') === '1'; } catch (e) { return false; } })(),
   ensure() {
+    if (window.ArcadeAudio) ArcadeAudio.start();
     try {
       if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       if (this.ctx.state === 'suspended') this.ctx.resume();
@@ -121,7 +122,7 @@ const SFX = {
       o.start(t0); o.stop(t0 + dur + 0.02);
     } catch (e) { /* 忽略 */ }
   },
-  flap()    { this.tone(600, 0.08, 'triangle', 0.06, 0, 220); },
+  flap()    { if (window.ArcadeAudio) ArcadeAudio.play('jump', 0.16); else this.tone(600, 0.08, 'triangle', 0.06, 0, 220); },
   pickup()  { this.tone(880, 0.07, 'square', 0.05); },
   wrong()   { this.tone(160, 0.22, 'sawtooth', 0.06, 0, -60); },
   word()    { this.tone(660, 0.09, 'square', 0.05); this.tone(880, 0.09, 'square', 0.05, 0.09); this.tone(1100, 0.13, 'square', 0.05, 0.18); },
@@ -748,6 +749,12 @@ function useHint() {
   }
 }
 
+function toggleMute() {
+  SFX.muted = window.ArcadeAudio ? ArcadeAudio.toggle() : !SFX.muted;
+  try { localStorage.setItem('flappy-words-muted', SFX.muted ? '1' : '0'); } catch (err) { /* 忽略 */ }
+  $id('mute-btn').textContent = SFX.muted ? '🔇' : '🔊';
+}
+
 /* ---------------- 输入 ---------------- */
 document.addEventListener('keydown', (e) => {
   if (e.repeat) return;
@@ -759,9 +766,7 @@ document.addEventListener('keydown', (e) => {
   } else if (k === 'KeyP' || k === 'Escape') {
     if (Game.state === 'playing' || Game.state === 'paused') { e.preventDefault(); togglePause(); }
   } else if (k === 'KeyM') {
-    SFX.muted = !SFX.muted;
-    try { localStorage.setItem('flappy-words-muted', SFX.muted ? '1' : '0'); } catch (err) { /* 忽略 */ }
-    $id('mute-btn').textContent = SFX.muted ? '🔇' : '🔊';
+    toggleMute();
   } else if (k === 'KeyH') {
     useHint();
   } else if (k === 'Enter') {
@@ -797,11 +802,7 @@ $id('pause-menu-btn').addEventListener('click', backToMenu);
 $id('resume-btn').addEventListener('click', togglePause);
 $id('pause-btn').addEventListener('click', togglePause);
 $id('hint-btn').addEventListener('click', useHint);
-$id('mute-btn').addEventListener('click', () => {
-  SFX.muted = !SFX.muted;
-  try { localStorage.setItem('flappy-words-muted', SFX.muted ? '1' : '0'); } catch (err) { /* 忽略 */ }
-  $id('mute-btn').textContent = SFX.muted ? '🔇' : '🔊';
-});
+$id('mute-btn').addEventListener('click', toggleMute);
 $id('mute-btn').textContent = SFX.muted ? '🔇' : '🔊';
 
 /* ---------------- 尺寸适配 ---------------- */

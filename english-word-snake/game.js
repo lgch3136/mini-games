@@ -52,8 +52,9 @@ function roundRectPath(x, y, w, h, r) {
 /* ---------------- 音效 ---------------- */
 const SFX = {
   ac: null,
-  muted: localStorage.getItem('word-snake-muted') === '1',
+  muted: window.ArcadeAudio ? ArcadeAudio.muted : localStorage.getItem('word-snake-muted') === '1',
   ensure() {
+    if (window.ArcadeAudio) ArcadeAudio.start();
     if (!this.ac) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) this.ac = new AC();
@@ -87,7 +88,10 @@ const SFX = {
     src.connect(f); f.connect(g); g.connect(this.ac.destination);
     src.start(t);
   },
-  eat(step) { this.tone(520 + (step || 0) * 70, 0.08, 'square', 0.1, 60); },
+  eat(step) {
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', 0.16);
+    else this.tone(520 + (step || 0) * 70, 0.08, 'square', 0.1, 60);
+  },
   gem() { this.tone(880, 0.07, 'sine', 0.12, 200); },
   correct() { this.tone(660, 0.1, 'square', 0.12); this.tone(990, 0.16, 'square', 0.12, 0, 0.09); this.tone(1320, 0.18, 'square', 0.1, 0, 0.18); },
   wrong() { this.tone(220, 0.22, 'sawtooth', 0.12, -60); },
@@ -1052,7 +1056,7 @@ function gameOver() {
 }
 
 function toggleMute() {
-  SFX.muted = !SFX.muted;
+  SFX.muted = window.ArcadeAudio ? ArcadeAudio.toggle() : !SFX.muted;
   localStorage.setItem('word-snake-muted', SFX.muted ? '1' : '0');
   els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
 }

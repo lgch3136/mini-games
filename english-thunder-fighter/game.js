@@ -68,8 +68,9 @@ const Sprites = { player: null, enemy: null, enemyElite: null, boss: null };
 /* ---------------- 音效 ---------------- */
 const SFX = {
   ac: null,
-  muted: localStorage.getItem('thunder-muted') === '1',
+  muted: window.ArcadeAudio ? ArcadeAudio.muted : localStorage.getItem('thunder-muted') === '1',
   ensure() {
+    if (window.ArcadeAudio) ArcadeAudio.start();
     if (!this.ac) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) this.ac = new AC();
@@ -103,7 +104,10 @@ const SFX = {
     src.connect(f); f.connect(g); g.connect(this.ac.destination);
     src.start(t);
   },
-  shoot() { this.tone(760, 0.07, 'square', 0.05, -320); },
+  shoot() {
+    if (window.ArcadeAudio) ArcadeAudio.play('laser', 0.14);
+    else this.tone(760, 0.07, 'square', 0.05, -320);
+  },
   boom() { this.noise(0.3, 0.3, 800); this.tone(130, 0.28, 'sawtooth', 0.16, -70); },
   bigBoom() { this.noise(0.9, 0.45, 600); this.tone(70, 0.8, 'sawtooth', 0.22, -40); },
   correct() { this.tone(660, 0.1, 'square', 0.12); this.tone(990, 0.16, 'square', 0.12, 0, 0.09); },
@@ -1240,7 +1244,7 @@ function gameOver() {
 }
 
 function toggleMute() {
-  SFX.muted = !SFX.muted;
+  SFX.muted = window.ArcadeAudio ? ArcadeAudio.toggle() : !SFX.muted;
   localStorage.setItem('thunder-muted', SFX.muted ? '1' : '0');
   els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
 }

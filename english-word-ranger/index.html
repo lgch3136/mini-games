@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#10251f">
+<title>单词突击队 · WORD RANGER v20260819a</title>
+<link rel="stylesheet" href="style.css?v=20260819a">
+</head>
+<body>
+<main id="game-wrap" aria-label="单词突击队游戏区">
+  <canvas id="game"></canvas>
+
+  <section id="hud" class="hidden" aria-live="polite">
+    <div id="mission">
+      <span class="eyebrow">当前任务</span>
+      <strong id="word-meaning">准备出发</strong>
+      <span id="word-progress">_ _ _</span>
+      <small id="feedback">按顺序收集字母</small>
+    </div>
+    <div id="status">
+      <span>得分 <b id="score">0</b></span>
+      <span>单词 <b id="words">0/3</b></span>
+      <span>生命 <b id="lives">3</b></span>
+    </div>
+    <div id="hud-actions">
+      <button id="mute-btn" type="button" aria-label="切换声音">声音</button>
+      <button id="pause-btn" type="button" aria-label="暂停游戏">暂停</button>
+    </div>
+  </section>
+
+  <section id="touch-controls" class="hidden" aria-label="触屏操作">
+    <div class="move-controls">
+      <button id="left-btn" type="button" aria-label="向左移动">左</button>
+      <button id="right-btn" type="button" aria-label="向右移动">右</button>
+    </div>
+    <div class="action-controls">
+      <button id="jump-btn" type="button" aria-label="跳跃">跳</button>
+      <button id="fire-btn" type="button" aria-label="射击">射击</button>
+    </div>
+  </section>
+
+  <section id="menu" class="overlay">
+    <img src="assets/logo.svg" alt="单词突击队 WORD RANGER">
+    <p class="lead">跑过三段前线，按顺序收集字母，击败关底守卫</p>
+    <div id="difficulty" aria-label="选择难度">
+      <button class="difficulty selected" data-difficulty="easy" type="button">初级<small>基础词汇 · 敌人较慢</small></button>
+      <button class="difficulty" data-difficulty="medium" type="button">中级<small>核心词汇 · 标准火力</small></button>
+      <button class="difficulty" data-difficulty="hard" type="button">高级<small>进阶词汇 · 快速攻势</small></button>
+    </div>
+    <button class="primary" id="start-btn" type="button">开始行动</button>
+    <div class="howto">
+      <p>电脑：A/D 或方向键移动，W/↑/空格跳跃，J/K/X 射击，P 暂停，M 静音。</p>
+      <p>手机：左手按住“左/右”移动，右手独立控制“跳”和“射击”。字母必须按从左到右的顺序收集。</p>
+    </div>
+    <a href="../" class="hub-link">返回游戏合集</a>
+  </section>
+
+  <section id="paused" class="overlay compact hidden">
+    <h1>行动暂停</h1>
+    <p>按 P 或点击继续返回战场</p>
+    <button class="primary" id="resume-btn" type="button">继续</button>
+    <button class="secondary" id="pause-menu-btn" type="button">返回主菜单</button>
+  </section>
+
+  <section id="over" class="overlay compact hidden">
+    <p class="eyebrow" id="over-kicker">行动结束</p>
+    <h1 id="over-title">再试一次</h1>
+    <div id="over-stats"></div>
+    <button class="primary" id="retry-btn" type="button">重新行动</button>
+    <button class="secondary" id="menu-btn" type="button">返回主菜单</button>
+  </section>
+</main>
+
+<script src="../shared/audio.js?v=20260819a"></script>
+<script src="../english-thunder-fighter/data.js?v=20260814c"></script>
+<script src="game.js?v=20260819a"></script>
+</body>
+</html>
