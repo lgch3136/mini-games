@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#12251e">
 <title>遗迹词途 · TEMPLE DASH</title>
-<link rel="stylesheet" href="style.css?v=20260821b">
+<link rel="stylesheet" href="style.css?v=20260821c">
 </head>
 <body>
 <main id="game-wrap" aria-label="遗迹词途跑酷游戏区">
@@ -52,6 +52,13 @@
         <button class="difficulty" data-difficulty="medium" type="button">中级<small>核心词汇 · 标准速度</small></button>
         <button class="difficulty" data-difficulty="hard" type="button">高级<small>进阶词汇 · 密集机关</small></button>
       </div>
+      <label id="speed-setting">跑速
+        <select id="speed-select" aria-label="选择跑速">
+          <option value="0.8">舒缓 · 0.8×</option>
+          <option value="1" selected>标准 · 1.0×</option>
+          <option value="1.2">极速 · 1.2×</option>
+        </select>
+      </label>
       <button class="primary" id="start-btn" type="button">开始逃亡</button>
       <div class="howto">
         <p>电脑：A/D 或左右键换道，W/空格/上键跳跃，S/下键滑铲，P 暂停，M 静音。</p>
@@ -79,6 +86,6 @@
 <script src="../shared/audio.js?v=20260819a"></script>
 <script src="../english-thunder-fighter/data.js?v=20260814c"></script>
 <script src="../shared/vocabulary.js?v=20260820a"></script>
-<script src="game.js?v=20260821b"></script>
+<script src="game.js?v=20260821c"></script>
 </body>
 </html>

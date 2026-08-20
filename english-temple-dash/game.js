@@ -11,6 +11,8 @@ const HORIZON_Y = 142;
 const PLAYER_GROUND_Y = 510;
 const MAX_Z = 145;
 const TAU = Math.PI * 2;
+const LANE_MARKER_SPACING = 46;
+const LANE_MARKER_RATE = 4.2;
 
 const DIFFICULTIES = {
   easy: { speed: 29, density: .82, label: '初级' },
@@ -28,26 +30,40 @@ const BIOMES = [
 const ASSETS = {};
 for (const [name, src] of Object.entries({
   biomes: 'assets/biome-panorama-atlas.webp',
-  hero: '../english-word-ranger/assets/hero-sprites.webp',
-  actions: '../english-word-ranger/assets/hero-actions-v2.png',
+  runner: 'assets/runner-rear-sprites-v2.webp',
+  runnerActions: 'assets/runner-actions-rear-v2.webp',
+  obstacles: 'assets/obstacle-atlas-v2.webp',
 })) {
   const image = new Image();
   image.src = src;
   ASSETS[name] = image;
 }
 
+const OBSTACLES = {
+  log: { row: 0, column: 0, w: 124, h: 96, baseline: 444 / 512 },
+  pit: { row: 0, column: 1, w: 132, h: 98, baseline: 494 / 512 },
+  root: { row: 0, column: 2, w: 108, h: 116, baseline: 477 / 512 },
+  pillar: { row: 0, column: 3, w: 104, h: 132, baseline: 497 / 512 },
+  arch: { row: 1, column: 0, w: 136, h: 122, baseline: 418 / 512 },
+  puddle: { row: 1, column: 1, w: 138, h: 92, baseline: 449 / 512 },
+  beam: { row: 1, column: 2, w: 138, h: 104, baseline: 405 / 512 },
+  crystal: { row: 1, column: 3, w: 112, h: 122, baseline: 426 / 512 },
+};
+const RUNNER_BASELINES = [481, 493, 481, 493, 481, 454, 457, 437].map((value) => value / 512);
+const ACTION_BASELINES = [642, 614, 620, 611].map((value) => value / 642.5);
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const lerp = (a, b, amount) => a + (b - a) * amount;
 const input = { pointerX: 0, pointerY: 0, pointerId: null };
 
 const Game = {
-  state: 'menu', difficulty: 'easy', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0,
-  time: 0, travel: 0, speed: 29, biome: 0, spawnTimer: 18, pattern: 0,
-  feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, objects: [], particles: [],
+  state: 'menu', difficulty: 'easy', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0, bestCombo: 0,
+  time: 0, travel: 0, speed: 29, speedScale: 1, biome: 0, spawnTimer: 18, pattern: 0,
+  feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null, objects: [], particles: [],
   shake: 0, slowTimer: 0, flash: 0,
   player: {
     lane: 0, lanePos: 0, jumpY: 0, jumpV: 0, sliding: 0,
-    inv: 0, shield: 0, magnet: 0, combo: 0, comboTimer: 0, runCycle: 0,
+    inv: 0, shield: 0, magnet: 0, combo: 0, comboTimer: 0, comboPulse: 0, runCycle: 0,
   },
 };
 
@@ -69,16 +85,16 @@ function nextWord(initial = false) {
 function resetPlayer() {
   Object.assign(Game.player, {
     lane: 0, lanePos: 0, jumpY: 0, jumpV: 0, sliding: 0,
-    inv: 1.1, shield: 0, magnet: 0, combo: 0, comboTimer: 0, runCycle: 0,
+    inv: 1.1, shield: 0, magnet: 0, combo: 0, comboTimer: 0, comboPulse: 0, runCycle: 0,
   });
 }
 
 function startGame() {
   const conf = DIFFICULTIES[Game.difficulty];
   Object.assign(Game, {
-    state: 'playing', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0,
-    time: 0, travel: 0, speed: conf.speed, biome: 0,
-    spawnTimer: 18, pattern: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null,
+    state: 'playing', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0, bestCombo: 0,
+    time: 0, travel: 0, speed: conf.speed * Game.speedScale, biome: 0,
+    spawnTimer: 18, pattern: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null,
     shake: 0, slowTimer: 0, flash: 0,
   });
   Game.objects.length = 0;
@@ -130,12 +146,17 @@ function gameOver() {
     '<div><span>推进里程</span><b>' + Math.floor(Game.distance) + ' m</b></div>' +
     '<div><span>完成单词</span><b>' + Game.wordsDone + '</b></div>' +
     '<div><span>收集遗物</span><b>' + Game.relics + '</b></div>' +
+    '<div><span>最高连击</span><b>×' + Game.bestCombo + '</b></div>' +
     '<div><span>最高纪录</span><b>' + high + '</b></div>';
 }
 
 function showFeedback(text) {
   Game.feedbackTimer = 2.1;
   $('feedback').textContent = text;
+}
+
+function flashWord(word, complete) {
+  Game.wordEcho = { en: word.en, zh: word.zh, progress: word.progress, complete, timer: complete ? 1.8 : 1.15 };
 }
 
 function updateHud() {
@@ -231,6 +252,7 @@ function collectObject(object) {
     const word = Game.currentWord;
     if (!word || object.letter !== word.en[word.progress]) return;
     word.progress++;
+    flashWord(word, word.progress === word.en.length);
     Game.score += 150;
     if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2);
     if (word.progress === word.en.length) {
@@ -262,6 +284,9 @@ function collectObject(object) {
 function hit() {
   const player = Game.player;
   if (player.inv > 0 || Game.state !== 'playing') return;
+  player.combo = 0;
+  player.comboTimer = 0;
+  player.comboPulse = 0;
   if (player.shield) {
     player.shield = 0;
     player.inv = .9;
@@ -269,8 +294,6 @@ function hit() {
   } else {
     Game.hp--;
     player.inv = 1.2;
-    player.combo = 0;
-    player.comboTimer = 0;
     Game.slowTimer = 1.15;
     showFeedback(Game.hp > 0 ? '碰撞：速度暂时下降' : '逃亡结束');
     if (Game.hp <= 0) gameOver();
@@ -283,19 +306,22 @@ function hit() {
 
 function clearedObstacle() {
   const player = Game.player;
-  player.combo = player.comboTimer > 0 ? Math.min(8, player.combo + 1) : 1;
-  player.comboTimer = 2.5;
+  player.combo = player.comboTimer > 0 ? Math.min(12, player.combo + 1) : 1;
+  player.comboTimer = 3.2;
+  player.comboPulse = .28;
+  Game.bestCombo = Math.max(Game.bestCombo, player.combo);
   Game.score += 90 * player.combo;
-  if (player.combo >= 3) showFeedback('连续闪避 ×' + player.combo);
+  if (player.combo >= 2) showFeedback('连续闪避 ×' + player.combo);
+  if (player.combo >= 3 && player.combo % 3 === 0) {
+    const point = project(player.lanePos, 0);
+    burst(point.x, point.y - 70, '#f2c864', 14);
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .16);
+  }
 }
 
 function obstacleCleared(object) {
   if (object.type === 'log' || object.type === 'pit') return Game.player.jumpY > 42;
   if (object.type === 'arch' || object.type === 'beam') return Game.player.sliding > 0;
-  if (object.type === 'puddle') {
-    Game.slowTimer = Math.max(Game.slowTimer, .75);
-    return true;
-  }
   return false;
 }
 
@@ -314,6 +340,10 @@ function updateObjects(dt) {
     }
     if (!sameLane) {
       clearedObstacle();
+    } else if (object.type === 'puddle') {
+      Game.slowTimer = Math.max(Game.slowTimer, .75);
+      player.combo = player.comboTimer = player.comboPulse = 0;
+      showFeedback('踩入水洼：连击中断');
     } else if (obstacleCleared(object)) {
       clearedObstacle();
     } else {
@@ -331,13 +361,14 @@ function updatePlayer(dt) {
   player.sliding = Math.max(0, player.sliding - dt);
   player.magnet = Math.max(0, player.magnet - dt);
   player.comboTimer = Math.max(0, player.comboTimer - dt);
+  player.comboPulse = Math.max(0, player.comboPulse - dt);
   if (!player.comboTimer) player.combo = 0;
   if (player.jumpY > 0 || player.jumpV > 0) {
     player.jumpY += player.jumpV * dt;
     player.jumpV -= biome.gravity * dt;
     if (player.jumpY <= 0) { player.jumpY = 0; player.jumpV = 0; }
   }
-  player.runCycle = (player.runCycle + Game.speed * dt * .23) % 4;
+  player.runCycle = (player.runCycle + Game.speed * dt * .42) % 8;
 }
 
 function updateParticles(dt) {
@@ -355,11 +386,15 @@ function update(dt) {
   Game.time += dt;
   Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
   Game.hudTimer = Math.max(0, Game.hudTimer - dt);
+  if (Game.wordEcho) {
+    Game.wordEcho.timer -= dt;
+    if (Game.wordEcho.timer <= 0) Game.wordEcho = null;
+  }
   Game.shake = Math.max(0, Game.shake - dt);
   Game.flash = Math.max(0, Game.flash - dt);
   Game.slowTimer = Math.max(0, Game.slowTimer - dt);
   const conf = DIFFICULTIES[Game.difficulty];
-  const targetSpeed = conf.speed + Math.min(18, Game.distance / 170) - (Game.slowTimer > 0 ? 9 : 0);
+  const targetSpeed = (conf.speed + Math.min(18, Game.distance / 170)) * Game.speedScale - (Game.slowTimer > 0 ? 9 : 0);
   Game.speed += (targetSpeed - Game.speed) * (1 - Math.exp(-3.4 * dt));
   Game.travel += Game.speed * dt;
   Game.distance += Game.speed * dt * .78;
@@ -396,6 +431,15 @@ function project(lane, z) {
   return { x: roadCenter(z) + lane * halfRoad * .54, y, scale: lerp(.16, 1.2, eased), halfRoad };
 }
 
+function laneMarkerOffset(travel) {
+  return travel * LANE_MARKER_RATE % LANE_MARKER_SPACING;
+}
+
+function zAtScreenY(y) {
+  const depth = Math.sqrt(clamp((y - HORIZON_Y) / (PLAYER_GROUND_Y - HORIZON_Y), 0, 1));
+  return MAX_Z * (1 - depth);
+}
+
 function drawBackground() {
   const biome = Game.biome;
   if (ASSETS.biomes.complete && ASSETS.biomes.naturalWidth) {
@@ -424,11 +468,21 @@ function drawRoad() {
   ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(238,226,185,.24)'; ctx.lineWidth = 2;
+  const markerOffset = laneMarkerOffset(Game.travel);
   for (const boundary of [-.5, .5]) {
-    for (let z = (Game.travel * 1.6) % 24; z < MAX_Z; z += 24) {
-      const a = project(boundary, z);
-      const b = project(boundary, Math.min(MAX_Z, z + 10));
+    ctx.strokeStyle = 'rgba(238,226,185,.12)'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let y = HORIZON_Y; y <= PLAYER_GROUND_Y; y += 18) {
+      const point = project(boundary, zAtScreenY(y));
+      if (y === HORIZON_Y) ctx.moveTo(point.x, y); else ctx.lineTo(point.x, y);
+    }
+    ctx.stroke();
+    for (let y = HORIZON_Y + markerOffset; y < PLAYER_GROUND_Y; y += LANE_MARKER_SPACING) {
+      const endY = Math.min(PLAYER_GROUND_Y, y + 16);
+      const a = project(boundary, zAtScreenY(y));
+      const b = project(boundary, zAtScreenY(endY));
+      ctx.strokeStyle = 'rgba(246,231,183,.42)';
+      ctx.lineWidth = 1.2 + (y - HORIZON_Y) / (PLAYER_GROUND_Y - HORIZON_Y) * 1.4;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     }
   }
@@ -477,38 +531,23 @@ function drawObject(object) {
     ctx.translate(0, -36 * s); ctx.fillStyle = '#f2dfaa'; ctx.strokeStyle = '#d4a849'; ctx.lineWidth = Math.max(1, 3 * s);
     ctx.beginPath(); ctx.arc(0, 0, 18 * s, 0, TAU); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#183129'; ctx.font = '900 ' + Math.max(8, 16 * s) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(object.type === 'shield' ? '盾' : 'M', 0, 1);
-  } else if (object.type === 'log') {
-    ctx.fillStyle = '#5b3621'; ctx.strokeStyle = '#d19a55'; ctx.lineWidth = Math.max(1, 3 * s);
-    ctx.beginPath(); ctx.roundRect(-34 * s, -24 * s, 68 * s, 24 * s, 10 * s); ctx.fill(); ctx.stroke();
-  } else if (object.type === 'pit') {
-    ctx.fillStyle = '#07110f'; ctx.beginPath(); ctx.ellipse(0, -2 * s, 38 * s, 13 * s, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#b67c46'; ctx.lineWidth = Math.max(1, 3 * s); ctx.stroke();
-  } else if (object.type === 'root') {
-    ctx.fillStyle = '#314733'; ctx.strokeStyle = '#9f824a'; ctx.lineWidth = Math.max(1, 3 * s);
-    ctx.beginPath(); ctx.roundRect(-22 * s, -62 * s, 44 * s, 62 * s, 9 * s); ctx.fill(); ctx.stroke();
-  } else if (object.type === 'pillar') {
-    ctx.fillStyle = '#68472f'; ctx.strokeStyle = '#c08b54'; ctx.lineWidth = Math.max(1, 3 * s);
-    ctx.fillRect(-23 * s, -72 * s, 46 * s, 72 * s); ctx.strokeRect(-23 * s, -72 * s, 46 * s, 72 * s);
-  } else if (object.type === 'arch') {
-    ctx.fillStyle = '#29484d';
-    ctx.fillRect(-39 * s, -70 * s, 13 * s, 70 * s); ctx.fillRect(26 * s, -70 * s, 13 * s, 70 * s); ctx.fillRect(-39 * s, -70 * s, 78 * s, 22 * s);
-    ctx.fillStyle = '#9bc8c4'; ctx.fillRect(-37 * s, -50 * s, 74 * s, 4 * s);
-  } else if (object.type === 'puddle') {
-    ctx.fillStyle = 'rgba(122,190,195,.72)'; ctx.beginPath(); ctx.ellipse(0, -2 * s, 38 * s, 12 * s, 0, 0, TAU); ctx.fill();
-  } else if (object.type === 'beam') {
-    ctx.fillStyle = '#41546b'; ctx.fillRect(-42 * s, -62 * s, 10 * s, 62 * s); ctx.fillRect(32 * s, -62 * s, 10 * s, 62 * s);
-    ctx.fillStyle = '#e3bc63'; ctx.fillRect(-34 * s, -54 * s, 68 * s, 8 * s);
-  } else if (object.type === 'crystal') {
-    ctx.fillStyle = '#5870a4'; ctx.strokeStyle = '#d5b45e'; ctx.lineWidth = Math.max(1, 2 * s);
-    ctx.beginPath(); ctx.moveTo(-28 * s, 0); ctx.lineTo(-8 * s, -70 * s); ctx.lineTo(8 * s, -31 * s); ctx.lineTo(23 * s, -60 * s); ctx.lineTo(30 * s, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (OBSTACLES[object.type]) {
+    const spec = OBSTACLES[object.type];
+    const width = spec.w * s;
+    const height = spec.h * s;
+    ctx.shadowColor = object.type === 'beam' || object.type === 'puddle' ? 'rgba(89,211,255,.8)' : 'rgba(242,176,70,.62)';
+    ctx.shadowBlur = Math.min(14, 7 * s);
+    if (!drawAtlasFrame(ASSETS.obstacles, spec.row, spec.column, -width / 2, -spec.baseline * height, width, height, 4, 2)) {
+      ctx.fillStyle = '#e0ad50'; ctx.fillRect(-width / 2, -height * .55, width, height * .55);
+    }
   }
   ctx.restore();
 }
 
-function drawAtlasFrame(image, row, column, x, y, width, height) {
+function drawAtlasFrame(image, row, column, x, y, width, height, columns = 4, rows = 4) {
   if (!image.complete || !image.naturalWidth) return false;
-  const sourceW = image.naturalWidth / 4;
-  const sourceH = image.naturalHeight / 4;
+  const sourceW = image.naturalWidth / columns;
+  const sourceH = image.naturalHeight / rows;
   ctx.drawImage(image, column * sourceW, row * sourceH, sourceW, sourceH, x, y, width, height);
   return true;
 }
@@ -524,21 +563,72 @@ function drawPlayer() {
     ctx.beginPath(); ctx.ellipse(point.x, groundY - player.jumpY - 56, 47, 58, 0, 0, TAU); ctx.stroke();
   }
   if (player.inv > 0 && Math.floor(Game.time * 14) % 2) return;
-  let image = ASSETS.hero, row = 1, column = Math.floor(player.runCycle) % 4, width = 116, height = 118;
-  let y = groundY - player.jumpY - 111 + [0, 5, 5, 0][column];
+  const runFrame = Math.floor(player.runCycle) % 8;
+  let image = ASSETS.runner, frame = runFrame, columns = 4, rows = 2, width = 102, height = 136;
   if (player.sliding > 0) {
-    image = ASSETS.actions; row = 1; column = Math.floor(Game.time * 9) % 2; width = 142; height = 100; y = groundY - 83;
+    image = ASSETS.runnerActions; frame = player.sliding > .45 ? 2 : 3; columns = rows = 2; width = 136; height = 142;
   } else if (player.jumpY > 0) {
-    row = 2; column = player.jumpV > 0 ? 0 : 1; y = groundY - player.jumpY - 112;
+    image = ASSETS.runnerActions; frame = player.jumpV > 30 ? 0 : 1; columns = rows = 2; width = 132; height = 140;
   }
-  if (!drawAtlasFrame(image, row, column, point.x - width / 2, y, width, height)) {
+  const baseline = image === ASSETS.runner ? RUNNER_BASELINES[frame] : ACTION_BASELINES[frame];
+  const y = groundY - player.jumpY - baseline * height;
+  const row = Math.floor(frame / columns);
+  const column = frame % columns;
+  if (!drawAtlasFrame(image, row, column, point.x - width / 2, y, width, height, columns, rows)) {
     ctx.fillStyle = '#d29a43'; ctx.fillRect(point.x - 18, y + 35, 36, 62);
   }
-  if (player.combo > 1) {
-    ctx.font = '900 15px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(7,20,16,.86)'; ctx.strokeText('闪避 ×' + player.combo, point.x, y - 4);
-    ctx.fillStyle = '#f1d58a'; ctx.fillText('闪避 ×' + player.combo, point.x, y - 4);
+}
+
+function drawCombo() {
+  const player = Game.player;
+  if (player.combo < 2) return;
+  const width = Math.min(178, VIEW_W - 24);
+  const x = (VIEW_W - width) / 2;
+  const y = 96;
+  const color = player.combo >= 6 ? '#ffb24f' : '#e8c56e';
+  const pulse = 1 + player.comboPulse * .14;
+  ctx.save();
+  ctx.translate(VIEW_W / 2, y + 21); ctx.scale(pulse, pulse); ctx.translate(-VIEW_W / 2, -(y + 21));
+  ctx.fillStyle = 'rgba(8,27,22,.8)'; ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+  ctx.shadowColor = color; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.roundRect(x, y, width, 42, 12); ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#d3ddd7'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('闪避连击', x + 12, y + 15);
+  ctx.fillStyle = color; ctx.font = '950 22px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.fillText('×' + player.combo, x + width - 12, y + 18);
+  ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.roundRect(x + 12, y + 31, width - 24, 4, 2); ctx.fill();
+  ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x + 12, y + 31, (width - 24) * clamp(player.comboTimer / 3.2, 0, 1), 4, 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawWordEcho() {
+  const echo = Game.wordEcho;
+  if (!echo) return;
+  const width = Math.min(Math.max(170, echo.en.length * 25 + 30), VIEW_W - 20);
+  const x = (VIEW_W - width) / 2;
+  const y = Game.player.combo > 1 ? 150 : 108;
+  const chip = Math.min(27, (width - 28) / echo.en.length - 3);
+  const gap = 3;
+  const total = echo.en.length * chip + (echo.en.length - 1) * gap;
+  const start = VIEW_W / 2 - total / 2;
+  ctx.save();
+  ctx.globalAlpha = clamp(echo.timer * 3, 0, 1);
+  ctx.fillStyle = 'rgba(8,27,23,.78)'; ctx.strokeStyle = echo.complete ? '#86d7ae' : 'rgba(232,197,110,.72)'; ctx.lineWidth = 1.2;
+  ctx.shadowColor = 'rgba(3,15,12,.62)'; ctx.shadowBlur = 16;
+  ctx.beginPath(); ctx.roundRect(x, y, width, 62, 14); ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = echo.complete ? '#9de2bd' : '#d3ddd7'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(echo.complete ? '拼写完成 · ' + echo.zh : '拼写记忆 · ' + echo.zh, VIEW_W / 2, y + 15);
+  for (let i = 0; i < echo.en.length; i++) {
+    const active = i < echo.progress;
+    const latest = i === echo.progress - 1;
+    const cx = start + i * (chip + gap);
+    ctx.fillStyle = active ? (latest ? '#f3d276' : 'rgba(232,197,110,.82)') : 'rgba(255,255,255,.08)';
+    ctx.strokeStyle = latest ? '#fff0b0' : 'rgba(255,255,255,.16)';
+    ctx.beginPath(); ctx.roundRect(cx, y + 27, chip, 25, 6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = active ? '#173128' : 'rgba(220,230,224,.42)'; ctx.font = '900 14px ui-monospace, monospace';
+    ctx.fillText(active ? echo.en[i] : '·', cx + chip / 2, y + 40);
   }
+  ctx.restore();
 }
 
 function drawWeather() {
@@ -580,6 +670,8 @@ function render() {
     ctx.fillStyle = particle.color; ctx.fillRect(particle.x - 2, particle.y - 2, 4, 4);
   }
   ctx.globalAlpha = 1; drawWeather(); ctx.restore();
+  drawCombo();
+  drawWordEcho();
   if (Game.flash > 0) { ctx.fillStyle = 'rgba(239,118,81,' + (Game.flash * 1.7) + ')'; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
 }
 
@@ -641,6 +733,7 @@ document.querySelectorAll('.difficulty').forEach((button) => button.addEventList
   button.classList.add('selected');
   Game.difficulty = button.dataset.difficulty;
 }));
+$('speed-select').addEventListener('change', (event) => { Game.speedScale = Number(event.target.value) || 1; });
 $('start-btn').addEventListener('click', startGame);
 $('retry-btn').addEventListener('click', startGame);
 $('menu-btn').addEventListener('click', backToMenu);
@@ -670,7 +763,13 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
   requestAnimationFrame(() => {
     try {
       Game.difficulty = 'easy';
+      Game.speedScale = .8;
       startGame();
+      if (Math.abs(Game.speed - DIFFICULTIES.easy.speed * .8) > .001) throw new Error('speed setting failed');
+      Game.speedScale = 1;
+      startGame();
+      if (Object.keys(OBSTACLES).length !== 8 || RUNNER_BASELINES.length !== 8 || ACTION_BASELINES.length !== 4) throw new Error('generated sprite atlas mapping failed');
+      if (Math.abs((laneMarkerOffset(2) - laneMarkerOffset(1)) - (laneMarkerOffset(3) - laneMarkerOffset(2))) > .001) throw new Error('lane markers are not linear');
       if (!Game.currentWord || !(window.PROJECT_VOCAB && PROJECT_VOCAB.easy.some((item) => item.en.toUpperCase() === Game.currentWord.en))) throw new Error('project vocabulary missing');
       moveLane(1); updatePlayer(.2);
       if (!(Game.player.lanePos > 0)) throw new Error('lane change failed');
@@ -689,6 +788,19 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.objects = [{ type: 'letter', letter: Game.currentWord.en[progress], lane: 0, z: 7, passed: false, taken: false, phase: 0 }];
       updateObjects(.01);
       if (Game.currentWord.progress !== progress + 1) throw new Error('letter collection failed');
+      if (!Game.wordEcho || Game.wordEcho.progress !== progress + 1) throw new Error('word memory echo failed');
+      Game.player.combo = Game.player.comboTimer = 0;
+      clearedObstacle(); clearedObstacle();
+      if (Game.player.combo !== 2 || Game.bestCombo < 2 || Game.player.comboTimer !== 3.2) throw new Error('combo chain failed');
+      updatePlayer(3.3);
+      if (Game.player.combo) throw new Error('combo timer failed');
+      Game.player.combo = 3; Game.player.comboTimer = 3;
+      Game.player.lane = Game.player.lanePos = 0;
+      const hpBeforePuddle = Game.hp;
+      Game.objects = [{ type: 'puddle', lane: 0, z: 7, passed: false, taken: false, phase: 0 }];
+      updateObjects(0);
+      if (Game.hp !== hpBeforePuddle || Game.player.combo || Game.slowTimer <= 0) throw new Error('puddle combo break failed');
+      Game.objects.length = 0;
       Game.hp = 999;
       let seed = 0x5eed1234;
       const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
