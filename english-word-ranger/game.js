@@ -13,6 +13,7 @@ const TAU = Math.PI * 2;
 const PLAYER_H = 52;
 const CROUCH_H = 30;
 const BULLET_SPEED = 660;
+const POWERUP_LABELS = { spread: '散射', rapid: '连射', shield: '护盾' };
 
 const DIFFICULTIES = {
   easy: { speed: 220, enemySpeed: 44, hp: 1, fireEvery: 3, spawn: .8, label: '初级' },
@@ -25,6 +26,15 @@ const BIOMES = [
   { name: '风蚀峡谷', ground: '#5a3926', edge: '#e0a854', weather: 'dust' },
   { name: '雨中古城', ground: '#173b3e', edge: '#80b8aa', weather: 'rain' },
   { name: '月晶遗迹', ground: '#172c3d', edge: '#d7a955', weather: 'glow' },
+];
+
+const ENCOUNTERS = [
+  { name: '侦察线', foes: [['beetle', 360]] },
+  { name: '跃沟火力', foes: [['beetle', 220], ['drone', 560]] },
+  { name: '高空夹击', foes: [['drone', 260], ['guardian', 540]] },
+  { name: '双沟伏击', foes: [['beetle', 180], ['drone', 410], ['beetle', 640]] },
+  { name: '移动桥争夺', foes: [['guardian', 240], ['drone', 560]] },
+  { name: '阶梯围攻', foes: [['beetle', 210], ['guardian', 430], ['drone', 620]] },
 ];
 
 const ASSETS = {};
@@ -47,15 +57,18 @@ const input = { left: false, right: false, up: false, down: false, fire: false, 
 const Game = {
   state: 'menu', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
   distance: 0, maxX: 70, camera: 0, checkpoint: 70, time: 0,
-  feedbackTimer: 0, lastWord: '', currentWord: null,
-  generatedTo: 0, nextChunkIndex: 0,
-  chunks: [], pickups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
+  feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null,
+  generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
+  reinforcementTimer: 4.5, reinforcementCount: 0,
+  chunks: [], pickups: [], powerups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
   player: {
     x: 70, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
     vx: 0, vy: 0, facing: 1, onGround: true,
     coyote: .1, inv: 0, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0,
     landingTimer: 0, skidTimer: 0, hurtTimer: 0,
+    weapon: 'normal', weaponTimer: 0, shield: 0,
+    overdrive: 0, combo: 0, comboTimer: 0,
   },
 };
 
@@ -116,17 +129,18 @@ function makeEnemy(type, x, chunkIndex) {
     drone: { w: 42, h: 42, hp: 2, range: 110 },
     guardian: { w: 55, h: 62, hp: 4, range: 65 },
     boss: { w: 78, h: 92, hp: 12, range: 105 },
+    capsule: { w: 46, h: 28, hp: 2, range: 150 },
   };
   const spec = specs[type];
   const scale = Math.min(3.2, 1 + Math.floor(chunkIndex / 6) * .16);
   const hp = Math.ceil(spec.hp * conf.hp * scale);
   return {
-    type, x, home: x, baseY: type === 'drone' ? 285 : GROUND_Y - spec.h,
-    y: type === 'drone' ? 285 : GROUND_Y - spec.h,
+    type, x, home: x, baseY: type === 'drone' ? 285 : type === 'capsule' ? 185 : GROUND_Y - spec.h,
+    y: type === 'drone' ? 285 : type === 'capsule' ? 185 : GROUND_Y - spec.h,
     w: spec.w, h: spec.h, hp, maxHp: hp, range: spec.range,
-    vx: conf.enemySpeed * (type === 'guardian' || type === 'boss' ? .55 : 1) * (Math.random() < .5 ? -1 : 1),
+    vx: conf.enemySpeed * (type === 'guardian' || type === 'boss' ? .55 : type === 'capsule' ? .8 : 1) * (Math.random() < .5 ? -1 : 1),
     fire: .7 + Math.random() * conf.fireEvery,
-    phase: Math.random() * TAU, dead: false, hit: 0,
+    phase: Math.random() * TAU, dead: false, hit: 0, dropType: null,
   };
 }
 
@@ -135,7 +149,7 @@ function generateChunk() {
   const start = Game.generatedTo;
   const biome = biomeIndexAt(start);
   const pattern = index % 6;
-  const chunk = { index, start, biome, gaps: [], platforms: [], decor: [] };
+  const chunk = { index, start, biome, encounter: ENCOUNTERS[pattern].name, gaps: [], platforms: [], decor: [] };
 
   if (index > 0 && pattern === 1) {
     chunk.gaps.push({ x: start + 330, w: 105 });
@@ -164,13 +178,21 @@ function generateChunk() {
   Game.generatedTo += CHUNK_W;
 
   const bossChunk = index > 0 && index % 8 === 7;
-  const conf = DIFFICULTIES[Game.difficulty];
-  const count = bossChunk ? 1 : Math.max(1, Math.round((1 + (index % 3)) * conf.spawn));
+  const formation = ENCOUNTERS[pattern].foes;
+  const count = bossChunk ? 1 : Game.difficulty === 'easy' ? Math.max(1, formation.length - 1) : formation.length;
   for (let i = 0; i < count; i++) {
-    let x = start + 260 + i * 175;
+    const [plannedType, offset] = bossChunk ? ['boss', 520] : formation[i];
+    let x = start + offset;
     while (isGap(chunk, x) && x < start + CHUNK_W - 100) x += 45;
-    const type = bossChunk ? 'boss' : index < 2 ? 'beetle' : ['beetle', 'drone', 'guardian'][(index + i) % 3];
-    Game.enemies.push(makeEnemy(type, Math.min(x, start + CHUNK_W - 120), index));
+    Game.enemies.push(makeEnemy(plannedType, Math.min(x, start + CHUNK_W - 100), index));
+  }
+  if (!bossChunk && Game.difficulty === 'hard' && index > 1) {
+    Game.enemies.push(makeEnemy('beetle', start + CHUNK_W - 70, index));
+  }
+  if (!bossChunk && index > 0 && index % 3 === 1) {
+    const capsule = makeEnemy('capsule', start + 520, index);
+    capsule.dropType = ['spread', 'rapid', 'shield'][Math.floor(index / 3) % 3];
+    Game.enemies.push(capsule);
   }
 }
 
@@ -211,16 +233,18 @@ function resetPlayer(x) {
     x: x == null ? 70 : x, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
     facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
+    weapon: 'normal', weaponTimer: 0, shield: 0, overdrive: 0, combo: 0, comboTimer: 0,
   });
 }
 
 function startGame() {
   Object.assign(Game, {
     state: 'playing', score: 0, wordsDone: 0, hp: 3, distance: 0, maxX: 70,
-    camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, lastWord: '',
-    currentWord: null, generatedTo: 0, nextChunkIndex: 0,
+    camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '',
+    currentWord: null, generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
+    reinforcementTimer: 4.5, reinforcementCount: 0,
   });
-  for (const list of [Game.chunks, Game.pickups, Game.enemies, Game.bullets, Game.enemyBullets, Game.particles]) list.length = 0;
+  for (const list of [Game.chunks, Game.pickups, Game.powerups, Game.enemies, Game.bullets, Game.enemyBullets, Game.particles]) list.length = 0;
   resetInput();
   resetPlayer(70);
   ensureWorld(VIEW_W * 3);
@@ -297,20 +321,88 @@ function shoot() {
   const centerY = player.y + player.h * (player.crouching ? .38 : .43);
   const muzzleX = centerX + aim.x * 28;
   const muzzleY = centerY + aim.y * 28;
-  player.fireCooldown = .14;
+  player.fireCooldown = player.overdrive > 0 ? .065 : player.weapon === 'rapid' ? .085 : .14;
   player.aimX = aim.x;
   player.aimY = aim.y;
-  Game.bullets.push({
-    x: muzzleX - 4, y: muzzleY - 4, w: 8, h: 8,
-    vx: aim.x * BULLET_SPEED, vy: aim.y * BULLET_SPEED,
-  });
+  const baseAngle = Math.atan2(aim.y, aim.x);
+  const offsets = player.weapon === 'spread' ? [-.18, 0, .18] : [0];
+  for (const offset of offsets) {
+    const angle = baseAngle + offset;
+    Game.bullets.push({
+      x: muzzleX - 4, y: muzzleY - 4, w: 8, h: 8,
+      vx: Math.cos(angle) * BULLET_SPEED, vy: Math.sin(angle) * BULLET_SPEED,
+    });
+  }
   burst(muzzleX, muzzleY, '#f4d37a', 3);
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .14);
+}
+
+function dropPowerup(enemy, type) {
+  const spot = findSafeSpot(enemy.x);
+  Game.powerups.push({ x: spot.x - 17, y: spot.y + 8, w: 34, h: 34, type, phase: Math.random() * TAU, taken: false });
+  showFeedback('补给已落地：' + POWERUP_LABELS[type]);
+}
+
+function collectPowerup(powerup) {
+  if (powerup.taken) return;
+  const player = Game.player;
+  powerup.taken = true;
+  if (powerup.type === 'shield') {
+    player.shield = 1;
+  } else {
+    player.weapon = powerup.type;
+    player.weaponTimer = 16;
+  }
+  Game.score += 240;
+  burst(powerup.x + 17, powerup.y + 17, '#f4d37a', 18);
+  showFeedback('获得' + POWERUP_LABELS[powerup.type] + (powerup.type === 'shield' ? '，可抵挡一次攻击' : '，持续 16 秒'));
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .28);
+  updateHud();
+}
+
+function defeatEnemy(enemy, source) {
+  if (enemy.dead) return;
+  enemy.dead = true;
+  if (enemy.type === 'capsule') {
+    Game.score += 100;
+    dropPowerup(enemy, enemy.dropType || 'spread');
+    burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#f4d37a', 20);
+    updateHud();
+    return;
+  }
+  const player = Game.player;
+  player.combo = player.comboTimer > 0 ? Math.min(9, player.combo + 1) : 1;
+  player.comboTimer = 2.4;
+  const base = enemy.type === 'boss' ? 1500 : enemy.type === 'guardian' ? 260 : 130;
+  Game.score += base * Math.min(5, player.combo);
+  burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#e9784f', enemy.type === 'boss' ? 42 : 18);
+  if (source === 'stomp') {
+    player.vy = -430;
+    player.onGround = false;
+  }
+  if (enemy.type === 'boss') {
+    dropPowerup(enemy, 'shield');
+    showFeedback('区域守卫已击败，护盾补给已投放');
+  } else if (player.combo >= 3) {
+    showFeedback('连续击破 ×' + player.combo);
+  }
+  updateHud();
 }
 
 function hurt() {
   const player = Game.player;
   if (player.inv > 0 || Game.state !== 'playing') return;
+  if (player.shield) {
+    player.shield = 0;
+    player.inv = .9;
+    player.combo = 0;
+    player.comboTimer = 0;
+    Game.enemyBullets.length = 0;
+    burst(player.x + player.w / 2, player.y + player.h / 2, '#f4d37a', 22);
+    showFeedback('护盾吸收了这次攻击');
+    updateHud();
+    return;
+  }
   Game.hp--;
   burst(player.x + player.w / 2, Math.min(player.y + player.h / 2, GROUND_Y), '#ef835e', 16);
   if (Game.hp <= 0) {
@@ -342,6 +434,8 @@ function collectLetter(pickup) {
     Game.wordsDone++;
     if (Game.wordsDone % 5 === 0 && Game.hp < 3) Game.hp++;
     nextWord(false);
+    Game.player.overdrive = 4.5;
+    showFeedback('单词完成：4.5 秒火力爆发');
   } else {
     showFeedback('正确，下一个字母是 ' + word.en[word.progress]);
   }
@@ -378,6 +472,11 @@ function updatePlayer(dt) {
   player.landingTimer = Math.max(0, player.landingTimer - dt);
   player.skidTimer = Math.max(0, player.skidTimer - dt);
   player.hurtTimer = Math.max(0, player.hurtTimer - dt);
+  player.weaponTimer = Math.max(0, player.weaponTimer - dt);
+  player.overdrive = Math.max(0, player.overdrive - dt);
+  player.comboTimer = Math.max(0, player.comboTimer - dt);
+  if (!player.weaponTimer) player.weapon = 'normal';
+  if (!player.comboTimer) player.combo = 0;
   player.coyote = player.onGround ? .11 : Math.max(0, player.coyote - dt);
 
   const move = Number(input.right) - Number(input.left);
@@ -433,6 +532,9 @@ function updatePlayer(dt) {
   for (const pickup of Game.pickups) {
     if (!pickup.taken && overlap(player, pickup)) collectLetter(pickup);
   }
+  for (const powerup of Game.powerups) {
+    if (!powerup.taken && overlap(player, powerup)) collectPowerup(powerup);
+  }
   const needed = Game.pickups.find((pickup) => !pickup.taken && pickup.index === Game.currentWord.progress);
   if (needed && needed.x < player.x - VIEW_W * .75) {
     Object.assign(needed, findSafeSpot(player.x + 220));
@@ -447,16 +549,20 @@ function updateEnemies(dt) {
     if (enemy.dead || enemy.x < Game.camera - 500 || enemy.x > Game.camera + VIEW_W + 650) continue;
     enemy.hit = Math.max(0, enemy.hit - dt);
     enemy.fire -= dt;
+    const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
+    const dy = player.y + player.h / 2 - (enemy.y + enemy.h / 2);
+    if (enemy.type === 'beetle' && Math.abs(dx) < 240) {
+      enemy.vx = approach(enemy.vx, Math.sign(dx || 1) * conf.enemySpeed * 1.7, conf.enemySpeed * 5 * dt);
+    }
     enemy.x += enemy.vx * dt;
     if (enemy.x < enemy.home - enemy.range || enemy.x > enemy.home + enemy.range) enemy.vx *= -1;
-    if (enemy.type !== 'drone' && groundAt(enemy.x + enemy.w / 2) === null) {
+    if (enemy.type !== 'drone' && enemy.type !== 'capsule' && groundAt(enemy.x + enemy.w / 2) === null) {
       enemy.x -= enemy.vx * dt;
       enemy.vx *= -1;
     }
-    if (enemy.type === 'drone') enemy.y = enemy.baseY + Math.sin(Game.time * 2.2 + enemy.phase) * 34;
-    const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
-    const dy = player.y + player.h / 2 - (enemy.y + enemy.h / 2);
-    const canFire = enemy.type !== 'beetle' && Math.abs(dx) < (enemy.type === 'boss' ? 650 : 470);
+    if (enemy.type === 'drone') enemy.y = enemy.baseY + Math.sin(Game.time * 2.2 + enemy.phase) * 34 + clamp(1 - Math.abs(dx) / 360, 0, 1) * 70;
+    if (enemy.type === 'capsule') enemy.y = enemy.baseY + Math.sin(Game.time * 2.8 + enemy.phase) * 22;
+    const canFire = ['drone', 'guardian', 'boss'].includes(enemy.type) && Math.abs(dx) < (enemy.type === 'boss' ? 650 : 470);
     if (canFire && enemy.fire <= 0) {
       enemy.fire = conf.fireEvery * (enemy.type === 'boss' ? .55 : 1) + Math.random() * .5;
       const speed = enemy.type === 'boss' ? 290 : 225;
@@ -465,8 +571,33 @@ function updateEnemies(dt) {
         Game.enemyBullets.push({ x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * .4, w: 9, h: 7, vx: Math.cos(base) * speed, vy: Math.sin(base) * speed });
       }
     }
-    if (overlap(player, enemy)) hurt();
+    if (overlap(player, enemy)) {
+      if (enemy.type === 'beetle' && player.vy > 100 && player.y + player.h < enemy.y + enemy.h * .62) defeatEnemy(enemy, 'stomp');
+      else if (enemy.type !== 'capsule') hurt();
+    }
   }
+}
+
+function updateReinforcements(dt) {
+  Game.reinforcementTimer -= dt;
+  if (Game.reinforcementTimer > 0) return;
+  const conf = DIFFICULTIES[Game.difficulty];
+  const armed = Game.player.weapon !== 'normal' || Game.player.overdrive > 0;
+  Game.reinforcementTimer = clamp((5.6 - Game.wordsDone * .12 - (armed ? .7 : 0)) / conf.spawn, 2.5, 5.6) + Math.random();
+  if (Game.player.x < 900) return;
+  const nearby = Game.enemies.filter((enemy) => !enemy.dead && enemy.type !== 'capsule' && enemy.x > Game.camera - 80 && enemy.x < Game.camera + VIEW_W + 120).length;
+  if (nearby >= (Game.difficulty === 'hard' ? 6 : 5)) return;
+  let x = Game.camera + VIEW_W + 70;
+  ensureWorld(x + 100);
+  const type = Game.wordsDone > 1 && Game.reinforcementCount % 4 === 3 ? 'drone' : 'beetle';
+  if (type === 'beetle') while (groundAt(x) === null && x < Game.camera + VIEW_W + 350) x += 32;
+  const chunk = chunkAt(x);
+  if (!chunk || (type === 'beetle' && groundAt(x) === null)) return;
+  const enemy = makeEnemy(type, x, chunk.index);
+  enemy.vx = -Math.abs(enemy.vx);
+  enemy.range = 190;
+  Game.enemies.push(enemy);
+  Game.reinforcementCount++;
 }
 
 function updateProjectiles(dt) {
@@ -481,13 +612,7 @@ function updateProjectiles(dt) {
       enemy.hit = .12;
       hit = true;
       burst(bullet.x, bullet.y, '#f4d37a', 5);
-      if (enemy.hp <= 0) {
-        enemy.dead = true;
-        Game.score += enemy.type === 'boss' ? 1500 : enemy.type === 'guardian' ? 260 : 130;
-        burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#e9784f', enemy.type === 'boss' ? 42 : 18);
-        if (enemy.type === 'boss') showFeedback('区域守卫已击败，远征继续');
-        updateHud();
-      }
+      if (enemy.hp <= 0) defeatEnemy(enemy, 'shot');
       break;
     }
     if (hit || bullet.x < Game.camera - 80 || bullet.x > Game.camera + VIEW_W + 100 || bullet.y < -80 || bullet.y > VIEW_H + 80) Game.bullets.splice(i, 1);
@@ -500,6 +625,7 @@ function updateProjectiles(dt) {
     if (overlap(bullet, Game.player)) {
       Game.enemyBullets.splice(i, 1);
       hurt();
+      if (!Game.enemyBullets.length) break;
     } else if (bullet.x < Game.camera - 100 || bullet.x > Game.camera + VIEW_W + 100 || bullet.y < -40 || bullet.y > VIEW_H + 40) {
       Game.enemyBullets.splice(i, 1);
     }
@@ -530,22 +656,30 @@ function cullWorld() {
   const cutoff = Game.camera - CHUNK_W * 1.5;
   Game.chunks = Game.chunks.filter((chunk) => chunk.start + CHUNK_W > cutoff);
   Game.enemies = Game.enemies.filter((enemy) => !enemy.dead && enemy.x + enemy.w > cutoff);
+  Game.powerups = Game.powerups.filter((powerup) => !powerup.taken && powerup.x + powerup.w > cutoff);
 }
 
 function update(dt) {
   Game.time += dt;
   Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
+  Game.hudTimer = Math.max(0, Game.hudTimer - dt);
   updatePlayer(dt);
+  updateReinforcements(dt);
   updateEnemies(dt);
   updateProjectiles(dt);
   updateParticles(dt);
   Game.maxX = Math.max(Game.maxX, Game.player.x);
   Game.distance = Math.floor(Game.maxX / 10);
   ensureWorld(Game.player.x + VIEW_W * 2.4);
+  const entered = chunkAt(Game.player.x + Game.player.w / 2);
+  if (entered && entered.index !== Game.enteredChunk) {
+    Game.enteredChunk = entered.index;
+    if (entered.index > 0) showFeedback('战况：' + entered.encounter);
+  }
   const targetCamera = Math.max(0, Game.player.x - VIEW_W * .3);
   Game.camera += (targetCamera - Game.camera) * (1 - Math.exp(-9 * dt));
   if (Game.player.onGround && Game.player.x > Game.checkpoint + 480 && groundAt(Game.player.x + Game.player.w / 2) !== null) Game.checkpoint = Game.player.x;
-  if (Game.feedbackTimer === 0) updateHud();
+  if (!Game.hudTimer) { Game.hudTimer = .1; updateHud(); }
   if (Math.floor(Game.time * 2) !== Math.floor((Game.time - dt) * 2)) cullWorld();
 }
 
@@ -679,6 +813,25 @@ function drawPickups() {
   }
 }
 
+function drawPowerups() {
+  const colors = { spread: '#e76f51', rapid: '#65b7a1', shield: '#e0b44f' };
+  const marks = { spread: 'S', rapid: 'R', shield: '盾' };
+  for (const powerup of Game.powerups) {
+    if (powerup.taken || powerup.x < Game.camera - 80 || powerup.x > Game.camera + VIEW_W + 80) continue;
+    const bob = Math.sin(Game.time * 4 + powerup.phase) * 6;
+    ctx.save();
+    ctx.translate(powerup.x + 17, powerup.y + 17 + bob);
+    ctx.rotate(Math.sin(Game.time * 2 + powerup.phase) * .12);
+    ctx.shadowColor = colors[powerup.type]; ctx.shadowBlur = 16;
+    ctx.fillStyle = '#f7edcf'; ctx.strokeStyle = colors[powerup.type]; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.roundRect(-15, -15, 30, 30, 9); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#17372e'; ctx.font = '900 15px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(marks[powerup.type], 0, 1);
+    ctx.restore();
+  }
+}
+
 function drawAtlasFrame(image, row, column, x, y, width, height, flip) {
   if (!image.complete || !image.naturalWidth) return false;
   const sourceW = image.naturalWidth / 4;
@@ -693,6 +846,22 @@ function drawAtlasFrame(image, row, column, x, y, width, height, flip) {
 
 function drawEnemy(enemy) {
   if (enemy.dead || enemy.x < Game.camera - 140 || enemy.x > Game.camera + VIEW_W + 140) return;
+  if (enemy.type === 'capsule') {
+    const mark = { spread: 'S', rapid: 'R', shield: '盾' }[enemy.dropType] || 'S';
+    ctx.save();
+    ctx.translate(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2);
+    if (enemy.hit > 0) ctx.globalAlpha = .55;
+    ctx.fillStyle = '#d6c8a3';
+    ctx.beginPath(); ctx.moveTo(-23, -5); ctx.lineTo(-34, 5); ctx.lineTo(-21, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(23, -5); ctx.lineTo(34, 5); ctx.lineTo(21, 7); ctx.fill();
+    ctx.shadowColor = '#f4d37a'; ctx.shadowBlur = 12;
+    ctx.fillStyle = '#27483e'; ctx.strokeStyle = '#f4d37a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.roundRect(-23, -14, 46, 28, 12); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#f4d37a';
+    ctx.font = '900 14px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(mark, 0, 1);
+    ctx.restore();
+    return;
+  }
   const spec = {
     beetle: { row: 0, w: 68, h: 58, ox: -13, oy: -20 },
     drone: { row: 1, w: 72, h: 72, ox: -15, oy: -16 },
@@ -725,6 +894,13 @@ function drawBullet(bullet, color) {
 
 function drawPlayer() {
   const player = Game.player;
+  if (player.shield) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(244,211,122,.8)'; ctx.lineWidth = 3;
+    ctx.shadowColor = '#f4d37a'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.ellipse(player.x + player.w / 2, player.y + player.h / 2, 30, 39, 0, 0, TAU); ctx.stroke();
+    ctx.restore();
+  }
   if (player.inv > 0 && Math.floor(Game.time * 14) % 2) return;
   let row = 0;
   let column = Math.floor(Game.time * 3) % 4;
@@ -757,6 +933,15 @@ function drawPlayer() {
   if (!drawAtlasFrame(atlas, row, column, player.x - 25, drawY, 80, 82, player.facing < 0)) {
     ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
   }
+  const status = player.overdrive > 0
+    ? '火力爆发 ' + Math.ceil(player.overdrive)
+    : player.weapon !== 'normal' ? POWERUP_LABELS[player.weapon] + ' ' + Math.ceil(player.weaponTimer) : '';
+  const label = [status, player.combo > 1 ? '连击 ×' + player.combo : ''].filter(Boolean).join(' · ');
+  if (label) {
+    ctx.font = '800 13px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(12,31,26,.85)'; ctx.strokeText(label, player.x + player.w / 2, player.y - 10);
+    ctx.fillStyle = '#f8e8af'; ctx.fillText(label, player.x + player.w / 2, player.y - 10);
+  }
 }
 
 function render() {
@@ -769,6 +954,7 @@ function render() {
     drawDecor(chunk); drawGround(chunk); drawPlatforms(chunk);
   }
   drawPickups();
+  drawPowerups();
   for (const enemy of Game.enemies) drawEnemy(enemy);
   for (const bullet of Game.bullets) drawBullet(bullet, '#ffe49a');
   for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
@@ -920,11 +1106,26 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       input.right = input.up = false;
       const shot = Game.bullets.pop();
       if (!shot || Math.abs(Math.hypot(shot.vx, shot.vy) - BULLET_SPEED) > .01) throw new Error('diagonal shot speed changed');
+      collectPowerup({ x: Game.player.x, y: Game.player.y, w: 34, h: 34, type: 'spread', taken: false });
+      Game.bullets.length = 0;
+      Game.player.fireCooldown = 0;
+      shoot();
+      if (Game.bullets.length !== 3 || Game.bullets.some((bullet) => Math.abs(Math.hypot(bullet.vx, bullet.vy) - BULLET_SPEED) > .01)) throw new Error('spread weapon failed');
+      Game.bullets.length = 0;
+      Game.player.inv = 0;
+      Game.enemyBullets.push(
+        { x: Game.player.x, y: Game.player.y, w: 9, h: 7, vx: 0, vy: 0 },
+        { x: Game.player.x, y: Game.player.y, w: 9, h: 7, vx: 0, vy: 0 },
+      );
+      updateProjectiles(0);
+      if (Game.enemyBullets.length) throw new Error('enemy bullets survived player hit');
       const firstWord = Game.currentWord;
       Game.pickups.slice().sort((a, b) => a.index - b.index).forEach(collectLetter);
       if (Game.wordsDone !== 1 || Game.currentWord === firstWord) throw new Error('word loop did not continue');
       ensureWorld(CHUNK_W * 13);
       if (new Set(Game.chunks.map((chunk) => chunk.biome)).size !== 4) throw new Error('biome rotation missing');
+      if (new Set(Game.chunks.map((chunk) => chunk.encounter)).size < 5) throw new Error('encounter rotation missing');
+      if (!Game.enemies.some((enemy) => enemy.type === 'capsule')) throw new Error('supply capsules missing');
       Game.camera = CHUNK_W * 10;
       cullWorld();
       if (Game.chunks.length > 6) throw new Error('old chunks were not reclaimed');
