@@ -46,7 +46,7 @@ const STAGES = [
   ],
   [
     { name: '低重力门', foes: [['drone', 230], ['beetle', 575]] },
-    { name: '晶簇跃迁', foes: [['drone', 270], ['guardian', 590]] },
+    { name: '晶簧跃迁', foes: [['drone', 270], ['guardian', 590]] },
     { name: '月台激光', foes: [['beetle', 170], ['drone', 390], ['guardian', 625]] },
   ],
 ];
@@ -57,11 +57,21 @@ for (const [name, src] of Object.entries({
   actions: 'assets/hero-actions-v2.png',
   enemies: 'assets/enemy-sprites.webp',
   biomes: 'assets/biomes.webp',
+  hazards: 'assets/hazard-atlas-v2.webp',
 })) {
   const image = new Image();
   image.src = src;
   ASSETS[name] = image;
 }
+
+const HAZARD_SPRITES = {
+  updraft: { row: 0, column: 0, w: 112, h: 132, baseline: 496 / 512 },
+  rock: { row: 0, column: 1, w: 58, h: 58, baseline: 473 / 512 },
+  puddle: { row: 0, column: 2, w: 126, h: 50, baseline: 499 / 512 },
+  steam: { row: 1, column: 0, w: 76, h: 116, baseline: 475 / 512 },
+  laser: { row: 1, column: 1, w: 142, h: 94, baseline: 419 / 512 },
+  spring: { row: 1, column: 2, w: 70, h: 78, baseline: 459 / 512 },
+};
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
@@ -71,7 +81,7 @@ const input = { left: false, right: false, up: false, down: false, fire: false, 
 const Game = {
   state: 'menu', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
   distance: 0, maxX: 70, camera: 0, checkpoint: 70, time: 0,
-  feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null,
+  feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null,
   generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
   reinforcementTimer: 4.5, reinforcementCount: 0,
   chunks: [], pickups: [], powerups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
@@ -219,21 +229,21 @@ function generateChunk() {
     if (slot === 0) {
       chunk.gaps.push({ x: start + 300, w: 145 });
       chunk.platforms.push({ x: start + 325, y: GROUND_Y - 132, w: 96, move: 35, phase: index });
-      chunk.hazards.push({ type: 'crystal', x: start + 238, y: GROUND_Y - 18, w: 50, h: 18, phase: index });
+      chunk.hazards.push({ type: 'spring', x: start + 238, y: GROUND_Y - 18, w: 50, h: 18, phase: index });
     } else if (slot === 1) {
       chunk.gaps.push({ x: start + 205, w: 125 }, { x: start + 505, w: 130 });
       chunk.platforms.push({ x: start + 190, y: GROUND_Y - 105, w: 150, move: 22, phase: index });
       chunk.platforms.push({ x: start + 490, y: GROUND_Y - 155, w: 155, move: 38, phase: index + 2 });
       chunk.hazards.push(
-        { type: 'crystal', x: start + 145, y: GROUND_Y - 18, w: 50, h: 18, phase: index },
-        { type: 'crystal', x: start + 445, y: GROUND_Y - 18, w: 50, h: 18, phase: index + 1 },
+        { type: 'spring', x: start + 145, y: GROUND_Y - 18, w: 50, h: 18, phase: index },
+        { type: 'spring', x: start + 445, y: GROUND_Y - 18, w: 50, h: 18, phase: index + 1 },
       );
     } else {
       chunk.gaps.push({ x: start + 410, w: 155 });
       chunk.platforms.push({ x: start + 405, y: GROUND_Y - 125, w: 165, move: 30, phase: index });
       chunk.hazards.push(
         { type: 'laser', x: start + 185, y: GROUND_Y - 58, w: 110, h: 12, phase: 1.4 },
-        { type: 'crystal', x: start + 345, y: GROUND_Y - 18, w: 50, h: 18, phase: index },
+        { type: 'spring', x: start + 345, y: GROUND_Y - 18, w: 50, h: 18, phase: index },
       );
     }
   }
@@ -310,7 +320,7 @@ function startGame() {
   Object.assign(Game, {
     state: 'playing', score: 0, wordsDone: 0, hp: 3, distance: 0, maxX: 70,
     camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '',
-    currentWord: null, generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
+    currentWord: null, wordEcho: null, generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
     reinforcementTimer: 4.5, reinforcementCount: 0,
   });
   for (const list of [Game.chunks, Game.pickups, Game.powerups, Game.enemies, Game.bullets, Game.enemyBullets, Game.particles]) list.length = 0;
@@ -503,6 +513,7 @@ function collectLetter(pickup) {
   }
   pickup.taken = true;
   word.progress++;
+  flashWord(word, word.progress === word.en.length);
   Game.score += 50;
   burst(pickup.x + 15, pickup.y + 17, '#f4d37a', 10);
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2);
@@ -522,6 +533,10 @@ function collectLetter(pickup) {
 function showFeedback(text) {
   Game.feedbackTimer = 2.2;
   $('feedback').textContent = text;
+}
+
+function flashWord(word, complete) {
+  Game.wordEcho = { en: word.en, zh: word.zh, progress: word.progress, complete, timer: complete ? 1.8 : 1.15 };
 }
 
 function updateHud() {
@@ -641,12 +656,12 @@ function updateHazards(dt) {
         player.vy = Math.max(-390, player.vy - 1180 * dt);
       } else if (hazard.type === 'puddle' && player.onGround) {
         player.vx *= Math.max(0, 1 - 2.4 * dt);
-      } else if (hazard.type === 'crystal' && player.vy >= 0) {
+      } else if (hazard.type === 'spring' && player.vy >= 0) {
         player.vy = -720;
         player.onGround = false;
         burst(player.x + player.w / 2, GROUND_Y - 8, '#e7bd58', 12);
         if (window.ArcadeAudio) ArcadeAudio.play('jump', .18);
-      } else if ((hazard.type === 'rock' || hazardActive(hazard)) && hazard.type !== 'updraft' && hazard.type !== 'puddle' && hazard.type !== 'crystal') {
+      } else if ((hazard.type === 'rock' || hazardActive(hazard)) && hazard.type !== 'updraft' && hazard.type !== 'puddle' && hazard.type !== 'spring') {
         hurt();
       }
     }
@@ -774,6 +789,10 @@ function update(dt) {
   Game.time += dt;
   Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
   Game.hudTimer = Math.max(0, Game.hudTimer - dt);
+  if (Game.wordEcho) {
+    Game.wordEcho.timer -= dt;
+    if (Game.wordEcho.timer <= 0) Game.wordEcho = null;
+  }
   updatePlayer(dt);
   updateHazards(dt);
   updateReinforcements(dt);
@@ -910,7 +929,21 @@ function drawPlatforms(chunk) {
 
 function drawHazards(chunk) {
   for (const hazard of chunk.hazards) {
+    const spec = HAZARD_SPRITES[hazard.type];
+    if (!spec) continue;
     ctx.save();
+    const active = hazard.type !== 'steam' && hazard.type !== 'laser' || hazardActive(hazard);
+    const width = hazard.type === 'puddle' ? Math.max(spec.w, hazard.w + 12)
+      : hazard.type === 'laser' ? Math.max(spec.w, hazard.w + 30) : spec.w;
+    const height = spec.h * (hazard.type === 'spring' ? 1 + Math.sin(Game.time * 7 + hazard.phase) * .025 : 1);
+    const centerX = hazard.x + hazard.w / 2;
+    ctx.globalAlpha = active ? 1 : .28;
+    ctx.shadowColor = hazard.type === 'laser' ? 'rgba(255,72,49,.72)'
+      : hazard.type === 'spring' ? 'rgba(180,92,255,.62)' : 'rgba(242,185,82,.42)';
+    ctx.shadowBlur = active ? 10 : 3;
+    const drawn = drawAtlasFrame(ASSETS.hazards, spec.row, spec.column, centerX - width / 2, GROUND_Y - spec.baseline * height, width, height, false, 3, 2);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
     if (hazard.type === 'updraft') {
       ctx.strokeStyle = 'rgba(245,205,126,.42)'; ctx.lineWidth = 3;
       for (let i = 0; i < 4; i++) {
@@ -920,41 +953,8 @@ function drawHazards(chunk) {
         ctx.bezierCurveTo(hazard.x + 35 + i * 18, y + 12, hazard.x + 8 + i * 28, y - 4, hazard.x + 31 + i * 17, y - 20);
         ctx.stroke();
       }
-    } else if (hazard.type === 'puddle') {
-      ctx.fillStyle = 'rgba(119,190,195,.58)';
-      ctx.beginPath(); ctx.ellipse(hazard.x + hazard.w / 2, GROUND_Y - 3, hazard.w / 2, 7, 0, 0, TAU); ctx.fill();
-      ctx.strokeStyle = 'rgba(204,235,229,.62)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(hazard.x + hazard.w * .35, GROUND_Y - 5, 18, Math.PI, TAU); ctx.stroke();
-    } else if (hazard.type === 'crystal') {
-      ctx.fillStyle = '#d4a84d'; ctx.strokeStyle = '#f7df94'; ctx.lineWidth = 2;
-      for (let i = 0; i < 3; i++) {
-        const x = hazard.x + 7 + i * 15;
-        ctx.beginPath(); ctx.moveTo(x - 7, GROUND_Y); ctx.lineTo(x, GROUND_Y - 18 - (i % 2) * 8); ctx.lineTo(x + 8, GROUND_Y); ctx.closePath(); ctx.fill(); ctx.stroke();
-      }
-    } else if (hazard.type === 'rock') {
-      ctx.translate(hazard.x + 20, hazard.y + 20);
-      ctx.rotate(hazard.x / 28);
-      ctx.fillStyle = '#563a27'; ctx.strokeStyle = '#d29b5c'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(0, 0, 19, 0, TAU); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-11, -7); ctx.lineTo(4, -13); ctx.lineTo(12, 2); ctx.lineTo(-2, 12); ctx.closePath(); ctx.stroke();
-    } else if (hazard.type === 'steam') {
-      ctx.fillStyle = '#29464a';
-      ctx.fillRect(hazard.x - 4, GROUND_Y - 9, hazard.w + 8, 9);
-      if (hazardActive(hazard)) {
-        ctx.fillStyle = 'rgba(205,228,220,.55)';
-        for (let i = 0; i < 5; i++) {
-          const rise = ((Game.time * 75 + i * 22) % 88);
-          ctx.beginPath(); ctx.ellipse(hazard.x + 8 + (i % 3) * 12, GROUND_Y - 14 - rise, 12 + (i % 2) * 5, 18, 0, 0, TAU); ctx.fill();
-        }
-      }
-    } else if (hazard.type === 'laser') {
-      ctx.fillStyle = '#415a5b';
-      ctx.fillRect(hazard.x - 8, hazard.y - 8, 10, 28);
-      ctx.fillRect(hazard.x + hazard.w - 2, hazard.y - 8, 10, 28);
-      if (hazardActive(hazard)) {
-        ctx.fillStyle = 'rgba(239,111,78,.5)'; ctx.fillRect(hazard.x, hazard.y, hazard.w, hazard.h);
-        ctx.fillStyle = '#ffd2a7'; ctx.fillRect(hazard.x, hazard.y + 4, hazard.w, 3);
-      }
+    } else if (!drawn) {
+      ctx.fillStyle = '#e4b75e'; ctx.fillRect(hazard.x, hazard.y, hazard.w, hazard.h);
     }
     ctx.restore();
   }
@@ -999,10 +999,10 @@ function drawPowerups() {
   }
 }
 
-function drawAtlasFrame(image, row, column, x, y, width, height, flip) {
+function drawAtlasFrame(image, row, column, x, y, width, height, flip = false, columns = 4, rows = 4) {
   if (!image.complete || !image.naturalWidth) return false;
-  const sourceW = image.naturalWidth / 4;
-  const sourceH = image.naturalHeight / 4;
+  const sourceW = image.naturalWidth / columns;
+  const sourceH = image.naturalHeight / rows;
   ctx.save();
   ctx.translate(x + width / 2, y);
   ctx.scale(flip ? -1 : 1, 1);
@@ -1118,6 +1118,37 @@ function drawPlayer() {
   }
 }
 
+function drawWordEcho() {
+  const echo = Game.wordEcho;
+  if (!echo) return;
+  const width = Math.min(Math.max(170, echo.en.length * 25 + 30), VIEW_W - 20);
+  const x = (VIEW_W - width) / 2;
+  const y = 104;
+  const chip = Math.min(27, (width - 28) / echo.en.length - 3);
+  const gap = 3;
+  const total = echo.en.length * chip + (echo.en.length - 1) * gap;
+  const start = VIEW_W / 2 - total / 2;
+  ctx.save();
+  ctx.globalAlpha = clamp(echo.timer * 3, 0, 1);
+  ctx.fillStyle = 'rgba(8,27,23,.78)'; ctx.strokeStyle = echo.complete ? '#86d7ae' : 'rgba(244,211,122,.72)'; ctx.lineWidth = 1.2;
+  ctx.shadowColor = 'rgba(3,15,12,.62)'; ctx.shadowBlur = 16;
+  ctx.beginPath(); ctx.roundRect(x, y, width, 62, 14); ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = echo.complete ? '#9de2bd' : '#d3ddd7'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(echo.complete ? '拼写完成 · ' + echo.zh : '拼写记忆 · ' + echo.zh, VIEW_W / 2, y + 15);
+  for (let i = 0; i < echo.en.length; i++) {
+    const active = i < echo.progress;
+    const latest = i === echo.progress - 1;
+    const cx = start + i * (chip + gap);
+    ctx.fillStyle = active ? (latest ? '#f4d37a' : 'rgba(244,211,122,.82)') : 'rgba(255,255,255,.08)';
+    ctx.strokeStyle = latest ? '#fff0b0' : 'rgba(255,255,255,.16)';
+    ctx.beginPath(); ctx.roundRect(cx, y + 27, chip, 25, 6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = active ? '#173128' : 'rgba(220,230,224,.42)'; ctx.font = '900 14px ui-monospace, monospace';
+    ctx.fillText(active ? echo.en[i] : '·', cx + chip / 2, y + 40);
+  }
+  ctx.restore();
+}
+
 function render() {
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
   drawBackground();
@@ -1140,6 +1171,7 @@ function render() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+  drawWordEcho();
 }
 
 function resize() {
@@ -1303,17 +1335,21 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const firstWord = Game.currentWord;
       Game.pickups.slice().sort((a, b) => a.index - b.index).forEach(collectLetter);
       if (Game.wordsDone !== 1 || Game.currentWord === firstWord) throw new Error('word loop did not continue');
+      if (!Game.wordEcho || !Game.wordEcho.complete || Game.wordEcho.en !== firstWord.en) throw new Error('word memory echo failed');
       ensureWorld(CHUNK_W * 13);
       if (new Set(Game.chunks.map((chunk) => chunk.biome)).size !== 4) throw new Error('biome rotation missing');
       if (new Set(Game.chunks.map((chunk) => chunk.encounter)).size < 5) throw new Error('encounter rotation missing');
       const hazardTypes = new Set(Game.chunks.flatMap((chunk) => chunk.hazards.map((hazard) => hazard.type)));
-      if (['updraft', 'rock', 'puddle', 'steam', 'laser', 'crystal'].some((type) => !hazardTypes.has(type))) throw new Error('biome-specific mechanics missing');
+      if (Object.keys(HAZARD_SPRITES).length !== 6 || ['updraft', 'rock', 'puddle', 'steam', 'laser', 'spring'].some((type) => !hazardTypes.has(type))) throw new Error('biome-specific mechanics missing');
       if (!Game.enemies.some((enemy) => enemy.type === 'capsule')) throw new Error('supply capsules missing');
       startGame();
       Game.hp = 999;
       input.right = input.fire = true;
+      let jumpHold = 0;
       for (let i = 0; i < 12000; i++) {
-        if (i % 109 === 0) queueJump();
+        const nextGap = Game.chunks.flatMap((chunk) => chunk.gaps).find((gap) => gap.x > Game.player.x && gap.x - Game.player.x < 125);
+        if (Game.player.onGround && (nextGap || i % 109 === 0)) { queueJump(); jumpHold = 18; }
+        input.jumpHeld = jumpHold-- > 0;
         if (i % 151 === 0) input.down = true;
         if (i % 151 === 9) input.down = false;
         update(1 / 60);
