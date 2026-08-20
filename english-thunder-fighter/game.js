@@ -322,7 +322,7 @@ function makeQuestion() {
     const options = shuffle(item.options.map((t) => ({ text: t, correct: t === item.answer })));
     return { kind: '语法填空', prompt: item.prompt, hint: '选择正确的词补全句子', options, answer: item.answer, isGrammar: true };
   }
-  const bank = VOCAB[diff];
+  const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[diff]) || VOCAB[diff];
   const item = bank[randInt(bank.length)];
   if (Math.random() < 0.4) {
     const others = pickDistractors(bank, item, 'en', 3);
