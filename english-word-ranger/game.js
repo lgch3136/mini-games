@@ -8,114 +8,192 @@ const wrap = $('game-wrap');
 let VIEW_W = 960;
 const VIEW_H = 540;
 const GROUND_Y = 478;
-const WORLD_W = 4450;
-const SEGMENT_STARTS = [170, 1370, 2570];
-const GATES = [1260, 2460, 3660];
-const GOAL_X = 4290;
+const CHUNK_W = 720;
+const TAU = Math.PI * 2;
 
 const DIFFICULTIES = {
-  easy: { speed: 220, enemySpeed: 44, enemyHp: 1, fireEvery: 2.7, label: '初级' },
-  medium: { speed: 235, enemySpeed: 58, enemyHp: 2, fireEvery: 2.1, label: '中级' },
-  hard: { speed: 250, enemySpeed: 72, enemyHp: 3, fireEvery: 1.55, label: '高级' },
+  easy: { speed: 220, enemySpeed: 44, hp: 1, fireEvery: 3, spawn: .8, label: '初级' },
+  medium: { speed: 236, enemySpeed: 58, hp: 2, fireEvery: 2.25, spawn: 1, label: '中级' },
+  hard: { speed: 252, enemySpeed: 72, hp: 3, fireEvery: 1.65, spawn: 1.25, label: '高级' },
 };
 
-const PLATFORM_DATA = [
-  [430, 160, 88], [820, 150, 118], [1490, 170, 92], [1880, 180, 124],
-  [2670, 160, 98], [3070, 180, 126], [3750, 170, 104], [4030, 140, 120],
+const BIOMES = [
+  { name: '曙光森林', ground: '#173d31', edge: '#d0a84e', weather: 'pollen' },
+  { name: '风蚀峡谷', ground: '#5a3926', edge: '#e0a854', weather: 'dust' },
+  { name: '雨中古城', ground: '#173b3e', edge: '#80b8aa', weather: 'rain' },
+  { name: '月晶遗迹', ground: '#172c3d', edge: '#d7a955', weather: 'glow' },
 ];
 
-const ENEMY_POSITIONS = [650, 1030, 1510, 2010, 2740, 3270, 3770];
+const ASSETS = {};
+for (const [name, src] of Object.entries({
+  hero: 'assets/hero-sprites.webp',
+  enemies: 'assets/enemy-sprites.webp',
+  biomes: 'assets/biomes.webp',
+})) {
+  const image = new Image();
+  image.src = src;
+  ASSETS[name] = image;
+}
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-const enemyActive = (enemy) => !enemy.dead && (enemy.boss ? Game.wordIndex >= 3 : enemy.home < (GATES[Game.wordIndex] || Infinity));
-
 const input = { left: false, right: false, fire: false, jumpHeld: false, jumpBuffer: 0 };
 
 const Game = {
-  state: 'menu',
-  difficulty: 'easy',
-  score: 0,
-  wordsDone: 0,
-  wordIndex: 0,
-  hp: 3,
-  camera: 0,
-  checkpoint: 70,
-  time: 0,
-  feedback: '',
-  feedbackTimer: 0,
-  bossDown: false,
-  player: { x: 70, y: GROUND_Y - 46, w: 28, h: 46, vx: 0, vy: 0, facing: 1, onGround: true, coyote: .1, inv: 0, fireCooldown: 0 },
-  objectives: [],
-  pickups: [],
-  enemies: [],
-  bullets: [],
-  enemyBullets: [],
-  particles: [],
+  state: 'menu', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
+  distance: 0, maxX: 70, camera: 0, checkpoint: 70, time: 0,
+  feedbackTimer: 0, lastWord: '', currentWord: null,
+  generatedTo: 0, nextChunkIndex: 0,
+  chunks: [], pickups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
+  player: {
+    x: 70, y: GROUND_Y - 52, w: 30, h: 52,
+    vx: 0, vy: 0, facing: 1, onGround: true,
+    coyote: .1, inv: 0, fireCooldown: 0,
+  },
 };
 
-function pickWords() {
-  const pool = VOCAB[Game.difficulty].filter((item) => item.en.length >= 3 && item.en.length <= 9);
-  const picked = [];
-  while (picked.length < 3) {
-    const item = pool[Math.floor(Math.random() * pool.length)];
-    if (!picked.includes(item)) picked.push(item);
-  }
-  return picked.map((item) => ({ en: item.en.toUpperCase(), zh: item.zh, progress: 0 }));
+function wordBank() {
+  const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
+  return bank.filter((item) => item.en.length >= 3 && item.en.length <= 9);
 }
 
-function buildLevel() {
-  Game.objectives = pickWords();
-  Game.pickups = [];
-  Game.objectives.forEach((word, segment) => {
-    const span = 790;
-    [...word.en].forEach((letter, index) => {
-      const x = SEGMENT_STARTS[segment] + 160 + (word.en.length === 1 ? 0 : index * span / (word.en.length - 1));
-      const lift = [0, 62, 0, 96, 30][index % 5];
-      Game.pickups.push({ x, y: GROUND_Y - 42 - lift, w: 30, h: 34, letter, index, segment, taken: false });
-    });
-  });
-  Game.enemies = ENEMY_POSITIONS.map((x) => makeEnemy(x, false));
-  Game.enemies.push(makeEnemy(3950, true));
+function biomeIndexAt(x) {
+  return Math.floor(Math.max(0, x) / (CHUNK_W * 3)) % BIOMES.length;
 }
 
-function makeEnemy(x, boss) {
+function chunkAt(x) {
+  return Game.chunks.find((chunk) => x >= chunk.start && x < chunk.start + CHUNK_W);
+}
+
+function isGap(chunk, x) {
+  return chunk && chunk.gaps.some((gap) => x >= gap.x && x <= gap.x + gap.w);
+}
+
+function groundAt(x) {
+  const chunk = chunkAt(x);
+  return chunk && !isGap(chunk, x) ? GROUND_Y : null;
+}
+
+function platformTop(platform) {
+  return platform.y + (platform.move ? Math.sin(Game.time * 1.45 + platform.phase) * platform.move : 0);
+}
+
+function makeEnemy(type, x, chunkIndex) {
   const conf = DIFFICULTIES[Game.difficulty];
-  return {
-    x, home: x, y: GROUND_Y - (boss ? 72 : 42), w: boss ? 58 : 34, h: boss ? 72 : 42,
-    vx: conf.enemySpeed * (Math.random() < .5 ? -1 : 1),
-    hp: boss ? conf.enemyHp * 4 + 4 : conf.enemyHp,
-    maxHp: boss ? conf.enemyHp * 4 + 4 : conf.enemyHp,
-    fire: .7 + Math.random() * conf.fireEvery,
-    boss, dead: false, hit: 0,
+  const specs = {
+    beetle: { w: 42, h: 34, hp: 1, range: 82 },
+    drone: { w: 42, h: 42, hp: 2, range: 110 },
+    guardian: { w: 55, h: 62, hp: 4, range: 65 },
+    boss: { w: 78, h: 92, hp: 12, range: 105 },
   };
+  const spec = specs[type];
+  const scale = Math.min(3.2, 1 + Math.floor(chunkIndex / 6) * .16);
+  const hp = Math.ceil(spec.hp * conf.hp * scale);
+  return {
+    type, x, home: x, baseY: type === 'drone' ? 285 : GROUND_Y - spec.h,
+    y: type === 'drone' ? 285 : GROUND_Y - spec.h,
+    w: spec.w, h: spec.h, hp, maxHp: hp, range: spec.range,
+    vx: conf.enemySpeed * (type === 'guardian' || type === 'boss' ? .55 : 1) * (Math.random() < .5 ? -1 : 1),
+    fire: .7 + Math.random() * conf.fireEvery,
+    phase: Math.random() * TAU, dead: false, hit: 0,
+  };
+}
+
+function generateChunk() {
+  const index = Game.nextChunkIndex++;
+  const start = Game.generatedTo;
+  const biome = biomeIndexAt(start);
+  const pattern = index % 6;
+  const chunk = { index, start, biome, gaps: [], platforms: [], decor: [] };
+
+  if (index > 0 && pattern === 1) {
+    chunk.gaps.push({ x: start + 330, w: 105 });
+    chunk.platforms.push({ x: start + 338, y: GROUND_Y - 86, w: 90, move: 0, phase: 0 });
+  } else if (index > 0 && pattern === 2) {
+    chunk.platforms.push({ x: start + 180, y: GROUND_Y - 82, w: 130, move: 0, phase: 0 });
+    chunk.platforms.push({ x: start + 430, y: GROUND_Y - 142, w: 118, move: 20, phase: index });
+  } else if (index > 0 && pattern === 3) {
+    chunk.gaps.push({ x: start + 235, w: 82 }, { x: start + 505, w: 92 });
+    chunk.platforms.push({ x: start + 218, y: GROUND_Y - 74, w: 110, move: 0, phase: 0 });
+    chunk.platforms.push({ x: start + 490, y: GROUND_Y - 98, w: 122, move: 0, phase: 0 });
+  } else if (index > 0 && pattern === 4) {
+    chunk.gaps.push({ x: start + 310, w: 150 });
+    chunk.platforms.push({ x: start + 325, y: GROUND_Y - 102, w: 120, move: 28, phase: index * .7 });
+  } else if (index > 0 && pattern === 5) {
+    chunk.platforms.push({ x: start + 155, y: GROUND_Y - 58, w: 110, move: 0, phase: 0 });
+    chunk.platforms.push({ x: start + 320, y: GROUND_Y - 112, w: 108, move: 0, phase: 0 });
+    chunk.platforms.push({ x: start + 490, y: GROUND_Y - 166, w: 112, move: 0, phase: 0 });
+  }
+
+  for (let i = 0; i < 5; i++) {
+    chunk.decor.push({ x: start + 80 + i * 135 + (index * 31 + i * 17) % 45, size: .7 + ((index + i) % 4) * .12 });
+  }
+
+  Game.chunks.push(chunk);
+  Game.generatedTo += CHUNK_W;
+
+  const bossChunk = index > 0 && index % 8 === 7;
+  const conf = DIFFICULTIES[Game.difficulty];
+  const count = bossChunk ? 1 : Math.max(1, Math.round((1 + (index % 3)) * conf.spawn));
+  for (let i = 0; i < count; i++) {
+    let x = start + 260 + i * 175;
+    while (isGap(chunk, x) && x < start + CHUNK_W - 100) x += 45;
+    const type = bossChunk ? 'boss' : index < 2 ? 'beetle' : ['beetle', 'drone', 'guardian'][(index + i) % 3];
+    Game.enemies.push(makeEnemy(type, Math.min(x, start + CHUNK_W - 120), index));
+  }
+}
+
+function ensureWorld(targetX) {
+  while (Game.generatedTo < targetX) generateChunk();
+}
+
+function findSafeSpot(candidate) {
+  ensureWorld(candidate + 260);
+  for (let offset = 0; offset < 420; offset += 32) {
+    const x = candidate + offset;
+    const chunk = chunkAt(x);
+    const platform = chunk && chunk.platforms.find((item) => !item.move && x > item.x + 18 && x < item.x + item.w - 18);
+    if (platform && offset % 64 === 0) return { x, y: platform.y - 42 };
+    if (groundAt(x) !== null) return { x, y: GROUND_Y - 42 };
+  }
+  return { x: candidate, y: GROUND_Y - 130 };
+}
+
+function nextWord(initial) {
+  const bank = wordBank();
+  let item = bank[Math.floor(Math.random() * bank.length)];
+  if (bank.length > 1 && item.en === Game.lastWord) item = bank[(bank.indexOf(item) + 1) % bank.length];
+  Game.lastWord = item.en;
+  Game.currentWord = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
+  Game.pickups = [];
+  const start = Game.player.x + (initial ? 320 : 470);
+  [...Game.currentWord.en].forEach((letter, index) => {
+    const spot = findSafeSpot(start + index * 145);
+    Game.pickups.push({ ...spot, w: 30, h: 34, letter, index, taken: false });
+  });
+  showFeedback(initial ? '按顺序收集字母，前线会不断延伸' : '新单词已投放到前方');
+  updateHud();
 }
 
 function resetPlayer(x) {
   Object.assign(Game.player, {
-    x: x == null ? 70 : x, y: GROUND_Y - 46, vx: 0, vy: 0,
-    facing: 1, onGround: true, coyote: .1, inv: 1.1, fireCooldown: 0,
+    x: x == null ? 70 : x, y: GROUND_Y - 52, vx: 0, vy: 0,
+    facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0,
   });
 }
 
 function startGame() {
-  Game.state = 'playing';
-  Game.score = 0;
-  Game.wordsDone = 0;
-  Game.wordIndex = 0;
-  Game.hp = 3;
-  Game.camera = 0;
-  Game.checkpoint = 70;
-  Game.time = 0;
-  Game.feedback = '';
-  Game.feedbackTimer = 0;
-  Game.bossDown = false;
-  Game.bullets.length = 0;
-  Game.enemyBullets.length = 0;
-  Game.particles.length = 0;
+  Object.assign(Game, {
+    state: 'playing', score: 0, wordsDone: 0, hp: 3, distance: 0, maxX: 70,
+    camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, lastWord: '',
+    currentWord: null, generatedTo: 0, nextChunkIndex: 0,
+  });
+  for (const list of [Game.chunks, Game.pickups, Game.enemies, Game.bullets, Game.enemyBullets, Game.particles]) list.length = 0;
   resetInput();
   resetPlayer(70);
-  buildLevel();
+  ensureWorld(VIEW_W * 3);
+  nextWord(true);
   $('menu').classList.add('hidden');
   $('over').classList.add('hidden');
   $('paused').classList.add('hidden');
@@ -153,25 +231,25 @@ function backToMenu() {
   $('menu').classList.remove('hidden');
 }
 
-function finishGame(won) {
+function gameOver() {
   Game.state = 'over';
   resetInput();
   $('hud').classList.add('hidden');
   $('touch-controls').classList.add('hidden');
   $('over').classList.remove('hidden');
-  $('over-kicker').textContent = won ? '任务完成' : '行动结束';
-  $('over-title').textContent = won ? '前线已突破' : '再试一次';
+  $('over-kicker').textContent = '本次远征结束';
+  $('over-title').textContent = '再向前一点';
   const key = 'word-ranger-highscore-' + Game.difficulty;
   let high = 0;
   try {
     high = Number(localStorage.getItem(key) || 0);
     if (Game.score > high) { high = Game.score; localStorage.setItem(key, String(high)); }
-  } catch (e) { /* ignore */ }
+  } catch (e) { /* local storage may be unavailable */ }
   $('over-stats').innerHTML =
     '<div><span>本局得分</span><b>' + Game.score + '</b></div>' +
-    '<div><span>完成单词</span><b>' + Game.wordsDone + ' / 3</b></div>' +
+    '<div><span>完成单词</span><b>' + Game.wordsDone + '</b></div>' +
+    '<div><span>推进里程</span><b>' + Game.distance + ' m</b></div>' +
     '<div><span>最高纪录</span><b>' + high + '</b></div>';
-  if (won && window.ArcadeAudio) ArcadeAudio.play('confirm', .3);
 }
 
 function queueJump() {
@@ -182,31 +260,32 @@ function queueJump() {
 
 function shoot() {
   const player = Game.player;
-  if (player.fireCooldown > 0) return;
+  if (player.fireCooldown > 0 || Game.state !== 'playing') return;
   player.fireCooldown = .17;
-  Game.bullets.push({ x: player.x + (player.facing > 0 ? player.w : -12), y: player.y + 18, w: 12, h: 4, vx: 650 * player.facing });
-  burst(player.x + player.w / 2 + player.facing * 18, player.y + 20, '#f4d37a', 3);
-  if (window.ArcadeAudio) ArcadeAudio.play('laser', .16);
+  Game.bullets.push({ x: player.x + (player.facing > 0 ? player.w : -12), y: player.y + 23, w: 12, h: 5, vx: 660 * player.facing, vy: 0 });
+  burst(player.x + player.w / 2 + player.facing * 22, player.y + 24, '#f4d37a', 3);
+  if (window.ArcadeAudio) ArcadeAudio.play('laser', .14);
 }
 
 function hurt() {
   const player = Game.player;
   if (player.inv > 0 || Game.state !== 'playing') return;
   Game.hp--;
-  showFeedback('受到攻击，退回检查点');
-  burst(player.x + player.w / 2, player.y + player.h / 2, '#f08b63', 14);
-  updateHud();
+  burst(player.x + player.w / 2, Math.min(player.y + player.h / 2, GROUND_Y), '#ef835e', 16);
   if (Game.hp <= 0) {
-    finishGame(false);
+    gameOver();
     return;
   }
+  showFeedback('受到攻击，退回最近安全点');
+  Game.enemyBullets.length = 0;
   resetPlayer(Game.checkpoint);
-  Game.camera = clamp(Game.checkpoint - VIEW_W * .28, 0, WORLD_W - VIEW_W);
+  Game.camera = Math.max(0, Game.checkpoint - VIEW_W * .3);
+  updateHud();
 }
 
 function collectLetter(pickup) {
-  const word = Game.objectives[Game.wordIndex];
-  if (!word || pickup.segment !== Game.wordIndex || pickup.taken) return;
+  const word = Game.currentWord;
+  if (!word || pickup.taken) return;
   if (pickup.index !== word.progress) {
     showFeedback('先收集字母 ' + word.en[word.progress]);
     return;
@@ -217,11 +296,10 @@ function collectLetter(pickup) {
   burst(pickup.x + 15, pickup.y + 17, '#f4d37a', 10);
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2);
   if (word.progress === word.en.length) {
-    Game.score += 300;
+    Game.score += 300 + word.en.length * 20;
     Game.wordsDone++;
-    Game.wordIndex++;
-    Game.checkpoint = GATES[Game.wordIndex - 1] + 45;
-    showFeedback(Game.wordIndex < 3 ? '单词完成，闸门已开启' : '全部单词完成，击败关底守卫');
+    if (Game.wordsDone % 5 === 0 && Game.hp < 3) Game.hp++;
+    nextWord(false);
   } else {
     showFeedback('正确，下一个字母是 ' + word.en[word.progress]);
   }
@@ -229,108 +307,106 @@ function collectLetter(pickup) {
 }
 
 function showFeedback(text) {
-  Game.feedback = text;
   Game.feedbackTimer = 2.2;
   $('feedback').textContent = text;
 }
 
 function updateHud() {
   $('score').textContent = Game.score;
-  $('words').textContent = Game.wordsDone + '/3';
+  $('words').textContent = Game.wordsDone;
   $('lives').textContent = Game.hp;
-  const word = Game.objectives[Game.wordIndex];
+  $('distance').textContent = Game.distance + 'm';
+  $('biome').textContent = BIOMES[biomeIndexAt(Game.player.x)].name;
+  const word = Game.currentWord;
   if (word) {
     $('word-meaning').textContent = word.zh;
     $('word-progress').textContent = [...word.en].map((letter, index) => index < word.progress ? letter : '_').join(' ');
-    if (Game.feedbackTimer <= 0) $('feedback').textContent = '按顺序收集字母';
-  } else {
-    $('word-meaning').textContent = Game.bossDown ? '前往撤离点' : '关底守卫';
-    $('word-progress').textContent = Game.bossDown ? 'GOAL OPEN' : 'FINAL BATTLE';
-    if (Game.feedbackTimer <= 0) $('feedback').textContent = Game.bossDown ? '继续向右抵达信标' : '射击守卫弱点';
+    if (Game.feedbackTimer <= 0) $('feedback').textContent = '按顺序收集字母 · 射击清理道路';
   }
 }
 
-function update(dt) {
+function updatePlayer(dt) {
   const conf = DIFFICULTIES[Game.difficulty];
-  const p = Game.player;
-  Game.time += dt;
-  Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
-  if (Game.feedbackTimer === 0) updateHud();
-
+  const player = Game.player;
   input.jumpBuffer = Math.max(0, input.jumpBuffer - dt);
-  p.fireCooldown = Math.max(0, p.fireCooldown - dt);
-  p.inv = Math.max(0, p.inv - dt);
-  p.coyote = p.onGround ? .11 : Math.max(0, p.coyote - dt);
+  player.fireCooldown = Math.max(0, player.fireCooldown - dt);
+  player.inv = Math.max(0, player.inv - dt);
+  player.coyote = player.onGround ? .11 : Math.max(0, player.coyote - dt);
 
   const move = Number(input.right) - Number(input.left);
-  if (move) p.facing = move;
-  p.vx = approach(p.vx, move * conf.speed, (move ? 1500 : 2100) * dt);
-  if (input.jumpBuffer > 0 && p.coyote > 0) {
-    p.vy = -610;
-    p.onGround = false;
-    p.coyote = 0;
+  if (move) player.facing = move;
+  player.vx = approach(player.vx, move * conf.speed, (move ? 1500 : 2100) * dt);
+  if (input.jumpBuffer > 0 && player.coyote > 0) {
+    player.vy = -610;
+    player.onGround = false;
+    player.coyote = 0;
     input.jumpBuffer = 0;
     if (window.ArcadeAudio) ArcadeAudio.play('jump', .22);
   }
-  if (!input.jumpHeld && p.vy < -180) p.vy += 1050 * dt;
+  if (!input.jumpHeld && player.vy < -180) player.vy += 1050 * dt;
 
-  p.x += p.vx * dt;
-  const lockedGate = Game.wordIndex < GATES.length ? GATES[Game.wordIndex] : Infinity;
-  p.x = clamp(p.x, 0, Math.min(WORLD_W - p.w, lockedGate - p.w - 8));
+  player.x += player.vx * dt;
+  player.x = Math.max(Math.max(0, Game.camera - 130), player.x);
+  const previousBottom = player.y + player.h;
+  player.vy += 1450 * dt;
+  player.y += player.vy * dt;
+  player.onGround = false;
 
-  const previousBottom = p.y + p.h;
-  p.vy += 1450 * dt;
-  p.y += p.vy * dt;
-  p.onGround = false;
-  for (const [x, width, lift] of PLATFORM_DATA) {
-    const top = GROUND_Y - lift;
-    if (p.vy >= 0 && p.x + p.w > x && p.x < x + width && previousBottom <= top + 7 && p.y + p.h >= top) {
-      p.y = top - p.h;
-      p.vy = 0;
-      p.onGround = true;
+  for (const chunk of Game.chunks) {
+    if (chunk.start > player.x + player.w || chunk.start + CHUNK_W < player.x) continue;
+    for (const platform of chunk.platforms) {
+      const top = platformTop(platform);
+      if (player.vy >= 0 && player.x + player.w > platform.x && player.x < platform.x + platform.w && previousBottom <= top + 12 && player.y + player.h >= top) {
+        player.y = top - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      }
     }
   }
-  if (p.y + p.h >= GROUND_Y) {
-    p.y = GROUND_Y - p.h;
-    p.vy = 0;
-    p.onGround = true;
+  if (player.y + player.h >= GROUND_Y && groundAt(player.x + player.w / 2) !== null) {
+    player.y = GROUND_Y - player.h;
+    player.vy = 0;
+    player.onGround = true;
   }
-
+  if (player.y > VIEW_H + 90) hurt();
   if (input.fire) shoot();
 
   for (const pickup of Game.pickups) {
-    if (!pickup.taken && pickup.segment === Game.wordIndex && overlap(p, pickup)) collectLetter(pickup);
+    if (!pickup.taken && overlap(player, pickup)) collectLetter(pickup);
   }
-
-  updateEnemies(dt);
-  updateProjectiles(dt);
-  updateParticles(dt);
-
-  const targetCamera = clamp(p.x - VIEW_W * .3, 0, Math.max(0, WORLD_W - VIEW_W));
-  Game.camera += (targetCamera - Game.camera) * (1 - Math.exp(-9 * dt));
-
-  if (Game.bossDown && p.x + p.w >= GOAL_X) finishGame(true);
+  const needed = Game.pickups.find((pickup) => !pickup.taken && pickup.index === Game.currentWord.progress);
+  if (needed && needed.x < player.x - VIEW_W * .75) {
+    Object.assign(needed, findSafeSpot(player.x + 220));
+    showFeedback('漏掉的字母已移动到前方');
+  }
 }
 
 function updateEnemies(dt) {
   const conf = DIFFICULTIES[Game.difficulty];
-  const p = Game.player;
+  const player = Game.player;
   for (const enemy of Game.enemies) {
-    if (!enemyActive(enemy)) continue;
+    if (enemy.dead || enemy.x < Game.camera - 500 || enemy.x > Game.camera + VIEW_W + 650) continue;
     enemy.hit = Math.max(0, enemy.hit - dt);
     enemy.fire -= dt;
-    const range = enemy.boss ? 135 : 70;
     enemy.x += enemy.vx * dt;
-    if (enemy.x < enemy.home - range || enemy.x > enemy.home + range) enemy.vx *= -1;
-    const distance = p.x - enemy.x;
-    if (Math.abs(distance) < (enemy.boss ? 620 : 430) && enemy.fire <= 0) {
-      enemy.fire = conf.fireEvery * (enemy.boss ? .55 : 1) + Math.random() * .5;
-      Game.enemyBullets.push({
-        x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * .38, w: enemy.boss ? 12 : 9, h: 6,
-        vx: Math.sign(distance || -1) * (enemy.boss ? 280 : 215),
-      });
+    if (enemy.x < enemy.home - enemy.range || enemy.x > enemy.home + enemy.range) enemy.vx *= -1;
+    if (enemy.type !== 'drone' && groundAt(enemy.x + enemy.w / 2) === null) {
+      enemy.x -= enemy.vx * dt;
+      enemy.vx *= -1;
     }
-    if (overlap(p, enemy)) hurt();
+    if (enemy.type === 'drone') enemy.y = enemy.baseY + Math.sin(Game.time * 2.2 + enemy.phase) * 34;
+    const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
+    const dy = player.y + player.h / 2 - (enemy.y + enemy.h / 2);
+    const canFire = enemy.type !== 'beetle' && Math.abs(dx) < (enemy.type === 'boss' ? 650 : 470);
+    if (canFire && enemy.fire <= 0) {
+      enemy.fire = conf.fireEvery * (enemy.type === 'boss' ? .55 : 1) + Math.random() * .5;
+      const speed = enemy.type === 'boss' ? 290 : 225;
+      for (const angle of (enemy.type === 'boss' ? [-.18, 0, .18] : [0])) {
+        const base = Math.atan2(dy, dx) + angle;
+        Game.enemyBullets.push({ x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * .4, w: 9, h: 7, vx: Math.cos(base) * speed, vy: Math.sin(base) * speed });
+      }
+    }
+    if (overlap(player, enemy)) hurt();
   }
 }
 
@@ -340,33 +416,31 @@ function updateProjectiles(dt) {
     bullet.x += bullet.vx * dt;
     let hit = false;
     for (const enemy of Game.enemies) {
-      if (!enemyActive(enemy) || !overlap(bullet, enemy)) continue;
+      if (enemy.dead || !overlap(bullet, enemy)) continue;
       enemy.hp--;
-      enemy.hit = .1;
+      enemy.hit = .12;
       hit = true;
       burst(bullet.x, bullet.y, '#f4d37a', 5);
       if (enemy.hp <= 0) {
         enemy.dead = true;
-        Game.score += enemy.boss ? 1200 : 120;
-        burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#e9784f', enemy.boss ? 36 : 16);
-        if (enemy.boss) {
-          Game.bossDown = true;
-          showFeedback('守卫已击败，前往右侧撤离信标');
-        }
+        Game.score += enemy.type === 'boss' ? 1500 : enemy.type === 'guardian' ? 260 : 130;
+        burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#e9784f', enemy.type === 'boss' ? 42 : 18);
+        if (enemy.type === 'boss') showFeedback('区域守卫已击败，远征继续');
         updateHud();
       }
       break;
     }
-    if (hit || bullet.x < Game.camera - 60 || bullet.x > Game.camera + VIEW_W + 60) Game.bullets.splice(i, 1);
+    if (hit || bullet.x < Game.camera - 80 || bullet.x > Game.camera + VIEW_W + 100) Game.bullets.splice(i, 1);
   }
 
   for (let i = Game.enemyBullets.length - 1; i >= 0; i--) {
     const bullet = Game.enemyBullets[i];
     bullet.x += bullet.vx * dt;
+    bullet.y += bullet.vy * dt;
     if (overlap(bullet, Game.player)) {
       Game.enemyBullets.splice(i, 1);
       hurt();
-    } else if (bullet.x < Game.camera - 80 || bullet.x > Game.camera + VIEW_W + 80) {
+    } else if (bullet.x < Game.camera - 100 || bullet.x > Game.camera + VIEW_W + 100 || bullet.y < -40 || bullet.y > VIEW_H + 40) {
       Game.enemyBullets.splice(i, 1);
     }
   }
@@ -374,11 +448,11 @@ function updateProjectiles(dt) {
 
 function burst(x, y, color, count) {
   for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
+    const angle = Math.random() * TAU;
     const speed = 45 + Math.random() * 150;
     Game.particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: .25 + Math.random() * .35, color });
   }
-  if (Game.particles.length > 140) Game.particles.splice(0, Game.particles.length - 140);
+  if (Game.particles.length > 160) Game.particles.splice(0, Game.particles.length - 160);
 }
 
 function updateParticles(dt) {
@@ -392,52 +466,229 @@ function updateParticles(dt) {
   }
 }
 
+function cullWorld() {
+  const cutoff = Game.camera - CHUNK_W * 1.5;
+  Game.chunks = Game.chunks.filter((chunk) => chunk.start + CHUNK_W > cutoff);
+  Game.enemies = Game.enemies.filter((enemy) => !enemy.dead && enemy.x + enemy.w > cutoff);
+}
+
+function update(dt) {
+  Game.time += dt;
+  Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
+  updatePlayer(dt);
+  updateEnemies(dt);
+  updateProjectiles(dt);
+  updateParticles(dt);
+  Game.maxX = Math.max(Game.maxX, Game.player.x);
+  Game.distance = Math.floor(Game.maxX / 10);
+  ensureWorld(Game.player.x + VIEW_W * 2.4);
+  const targetCamera = Math.max(0, Game.player.x - VIEW_W * .3);
+  Game.camera += (targetCamera - Game.camera) * (1 - Math.exp(-9 * dt));
+  if (Game.player.onGround && Game.player.x > Game.checkpoint + 480 && groundAt(Game.player.x + Game.player.w / 2) !== null) Game.checkpoint = Game.player.x;
+  if (Game.feedbackTimer === 0) updateHud();
+  if (Math.floor(Game.time * 2) !== Math.floor((Game.time - dt) * 2)) cullWorld();
+}
+
+function drawBiomeLayer(index, alpha, progress) {
+  if (!ASSETS.biomes.complete || !ASSETS.biomes.naturalWidth) {
+    ctx.fillStyle = ['#6f9f8e', '#b68352', '#3f7380', '#263e58'][index];
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    return;
+  }
+  const sourceH = ASSETS.biomes.naturalHeight / 4;
+  const sourceW = Math.min(ASSETS.biomes.naturalWidth, sourceH * VIEW_W / VIEW_H);
+  const sourceX = (ASSETS.biomes.naturalWidth - sourceW) * clamp(progress, 0, 1);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(ASSETS.biomes, sourceX, sourceH * index, sourceW, sourceH, 0, 0, VIEW_W, VIEW_H);
+  ctx.globalAlpha = 1;
+}
+
+function drawWeather(index) {
+  const type = BIOMES[index].weather;
+  ctx.save();
+  if (type === 'rain') {
+    ctx.strokeStyle = 'rgba(184,224,232,.32)';
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i < 46; i++) {
+      const x = (i * 83 + Game.time * 310) % (VIEW_W + 80) - 40;
+      const y = (i * 47 + Game.time * 430) % VIEW_H;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 13, y + 28); ctx.stroke();
+    }
+  } else {
+    const color = type === 'dust' ? 'rgba(239,193,112,.25)' : type === 'glow' ? 'rgba(244,211,122,.5)' : 'rgba(236,224,151,.32)';
+    ctx.fillStyle = color;
+    for (let i = 0; i < 28; i++) {
+      const x = (i * 97 + Game.time * (type === 'dust' ? 54 : 16)) % VIEW_W;
+      const y = 70 + (i * 61 + Math.sin(Game.time + i) * 35) % 350;
+      const size = type === 'glow' ? 2 + (i % 3) : 1 + (i % 2);
+      ctx.beginPath(); ctx.arc(x, y, size, 0, TAU); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function drawBackground() {
-  const sky = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  sky.addColorStop(0, '#78ad9f');
-  sky.addColorStop(.62, '#c5c89e');
-  sky.addColorStop(1, '#d4b66f');
-  ctx.fillStyle = sky;
+  const span = CHUNK_W * 3;
+  const group = Math.floor(Game.camera / span);
+  const index = group % BIOMES.length;
+  const local = (Game.camera % span) / span;
+  drawBiomeLayer(index, 1, local);
+  if (local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
+  const shade = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+  shade.addColorStop(0, 'rgba(9,24,22,.04)');
+  shade.addColorStop(.62, 'rgba(9,24,22,.12)');
+  shade.addColorStop(1, 'rgba(7,18,17,.46)');
+  ctx.fillStyle = shade;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  drawWeather(index);
+}
 
-  ctx.fillStyle = 'rgba(255,238,178,.72)';
-  ctx.beginPath(); ctx.arc(VIEW_W * .78, 86, 36, 0, Math.PI * 2); ctx.fill();
+function drawDecor(chunk) {
+  ctx.fillStyle = BIOMES[chunk.biome].ground;
+  for (const item of chunk.decor) {
+    if (chunk.biome === 0) {
+      ctx.globalAlpha = .72;
+      ctx.fillRect(item.x, GROUND_Y - 27 * item.size, 4, 27 * item.size);
+      ctx.beginPath(); ctx.ellipse(item.x - 7, GROUND_Y - 21 * item.size, 10 * item.size, 4, -.6, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(item.x + 8, GROUND_Y - 14 * item.size, 11 * item.size, 4, .5, 0, TAU); ctx.fill();
+    } else if (chunk.biome === 1) {
+      ctx.globalAlpha = .58;
+      ctx.beginPath(); ctx.moveTo(item.x - 10, GROUND_Y); ctx.lineTo(item.x, GROUND_Y - 24 * item.size); ctx.lineTo(item.x + 13, GROUND_Y); ctx.fill();
+    } else if (chunk.biome === 2) {
+      ctx.globalAlpha = .6;
+      ctx.fillRect(item.x - 8, GROUND_Y - 35 * item.size, 16, 35 * item.size);
+      ctx.fillRect(item.x - 13, GROUND_Y - 38 * item.size, 26, 5);
+    } else {
+      ctx.globalAlpha = .78;
+      ctx.fillStyle = '#d4a64e';
+      ctx.beginPath(); ctx.moveTo(item.x - 10, GROUND_Y); ctx.lineTo(item.x - 2, GROUND_Y - 28 * item.size); ctx.lineTo(item.x + 4, GROUND_Y); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(item.x + 1, GROUND_Y); ctx.lineTo(item.x + 10, GROUND_Y - 19 * item.size); ctx.lineTo(item.x + 15, GROUND_Y); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
 
-  drawHills(350, 55, '#547f70', .12);
-  drawHills(408, 72, '#315e50', .24);
-
-  ctx.fillStyle = '#21483c';
-  const start = Math.floor((Game.camera * .38) / 95) * 95 - Game.camera * .38;
-  for (let x = start - 100; x < VIEW_W + 100; x += 95) {
-    ctx.fillRect(x + 34, 350, 10, 128);
-    ctx.beginPath(); ctx.moveTo(x, 382); ctx.lineTo(x + 39, 290); ctx.lineTo(x + 78, 382); ctx.closePath(); ctx.fill();
+function drawGround(chunk) {
+  const biome = BIOMES[chunk.biome];
+  const gaps = chunk.gaps.slice().sort((a, b) => a.x - b.x);
+  let x = chunk.start;
+  for (const gap of gaps.concat({ x: chunk.start + CHUNK_W, w: 0 })) {
+    const width = gap.x - x;
+    if (width > 0) {
+      ctx.fillStyle = biome.ground;
+      ctx.fillRect(x, GROUND_Y, width, VIEW_H - GROUND_Y);
+      ctx.fillStyle = biome.edge;
+      ctx.fillRect(x, GROUND_Y, width, 7);
+      ctx.fillStyle = 'rgba(255,255,255,.08)';
+      for (let mark = x + 18; mark < x + width; mark += 58) ctx.fillRect(mark, GROUND_Y + 24, 30, 3);
+    }
+    x = gap.x + gap.w;
   }
 }
 
-function drawHills(baseY, height, color, parallax) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(0, VIEW_H);
-  for (let x = 0; x <= VIEW_W + 40; x += 40) {
-    const worldX = x + Game.camera * parallax;
-    const y = baseY - (Math.sin(worldX / 170) * .55 + Math.sin(worldX / 73) * .25 + .45) * height;
-    ctx.lineTo(x, y);
+function drawPlatforms(chunk) {
+  const biome = BIOMES[chunk.biome];
+  for (const platform of chunk.platforms) {
+    const y = platformTop(platform);
+    ctx.fillStyle = biome.ground;
+    ctx.beginPath(); ctx.roundRect(platform.x, y, platform.w, 18, 5); ctx.fill();
+    ctx.fillStyle = biome.edge;
+    ctx.fillRect(platform.x + 3, y, platform.w - 6, 5);
+    ctx.fillStyle = 'rgba(8,20,18,.36)';
+    for (let x = platform.x + 15; x < platform.x + platform.w; x += 32) ctx.fillRect(x, y + 8, 4, 8);
   }
-  ctx.lineTo(VIEW_W, VIEW_H); ctx.closePath(); ctx.fill();
+}
+
+function drawPickups() {
+  for (const pickup of Game.pickups) {
+    if (pickup.taken || pickup.x < Game.camera - 80 || pickup.x > Game.camera + VIEW_W + 80) continue;
+    const pulse = 1 + Math.sin(Game.time * 5 + pickup.index) * .06;
+    ctx.save();
+    ctx.translate(pickup.x + 15, pickup.y + 17);
+    ctx.scale(pulse, pulse);
+    ctx.shadowColor = 'rgba(244,211,122,.7)'; ctx.shadowBlur = 12;
+    ctx.fillStyle = '#f4d37a';
+    ctx.strokeStyle = '#fff2b8'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(-15, -17, 30, 34, 8); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#17372e';
+    ctx.font = '900 19px ui-monospace, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(pickup.letter, 0, 1);
+    ctx.restore();
+  }
+}
+
+function drawAtlasFrame(image, row, column, x, y, width, height, flip) {
+  if (!image.complete || !image.naturalWidth) return false;
+  const sourceW = image.naturalWidth / 4;
+  const sourceH = image.naturalHeight / 4;
+  ctx.save();
+  ctx.translate(x + width / 2, y);
+  ctx.scale(flip ? -1 : 1, 1);
+  ctx.drawImage(image, column * sourceW, row * sourceH, sourceW, sourceH, -width / 2, 0, width, height);
+  ctx.restore();
+  return true;
+}
+
+function drawEnemy(enemy) {
+  if (enemy.dead || enemy.x < Game.camera - 140 || enemy.x > Game.camera + VIEW_W + 140) return;
+  const spec = {
+    beetle: { row: 0, w: 68, h: 58, ox: -13, oy: -20 },
+    drone: { row: 1, w: 72, h: 72, ox: -15, oy: -16 },
+    guardian: { row: 2, w: 88, h: 86, ox: -17, oy: -20 },
+    boss: { row: 3, w: 122, h: 118, ox: -22, oy: -24 },
+  }[enemy.type];
+  const frame = Math.floor(Game.time * (enemy.type === 'boss' ? 4 : 7) + enemy.phase) % 4;
+  ctx.save();
+  if (enemy.hit > 0) ctx.globalAlpha = .5;
+  if (!drawAtlasFrame(ASSETS.enemies, spec.row, frame, enemy.x + spec.ox, enemy.y + spec.oy, spec.w, spec.h, enemy.vx > 0)) {
+    ctx.fillStyle = enemy.type === 'boss' ? '#6c4932' : '#365e52';
+    ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
+  }
+  ctx.restore();
+  if (enemy.type === 'boss' || enemy.type === 'guardian') {
+    ctx.fillStyle = 'rgba(11,28,24,.72)'; ctx.fillRect(enemy.x, enemy.y - 10, enemy.w, 5);
+    ctx.fillStyle = '#f4d37a'; ctx.fillRect(enemy.x, enemy.y - 10, enemy.w * enemy.hp / enemy.maxHp, 5);
+  }
+}
+
+function drawBullet(bullet, color) {
+  ctx.save();
+  ctx.shadowColor = color; ctx.shadowBlur = 8;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(bullet.x, bullet.y, bullet.w, bullet.h, 3); ctx.fill();
+  ctx.restore();
+}
+
+function drawPlayer() {
+  const player = Game.player;
+  if (player.inv > 0 && Math.floor(Game.time * 14) % 2) return;
+  let row = 0;
+  let column = Math.floor(Game.time * 3) % 4;
+  if (!player.onGround) {
+    row = 2; column = player.vy < 0 ? 0 : 1;
+  } else if (player.fireCooldown > .08) {
+    row = 3; column = Math.abs(player.vx) > 30 ? 2 + Math.floor(Game.time * 10) % 2 : Math.floor(Game.time * 8) % 2;
+  } else if (Math.abs(player.vx) > 30) {
+    row = 1; column = Math.floor(Game.time * 10) % 4;
+  }
+  if (!drawAtlasFrame(ASSETS.hero, row, column, player.x - 24, player.y - 27, 80, 82, player.facing < 0)) {
+    ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
+  }
 }
 
 function render() {
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
   drawBackground();
-
   ctx.save();
   ctx.translate(-Game.camera, 0);
-  drawGround();
-  drawPlatforms();
-  drawGates();
+  for (const chunk of Game.chunks) {
+    if (chunk.start > Game.camera + VIEW_W + CHUNK_W || chunk.start + CHUNK_W < Game.camera - CHUNK_W) continue;
+    drawDecor(chunk); drawGround(chunk); drawPlatforms(chunk);
+  }
   drawPickups();
   for (const enemy of Game.enemies) drawEnemy(enemy);
-  drawGoal();
   for (const bullet of Game.bullets) drawBullet(bullet, '#ffe49a');
   for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
   drawPlayer();
@@ -450,126 +701,6 @@ function render() {
   ctx.restore();
 }
 
-function drawGround() {
-  ctx.fillStyle = '#173d31';
-  ctx.fillRect(0, GROUND_Y, WORLD_W, VIEW_H - GROUND_Y);
-  ctx.fillStyle = '#d3a54e';
-  ctx.fillRect(0, GROUND_Y, WORLD_W, 7);
-  ctx.fillStyle = 'rgba(244,211,122,.15)';
-  for (let x = 0; x < WORLD_W; x += 54) ctx.fillRect(x, GROUND_Y + 22, 31, 4);
-}
-
-function drawPlatforms() {
-  for (const [x, width, lift] of PLATFORM_DATA) {
-    const y = GROUND_Y - lift;
-    ctx.fillStyle = '#294f41';
-    ctx.fillRect(x, y, width, 17);
-    ctx.fillStyle = '#d3a54e';
-    ctx.fillRect(x, y, width, 5);
-    ctx.fillStyle = '#1b382f';
-    for (let post = x + 16; post < x + width; post += 44) ctx.fillRect(post, y + 17, 7, lift - 17);
-  }
-}
-
-function drawGates() {
-  GATES.forEach((x, index) => {
-    const open = Game.wordIndex > index;
-    ctx.fillStyle = '#17372e';
-    ctx.fillRect(x - 11, GROUND_Y - 124, 22, 124);
-    ctx.fillStyle = '#d3a54e';
-    ctx.fillRect(x - 16, GROUND_Y - 128, 32, 8);
-    if (!open) {
-      ctx.fillStyle = 'rgba(25,58,48,.92)';
-      for (let y = GROUND_Y - 114; y < GROUND_Y - 10; y += 18) ctx.fillRect(x - 42, y, 84, 7);
-    }
-    ctx.fillStyle = open ? '#b9d9c7' : '#f4d37a';
-    ctx.font = '700 11px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText(open ? 'OPEN' : 'WORD LOCK', x, GROUND_Y - 140);
-  });
-}
-
-function drawPickups() {
-  for (const pickup of Game.pickups) {
-    if (pickup.taken || pickup.segment !== Game.wordIndex) continue;
-    const pulse = 1 + Math.sin(Game.time * 5 + pickup.x) * .06;
-    ctx.save();
-    ctx.translate(pickup.x + pickup.w / 2, pickup.y + pickup.h / 2);
-    ctx.scale(pulse, pulse);
-    ctx.fillStyle = '#f4d37a';
-    ctx.strokeStyle = '#fff0b0';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(-15, -17, 30, 34, 7); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#17372e';
-    ctx.font = '900 19px ui-monospace, monospace';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(pickup.letter, 0, 1);
-    ctx.restore();
-  }
-}
-
-function drawEnemy(enemy) {
-  if (!enemyActive(enemy)) return;
-  ctx.save();
-  if (enemy.hit > 0) ctx.globalAlpha = .45;
-  ctx.translate(enemy.x, enemy.y);
-  ctx.fillStyle = enemy.boss ? '#623b2d' : '#365e52';
-  ctx.fillRect(3, 8, enemy.w - 6, enemy.h - 8);
-  ctx.fillStyle = enemy.boss ? '#e9784f' : '#8fb8a5';
-  ctx.fillRect(0, 0, enemy.w, enemy.boss ? 22 : 15);
-  ctx.fillStyle = '#f4d37a';
-  ctx.fillRect(enemy.w * .2, enemy.boss ? 7 : 5, 5, 5);
-  ctx.fillRect(enemy.w * .68, enemy.boss ? 7 : 5, 5, 5);
-  ctx.fillStyle = '#17372e';
-  ctx.fillRect(5, enemy.h - 8, 8, 8);
-  ctx.fillRect(enemy.w - 13, enemy.h - 8, 8, 8);
-  if (enemy.boss) {
-    ctx.fillStyle = '#201f1a'; ctx.fillRect(-7, 30, 12, 8); ctx.fillRect(enemy.w - 5, 30, 12, 8);
-    ctx.fillStyle = 'rgba(15,35,29,.65)'; ctx.fillRect(0, -12, enemy.w, 6);
-    ctx.fillStyle = '#f4d37a'; ctx.fillRect(0, -12, enemy.w * enemy.hp / enemy.maxHp, 6);
-  }
-  ctx.restore();
-}
-
-function drawGoal() {
-  ctx.fillStyle = '#17372e';
-  ctx.fillRect(GOAL_X, GROUND_Y - 132, 10, 132);
-  ctx.fillStyle = Game.bossDown ? '#f4d37a' : '#61756a';
-  ctx.beginPath(); ctx.moveTo(GOAL_X + 10, GROUND_Y - 128); ctx.lineTo(GOAL_X + 74, GROUND_Y - 105); ctx.lineTo(GOAL_X + 10, GROUND_Y - 82); ctx.closePath(); ctx.fill();
-  if (Game.bossDown) {
-    ctx.strokeStyle = 'rgba(244,211,122,.55)'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(GOAL_X + 8, GROUND_Y - 128, 22 + Math.sin(Game.time * 5) * 4, 0, Math.PI * 2); ctx.stroke();
-  }
-}
-
-function drawBullet(bullet, color) {
-  ctx.fillStyle = color;
-  ctx.fillRect(bullet.x, bullet.y, bullet.w, bullet.h);
-}
-
-function drawPlayer() {
-  const p = Game.player;
-  if (p.inv > 0 && Math.floor(Game.time * 14) % 2) return;
-  const stride = p.onGround && Math.abs(p.vx) > 20 ? Math.sin(Game.time * 15) * 5 : 0;
-  ctx.save();
-  ctx.translate(p.x + p.w / 2, p.y);
-  ctx.scale(p.facing, 1);
-  ctx.fillStyle = '#163d33';
-  ctx.fillRect(-10, 22, 20, 20);
-  ctx.fillStyle = '#d18a32';
-  ctx.fillRect(-12, 3, 24, 20);
-  ctx.fillStyle = '#f4d37a';
-  ctx.fillRect(-8, 8, 16, 8);
-  ctx.fillStyle = '#17372e';
-  ctx.fillRect(1, 10, 4, 4);
-  ctx.fillStyle = '#274f41';
-  ctx.fillRect(7, 25, 20, 6);
-  ctx.fillStyle = '#0f2a22';
-  ctx.fillRect(-10, 40, 7, 6 + stride);
-  ctx.fillRect(3, 40, 7, 6 - stride);
-  ctx.restore();
-}
-
 function resize() {
   const width = Math.max(1, wrap.clientWidth);
   const height = Math.max(1, wrap.clientHeight);
@@ -577,7 +708,6 @@ function resize() {
   VIEW_W = VIEW_H * width / height;
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
-  Game.camera = clamp(Game.camera, 0, Math.max(0, WORLD_W - VIEW_W));
 }
 
 function setMuteButton() {
@@ -609,7 +739,6 @@ bindHold('left-btn', 'left');
 bindHold('right-btn', 'right');
 bindHold('fire-btn', 'fire');
 $('fire-btn').addEventListener('pointerdown', () => { if (Game.state === 'playing') shoot(); });
-
 $('jump-btn').addEventListener('pointerdown', (event) => {
   event.preventDefault();
   event.currentTarget.setPointerCapture(event.pointerId);
@@ -682,15 +811,21 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
     try {
       Game.difficulty = 'easy';
       startGame();
+      if (Game.generatedTo < VIEW_W * 3) throw new Error('world did not generate ahead');
       const startX = Game.player.x;
       input.right = true;
       for (let i = 0; i < 40; i++) update(1 / 60);
       input.right = false;
       if (!(Game.player.x > startX)) throw new Error('player did not move');
-      const firstWord = Game.objectives[0];
-      Game.pickups.filter((pickup) => pickup.segment === 0).sort((a, b) => a.index - b.index).forEach(collectLetter);
-      if (Game.wordIndex !== 1 || firstWord.progress !== firstWord.en.length) throw new Error('word gate did not open');
-      if (![Game.player.x, Game.player.y, Game.camera].every(Number.isFinite)) throw new Error('non-finite game state');
+      const firstWord = Game.currentWord;
+      Game.pickups.slice().sort((a, b) => a.index - b.index).forEach(collectLetter);
+      if (Game.wordsDone !== 1 || Game.currentWord === firstWord) throw new Error('word loop did not continue');
+      ensureWorld(CHUNK_W * 13);
+      if (new Set(Game.chunks.map((chunk) => chunk.biome)).size !== 4) throw new Error('biome rotation missing');
+      Game.camera = CHUNK_W * 10;
+      cullWorld();
+      if (Game.chunks.length > 6) throw new Error('old chunks were not reclaimed');
+      if (![Game.player.x, Game.player.y, Game.camera, Game.generatedTo].every(Number.isFinite)) throw new Error('non-finite game state');
       document.title = 'SELFTEST PASS · WORD RANGER';
       document.documentElement.dataset.selftest = 'pass';
     } catch (error) {

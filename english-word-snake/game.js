@@ -277,7 +277,7 @@ function pickWord() {
         options, index: 0, done: false, revealUntil: 0,
       };
     }
-    const bank = VOCAB[diff];
+    const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[diff]) || VOCAB[diff];
     const item = bank[randInt(bank.length)];
     const others = pickDistractors(bank, item, 'en', 3);
     const options = shuffle([{ text: item.en, correct: true }].concat(others.map((o) => ({ text: o.en, correct: false }))));
@@ -287,7 +287,7 @@ function pickWord() {
     };
   }
   // 拼单词：长度 3~9 的单词
-  const bank = VOCAB[diff].filter((w) => w.en.length >= 3 && w.en.length <= 9);
+  const bank = ((window.PROJECT_VOCAB && PROJECT_VOCAB[diff]) || VOCAB[diff]).filter((w) => w.en.length >= 3 && w.en.length <= 9);
   const item = bank[randInt(bank.length)];
   return {
     mode: 'spell', en: item.en, zh: item.zh,

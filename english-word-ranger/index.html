@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#10251f">
-<title>单词突击队 · WORD RANGER v20260819a</title>
-<link rel="stylesheet" href="style.css?v=20260819a">
+<title>单词突击队 · WORD RANGER v20260820a</title>
+<link rel="stylesheet" href="style.css?v=20260820a">
 </head>
 <body>
 <main id="game-wrap" aria-label="单词突击队游戏区">
@@ -20,8 +20,10 @@
     </div>
     <div id="status">
       <span>得分 <b id="score">0</b></span>
-      <span>单词 <b id="words">0/3</b></span>
+      <span>单词 <b id="words">0</b></span>
       <span>生命 <b id="lives">3</b></span>
+      <span class="secondary-stat">里程 <b id="distance">0m</b></span>
+      <span class="secondary-stat">区域 <b id="biome">曙光森林</b></span>
     </div>
     <div id="hud-actions">
       <button id="mute-btn" type="button" aria-label="切换声音">声音</button>
@@ -42,7 +44,7 @@
 
   <section id="menu" class="overlay">
     <img src="assets/logo.svg" alt="单词突击队 WORD RANGER">
-    <p class="lead">跑过三段前线，按顺序收集字母，击败关底守卫</p>
+    <p class="lead">无限横版远征：场景、地形、天气与敌人会持续变化</p>
     <div id="difficulty" aria-label="选择难度">
       <button class="difficulty selected" data-difficulty="easy" type="button">初级<small>基础词汇 · 敌人较慢</small></button>
       <button class="difficulty" data-difficulty="medium" type="button">中级<small>核心词汇 · 标准火力</small></button>
@@ -51,7 +53,7 @@
     <button class="primary" id="start-btn" type="button">开始行动</button>
     <div class="howto">
       <p>电脑：A/D 或方向键移动，W/↑/空格跳跃，J/K/X 射击，P 暂停，M 静音。</p>
-      <p>手机：左手按住“左/右”移动，右手独立控制“跳”和“射击”。字母必须按从左到右的顺序收集。</p>
+      <p>手机：左手按住“左/右”移动，右手独立控制“跳”和“射击”。按顺序收集字母；每八段会遇到区域守卫，击败后继续前进。</p>
     </div>
     <a href="../" class="hub-link">返回游戏合集</a>
   </section>
@@ -74,6 +76,7 @@
 
 <script src="../shared/audio.js?v=20260819a"></script>
 <script src="../english-thunder-fighter/data.js?v=20260814c"></script>
-<script src="game.js?v=20260819a"></script>
+<script src="../shared/vocabulary.js?v=20260820a"></script>
+<script src="game.js?v=20260820c"></script>
 </body>
 </html>

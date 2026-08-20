@@ -134,8 +134,9 @@ const SFX = {
 
 /* ---------------- 题库抽取 ---------------- */
 function pickVocab() {
-  let pool = VOCAB[Game.difficulty].filter((v) => v.en.length >= 3 && v.en.length <= 9 && v.en !== Game.lastWord);
-  if (!pool.length) pool = VOCAB[Game.difficulty].filter((v) => v.en.length >= 3 && v.en.length <= 9);
+  const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
+  let pool = bank.filter((v) => v.en.length >= 3 && v.en.length <= 9 && v.en !== Game.lastWord);
+  if (!pool.length) pool = bank.filter((v) => v.en.length >= 3 && v.en.length <= 9);
   const v = pick(pool);
   Game.lastWord = v.en;
   return v;
@@ -154,7 +155,8 @@ function newQuestion() {
     q = { prompt: g.prompt, optA: g.answer, optB: pick(g.options.filter((o) => o !== g.answer)), correct: 'A' };
   } else {
     const v = pickVocab();
-    const others = VOCAB[Game.difficulty].map((x) => x.en).filter((e) => e !== v.en);
+    const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
+    const others = bank.map((x) => x.en).filter((e) => e !== v.en);
     const dist = pick(shuffle(others).slice(0, 3));
     q = { prompt: '「' + v.zh + '」的英文单词是？', optA: v.en, optB: dist, correct: 'A' };
   }
@@ -848,9 +850,10 @@ if (/[?&]selftest/.test(location.search)) {
 
     // 1. 题库校验
     for (const diff of ['easy', 'medium', 'hard']) {
-      if (!Array.isArray(VOCAB[diff]) || !VOCAB[diff].length) fail('VOCAB.' + diff + ' 为空');
+      const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[diff]) || VOCAB[diff];
+      if (!Array.isArray(bank) || !bank.length) fail('VOCAB.' + diff + ' 为空');
       if (!Array.isArray(GRAMMAR[diff]) || !GRAMMAR[diff].length) fail('GRAMMAR.' + diff + ' 为空');
-      for (const v of VOCAB[diff]) {
+      for (const v of bank) {
         if (!v.en || !v.zh || !/^[a-zA-Z]{2,16}$/.test(v.en)) fail('词汇格式错误 ' + JSON.stringify(v));
       }
       for (const g of GRAMMAR[diff]) {
