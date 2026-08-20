@@ -1,0 +1,109 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; }
+body {
+  display: grid; place-items: center; overflow: hidden;
+  background: #0c1714; color: #f5f0dc;
+  font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+}
+button, a { font: inherit; }
+button { color: inherit; }
+.hidden { display: none !important; }
+
+#game-wrap {
+  position: relative; width: min(100vw, calc(100dvh * 1.7778)); aspect-ratio: 16 / 9;
+  overflow: hidden; background: #1b332b; border: 1px solid rgba(228, 190, 97, .36);
+  box-shadow: 0 24px 80px rgba(3, 12, 10, .48);
+}
+canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+
+#hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+#mission {
+  position: absolute; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  width: min(430px, calc(100% - 270px)); min-width: 235px;
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center;
+  padding: 9px 14px; border: 1px solid rgba(232, 197, 110, .48); border-radius: 12px;
+  background: rgba(12, 31, 26, .9); box-shadow: inset 0 1px rgba(255, 255, 255, .08), 0 9px 28px rgba(3, 14, 11, .24);
+}
+.eyebrow { color: #e8c56e; font-size: 11px; font-weight: 900; letter-spacing: .14em; }
+#word-meaning { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#word-progress { grid-column: 1 / -1; color: #f0cf78; font: 900 16px/1.2 ui-monospace, Menlo, monospace; letter-spacing: .16em; }
+#feedback { grid-column: 1 / -1; color: #bed0c8; font-size: 11px; }
+#status { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; display: flex; flex-wrap: wrap; gap: 6px; max-width: 270px; }
+#status span, #hud-actions button {
+  padding: 7px 10px; border: 1px solid rgba(245, 240, 220, .24); border-radius: 8px;
+  background: rgba(12, 31, 26, .86); font-size: 12px;
+}
+#status b { color: #e8c56e; }
+#hud-actions { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 12px; display: flex; gap: 6px; pointer-events: auto; }
+#hud-actions button { cursor: pointer; min-width: 50px; }
+
+.overlay {
+  position: absolute; inset: 0; z-index: 10; display: grid; grid-template-columns: 1.1fr .9fr;
+  align-items: center; gap: clamp(24px, 6vw, 86px); padding: clamp(28px, 7vw, 84px);
+  background: rgba(10, 26, 21, .94);
+}
+.menu-copy { align-self: center; max-width: 480px; }
+.menu-copy h1 { margin-top: 8px; font-size: clamp(46px, 8vw, 92px); line-height: .94; letter-spacing: -.06em; }
+.english-title { margin-top: 8px; color: #e8c56e; font: 800 clamp(15px, 2vw, 23px)/1 ui-monospace, Menlo, monospace; letter-spacing: .28em; }
+.lead { max-width: 38ch; margin-top: 24px; color: #c3d2ca; font-size: 15px; line-height: 1.75; }
+.hub-link { display: inline-block; margin-top: 20px; color: #e8c56e; font-size: 12px; text-decoration: none; border-bottom: 1px solid currentColor; }
+.menu-actions { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+#difficulty { display: grid; gap: 8px; }
+.difficulty, .primary, .secondary {
+  cursor: pointer; border-radius: 11px; transition: transform .18s cubic-bezier(.16, 1, .3, 1), border-color .18s, background .18s;
+}
+.difficulty {
+  width: 100%; padding: 12px 15px; text-align: left; border: 1px solid rgba(245, 240, 220, .24);
+  background: rgba(7, 22, 18, .7); font-weight: 900;
+}
+.difficulty small { display: block; margin-top: 3px; color: #aabdb4; font-size: 10px; font-weight: 600; }
+.difficulty.selected { border-color: #e8c56e; background: rgba(104, 80, 31, .46); }
+.difficulty:active, .primary:active, .secondary:active, #touch-controls button:active { transform: scale(.98); }
+.primary, .secondary { min-height: 44px; padding: 11px 22px; font-weight: 900; letter-spacing: .08em; }
+.primary { border: 1px solid #e8c56e; background: #d29a43; color: #13271f; }
+.secondary { border: 1px solid rgba(245, 240, 220, .3); background: rgba(11, 31, 25, .82); }
+.howto { padding: 11px 14px; border-left: 3px solid #e8c56e; background: rgba(5, 19, 15, .5); color: #bdcec5; font-size: 11px; line-height: 1.65; }
+.compact { display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.compact h2 { font-size: clamp(32px, 6vw, 60px); letter-spacing: -.04em; }
+#over-stats { display: grid; gap: 6px; width: min(340px, 84vw); margin: 8px 0; }
+#over-stats div { display: flex; justify-content: space-between; padding: 8px 2px; border-bottom: 1px solid rgba(245, 240, 220, .17); }
+#over-stats b { color: #e8c56e; }
+
+#touch-controls { display: none; position: absolute; z-index: 5; right: max(14px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); gap: 8px; pointer-events: none; }
+#touch-controls button {
+  width: 58px; height: 58px; pointer-events: auto; touch-action: none; cursor: pointer;
+  border: 1px solid rgba(232, 197, 110, .64); border-radius: 50%; background: rgba(13, 37, 30, .78);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .12), 0 8px 22px rgba(3, 14, 10, .28); font-weight: 900;
+}
+
+@media (pointer: coarse), (max-width: 800px) {
+  #touch-controls:not(.hidden) { display: flex; }
+}
+
+@media (max-width: 680px) and (orientation: portrait) {
+  #game-wrap { width: 100vw; height: 100dvh; aspect-ratio: auto; border: 0; }
+  #mission { top: max(8px, env(safe-area-inset-top)); width: calc(100% - 16px); min-width: 0; padding: 7px 10px; }
+  #status { top: calc(max(8px, env(safe-area-inset-top)) + 78px); left: 8px; max-width: calc(100% - 16px); }
+  #status span { padding: 5px 7px; font-size: 11px; }
+  #status .secondary-stat { display: none; }
+  #hud-actions { top: calc(max(8px, env(safe-area-inset-top)) + 78px); right: 8px; }
+  #hud-actions button { min-width: 44px; padding: 5px 7px; font-size: 11px; }
+  .overlay { position: fixed; width: 100vw; height: 100dvh; grid-template-columns: 1fr; align-content: center; gap: 22px; padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom)); overflow-y: auto; }
+  .menu-copy h1 { font-size: clamp(48px, 18vw, 76px); }
+  .lead { margin-top: 16px; font-size: 13px; }
+  .hub-link { margin-top: 12px; }
+  .menu-actions { width: 100%; }
+  .difficulty { padding: 9px 12px; }
+  .howto { font-size: 10px; }
+  #touch-controls { left: 50%; right: auto; transform: translateX(-50%); }
+  #touch-controls button { width: 54px; height: 54px; }
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  #touch-controls button { width: 48px; height: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; }
+}
