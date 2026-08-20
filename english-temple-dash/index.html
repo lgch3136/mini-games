@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#12251e">
+<title>遗迹词途 · TEMPLE DASH</title>
+<link rel="stylesheet" href="style.css?v=20260821b">
+</head>
+<body>
+<main id="game-wrap" aria-label="遗迹词途跑酷游戏区">
+  <canvas id="game"></canvas>
+
+  <section id="hud" class="hidden" aria-live="polite">
+    <div id="mission">
+      <span class="eyebrow">本段单词</span>
+      <strong id="word-meaning">准备出发</strong>
+      <span id="word-progress">_ _ _</span>
+      <small id="feedback">收集道路上的目标字母</small>
+    </div>
+    <div id="status">
+      <span>分数 <b id="score">0</b></span>
+      <span>里程 <b id="distance">0m</b></span>
+      <span>遗物 <b id="relics">0</b></span>
+      <span>生命 <b id="lives">3</b></span>
+      <span class="secondary-stat">区域 <b id="biome">日升神庙</b></span>
+    </div>
+    <div id="hud-actions">
+      <button id="mute-btn" type="button" aria-label="切换声音">声音</button>
+      <button id="pause-btn" type="button" aria-label="暂停游戏">暂停</button>
+    </div>
+  </section>
+
+  <section id="touch-controls" class="hidden" aria-label="触屏操作">
+    <button id="left-btn" type="button" aria-label="向左换道">左</button>
+    <button id="jump-btn" type="button" aria-label="跳跃">跳</button>
+    <button id="slide-btn" type="button" aria-label="滑铲">滑</button>
+    <button id="right-btn" type="button" aria-label="向右换道">右</button>
+  </section>
+
+  <section id="menu" class="overlay">
+    <div class="menu-copy">
+      <p class="eyebrow">无限三线单词跑酷</p>
+      <h1>遗迹词途</h1>
+      <p class="english-title">TEMPLE DASH</p>
+      <p class="lead">在四个规则不同的遗迹中换道、跳跃、滑铲，按顺序收齐项目词库中的单词。</p>
+      <a href="../" class="hub-link">返回游戏合集</a>
+    </div>
+    <div class="menu-actions">
+      <div id="difficulty" aria-label="选择难度">
+        <button class="difficulty selected" data-difficulty="easy" type="button">初级<small>基础词汇 · 宽松节奏</small></button>
+        <button class="difficulty" data-difficulty="medium" type="button">中级<small>核心词汇 · 标准速度</small></button>
+        <button class="difficulty" data-difficulty="hard" type="button">高级<small>进阶词汇 · 密集机关</small></button>
+      </div>
+      <button class="primary" id="start-btn" type="button">开始逃亡</button>
+      <div class="howto">
+        <p>电脑：A/D 或左右键换道，W/空格/上键跳跃，S/下键滑铲，P 暂停，M 静音。</p>
+        <p>手机：在画面任意位置左右滑换道、上滑跳跃、下滑滑铲，也可使用底部四个按钮。只会投放当前单词需要的字母。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="paused" class="overlay compact hidden">
+    <p class="eyebrow">逃亡暂停</p>
+    <h2>前路还在延伸</h2>
+    <button class="primary" id="resume-btn" type="button">继续奔跑</button>
+    <button class="secondary" id="pause-menu-btn" type="button">返回主菜单</button>
+  </section>
+
+  <section id="over" class="overlay compact hidden">
+    <p class="eyebrow">本次逃亡结束</p>
+    <h2>再跑远一点</h2>
+    <div id="over-stats"></div>
+    <button class="primary" id="retry-btn" type="button">再次出发</button>
+    <button class="secondary" id="menu-btn" type="button">返回主菜单</button>
+  </section>
+</main>
+
+<script src="../shared/audio.js?v=20260819a"></script>
+<script src="../english-thunder-fighter/data.js?v=20260814c"></script>
+<script src="../shared/vocabulary.js?v=20260820a"></script>
+<script src="game.js?v=20260821b"></script>
+</body>
+</html>

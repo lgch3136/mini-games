@@ -22,19 +22,33 @@ const DIFFICULTIES = {
 };
 
 const BIOMES = [
-  { name: '曙光森林', ground: '#173d31', edge: '#d0a84e', weather: 'pollen' },
-  { name: '风蚀峡谷', ground: '#5a3926', edge: '#e0a854', weather: 'dust' },
-  { name: '雨中古城', ground: '#173b3e', edge: '#80b8aa', weather: 'rain' },
-  { name: '月晶遗迹', ground: '#172c3d', edge: '#d7a955', weather: 'glow' },
+  { name: '曙光森林', ground: '#102f25', edge: '#efc766', weather: 'pollen', gravity: 1450, traction: 1 },
+  { name: '风蚀峡谷', ground: '#3d2619', edge: '#f0b75d', weather: 'dust', gravity: 1450, traction: .9 },
+  { name: '雨中古城', ground: '#0d2a30', edge: '#9bd8d0', weather: 'rain', gravity: 1500, traction: .46 },
+  { name: '月晶遗迹', ground: '#111b31', edge: '#e7bd58', weather: 'glow', gravity: 840, traction: .82 },
 ];
 
-const ENCOUNTERS = [
-  { name: '侦察线', foes: [['beetle', 360]] },
-  { name: '跃沟火力', foes: [['beetle', 220], ['drone', 560]] },
-  { name: '高空夹击', foes: [['drone', 260], ['guardian', 540]] },
-  { name: '双沟伏击', foes: [['beetle', 180], ['drone', 410], ['beetle', 640]] },
-  { name: '移动桥争夺', foes: [['guardian', 240], ['drone', 560]] },
-  { name: '阶梯围攻', foes: [['beetle', 210], ['guardian', 430], ['drone', 620]] },
+const STAGES = [
+  [
+    { name: '林地侦察', foes: [['beetle', 350]] },
+    { name: '树桥伏击', foes: [['beetle', 210], ['drone', 560]] },
+    { name: '守卫哨站', foes: [['drone', 250], ['guardian', 545]] },
+  ],
+  [
+    { name: '断崖上升', foes: [['beetle', 170], ['drone', 525]] },
+    { name: '逆风飞跃', foes: [['drone', 310], ['guardian', 610]] },
+    { name: '悬桥落石', foes: [['beetle', 150], ['drone', 390], ['guardian', 620]] },
+  ],
+  [
+    { name: '湿街追逐', foes: [['beetle', 230], ['guardian', 560]] },
+    { name: '蒸汽管廊', foes: [['drone', 210], ['guardian', 520]] },
+    { name: '雷暴广场', foes: [['beetle', 160], ['drone', 410], ['guardian', 625]] },
+  ],
+  [
+    { name: '低重力门', foes: [['drone', 230], ['beetle', 575]] },
+    { name: '晶簇跃迁', foes: [['drone', 270], ['guardian', 590]] },
+    { name: '月台激光', foes: [['beetle', 170], ['drone', 390], ['guardian', 625]] },
+  ],
 ];
 
 const ASSETS = {};
@@ -67,6 +81,7 @@ const Game = {
     coyote: .1, inv: 0, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0,
     landingTimer: 0, skidTimer: 0, hurtTimer: 0,
+    runCycle: 0,
     weapon: 'normal', weaponTimer: 0, shield: 0,
     overdrive: 0, combo: 0, comboTimer: 0,
   },
@@ -148,26 +163,79 @@ function generateChunk() {
   const index = Game.nextChunkIndex++;
   const start = Game.generatedTo;
   const biome = biomeIndexAt(start);
-  const pattern = index % 6;
-  const chunk = { index, start, biome, encounter: ENCOUNTERS[pattern].name, gaps: [], platforms: [], decor: [] };
+  const slot = index % 3;
+  const stage = STAGES[biome][slot];
+  const chunk = { index, start, biome, encounter: stage.name, gaps: [], platforms: [], hazards: [], decor: [] };
 
-  if (index > 0 && pattern === 1) {
-    chunk.gaps.push({ x: start + 330, w: 105 });
-    chunk.platforms.push({ x: start + 338, y: GROUND_Y - 86, w: 90, move: 0, phase: 0 });
-  } else if (index > 0 && pattern === 2) {
-    chunk.platforms.push({ x: start + 180, y: GROUND_Y - 82, w: 130, move: 0, phase: 0 });
-    chunk.platforms.push({ x: start + 430, y: GROUND_Y - 142, w: 118, move: 20, phase: index });
-  } else if (index > 0 && pattern === 3) {
-    chunk.gaps.push({ x: start + 235, w: 82 }, { x: start + 505, w: 92 });
-    chunk.platforms.push({ x: start + 218, y: GROUND_Y - 74, w: 110, move: 0, phase: 0 });
-    chunk.platforms.push({ x: start + 490, y: GROUND_Y - 98, w: 122, move: 0, phase: 0 });
-  } else if (index > 0 && pattern === 4) {
-    chunk.gaps.push({ x: start + 310, w: 150 });
-    chunk.platforms.push({ x: start + 325, y: GROUND_Y - 102, w: 120, move: 28, phase: index * .7 });
-  } else if (index > 0 && pattern === 5) {
-    chunk.platforms.push({ x: start + 155, y: GROUND_Y - 58, w: 110, move: 0, phase: 0 });
-    chunk.platforms.push({ x: start + 320, y: GROUND_Y - 112, w: 108, move: 0, phase: 0 });
-    chunk.platforms.push({ x: start + 490, y: GROUND_Y - 166, w: 112, move: 0, phase: 0 });
+  if (index > 0 && biome === 0) {
+    if (slot === 1) {
+      chunk.gaps.push({ x: start + 335, w: 105 });
+      chunk.platforms.push({ x: start + 340, y: GROUND_Y - 78, w: 96, move: 0, phase: 0 });
+    } else if (slot === 2) {
+      chunk.gaps.push({ x: start + 505, w: 82 });
+      chunk.platforms.push({ x: start + 190, y: GROUND_Y - 72, w: 130, move: 0, phase: 0 });
+      chunk.platforms.push({ x: start + 480, y: GROUND_Y - 112, w: 122, move: 16, phase: index });
+    }
+  } else if (biome === 1) {
+    if (slot === 0) {
+      chunk.gaps.push({ x: start + 235, w: 100 }, { x: start + 505, w: 112 });
+      chunk.platforms.push({ x: start + 218, y: GROUND_Y - 76, w: 125, move: 0, phase: 0 });
+      chunk.platforms.push({ x: start + 480, y: GROUND_Y - 144, w: 145, move: 0, phase: 0 });
+      chunk.hazards.push({ type: 'updraft', x: start + 505, y: 255, w: 112, h: GROUND_Y - 255, phase: index });
+    } else if (slot === 1) {
+      chunk.gaps.push({ x: start + 285, w: 205 });
+      chunk.platforms.push({ x: start + 326, y: GROUND_Y - 126, w: 125, move: 54, phase: index * .7 });
+      chunk.hazards.push({ type: 'updraft', x: start + 285, y: 248, w: 205, h: GROUND_Y - 248, phase: index });
+    } else {
+      chunk.gaps.push({ x: start + 485, w: 105 });
+      chunk.platforms.push({ x: start + 150, y: GROUND_Y - 58, w: 105, move: 0, phase: 0 });
+      chunk.platforms.push({ x: start + 310, y: GROUND_Y - 118, w: 112, move: 0, phase: 0 });
+      chunk.platforms.push({ x: start + 470, y: GROUND_Y - 176, w: 132, move: 22, phase: index });
+      chunk.hazards.push({ type: 'rock', x: start + 345, y: GROUND_Y - 40, w: 40, h: 40, home: start + 345, range: 82, vx: 62, phase: index });
+    }
+  } else if (biome === 2) {
+    if (slot === 0) {
+      chunk.hazards.push(
+        { type: 'puddle', x: start + 180, y: GROUND_Y - 8, w: 115, h: 8, phase: index },
+        { type: 'puddle', x: start + 475, y: GROUND_Y - 8, w: 130, h: 8, phase: index + 1 },
+      );
+      chunk.platforms.push({ x: start + 325, y: GROUND_Y - 90, w: 118, move: 0, phase: 0 });
+    } else if (slot === 1) {
+      chunk.platforms.push({ x: start + 180, y: GROUND_Y - 105, w: 145, move: 0, phase: 0 });
+      chunk.platforms.push({ x: start + 470, y: GROUND_Y - 135, w: 135, move: 18, phase: index });
+      chunk.hazards.push(
+        { type: 'steam', x: start + 350, y: GROUND_Y - 96, w: 40, h: 96, phase: .6 },
+        { type: 'steam', x: start + 625, y: GROUND_Y - 96, w: 40, h: 96, phase: 3.2 },
+      );
+    } else {
+      chunk.gaps.push({ x: start + 355, w: 82 });
+      chunk.platforms.push({ x: start + 345, y: GROUND_Y - 86, w: 102, move: 0, phase: 0 });
+      chunk.hazards.push(
+        { type: 'laser', x: start + 190, y: GROUND_Y - 58, w: 96, h: 12, phase: .8 },
+        { type: 'laser', x: start + 520, y: GROUND_Y - 58, w: 104, h: 12, phase: 3.6 },
+      );
+    }
+  } else if (biome === 3) {
+    if (slot === 0) {
+      chunk.gaps.push({ x: start + 300, w: 145 });
+      chunk.platforms.push({ x: start + 325, y: GROUND_Y - 132, w: 96, move: 35, phase: index });
+      chunk.hazards.push({ type: 'crystal', x: start + 238, y: GROUND_Y - 18, w: 50, h: 18, phase: index });
+    } else if (slot === 1) {
+      chunk.gaps.push({ x: start + 205, w: 125 }, { x: start + 505, w: 130 });
+      chunk.platforms.push({ x: start + 190, y: GROUND_Y - 105, w: 150, move: 22, phase: index });
+      chunk.platforms.push({ x: start + 490, y: GROUND_Y - 155, w: 155, move: 38, phase: index + 2 });
+      chunk.hazards.push(
+        { type: 'crystal', x: start + 145, y: GROUND_Y - 18, w: 50, h: 18, phase: index },
+        { type: 'crystal', x: start + 445, y: GROUND_Y - 18, w: 50, h: 18, phase: index + 1 },
+      );
+    } else {
+      chunk.gaps.push({ x: start + 410, w: 155 });
+      chunk.platforms.push({ x: start + 405, y: GROUND_Y - 125, w: 165, move: 30, phase: index });
+      chunk.hazards.push(
+        { type: 'laser', x: start + 185, y: GROUND_Y - 58, w: 110, h: 12, phase: 1.4 },
+        { type: 'crystal', x: start + 345, y: GROUND_Y - 18, w: 50, h: 18, phase: index },
+      );
+    }
   }
 
   for (let i = 0; i < 5; i++) {
@@ -178,7 +246,7 @@ function generateChunk() {
   Game.generatedTo += CHUNK_W;
 
   const bossChunk = index > 0 && index % 8 === 7;
-  const formation = ENCOUNTERS[pattern].foes;
+  const formation = stage.foes;
   const count = bossChunk ? 1 : Game.difficulty === 'easy' ? Math.max(1, formation.length - 1) : formation.length;
   for (let i = 0; i < count; i++) {
     const [plannedType, offset] = bossChunk ? ['boss', 520] : formation[i];
@@ -189,7 +257,7 @@ function generateChunk() {
   if (!bossChunk && Game.difficulty === 'hard' && index > 1) {
     Game.enemies.push(makeEnemy('beetle', start + CHUNK_W - 70, index));
   }
-  if (!bossChunk && index > 0 && index % 3 === 1) {
+  if (!bossChunk && index > 0 && slot === 1) {
     const capsule = makeEnemy('capsule', start + 520, index);
     capsule.dropType = ['spread', 'rapid', 'shield'][Math.floor(index / 3) % 3];
     Game.enemies.push(capsule);
@@ -233,6 +301,7 @@ function resetPlayer(x) {
     x: x == null ? 70 : x, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
     facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
+    runCycle: 0,
     weapon: 'normal', weaponTimer: 0, shield: 0, overdrive: 0, combo: 0, comboTimer: 0,
   });
 }
@@ -389,7 +458,7 @@ function defeatEnemy(enemy, source) {
   updateHud();
 }
 
-function hurt() {
+function hurt(fell = false) {
   const player = Game.player;
   if (player.inv > 0 || Game.state !== 'playing') return;
   if (player.shield) {
@@ -409,11 +478,19 @@ function hurt() {
     gameOver();
     return;
   }
-  showFeedback('受到攻击，退回最近安全点');
   Game.enemyBullets.length = 0;
-  resetPlayer(Game.checkpoint);
-  Game.player.hurtTimer = .32;
-  Game.camera = Math.max(0, Game.checkpoint - VIEW_W * .3);
+  if (fell) {
+    showFeedback('跌落，返回最近安全点');
+    resetPlayer(Game.checkpoint);
+    Game.player.hurtTimer = .32;
+  } else {
+    showFeedback('受到攻击，短暂无敌');
+    setCrouching(false);
+    Object.assign(player, {
+      vx: -player.facing * 180, vy: -260, onGround: false, inv: 1.15, hurtTimer: .32,
+      weapon: 'normal', weaponTimer: 0, overdrive: 0, combo: 0, comboTimer: 0,
+    });
+  }
   updateHud();
 }
 
@@ -464,6 +541,8 @@ function updateHud() {
 function updatePlayer(dt) {
   const conf = DIFFICULTIES[Game.difficulty];
   const player = Game.player;
+  const biomeIndex = biomeIndexAt(player.x);
+  const biome = BIOMES[biomeIndex];
   const wasOnGround = player.onGround;
   input.jumpBuffer = Math.max(0, input.jumpBuffer - dt);
   player.fireCooldown = Math.max(0, player.fireCooldown - dt);
@@ -483,7 +562,9 @@ function updatePlayer(dt) {
   setCrouching(Boolean(input.down && !move && player.onGround));
   if (move) player.facing = move;
   if (move && Math.sign(player.vx) !== move && Math.abs(player.vx) > 105) player.skidTimer = .16;
-  player.vx = approach(player.vx, player.crouching ? 0 : move * conf.speed, (move ? 1500 : 2100) * dt);
+  player.vx = approach(player.vx, player.crouching ? 0 : move * conf.speed, (move ? 1500 : 2100) * biome.traction * dt);
+  if (!player.onGround && biomeIndex === 1) player.vx += Math.sin(Game.time * 1.1) * 58 * dt;
+  player.runCycle = (player.runCycle + Math.abs(player.vx) * dt / 30) % 4;
   const aim = aimDirection();
   if (input.up || input.down || move || player.fireCooldown <= 0) {
     player.aimX = aim.x;
@@ -492,19 +573,19 @@ function updatePlayer(dt) {
   if (input.jumpBuffer > 0 && player.coyote > 0) {
     const dropping = input.down && !move && player.y + player.h < GROUND_Y - 4;
     setCrouching(false);
-    player.vy = dropping ? 110 : -610;
+    player.vy = dropping ? 110 : biomeIndex === 3 ? -505 : -610;
     player.onGround = false;
     player.coyote = 0;
     player.dropTimer = dropping ? .18 : 0;
     input.jumpBuffer = 0;
     if (!dropping && window.ArcadeAudio) ArcadeAudio.play('jump', .22);
   }
-  if (!input.jumpHeld && player.vy < -180) player.vy += 1050 * dt;
+  if (!input.jumpHeld && player.vy < -180) player.vy += biome.gravity * .72 * dt;
 
   player.x += player.vx * dt;
   player.x = Math.max(Math.max(0, Game.camera - 130), player.x);
   const previousBottom = player.y + player.h;
-  player.vy += 1450 * dt;
+  player.vy += biome.gravity * dt;
   player.y += player.vy * dt;
   const fallingSpeed = player.vy;
   player.onGround = false;
@@ -526,7 +607,7 @@ function updatePlayer(dt) {
     player.onGround = true;
   }
   if (!wasOnGround && player.onGround && fallingSpeed > 180) player.landingTimer = .12;
-  if (player.y > VIEW_H + 90) hurt();
+  if (player.y > VIEW_H + 90) hurt(true);
   if (input.fire) shoot();
 
   for (const pickup of Game.pickups) {
@@ -539,6 +620,36 @@ function updatePlayer(dt) {
   if (needed && needed.x < player.x - VIEW_W * .75) {
     Object.assign(needed, findSafeSpot(player.x + 220));
     showFeedback('漏掉的字母已移动到前方');
+  }
+}
+
+function hazardActive(hazard) {
+  return Math.sin(Game.time * 2.35 + hazard.phase) > -.22;
+}
+
+function updateHazards(dt) {
+  const player = Game.player;
+  for (const chunk of Game.chunks) {
+    if (chunk.start > Game.camera + VIEW_W + 300 || chunk.start + CHUNK_W < Game.camera - 200) continue;
+    for (const hazard of chunk.hazards) {
+      if (hazard.type === 'rock') {
+        hazard.x += hazard.vx * dt;
+        if (hazard.x < hazard.home - hazard.range || hazard.x > hazard.home + hazard.range) hazard.vx *= -1;
+      }
+      if (!overlap(player, hazard)) continue;
+      if (hazard.type === 'updraft' && !player.onGround) {
+        player.vy = Math.max(-390, player.vy - 1180 * dt);
+      } else if (hazard.type === 'puddle' && player.onGround) {
+        player.vx *= Math.max(0, 1 - 2.4 * dt);
+      } else if (hazard.type === 'crystal' && player.vy >= 0) {
+        player.vy = -720;
+        player.onGround = false;
+        burst(player.x + player.w / 2, GROUND_Y - 8, '#e7bd58', 12);
+        if (window.ArcadeAudio) ArcadeAudio.play('jump', .18);
+      } else if ((hazard.type === 'rock' || hazardActive(hazard)) && hazard.type !== 'updraft' && hazard.type !== 'puddle' && hazard.type !== 'crystal') {
+        hurt();
+      }
+    }
   }
 }
 
@@ -664,6 +775,7 @@ function update(dt) {
   Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
   Game.hudTimer = Math.max(0, Game.hudTimer - dt);
   updatePlayer(dt);
+  updateHazards(dt);
   updateReinforcements(dt);
   updateEnemies(dt);
   updateProjectiles(dt);
@@ -728,10 +840,13 @@ function drawBackground() {
   const local = (Game.camera % span) / span;
   drawBiomeLayer(index, 1, local);
   if (local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
+  ctx.fillStyle = ['rgba(7,27,20,.22)', 'rgba(45,24,12,.18)', 'rgba(4,24,30,.3)', 'rgba(5,10,25,.34)'][index];
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   const shade = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  shade.addColorStop(0, 'rgba(9,24,22,.04)');
-  shade.addColorStop(.62, 'rgba(9,24,22,.12)');
-  shade.addColorStop(1, 'rgba(7,18,17,.46)');
+  shade.addColorStop(0, 'rgba(8,20,18,.02)');
+  shade.addColorStop(.5, 'rgba(8,20,18,.16)');
+  shade.addColorStop(.72, 'rgba(7,17,16,.38)');
+  shade.addColorStop(1, 'rgba(5,13,12,.72)');
   ctx.fillStyle = shade;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   drawWeather(index);
@@ -790,6 +905,58 @@ function drawPlatforms(chunk) {
     ctx.fillRect(platform.x + 3, y, platform.w - 6, 5);
     ctx.fillStyle = 'rgba(8,20,18,.36)';
     for (let x = platform.x + 15; x < platform.x + platform.w; x += 32) ctx.fillRect(x, y + 8, 4, 8);
+  }
+}
+
+function drawHazards(chunk) {
+  for (const hazard of chunk.hazards) {
+    ctx.save();
+    if (hazard.type === 'updraft') {
+      ctx.strokeStyle = 'rgba(245,205,126,.42)'; ctx.lineWidth = 3;
+      for (let i = 0; i < 4; i++) {
+        const y = hazard.y + ((i * 61 - Game.time * 92) % hazard.h + hazard.h) % hazard.h;
+        ctx.beginPath();
+        ctx.moveTo(hazard.x + 18 + i * 23, y + 28);
+        ctx.bezierCurveTo(hazard.x + 35 + i * 18, y + 12, hazard.x + 8 + i * 28, y - 4, hazard.x + 31 + i * 17, y - 20);
+        ctx.stroke();
+      }
+    } else if (hazard.type === 'puddle') {
+      ctx.fillStyle = 'rgba(119,190,195,.58)';
+      ctx.beginPath(); ctx.ellipse(hazard.x + hazard.w / 2, GROUND_Y - 3, hazard.w / 2, 7, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(204,235,229,.62)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(hazard.x + hazard.w * .35, GROUND_Y - 5, 18, Math.PI, TAU); ctx.stroke();
+    } else if (hazard.type === 'crystal') {
+      ctx.fillStyle = '#d4a84d'; ctx.strokeStyle = '#f7df94'; ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const x = hazard.x + 7 + i * 15;
+        ctx.beginPath(); ctx.moveTo(x - 7, GROUND_Y); ctx.lineTo(x, GROUND_Y - 18 - (i % 2) * 8); ctx.lineTo(x + 8, GROUND_Y); ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+    } else if (hazard.type === 'rock') {
+      ctx.translate(hazard.x + 20, hazard.y + 20);
+      ctx.rotate(hazard.x / 28);
+      ctx.fillStyle = '#563a27'; ctx.strokeStyle = '#d29b5c'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, 19, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-11, -7); ctx.lineTo(4, -13); ctx.lineTo(12, 2); ctx.lineTo(-2, 12); ctx.closePath(); ctx.stroke();
+    } else if (hazard.type === 'steam') {
+      ctx.fillStyle = '#29464a';
+      ctx.fillRect(hazard.x - 4, GROUND_Y - 9, hazard.w + 8, 9);
+      if (hazardActive(hazard)) {
+        ctx.fillStyle = 'rgba(205,228,220,.55)';
+        for (let i = 0; i < 5; i++) {
+          const rise = ((Game.time * 75 + i * 22) % 88);
+          ctx.beginPath(); ctx.ellipse(hazard.x + 8 + (i % 3) * 12, GROUND_Y - 14 - rise, 12 + (i % 2) * 5, 18, 0, 0, TAU); ctx.fill();
+        }
+      }
+    } else if (hazard.type === 'laser') {
+      ctx.fillStyle = '#415a5b';
+      ctx.fillRect(hazard.x - 8, hazard.y - 8, 10, 28);
+      ctx.fillRect(hazard.x + hazard.w - 2, hazard.y - 8, 10, 28);
+      if (hazardActive(hazard)) {
+        ctx.fillStyle = 'rgba(239,111,78,.5)'; ctx.fillRect(hazard.x, hazard.y, hazard.w, hazard.h);
+        ctx.fillStyle = '#ffd2a7'; ctx.fillRect(hazard.x, hazard.y + 4, hazard.w, 3);
+      }
+    }
+    ctx.restore();
   }
 }
 
@@ -894,6 +1061,11 @@ function drawBullet(bullet, color) {
 
 function drawPlayer() {
   const player = Game.player;
+  ctx.save();
+  ctx.globalAlpha = player.onGround ? .34 : clamp(.28 - Math.abs(player.vy) / 2600, .1, .24);
+  ctx.fillStyle = '#071512';
+  ctx.beginPath(); ctx.ellipse(player.x + player.w / 2, Math.min(GROUND_Y - 2, player.y + player.h + 2), player.onGround ? 25 : 18, player.onGround ? 6 : 4, 0, 0, TAU); ctx.fill();
+  ctx.restore();
   if (player.shield) {
     ctx.save();
     ctx.strokeStyle = 'rgba(244,211,122,.8)'; ctx.lineWidth = 3;
@@ -925,11 +1097,13 @@ function drawPlayer() {
   } else if (!player.onGround) {
     row = 2; column = player.vy < 0 ? 0 : 1;
   } else if (firing) {
-    row = 3; column = Math.abs(player.vx) > 30 ? 2 + Math.floor(Game.time * 10) % 2 : Math.floor(Game.time * 8) % 2;
+    row = 3; column = Math.abs(player.vx) > 30 ? 2 + Math.floor(player.runCycle) % 2 : Math.floor(Game.time * 8) % 2;
   } else if (Math.abs(player.vx) > 30) {
-    row = 1; column = Math.floor(Game.time * 10) % 4;
+    row = 1; column = Math.floor(player.runCycle) % 4;
   }
-  const drawY = player.y + player.h - 79 + (atlas === ASSETS.actions ? (row === 1 ? 12 : 6) : 0);
+  const baselineOffset = atlas === ASSETS.hero && row === 1 ? [0, 4, 4, 0][column]
+    : atlas === ASSETS.hero && row === 3 ? [0, 7, 7, 6][column] : 0;
+  const drawY = player.y + player.h - 79 + baselineOffset + (atlas === ASSETS.actions ? (row === 1 ? 12 : 6) : 0);
   if (!drawAtlasFrame(atlas, row, column, player.x - 25, drawY, 80, 82, player.facing < 0)) {
     ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
   }
@@ -951,7 +1125,7 @@ function render() {
   ctx.translate(-Game.camera, 0);
   for (const chunk of Game.chunks) {
     if (chunk.start > Game.camera + VIEW_W + CHUNK_W || chunk.start + CHUNK_W < Game.camera - CHUNK_W) continue;
-    drawDecor(chunk); drawGround(chunk); drawPlatforms(chunk);
+    drawDecor(chunk); drawGround(chunk); drawPlatforms(chunk); drawHazards(chunk);
   }
   drawPickups();
   drawPowerups();
@@ -1090,6 +1264,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       for (let i = 0; i < 40; i++) update(1 / 60);
       input.right = false;
       if (!(Game.player.x > startX)) throw new Error('player did not move');
+      if (!(Game.player.runCycle > 0)) throw new Error('run animation did not follow distance');
       input.down = true;
       update(1 / 60);
       if (!Game.player.crouching || Game.player.h !== CROUCH_H) throw new Error('crouch collider did not shrink');
@@ -1112,6 +1287,11 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       shoot();
       if (Game.bullets.length !== 3 || Game.bullets.some((bullet) => Math.abs(Math.hypot(bullet.vx, bullet.vy) - BULLET_SPEED) > .01)) throw new Error('spread weapon failed');
       Game.bullets.length = 0;
+      Object.assign(Game.player, { x: 1300, y: GROUND_Y - PLAYER_H, inv: 0, onGround: true });
+      Game.camera = 1000;
+      Game.checkpoint = 400;
+      const cameraBeforeHit = Game.camera;
+      const xBeforeHit = Game.player.x;
       Game.player.inv = 0;
       Game.enemyBullets.push(
         { x: Game.player.x, y: Game.player.y, w: 9, h: 7, vx: 0, vy: 0 },
@@ -1119,14 +1299,29 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       );
       updateProjectiles(0);
       if (Game.enemyBullets.length) throw new Error('enemy bullets survived player hit');
+      if (Math.abs(Game.camera - cameraBeforeHit) > 1 || Math.abs(Game.player.x - xBeforeHit) > 1) throw new Error('ordinary damage jumped the camera');
       const firstWord = Game.currentWord;
       Game.pickups.slice().sort((a, b) => a.index - b.index).forEach(collectLetter);
       if (Game.wordsDone !== 1 || Game.currentWord === firstWord) throw new Error('word loop did not continue');
       ensureWorld(CHUNK_W * 13);
       if (new Set(Game.chunks.map((chunk) => chunk.biome)).size !== 4) throw new Error('biome rotation missing');
       if (new Set(Game.chunks.map((chunk) => chunk.encounter)).size < 5) throw new Error('encounter rotation missing');
+      const hazardTypes = new Set(Game.chunks.flatMap((chunk) => chunk.hazards.map((hazard) => hazard.type)));
+      if (['updraft', 'rock', 'puddle', 'steam', 'laser', 'crystal'].some((type) => !hazardTypes.has(type))) throw new Error('biome-specific mechanics missing');
       if (!Game.enemies.some((enemy) => enemy.type === 'capsule')) throw new Error('supply capsules missing');
-      Game.camera = CHUNK_W * 10;
+      startGame();
+      Game.hp = 999;
+      input.right = input.fire = true;
+      for (let i = 0; i < 12000; i++) {
+        if (i % 109 === 0) queueJump();
+        if (i % 151 === 0) input.down = true;
+        if (i % 151 === 9) input.down = false;
+        update(1 / 60);
+        if (Game.chunks.length > 12 || Game.enemies.length > 36 || Game.particles.length > 160) throw new Error('unbounded collections');
+      }
+      input.right = input.fire = input.down = false;
+      if (Game.distance < 1000 || new Set(Game.chunks.map((chunk) => chunk.biome)).size < 2) throw new Error('long-run biome progression failed');
+      Game.camera = Game.generatedTo - VIEW_W;
       cullWorld();
       if (Game.chunks.length > 6) throw new Error('old chunks were not reclaimed');
       if (![Game.player.x, Game.player.y, Game.camera, Game.generatedTo].every(Number.isFinite)) throw new Error('non-finite game state');
