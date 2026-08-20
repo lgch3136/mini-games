@@ -88,20 +88,27 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 #over-stats div { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(245, 241, 223, .18); padding: 7px 2px; }
 #over-stats b { color: #f4d37a; }
 
-#touch-controls { display: none; position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+#touch-controls { --control-size: 70px; display: none; position: absolute; inset: 0; z-index: 5; pointer-events: none; }
 #touch-controls button {
   pointer-events: auto; touch-action: none; cursor: pointer;
-  width: 70px; height: 70px; border: 1px solid rgba(244, 211, 122, .72); border-radius: 50%;
+  width: var(--control-size); height: var(--control-size); border: 1px solid rgba(244, 211, 122, .72); border-radius: 50%;
   background: rgba(16, 42, 34, .78); color: #fff6da; font-weight: 900;
   box-shadow: inset 0 1px rgba(255,255,255,.15), 0 8px 22px rgba(3, 14, 10, .3);
 }
 #touch-controls button.active, #touch-controls button:active { transform: scale(.94); background: rgba(125, 82, 27, .86); }
-.move-controls, .action-controls {
-  position: absolute; bottom: max(18px, env(safe-area-inset-bottom)); display: flex; gap: 10px;
+.move-controls, .action-controls { position: absolute; bottom: max(18px, env(safe-area-inset-bottom)); gap: 8px; }
+.move-controls {
+  left: max(16px, env(safe-area-inset-left));
+  display: grid; grid-template: repeat(2, var(--control-size)) / repeat(3, var(--control-size));
 }
-.move-controls { left: max(16px, env(safe-area-inset-left)); }
+.action-controls { display: flex; }
 .action-controls { right: max(16px, env(safe-area-inset-right)); align-items: flex-end; }
+#up-btn { grid-area: 1 / 2; }
+#left-btn { grid-area: 2 / 1; }
+#down-btn { grid-area: 2 / 2; }
+#right-btn { grid-area: 2 / 3; }
 #jump-btn { transform: translateY(-28px); }
+#jump-btn.active, #jump-btn:active { transform: translateY(-28px) scale(.94); }
 
 @media (pointer: coarse), (max-width: 800px) {
   #touch-controls:not(.hidden) { display: block; }
@@ -123,7 +130,11 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .howto { width: min(100%, 420px); font-size: 11px; line-height: 1.55; }
   .hub-link { margin-bottom: auto; }
   .compact { justify-content: center; }
-  #touch-controls button { width: 64px; height: 64px; }
+  #touch-controls { --control-size: 56px; }
+}
+
+@media (max-width: 360px) and (orientation: portrait) {
+  #touch-controls { --control-size: 50px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

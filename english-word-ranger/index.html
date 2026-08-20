@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#10251f">
-<title>单词突击队 · WORD RANGER v20260820a</title>
-<link rel="stylesheet" href="style.css?v=20260820a">
+<title>单词突击队 · WORD RANGER v20260820b</title>
+<link rel="stylesheet" href="style.css?v=20260820b">
 </head>
 <body>
 <main id="game-wrap" aria-label="单词突击队游戏区">
@@ -33,7 +33,9 @@
 
   <section id="touch-controls" class="hidden" aria-label="触屏操作">
     <div class="move-controls">
+      <button id="up-btn" type="button" aria-label="向上瞄准">上</button>
       <button id="left-btn" type="button" aria-label="向左移动">左</button>
+      <button id="down-btn" type="button" aria-label="下蹲或向下瞄准">下</button>
       <button id="right-btn" type="button" aria-label="向右移动">右</button>
     </div>
     <div class="action-controls">
@@ -52,8 +54,8 @@
     </div>
     <button class="primary" id="start-btn" type="button">开始行动</button>
     <div class="howto">
-      <p>电脑：A/D 或方向键移动，W/↑/空格跳跃，J/K/X 射击，P 暂停，M 静音。</p>
-      <p>手机：左手按住“左/右”移动，右手独立控制“跳”和“射击”。按顺序收集字母；每八段会遇到区域守卫，击败后继续前进。</p>
+      <p>电脑：A/D 或左右键移动，W/S 或上下键瞄准/下蹲，空格跳跃，J/K/X 射击，P 暂停，M 静音。</p>
+      <p>手机：左手方向盘控制移动、卧倒和斜向瞄准，右手独立控制跳跃与射击；空中按“下”可向下开火。按顺序收集字母，每八段会遇到区域守卫。</p>
     </div>
     <a href="../" class="hub-link">返回游戏合集</a>
   </section>
@@ -77,6 +79,6 @@
 <script src="../shared/audio.js?v=20260819a"></script>
 <script src="../english-thunder-fighter/data.js?v=20260814c"></script>
 <script src="../shared/vocabulary.js?v=20260820a"></script>
-<script src="game.js?v=20260820c"></script>
+<script src="game.js?v=20260820d"></script>
 </body>
 </html>

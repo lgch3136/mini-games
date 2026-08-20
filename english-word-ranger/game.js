@@ -10,6 +10,9 @@ const VIEW_H = 540;
 const GROUND_Y = 478;
 const CHUNK_W = 720;
 const TAU = Math.PI * 2;
+const PLAYER_H = 52;
+const CROUCH_H = 30;
+const BULLET_SPEED = 660;
 
 const DIFFICULTIES = {
   easy: { speed: 220, enemySpeed: 44, hp: 1, fireEvery: 3, spawn: .8, label: '初级' },
@@ -27,6 +30,7 @@ const BIOMES = [
 const ASSETS = {};
 for (const [name, src] of Object.entries({
   hero: 'assets/hero-sprites.webp',
+  actions: 'assets/hero-actions-v2.png',
   enemies: 'assets/enemy-sprites.webp',
   biomes: 'assets/biomes.webp',
 })) {
@@ -38,7 +42,7 @@ for (const [name, src] of Object.entries({
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-const input = { left: false, right: false, fire: false, jumpHeld: false, jumpBuffer: 0 };
+const input = { left: false, right: false, up: false, down: false, fire: false, jumpHeld: false, jumpBuffer: 0 };
 
 const Game = {
   state: 'menu', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
@@ -47,11 +51,37 @@ const Game = {
   generatedTo: 0, nextChunkIndex: 0,
   chunks: [], pickups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
   player: {
-    x: 70, y: GROUND_Y - 52, w: 30, h: 52,
+    x: 70, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
     vx: 0, vy: 0, facing: 1, onGround: true,
-    coyote: .1, inv: 0, fireCooldown: 0,
+    coyote: .1, inv: 0, fireCooldown: 0, dropTimer: 0,
+    crouching: false, aimX: 1, aimY: 0,
+    landingTimer: 0, skidTimer: 0, hurtTimer: 0,
   },
 };
+
+function aimDirection(source = input, player = Game.player) {
+  const horizontal = Number(Boolean(source.right)) - Number(Boolean(source.left));
+  let x = horizontal || player.facing || 1;
+  let y = 0;
+  if (source.up) {
+    y = -1;
+    if (!horizontal) x = 0;
+  } else if (source.down && (!player.onGround || horizontal)) {
+    y = 1;
+    if (!horizontal) x = 0;
+  }
+  const length = Math.hypot(x, y) || 1;
+  return { x: x / length, y: y / length };
+}
+
+function setCrouching(enabled) {
+  const player = Game.player;
+  if (player.crouching === enabled) return;
+  const feet = player.y + player.h;
+  player.crouching = enabled;
+  player.h = enabled ? CROUCH_H : PLAYER_H;
+  player.y = feet - player.h;
+}
 
 function wordBank() {
   const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
@@ -178,8 +208,9 @@ function nextWord(initial) {
 
 function resetPlayer(x) {
   Object.assign(Game.player, {
-    x: x == null ? 70 : x, y: GROUND_Y - 52, vx: 0, vy: 0,
-    facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0,
+    x: x == null ? 70 : x, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
+    facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
+    crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
   });
 }
 
@@ -204,7 +235,7 @@ function startGame() {
 }
 
 function resetInput() {
-  input.left = input.right = input.fire = input.jumpHeld = false;
+  input.left = input.right = input.up = input.down = input.fire = input.jumpHeld = false;
   input.jumpBuffer = 0;
   document.querySelectorAll('#touch-controls button').forEach((button) => button.classList.remove('active'));
 }
@@ -261,9 +292,19 @@ function queueJump() {
 function shoot() {
   const player = Game.player;
   if (player.fireCooldown > 0 || Game.state !== 'playing') return;
-  player.fireCooldown = .17;
-  Game.bullets.push({ x: player.x + (player.facing > 0 ? player.w : -12), y: player.y + 23, w: 12, h: 5, vx: 660 * player.facing, vy: 0 });
-  burst(player.x + player.w / 2 + player.facing * 22, player.y + 24, '#f4d37a', 3);
+  const aim = aimDirection();
+  const centerX = player.x + player.w / 2;
+  const centerY = player.y + player.h * (player.crouching ? .38 : .43);
+  const muzzleX = centerX + aim.x * 28;
+  const muzzleY = centerY + aim.y * 28;
+  player.fireCooldown = .14;
+  player.aimX = aim.x;
+  player.aimY = aim.y;
+  Game.bullets.push({
+    x: muzzleX - 4, y: muzzleY - 4, w: 8, h: 8,
+    vx: aim.x * BULLET_SPEED, vy: aim.y * BULLET_SPEED,
+  });
+  burst(muzzleX, muzzleY, '#f4d37a', 3);
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .14);
 }
 
@@ -279,6 +320,7 @@ function hurt() {
   showFeedback('受到攻击，退回最近安全点');
   Game.enemyBullets.length = 0;
   resetPlayer(Game.checkpoint);
+  Game.player.hurtTimer = .32;
   Game.camera = Math.max(0, Game.checkpoint - VIEW_W * .3);
   updateHud();
 }
@@ -328,20 +370,35 @@ function updateHud() {
 function updatePlayer(dt) {
   const conf = DIFFICULTIES[Game.difficulty];
   const player = Game.player;
+  const wasOnGround = player.onGround;
   input.jumpBuffer = Math.max(0, input.jumpBuffer - dt);
   player.fireCooldown = Math.max(0, player.fireCooldown - dt);
   player.inv = Math.max(0, player.inv - dt);
+  player.dropTimer = Math.max(0, player.dropTimer - dt);
+  player.landingTimer = Math.max(0, player.landingTimer - dt);
+  player.skidTimer = Math.max(0, player.skidTimer - dt);
+  player.hurtTimer = Math.max(0, player.hurtTimer - dt);
   player.coyote = player.onGround ? .11 : Math.max(0, player.coyote - dt);
 
   const move = Number(input.right) - Number(input.left);
+  setCrouching(Boolean(input.down && !move && player.onGround));
   if (move) player.facing = move;
-  player.vx = approach(player.vx, move * conf.speed, (move ? 1500 : 2100) * dt);
+  if (move && Math.sign(player.vx) !== move && Math.abs(player.vx) > 105) player.skidTimer = .16;
+  player.vx = approach(player.vx, player.crouching ? 0 : move * conf.speed, (move ? 1500 : 2100) * dt);
+  const aim = aimDirection();
+  if (input.up || input.down || move || player.fireCooldown <= 0) {
+    player.aimX = aim.x;
+    player.aimY = aim.y;
+  }
   if (input.jumpBuffer > 0 && player.coyote > 0) {
-    player.vy = -610;
+    const dropping = input.down && !move && player.y + player.h < GROUND_Y - 4;
+    setCrouching(false);
+    player.vy = dropping ? 110 : -610;
     player.onGround = false;
     player.coyote = 0;
+    player.dropTimer = dropping ? .18 : 0;
     input.jumpBuffer = 0;
-    if (window.ArcadeAudio) ArcadeAudio.play('jump', .22);
+    if (!dropping && window.ArcadeAudio) ArcadeAudio.play('jump', .22);
   }
   if (!input.jumpHeld && player.vy < -180) player.vy += 1050 * dt;
 
@@ -350,9 +407,10 @@ function updatePlayer(dt) {
   const previousBottom = player.y + player.h;
   player.vy += 1450 * dt;
   player.y += player.vy * dt;
+  const fallingSpeed = player.vy;
   player.onGround = false;
 
-  for (const chunk of Game.chunks) {
+  for (const chunk of player.dropTimer > 0 ? [] : Game.chunks) {
     if (chunk.start > player.x + player.w || chunk.start + CHUNK_W < player.x) continue;
     for (const platform of chunk.platforms) {
       const top = platformTop(platform);
@@ -368,6 +426,7 @@ function updatePlayer(dt) {
     player.vy = 0;
     player.onGround = true;
   }
+  if (!wasOnGround && player.onGround && fallingSpeed > 180) player.landingTimer = .12;
   if (player.y > VIEW_H + 90) hurt();
   if (input.fire) shoot();
 
@@ -414,6 +473,7 @@ function updateProjectiles(dt) {
   for (let i = Game.bullets.length - 1; i >= 0; i--) {
     const bullet = Game.bullets[i];
     bullet.x += bullet.vx * dt;
+    bullet.y += bullet.vy * dt;
     let hit = false;
     for (const enemy of Game.enemies) {
       if (enemy.dead || !overlap(bullet, enemy)) continue;
@@ -430,7 +490,7 @@ function updateProjectiles(dt) {
       }
       break;
     }
-    if (hit || bullet.x < Game.camera - 80 || bullet.x > Game.camera + VIEW_W + 100) Game.bullets.splice(i, 1);
+    if (hit || bullet.x < Game.camera - 80 || bullet.x > Game.camera + VIEW_W + 100 || bullet.y < -80 || bullet.y > VIEW_H + 80) Game.bullets.splice(i, 1);
   }
 
   for (let i = Game.enemyBullets.length - 1; i >= 0; i--) {
@@ -657,7 +717,9 @@ function drawBullet(bullet, color) {
   ctx.save();
   ctx.shadowColor = color; ctx.shadowBlur = 8;
   ctx.fillStyle = color;
-  ctx.beginPath(); ctx.roundRect(bullet.x, bullet.y, bullet.w, bullet.h, 3); ctx.fill();
+  ctx.translate(bullet.x + bullet.w / 2, bullet.y + bullet.h / 2);
+  ctx.rotate(Math.atan2(bullet.vy, bullet.vx));
+  ctx.beginPath(); ctx.roundRect(-7, -2.5, 14, 5, 3); ctx.fill();
   ctx.restore();
 }
 
@@ -666,14 +728,33 @@ function drawPlayer() {
   if (player.inv > 0 && Math.floor(Game.time * 14) % 2) return;
   let row = 0;
   let column = Math.floor(Game.time * 3) % 4;
-  if (!player.onGround) {
+  let atlas = ASSETS.hero;
+  const firing = player.fireCooldown > .055;
+  if (player.hurtTimer > 0) {
+    atlas = ASSETS.actions; row = 3; column = 3;
+  } else if (player.landingTimer > 0) {
+    atlas = ASSETS.actions; row = 3; column = 1;
+  } else if (player.skidTimer > 0 && player.onGround) {
+    atlas = ASSETS.actions; row = 3; column = 2;
+  } else if (player.crouching) {
+    atlas = ASSETS.actions; row = 1; column = firing ? 1 : 0;
+  } else if (player.aimY < -.45) {
+    atlas = ASSETS.actions;
+    if (player.onGround) { row = 0; column = Math.abs(player.aimX) > .2 ? (firing ? 3 : 2) : (firing ? 1 : 0); }
+    else { row = 2; column = firing ? 1 : 0; }
+  } else if (player.aimY > .45) {
+    atlas = ASSETS.actions;
+    if (!player.onGround) { row = Math.abs(player.aimX) < .2 && firing ? 3 : 2; column = row === 3 ? 0 : (firing ? 3 : 2); }
+    else { row = 1; column = firing ? 3 : 2; }
+  } else if (!player.onGround) {
     row = 2; column = player.vy < 0 ? 0 : 1;
-  } else if (player.fireCooldown > .08) {
+  } else if (firing) {
     row = 3; column = Math.abs(player.vx) > 30 ? 2 + Math.floor(Game.time * 10) % 2 : Math.floor(Game.time * 8) % 2;
   } else if (Math.abs(player.vx) > 30) {
     row = 1; column = Math.floor(Game.time * 10) % 4;
   }
-  if (!drawAtlasFrame(ASSETS.hero, row, column, player.x - 24, player.y - 27, 80, 82, player.facing < 0)) {
+  const drawY = player.y + player.h - 79 + (atlas === ASSETS.actions ? (row === 1 ? 12 : 6) : 0);
+  if (!drawAtlasFrame(atlas, row, column, player.x - 25, drawY, 80, 82, player.facing < 0)) {
     ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
   }
 }
@@ -737,6 +818,8 @@ function bindHold(id, property) {
 
 bindHold('left-btn', 'left');
 bindHold('right-btn', 'right');
+bindHold('up-btn', 'up');
+bindHold('down-btn', 'down');
 bindHold('fire-btn', 'fire');
 $('fire-btn').addEventListener('pointerdown', () => { if (Game.state === 'playing') shoot(); });
 $('jump-btn').addEventListener('pointerdown', (event) => {
@@ -751,10 +834,12 @@ $('jump-btn').addEventListener('pointercancel', releaseJump);
 $('jump-btn').addEventListener('lostpointercapture', releaseJump);
 
 window.addEventListener('keydown', (event) => {
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space'].includes(event.code)) event.preventDefault();
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(event.code)) event.preventDefault();
   if (event.code === 'ArrowLeft' || event.code === 'KeyA') input.left = true;
   if (event.code === 'ArrowRight' || event.code === 'KeyD') input.right = true;
-  if ((event.code === 'ArrowUp' || event.code === 'KeyW' || event.code === 'Space') && !event.repeat) queueJump();
+  if (event.code === 'ArrowUp' || event.code === 'KeyW') input.up = true;
+  if (event.code === 'ArrowDown' || event.code === 'KeyS') input.down = true;
+  if (event.code === 'Space' && !event.repeat) queueJump();
   if (event.code === 'KeyJ' || event.code === 'KeyK' || event.code === 'KeyX') {
     input.fire = true;
     if (!event.repeat && Game.state === 'playing') shoot();
@@ -767,7 +852,9 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('keyup', (event) => {
   if (event.code === 'ArrowLeft' || event.code === 'KeyA') input.left = false;
   if (event.code === 'ArrowRight' || event.code === 'KeyD') input.right = false;
-  if (event.code === 'ArrowUp' || event.code === 'KeyW' || event.code === 'Space') input.jumpHeld = false;
+  if (event.code === 'ArrowUp' || event.code === 'KeyW') input.up = false;
+  if (event.code === 'ArrowDown' || event.code === 'KeyS') input.down = false;
+  if (event.code === 'Space') input.jumpHeld = false;
   if (event.code === 'KeyJ' || event.code === 'KeyK' || event.code === 'KeyX') input.fire = false;
 });
 
@@ -817,6 +904,22 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       for (let i = 0; i < 40; i++) update(1 / 60);
       input.right = false;
       if (!(Game.player.x > startX)) throw new Error('player did not move');
+      input.down = true;
+      update(1 / 60);
+      if (!Game.player.crouching || Game.player.h !== CROUCH_H) throw new Error('crouch collider did not shrink');
+      input.down = false;
+      update(1 / 60);
+      if (Game.player.crouching || Game.player.h !== PLAYER_H) throw new Error('crouch collider did not restore');
+      const up = aimDirection({ up: true }, { facing: 1, onGround: true });
+      const diagonal = aimDirection({ up: true, right: true }, { facing: 1, onGround: true });
+      const down = aimDirection({ down: true }, { facing: 1, onGround: false });
+      if (up.x !== 0 || up.y !== -1 || diagonal.x <= 0 || diagonal.y >= 0 || down.x !== 0 || down.y !== 1) throw new Error('multi-direction aim failed');
+      Game.player.fireCooldown = 0;
+      input.right = input.up = true;
+      shoot();
+      input.right = input.up = false;
+      const shot = Game.bullets.pop();
+      if (!shot || Math.abs(Math.hypot(shot.vx, shot.vy) - BULLET_SPEED) > .01) throw new Error('diagonal shot speed changed');
       const firstWord = Game.currentWord;
       Game.pickups.slice().sort((a, b) => a.index - b.index).forEach(collectLetter);
       if (Game.wordsDone !== 1 || Game.currentWord === firstWord) throw new Error('word loop did not continue');
