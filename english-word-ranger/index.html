@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#10251f">
-<title>单词突击队 · WORD RANGER v20260820b</title>
-<link rel="stylesheet" href="style.css?v=20260820b">
+<title>单词突击队 · 林地哨站</title>
+<link rel="stylesheet" href="style.css?v=20260821g">
 </head>
 <body>
 <main id="game-wrap" aria-label="单词突击队游戏区">
@@ -41,21 +41,23 @@
     <div class="action-controls">
       <button id="jump-btn" type="button" aria-label="跳跃">跳</button>
       <button id="fire-btn" type="button" aria-label="射击">射击</button>
+      <button id="auto-btn" type="button" aria-label="切换自动射击" aria-pressed="false">自动</button>
     </div>
   </section>
 
   <section id="menu" class="overlay">
     <img src="assets/logo.svg" alt="单词突击队 WORD RANGER">
-    <p class="lead">四种规则的无限远征：林地交火、峡谷气流、雨城机关、月境低重力</p>
+    <p class="lead">人工编排第一关：读懂敌人预兆，用单词奖励改变战斗</p>
     <div id="difficulty" aria-label="选择难度">
       <button class="difficulty selected" data-difficulty="easy" type="button">初级<small>基础词汇 · 敌人较慢</small></button>
       <button class="difficulty" data-difficulty="medium" type="button">中级<small>核心词汇 · 标准火力</small></button>
       <button class="difficulty" data-difficulty="hard" type="button">高级<small>进阶词汇 · 快速攻势</small></button>
     </div>
-    <button class="primary" id="start-btn" type="button">开始行动</button>
+    <button class="primary" id="start-btn" type="button">开始第一关 · 林地哨站</button>
+    <button class="secondary" id="arcade-start-btn" type="button">无限远征 · 街机模式</button>
     <div class="howto">
       <p>电脑：A/D 或左右键移动，W/S 或上下键瞄准/下蹲，空格跳跃，J/K/X 射击，P 暂停，M 静音。</p>
-      <p>手机：左手方向盘控制移动、卧倒和斜向瞄准，右手独立跳跃与射击；空中按“下”可向下开火。峡谷借上升气流越崖，雨城避开蒸汽与激光，月境踩晶能弹簧高跳；每八段迎战区域守卫。</p>
+      <p>手机：左手移动与下蹲，右手跳跃和射击；射击会辅助锁定前方目标，也可打开“自动”。橙色预兆出现时先躲避，再利用恢复窗口反击。</p>
     </div>
     <a href="../" class="hub-link">返回游戏合集</a>
   </section>
@@ -67,18 +69,26 @@
     <button class="secondary" id="pause-menu-btn" type="button">返回主菜单</button>
   </section>
 
+  <section id="word-gate" class="overlay compact hidden" role="dialog" aria-modal="true" aria-labelledby="gate-meaning">
+    <p class="eyebrow">主动回忆 · 奖励门</p>
+    <h1 id="gate-meaning">桥</h1>
+    <p>只看中文，选出刚才学过的英文。答错不会扣血，但会出现增援。</p>
+    <div id="gate-options"></div>
+  </section>
+
   <section id="over" class="overlay compact hidden">
     <p class="eyebrow" id="over-kicker">行动结束</p>
     <h1 id="over-title">再试一次</h1>
     <div id="over-stats"></div>
+    <div id="over-recap" aria-label="本局单词回顾"></div>
     <button class="primary" id="retry-btn" type="button">重新行动</button>
     <button class="secondary" id="menu-btn" type="button">返回主菜单</button>
   </section>
 </main>
 
-<script src="../shared/audio.js?v=20260819a"></script>
+<script src="../shared/audio.js?v=20260821b"></script>
 <script src="../english-thunder-fighter/data.js?v=20260814c"></script>
 <script src="../shared/vocabulary.js?v=20260820a"></script>
-<script src="game.js?v=20260821f"></script>
+<script src="game.js?v=20260821g"></script>
 </body>
 </html>

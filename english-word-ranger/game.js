@@ -13,6 +13,7 @@ const TAU = Math.PI * 2;
 const PLAYER_H = 52;
 const CROUCH_H = 30;
 const BULLET_SPEED = 660;
+const FIXED_STEP = 1 / 60;
 const POWERUP_LABELS = { spread: '散射', rapid: '连射', shield: '护盾' };
 
 const DIFFICULTIES = {
@@ -51,6 +52,35 @@ const STAGES = [
   ],
 ];
 
+const MISSION_BEATS = [
+  { tag: 'TEACH', name: '巡逻线', hint: '橙光亮起后，巡逻兽会直线冲锋', foes: [['beetle', 420]], lock: true },
+  { tag: 'TEST', name: '壕沟试跳', hint: '先越过壕沟，再处理冲锋', gaps: [[330, 105]], foes: [['beetle', 555]], lock: true },
+  { tag: 'RECOVERY', name: '林间补给', hint: '短暂喘息，击落补给舱', foes: [['capsule', 470]], checkpoint: true, drop: 'spread' },
+  { tag: 'TEACH', name: '跃击预警', hint: '压低蓄力时后撤，从落点下方穿过', foes: [['leaper', 430]], lock: true },
+  { tag: 'TEST', name: '高台炮线', hint: '瞄准线锁定后立刻改变高度', platforms: [[405, 96, 150]], foes: [['turret', 485, 96]], lock: true },
+  { tag: 'COMBINE', name: '盾墙交叉火力', hint: '绕过盾面，在炮台恢复窗口反击', platforms: [[455, 92, 145]], foes: [['guardian', 315], ['turret', 520, 92]], lock: true },
+  { tag: 'WORD_GATE', name: '回忆补给门', hint: '只看中文，主动回忆刚才的单词', wordGate: true, checkpoint: true },
+  { tag: 'TWIST', name: '林冠俯冲', hint: '锁定标记出现后横向撤离', gaps: [[330, 92]], foes: [['drone', 430], ['leaper', 585]], lock: true },
+  { tag: 'CLIMAX', name: '三向夹击', hint: '先拆炮台，再处理盾兵与冲锋', platforms: [[520, 88, 138]], foes: [['beetle', 250], ['guardian', 420], ['turret', 580, 88]], lock: true },
+  { tag: 'RECOVERY', name: '守卫前庭', hint: '补充火力，准备首领战', foes: [['capsule', 455]], wordGate: true, checkpoint: true, drop: 'rapid' },
+  { tag: 'BOSS', name: '林地核心', hint: '观察预兆，击破单词护盾', foes: [['boss', 520]], lock: true },
+];
+
+const BEAT_LABELS = {
+  TEACH: '教学', TEST: '测试', RECOVERY: '喘息', COMBINE: '组合',
+  WORD_GATE: '回忆门', TWIST: '变化', CLIMAX: '高潮', BOSS: '首领', EXIT: '终点',
+};
+
+const ENEMY_SPECS = {
+  beetle: { w: 42, h: 34, hp: 1, range: 95 },
+  leaper: { w: 48, h: 38, hp: 2, range: 105 },
+  drone: { w: 42, h: 42, hp: 2, range: 125, air: true },
+  guardian: { w: 55, h: 62, hp: 4, range: 70 },
+  turret: { w: 52, h: 46, hp: 3, range: 0 },
+  boss: { w: 78, h: 92, hp: 16, range: 115 },
+  capsule: { w: 46, h: 28, hp: 2, range: 150, air: true },
+};
+
 const ASSETS = {};
 for (const [name, src] of Object.entries({
   hero: 'assets/hero-sprites.webp',
@@ -77,13 +107,17 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 const input = { left: false, right: false, up: false, down: false, fire: false, jumpHeld: false, jumpBuffer: 0 };
+const mobileAssist = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 
 const Game = {
-  state: 'menu', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
+  state: 'menu', mode: 'mission', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
   distance: 0, maxX: 70, camera: 0, checkpoint: 70, time: 0,
   feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null,
   generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
-  reinforcementTimer: 4.5, reinforcementCount: 0,
+  reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
+  hitStop: 0, shake: 0, shakeStrength: 0, flash: 0, victoryTimer: 0,
+  autoFire: false, sessionWords: [], sessionWordIndex: 0, completedWords: [], recalledWords: [], recallResults: [], wordGate: null,
+  bossNodes: [], bossNodeProgress: 0, bossGateDone: false, bossWord: null,
   chunks: [], pickups: [], powerups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
   player: {
     x: 70, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
@@ -91,7 +125,7 @@ const Game = {
     coyote: .1, inv: 0, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0,
     landingTimer: 0, skidTimer: 0, hurtTimer: 0,
-    runCycle: 0,
+    runCycle: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
     weapon: 'normal', weaponTimer: 0, shield: 0,
     overdrive: 0, combo: 0, comboTimer: 0,
   },
@@ -112,6 +146,27 @@ function aimDirection(source = input, player = Game.player) {
   return { x: x / length, y: y / length };
 }
 
+function shotDirection() {
+  const manual = aimDirection();
+  if (!mobileAssist || input.up || input.down) return manual;
+  const player = Game.player;
+  const originX = player.x + player.w / 2;
+  const originY = player.y + player.h * .42;
+  const boss = Game.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead);
+  const nodeTargets = boss ? Game.bossNodes.filter((node) => node.active).map((node) => bossNodeRect(node, boss)) : [];
+  const targets = nodeTargets.map((node) => ({ x: node.x + node.w / 2, y: node.y + node.h / 2 }))
+    .concat(Game.enemies.filter((enemy) => !enemy.dead && enemy.type !== 'capsule').map((enemy) => ({ x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h / 2 })));
+  const target = targets.filter((item) => {
+    const dx = item.x - originX;
+    return Math.abs(dx) < 470 && (Math.sign(dx || player.facing) === player.facing || Math.abs(dx) < 90);
+  }).sort((a, b) => Math.hypot(a.x - originX, (a.y - originY) * .65) - Math.hypot(b.x - originX, (b.y - originY) * .65))[0];
+  if (!target) return manual;
+  const dx = target.x - originX;
+  const dy = target.y - originY;
+  const length = Math.hypot(dx, dy) || 1;
+  return { x: dx / length, y: dy / length };
+}
+
 function setCrouching(enabled) {
   const player = Game.player;
   if (player.crouching === enabled) return;
@@ -127,7 +182,7 @@ function wordBank() {
 }
 
 function biomeIndexAt(x) {
-  return Math.floor(Math.max(0, x) / (CHUNK_W * 3)) % BIOMES.length;
+  return Game.mode === 'mission' ? 0 : Math.floor(Math.max(0, x) / (CHUNK_W * 3)) % BIOMES.length;
 }
 
 function chunkAt(x) {
@@ -143,35 +198,56 @@ function groundAt(x) {
   return chunk && !isGap(chunk, x) ? GROUND_Y : null;
 }
 
+function chunkHasThreats(chunk) {
+  return Game.enemies.some((enemy) => !enemy.dead && enemy.type !== 'capsule' && enemy.chunkIndex === chunk.index);
+}
+
 function platformTop(platform) {
   return platform.y + (platform.move ? Math.sin(Game.time * 1.45 + platform.phase) * platform.move : 0);
 }
 
-function makeEnemy(type, x, chunkIndex) {
+function makeEnemy(type, x, chunkIndex, floorY = GROUND_Y) {
   const conf = DIFFICULTIES[Game.difficulty];
-  const specs = {
-    beetle: { w: 42, h: 34, hp: 1, range: 82 },
-    drone: { w: 42, h: 42, hp: 2, range: 110 },
-    guardian: { w: 55, h: 62, hp: 4, range: 65 },
-    boss: { w: 78, h: 92, hp: 12, range: 105 },
-    capsule: { w: 46, h: 28, hp: 2, range: 150 },
-  };
-  const spec = specs[type];
-  const scale = Math.min(3.2, 1 + Math.floor(chunkIndex / 6) * .16);
+  const spec = ENEMY_SPECS[type];
+  const scale = Game.mode === 'mission' ? 1 : Math.min(3.2, 1 + Math.floor(chunkIndex / 6) * .16);
   const hp = Math.ceil(spec.hp * conf.hp * scale);
+  const baseY = type === 'drone' ? 285 : type === 'capsule' ? 185 : floorY - spec.h;
   return {
-    type, x, home: x, baseY: type === 'drone' ? 285 : type === 'capsule' ? 185 : GROUND_Y - spec.h,
-    y: type === 'drone' ? 285 : type === 'capsule' ? 185 : GROUND_Y - spec.h,
+    type, chunkIndex, x, home: x, floorY, baseY, y: baseY,
     w: spec.w, h: spec.h, hp, maxHp: hp, range: spec.range,
-    vx: conf.enemySpeed * (type === 'guardian' || type === 'boss' ? .55 : type === 'capsule' ? .8 : 1) * (Math.random() < .5 ? -1 : 1),
-    fire: .7 + Math.random() * conf.fireEvery,
-    phase: Math.random() * TAU, dead: false, hit: 0, dropType: null,
+    vx: 0, vy: 0, facing: -1, onGround: !spec.air,
+    state: 'idle', stateTimer: 0, cooldown: .65 + Math.random() * .8, attackIndex: 0,
+    targetX: x, targetY: baseY, bossPhase: 1,
+    phase: Math.random() * TAU, dead: false, hit: 0, stun: 0, dropType: null,
   };
+}
+
+function generateMissionChunk(index, start) {
+  const beat = MISSION_BEATS[index] || { tag: 'EXIT', name: '守卫封锁线', hint: '前线任务已结束', foes: [] };
+  const chunk = {
+    index, start, biome: 0, encounter: beat.name, tag: beat.tag, hint: beat.hint,
+    lock: Boolean(beat.lock), wordGate: Boolean(beat.wordGate), checkpoint: Boolean(beat.checkpoint),
+    gateUsed: false, cleared: false, gaps: [], platforms: [], hazards: [], decor: [],
+  };
+  for (const [offset, width] of beat.gaps || []) chunk.gaps.push({ x: start + offset, w: width });
+  for (const [offset, rise, width] of beat.platforms || []) chunk.platforms.push({ x: start + offset, y: GROUND_Y - rise, w: width, move: 0, phase: 0 });
+  for (let i = 0; i < 5; i++) chunk.decor.push({ x: start + 88 + i * 132 + (index * 29 + i * 19) % 38, size: .74 + ((index + i) % 3) * .13 });
+  Game.chunks.push(chunk);
+  Game.generatedTo += CHUNK_W;
+  for (const [type, offset, rise = 0] of beat.foes || []) {
+    const enemy = makeEnemy(type, start + offset, index, GROUND_Y - rise);
+    if (type === 'capsule') enemy.dropType = beat.drop || 'shield';
+    Game.enemies.push(enemy);
+  }
 }
 
 function generateChunk() {
   const index = Game.nextChunkIndex++;
   const start = Game.generatedTo;
+  if (Game.mode === 'mission') {
+    generateMissionChunk(index, start);
+    return;
+  }
   const biome = biomeIndexAt(start);
   const slot = index % 3;
   const stage = STAGES[biome][slot];
@@ -290,10 +366,19 @@ function findSafeSpot(candidate) {
   return { x: candidate, y: GROUND_Y - 130 };
 }
 
+function buildSessionWords() {
+  const pool = wordBank().slice();
+  const count = Math.min(8, pool.length);
+  for (let i = 0; i < count; i++) {
+    const pick = i + Math.floor(Math.random() * (pool.length - i));
+    [pool[i], pool[pick]] = [pool[pick], pool[i]];
+  }
+  return pool.slice(0, count);
+}
+
 function nextWord(initial) {
-  const bank = wordBank();
-  let item = bank[Math.floor(Math.random() * bank.length)];
-  if (bank.length > 1 && item.en === Game.lastWord) item = bank[(bank.indexOf(item) + 1) % bank.length];
+  if (!Game.sessionWords.length) Game.sessionWords = buildSessionWords();
+  const item = Game.sessionWords[Game.sessionWordIndex++ % Game.sessionWords.length];
   Game.lastWord = item.en;
   Game.currentWord = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   Game.pickups = [];
@@ -311,17 +396,21 @@ function resetPlayer(x) {
     x: x == null ? 70 : x, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
     facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
-    runCycle: 0,
+    runCycle: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
     weapon: 'normal', weaponTimer: 0, shield: 0, overdrive: 0, combo: 0, comboTimer: 0,
   });
 }
 
-function startGame() {
+function startGame(mode = Game.mode) {
+  Game.mode = mode === 'arcade' ? 'arcade' : 'mission';
   Object.assign(Game, {
     state: 'playing', score: 0, wordsDone: 0, hp: 3, distance: 0, maxX: 70,
     camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '',
     currentWord: null, wordEcho: null, generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
-    reinforcementTimer: 4.5, reinforcementCount: 0,
+    reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
+    hitStop: 0, shake: 0, shakeStrength: 0, flash: 0, victoryTimer: 0,
+    sessionWords: [], sessionWordIndex: 0, completedWords: [], recalledWords: [], recallResults: [], wordGate: null,
+    bossNodes: [], bossNodeProgress: 0, bossGateDone: false, bossWord: null,
   });
   for (const list of [Game.chunks, Game.pickups, Game.powerups, Game.enemies, Game.bullets, Game.enemyBullets, Game.particles]) list.length = 0;
   resetInput();
@@ -331,6 +420,7 @@ function startGame() {
   $('menu').classList.add('hidden');
   $('over').classList.add('hidden');
   $('paused').classList.add('hidden');
+  $('word-gate').classList.add('hidden');
   $('hud').classList.remove('hidden');
   $('touch-controls').classList.remove('hidden');
   if (window.ArcadeAudio) ArcadeAudio.start();
@@ -362,29 +452,47 @@ function backToMenu() {
   $('touch-controls').classList.add('hidden');
   $('paused').classList.add('hidden');
   $('over').classList.add('hidden');
+  $('word-gate').classList.add('hidden');
   $('menu').classList.remove('hidden');
 }
 
-function gameOver() {
+function renderRecap() {
+  const recap = $('over-recap');
+  recap.replaceChildren();
+  for (const word of Game.completedWords.slice(-8)) {
+    const item = document.createElement('span');
+    item.textContent = word.en + ' · ' + word.zh;
+    recap.append(item);
+  }
+}
+
+function finishRun(victory) {
   Game.state = 'over';
   resetInput();
   $('hud').classList.add('hidden');
   $('touch-controls').classList.add('hidden');
+  $('word-gate').classList.add('hidden');
   $('over').classList.remove('hidden');
-  $('over-kicker').textContent = '本次远征结束';
-  $('over-title').textContent = '再向前一点';
-  const key = 'word-ranger-highscore-' + Game.difficulty;
+  $('over-kicker').textContent = victory ? '第一关完成' : '本次行动结束';
+  $('over-title').textContent = victory ? '林地哨站已突破' : '再向前一点';
+  const key = 'word-ranger-highscore-' + Game.mode + '-' + Game.difficulty;
   let high = 0;
   try {
     high = Number(localStorage.getItem(key) || 0);
     if (Game.score > high) { high = Game.score; localStorage.setItem(key, String(high)); }
   } catch (e) { /* local storage may be unavailable */ }
+  const correct = Game.recallResults.filter((result) => result.correct).length;
   $('over-stats').innerHTML =
     '<div><span>本局得分</span><b>' + Game.score + '</b></div>' +
     '<div><span>完成单词</span><b>' + Game.wordsDone + '</b></div>' +
+    '<div><span>主动回忆</span><b>' + correct + ' / ' + Game.recallResults.length + '</b></div>' +
     '<div><span>推进里程</span><b>' + Game.distance + ' m</b></div>' +
     '<div><span>最高纪录</span><b>' + high + '</b></div>';
+  renderRecap();
 }
+
+function gameOver() { finishRun(false); }
+function missionComplete() { finishRun(true); }
 
 function queueJump() {
   if (Game.state !== 'playing') return;
@@ -395,7 +503,7 @@ function queueJump() {
 function shoot() {
   const player = Game.player;
   if (player.fireCooldown > 0 || Game.state !== 'playing') return;
-  const aim = aimDirection();
+  const aim = shotDirection();
   const centerX = player.x + player.w / 2;
   const centerY = player.y + player.h * (player.crouching ? .38 : .43);
   const muzzleX = centerX + aim.x * 28;
@@ -403,6 +511,10 @@ function shoot() {
   player.fireCooldown = player.overdrive > 0 ? .065 : player.weapon === 'rapid' ? .085 : .14;
   player.aimX = aim.x;
   player.aimY = aim.y;
+  player.recoil = .09;
+  player.muzzleFlash = .055;
+  player.muzzleX = muzzleX;
+  player.muzzleY = muzzleY;
   const baseAngle = Math.atan2(aim.y, aim.x);
   const offsets = player.weapon === 'spread' ? [-.18, 0, .18] : [0];
   for (const offset of offsets) {
@@ -413,7 +525,9 @@ function shoot() {
     });
   }
   burst(muzzleX, muzzleY, '#f4d37a', 3);
-  if (window.ArcadeAudio) ArcadeAudio.play('laser', .14);
+  Game.shake = Math.max(Game.shake, .035);
+  Game.shakeStrength = Math.max(Game.shakeStrength, 1.4);
+  if (window.ArcadeAudio) ArcadeAudio.play('laser', .14, player.weapon === 'spread' ? .82 : player.weapon === 'rapid' ? 1.22 : 1);
 }
 
 function dropPowerup(enemy, type) {
@@ -442,6 +556,10 @@ function collectPowerup(powerup) {
 function defeatEnemy(enemy, source) {
   if (enemy.dead) return;
   enemy.dead = true;
+  enemy.state = 'dead';
+  Game.hitStop = Math.max(Game.hitStop, enemy.type === 'boss' ? .11 : .055);
+  Game.shake = Math.max(Game.shake, enemy.type === 'boss' ? .42 : .12);
+  Game.shakeStrength = Math.max(Game.shakeStrength, enemy.type === 'boss' ? 9 : 3.5);
   if (enemy.type === 'capsule') {
     Game.score += 100;
     dropPowerup(enemy, enemy.dropType || 'spread');
@@ -460,11 +578,22 @@ function defeatEnemy(enemy, source) {
     player.onGround = false;
   }
   if (enemy.type === 'boss') {
-    dropPowerup(enemy, 'shield');
-    showFeedback('区域守卫已击败，护盾补给已投放');
+    if (Game.mode === 'mission') {
+      Game.victoryTimer = 1.15;
+      showFeedback('林地核心崩解，任务完成');
+    } else {
+      dropPowerup(enemy, 'shield');
+      showFeedback('区域守卫已击败，护盾补给已投放');
+    }
   } else if (player.combo >= 3) {
     showFeedback('连续击破 ×' + player.combo);
   }
+  const chunk = Game.chunks.find((item) => item.index === enemy.chunkIndex);
+  if (chunk?.lock && !chunkHasThreats(chunk)) {
+    chunk.cleared = true;
+    if (enemy.type !== 'boss') showFeedback('封锁解除：' + chunk.encounter);
+  }
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', enemy.type === 'boss' ? .38 : .14, enemy.type === 'boss' ? .62 : 1.35);
   updateHud();
 }
 
@@ -477,13 +606,22 @@ function hurt(fell = false) {
     player.combo = 0;
     player.comboTimer = 0;
     Game.enemyBullets.length = 0;
+    Game.hitStop = Math.max(Game.hitStop, .06);
+    Game.shake = Math.max(Game.shake, .18);
+    Game.shakeStrength = Math.max(Game.shakeStrength, 5);
+    Game.flash = .16;
     burst(player.x + player.w / 2, player.y + player.h / 2, '#f4d37a', 22);
     showFeedback('护盾吸收了这次攻击');
     updateHud();
     return;
   }
   Game.hp--;
+  Game.hitStop = Math.max(Game.hitStop, .08);
+  Game.shake = Math.max(Game.shake, .28);
+  Game.shakeStrength = Math.max(Game.shakeStrength, 7);
+  Game.flash = .22;
   burst(player.x + player.w / 2, Math.min(player.y + player.h / 2, GROUND_Y), '#ef835e', 16);
+  if (window.ArcadeAudio) ArcadeAudio.play('laser', .22, .52);
   if (Game.hp <= 0) {
     gameOver();
     return;
@@ -520,10 +658,13 @@ function collectLetter(pickup) {
   if (word.progress === word.en.length) {
     Game.score += 300 + word.en.length * 20;
     Game.wordsDone++;
+    Game.completedWords.push({ en: word.en, zh: word.zh });
     if (Game.wordsDone % 5 === 0 && Game.hp < 3) Game.hp++;
     nextWord(false);
     Game.player.overdrive = 4.5;
     showFeedback('单词完成：4.5 秒火力爆发');
+    const chunk = chunkAt(Game.player.x + Game.player.w / 2);
+    if (chunk?.wordGate && !chunk.gateUsed) chunk.gateUsed = openWordGate(chunk);
   } else {
     showFeedback('正确，下一个字母是 ' + word.en[word.progress]);
   }
@@ -539,17 +680,100 @@ function flashWord(word, complete) {
   Game.wordEcho = { en: word.en, zh: word.zh, progress: word.progress, complete, timer: complete ? 1.8 : 1.15 };
 }
 
+function saveRecallResult(word, correct, responseMs) {
+  try {
+    const key = 'word-ranger-mastery-v1';
+    const data = JSON.parse(localStorage.getItem(key) || '{}');
+    const entry = data[word.en] || { correct: 0, wrong: 0, last: 0, responseMs: 0 };
+    entry[correct ? 'correct' : 'wrong']++;
+    entry.last = Date.now();
+    entry.responseMs = Math.round(responseMs);
+    data[word.en] = entry;
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) { /* local storage may be unavailable */ }
+}
+
+function grantRecallReward() {
+  const reward = ['spread', 'rapid', 'shield'][Math.min(2, Game.recallResults.length - 1)];
+  if (reward === 'shield') Game.player.shield = 1;
+  else { Game.player.weapon = reward; Game.player.weaponTimer = 18; }
+  Game.player.overdrive = Math.max(Game.player.overdrive, 3);
+  Game.score += 500;
+  return POWERUP_LABELS[reward];
+}
+
+function openWordGate(chunk) {
+  const word = Game.completedWords.slice().reverse().find((item) => !Game.recalledWords.includes(item.en));
+  if (!word) return false;
+  const distractors = Game.sessionWords.map((item) => item.en.toUpperCase()).filter((item) => item !== word.en).slice(0, 2);
+  const options = [word.en, ...distractors];
+  for (let i = options.length - 1; i > 0; i--) {
+    const pick = Math.floor(Math.random() * (i + 1));
+    [options[i], options[pick]] = [options[pick], options[i]];
+  }
+  Game.state = 'word-gate';
+  Game.wordGate = { word, chunkIndex: chunk.index, options, startedAt: performance.now() };
+  resetInput();
+  $('gate-meaning').textContent = word.zh;
+  const list = $('gate-options');
+  list.replaceChildren();
+  for (const option of options) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'gate-option';
+    button.textContent = option;
+    button.addEventListener('click', () => answerWordGate(option));
+    list.append(button);
+  }
+  $('word-gate').classList.remove('hidden');
+  list.querySelector('button')?.focus();
+  return true;
+}
+
+function answerWordGate(option) {
+  if (Game.state !== 'word-gate' || !Game.wordGate) return;
+  const gate = Game.wordGate;
+  const correct = option === gate.word.en;
+  const responseMs = performance.now() - gate.startedAt;
+  Game.recalledWords.push(gate.word.en);
+  Game.recallResults.push({ en: gate.word.en, correct, responseMs });
+  saveRecallResult(gate.word, correct, responseMs);
+  let feedback;
+  if (correct) {
+    feedback = '主动回忆正确：获得' + grantRecallReward();
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .32, 1.08);
+  } else {
+    Game.player.combo = Game.player.comboTimer = 0;
+    let x = Game.player.x + 300;
+    while (groundAt(x) === null && x < Game.player.x + 520) x += 32;
+    const chunk = chunkAt(x);
+    if (chunk) Game.enemies.push(makeEnemy('leaper', x, chunk.index));
+    feedback = '正确答案是 ' + gate.word.en + '，前方出现增援';
+    if (window.ArcadeAudio) ArcadeAudio.play('laser', .18, .62);
+  }
+  Game.wordGate = null;
+  Game.state = 'playing';
+  $('word-gate').classList.add('hidden');
+  showFeedback(feedback);
+  lastTime = performance.now();
+  accumulator = 0;
+  updateHud();
+}
+
 function updateHud() {
   $('score').textContent = Game.score;
   $('words').textContent = Game.wordsDone;
   $('lives').textContent = Game.hp;
   $('distance').textContent = Game.distance + 'm';
-  $('biome').textContent = BIOMES[biomeIndexAt(Game.player.x)].name;
+  const chunk = chunkAt(Game.player.x + Game.player.w / 2);
+  $('biome').textContent = Game.mode === 'mission' && chunk
+    ? Math.min(MISSION_BEATS.length, chunk.index + 1) + '/' + MISSION_BEATS.length + ' ' + chunk.encounter
+    : BIOMES[biomeIndexAt(Game.player.x)].name;
   const word = Game.currentWord;
   if (word) {
     $('word-meaning').textContent = word.zh;
     $('word-progress').textContent = [...word.en].map((letter, index) => index < word.progress ? letter : '_').join(' ');
-    if (Game.feedbackTimer <= 0) $('feedback').textContent = '按顺序收集字母 · 射击清理道路';
+    if (Game.feedbackTimer <= 0) $('feedback').textContent = Game.mode === 'mission' ? '观察预兆 · 选择解法 · 记住单词' : '按顺序收集字母 · 射击清理道路';
   }
 }
 
@@ -566,6 +790,8 @@ function updatePlayer(dt) {
   player.landingTimer = Math.max(0, player.landingTimer - dt);
   player.skidTimer = Math.max(0, player.skidTimer - dt);
   player.hurtTimer = Math.max(0, player.hurtTimer - dt);
+  player.recoil = Math.max(0, player.recoil - dt);
+  player.muzzleFlash = Math.max(0, player.muzzleFlash - dt);
   player.weaponTimer = Math.max(0, player.weaponTimer - dt);
   player.overdrive = Math.max(0, player.overdrive - dt);
   player.comboTimer = Math.max(0, player.comboTimer - dt);
@@ -599,6 +825,10 @@ function updatePlayer(dt) {
 
   player.x += player.vx * dt;
   player.x = Math.max(Math.max(0, Game.camera - 130), player.x);
+  if (Game.mode === 'mission') {
+    const locked = Game.chunks.find((chunk) => chunk.lock && !chunk.cleared && chunkHasThreats(chunk) && player.x >= chunk.start && player.x < chunk.start + CHUNK_W);
+    if (locked) player.x = Math.min(player.x, locked.start + CHUNK_W - 74);
+  }
   const previousBottom = player.y + player.h;
   player.vy += biome.gravity * dt;
   player.y += player.vy * dt;
@@ -621,9 +851,24 @@ function updatePlayer(dt) {
     player.vy = 0;
     player.onGround = true;
   }
-  if (!wasOnGround && player.onGround && fallingSpeed > 180) player.landingTimer = .12;
+  if (!wasOnGround && player.onGround && fallingSpeed > 180) {
+    player.landingTimer = .12;
+    burst(player.x + player.w / 2, player.y + player.h, '#c7b37d', 9);
+    Game.shake = Math.max(Game.shake, .09);
+    Game.shakeStrength = Math.max(Game.shakeStrength, fallingSpeed > 520 ? 4 : 2);
+    if (window.ArcadeAudio) ArcadeAudio.play('click', fallingSpeed > 520 ? .16 : .08, fallingSpeed > 520 ? .62 : .78);
+  }
   if (player.y > VIEW_H + 90) hurt(true);
-  if (input.fire) shoot();
+  if (player.onGround && Math.abs(player.vx) > 80) {
+    player.stepTimer -= dt;
+    if (player.stepTimer <= 0) {
+      player.stepTimer = .22;
+      burst(player.x + player.w / 2 - player.facing * 8, player.y + player.h, '#b8a878', 2);
+    }
+  } else {
+    player.stepTimer = 0;
+  }
+  if (input.fire || Game.autoFire) shoot();
 
   for (const pickup of Game.pickups) {
     if (!pickup.taken && overlap(player, pickup)) collectLetter(pickup);
@@ -668,43 +913,228 @@ function updateHazards(dt) {
   }
 }
 
+function setEnemyState(enemy, state, duration) {
+  enemy.state = state;
+  enemy.stateTimer = duration;
+  if (state === 'telegraph' && enemy.x > Game.camera - 80 && enemy.x < Game.camera + VIEW_W + 80 && window.ArcadeAudio) {
+    ArcadeAudio.play('confirm', enemy.type === 'boss' ? .16 : .07, enemy.type === 'boss' ? .55 : .78);
+  }
+}
+
+function fireEnemyVolley(enemy, offsets, speed) {
+  const originX = enemy.x + enemy.w / 2;
+  const originY = enemy.y + enemy.h * .42;
+  const targetX = enemy.targetX == null ? Game.player.x + Game.player.w / 2 : enemy.targetX;
+  const targetY = enemy.targetY == null ? Game.player.y + Game.player.h / 2 : enemy.targetY;
+  const base = Math.atan2(targetY - originY, targetX - originX);
+  for (const offset of offsets) {
+    const angle = base + offset;
+    Game.enemyBullets.push({ x: originX - 5, y: originY - 4, w: 10, h: 8, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed });
+  }
+  burst(originX, originY, '#ef835e', 5);
+  if (window.ArcadeAudio) ArcadeAudio.play('laser', enemy.type === 'boss' ? .22 : .11, enemy.type === 'boss' ? .66 : .78);
+}
+
+function moveGroundEnemy(enemy, dt) {
+  const nextX = enemy.x + enemy.vx * dt;
+  if (enemy.floorY < GROUND_Y || groundAt(nextX + enemy.w / 2) !== null) enemy.x = nextX;
+  else { enemy.vx = 0; setEnemyState(enemy, 'recover', .45); }
+}
+
+function bossNodeRect(node, boss) {
+  const bob = Math.sin(Game.time * 3.4 + node.phase) * 6;
+  return { x: boss.x + boss.w / 2 + node.ox - 18, y: boss.y + node.oy + bob, w: 36, h: 36 };
+}
+
+function startBossShield(boss) {
+  const candidates = [...Game.completedWords].reverse().concat(Game.currentWord || [], Game.sessionWords);
+  const source = candidates.find((item) => new Set(item.en.toUpperCase()).size >= 3) || candidates[0];
+  const word = { en: source.en.toUpperCase(), zh: source.zh };
+  const letters = [...word.en];
+  const indices = letters.map((letter, index) => ({ letter, index })).filter((item, index, list) => list.findIndex((other) => other.letter === item.letter) === index).slice(0, 3);
+  const entries = indices.map((item, order) => ({ letter: item.letter, order }));
+  const distractor = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find((letter) => !letters.includes(letter));
+  entries.push({ letter: distractor, order: -1 });
+  for (let i = entries.length - 1; i > 0; i--) {
+    const pick = Math.floor(Math.random() * (i + 1));
+    [entries[i], entries[pick]] = [entries[pick], entries[i]];
+  }
+  const positions = [{ ox: -126, oy: -62 }, { ox: -44, oy: -112 }, { ox: 44, oy: -112 }, { ox: 126, oy: -62 }];
+  Game.bossWord = { en: word.en, zh: word.zh };
+  Game.bossNodes = entries.map((entry, index) => ({ ...entry, ...positions[index], active: true, phase: index * 1.7 }));
+  Game.bossNodeProgress = 0;
+  boss.bossPhase = 2;
+  boss.vx = 0;
+  setEnemyState(boss, 'shield', Infinity);
+  Game.stageBanner = { tag: 'WORD_GATE', name: '护盾口令：' + word.zh, hint: '按英文顺序击破三个正确节点', timer: 3.2 };
+}
+
+function hitBossNode(node, boss) {
+  if (node.order === Game.bossNodeProgress) {
+    node.active = false;
+    Game.bossNodeProgress++;
+    burst(bossNodeRect(node, boss).x + 18, bossNodeRect(node, boss).y + 18, '#8de0b5', 16);
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1 + Game.bossNodeProgress * .1);
+    if (Game.bossNodeProgress >= 3) {
+      Game.bossGateDone = true;
+      boss.bossPhase = 3;
+      boss.cooldown = .8;
+      setEnemyState(boss, 'recover', .85);
+      Game.player.overdrive = 6;
+      Game.score += 900;
+      Game.recallResults.push({ en: Game.bossWord.en, correct: true, responseMs: 0 });
+      saveRecallResult(Game.bossWord, true, 0);
+      showFeedback('口令正确：首领弱点开放，火力爆发 6 秒');
+    }
+    return;
+  }
+  Game.bossNodeProgress = 0;
+  Game.bossNodes.forEach((item) => { item.active = true; });
+  boss.hp = Math.min(boss.maxHp, boss.hp + 1);
+  const chunk = Game.chunks.find((item) => item.index === boss.chunkIndex);
+  if (chunk && Game.enemies.filter((enemy) => !enemy.dead && enemy.type === 'leaper').length < 2) {
+    Game.enemies.push(makeEnemy('leaper', Math.max(chunk.start + 100, boss.x - 260), chunk.index));
+  }
+  Game.player.combo = Game.player.comboTimer = 0;
+  showFeedback('口令顺序错误：护盾恢复并呼叫增援');
+  if (window.ArcadeAudio) ArcadeAudio.play('laser', .2, .58);
+}
+
+function updateBoss(enemy, dt, dx, dy, conf) {
+  if (enemy.bossPhase === 1 && enemy.hp <= enemy.maxHp * .66 && !Game.bossGateDone) startBossShield(enemy);
+  if (enemy.bossPhase === 2) return;
+  if (enemy.state === 'idle') {
+    enemy.vx = Math.abs(dx) > 260 ? Math.sign(dx) * conf.enemySpeed * .5 : 0;
+    moveGroundEnemy(enemy, dt);
+    if (enemy.cooldown <= 0 && Math.abs(dx) < 680) {
+      enemy.attackKind = enemy.attackIndex++ % 3;
+      enemy.targetX = Game.player.x + Game.player.w / 2;
+      enemy.targetY = Game.player.y + Game.player.h / 2;
+      enemy.facing = Math.sign(dx || -1);
+      enemy.vx = 0;
+      setEnemyState(enemy, 'telegraph', enemy.bossPhase === 3 ? .38 : .58);
+    }
+  } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+    if (enemy.attackKind === 0) fireEnemyVolley(enemy, enemy.bossPhase === 3 ? [-.24, -.08, .08, .24] : [-.14, 0, .14], enemy.bossPhase === 3 ? 330 : 285);
+    else if (enemy.attackKind === 1) enemy.vx = enemy.facing * (enemy.bossPhase === 3 ? 360 : 300);
+    else {
+      Game.enemyBullets.push(
+        { x: enemy.x + enemy.w / 2, y: GROUND_Y - 15, w: 16, h: 8, vx: -320, vy: 0 },
+        { x: enemy.x + enemy.w / 2, y: GROUND_Y - 15, w: 16, h: 8, vx: 320, vy: 0 },
+      );
+      Game.shake = .22; Game.shakeStrength = 7;
+    }
+    setEnemyState(enemy, 'attack', enemy.attackKind === 1 ? .48 : .22);
+  } else if (enemy.state === 'attack') {
+    if (enemy.attackKind === 1) moveGroundEnemy(enemy, dt);
+    if (enemy.stateTimer <= 0) { enemy.vx = 0; setEnemyState(enemy, 'recover', enemy.bossPhase === 3 ? .42 : .68); }
+  } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
+    enemy.cooldown = enemy.bossPhase === 3 ? .55 : .9;
+    setEnemyState(enemy, 'idle', 0);
+  }
+}
+
 function updateEnemies(dt) {
   const conf = DIFFICULTIES[Game.difficulty];
   const player = Game.player;
   for (const enemy of Game.enemies) {
     if (enemy.dead || enemy.x < Game.camera - 500 || enemy.x > Game.camera + VIEW_W + 650) continue;
     enemy.hit = Math.max(0, enemy.hit - dt);
-    enemy.fire -= dt;
+    enemy.stun = Math.max(0, enemy.stun - dt);
+    enemy.cooldown -= dt;
+    if (Number.isFinite(enemy.stateTimer)) enemy.stateTimer = Math.max(0, enemy.stateTimer - dt);
     const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
     const dy = player.y + player.h / 2 - (enemy.y + enemy.h / 2);
-    if (enemy.type === 'beetle' && Math.abs(dx) < 240) {
-      enemy.vx = approach(enemy.vx, Math.sign(dx || 1) * conf.enemySpeed * 1.7, conf.enemySpeed * 5 * dt);
+    if (enemy.state !== 'attack') enemy.facing = Math.sign(dx || enemy.facing || -1);
+    if (enemy.stun > 0) {
+      enemy.x += (enemy.knockback || 0) * dt;
+      enemy.knockback = approach(enemy.knockback || 0, 0, 900 * dt);
+      continue;
     }
-    enemy.x += enemy.vx * dt;
-    if (enemy.x < enemy.home - enemy.range || enemy.x > enemy.home + enemy.range) enemy.vx *= -1;
-    if (enemy.type !== 'drone' && enemy.type !== 'capsule' && groundAt(enemy.x + enemy.w / 2) === null) {
-      enemy.x -= enemy.vx * dt;
-      enemy.vx *= -1;
-    }
-    if (enemy.type === 'drone') enemy.y = enemy.baseY + Math.sin(Game.time * 2.2 + enemy.phase) * 34 + clamp(1 - Math.abs(dx) / 360, 0, 1) * 70;
-    if (enemy.type === 'capsule') enemy.y = enemy.baseY + Math.sin(Game.time * 2.8 + enemy.phase) * 22;
-    const canFire = ['drone', 'guardian', 'boss'].includes(enemy.type) && Math.abs(dx) < (enemy.type === 'boss' ? 650 : 470);
-    if (canFire && enemy.fire <= 0) {
-      enemy.fire = conf.fireEvery * (enemy.type === 'boss' ? .55 : 1) + Math.random() * .5;
-      const speed = enemy.type === 'boss' ? 290 : 225;
-      for (const angle of (enemy.type === 'boss' ? [-.18, 0, .18] : [0])) {
-        const base = Math.atan2(dy, dx) + angle;
-        Game.enemyBullets.push({ x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h * .4, w: 9, h: 7, vx: Math.cos(base) * speed, vy: Math.sin(base) * speed });
+
+    if (enemy.type === 'capsule') {
+      enemy.y = enemy.baseY + Math.sin(Game.time * 2.8 + enemy.phase) * 22;
+    } else if (enemy.type === 'boss') {
+      updateBoss(enemy, dt, dx, dy, conf);
+    } else if (enemy.type === 'beetle') {
+      if (enemy.state === 'idle') {
+        enemy.vx = enemy.facing * conf.enemySpeed * .48;
+        moveGroundEnemy(enemy, dt);
+        if (enemy.cooldown <= 0 && Math.abs(dx) < 270) { enemy.vx = 0; setEnemyState(enemy, 'telegraph', .42); }
+      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+        enemy.vx = enemy.facing * conf.enemySpeed * 4.4;
+        setEnemyState(enemy, 'attack', .36);
+      } else if (enemy.state === 'attack') {
+        moveGroundEnemy(enemy, dt);
+        if (enemy.stateTimer <= 0) { enemy.vx = 0; setEnemyState(enemy, 'recover', .52); }
+      } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
+        enemy.cooldown = 1.05; setEnemyState(enemy, 'idle', 0);
+      }
+    } else if (enemy.type === 'leaper') {
+      if (enemy.state === 'idle' && enemy.cooldown <= 0 && Math.abs(dx) < 340) {
+        enemy.vx = 0; setEnemyState(enemy, 'telegraph', .52);
+      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+        enemy.vx = enemy.facing * conf.enemySpeed * 3;
+        enemy.vy = -470; enemy.onGround = false; setEnemyState(enemy, 'attack', 1.2);
+      } else if (enemy.state === 'attack') {
+        enemy.x += enemy.vx * dt; enemy.vy += 1450 * dt; enemy.y += enemy.vy * dt;
+        if (enemy.y + enemy.h >= enemy.floorY) {
+          enemy.y = enemy.floorY - enemy.h; enemy.vx = enemy.vy = 0; enemy.onGround = true; setEnemyState(enemy, 'recover', .56);
+        }
+      } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
+        enemy.cooldown = 1.1; setEnemyState(enemy, 'idle', 0);
+      }
+    } else if (enemy.type === 'guardian') {
+      if (enemy.state === 'idle') {
+        enemy.vx = Math.abs(dx) > 150 ? enemy.facing * conf.enemySpeed * .38 : 0;
+        moveGroundEnemy(enemy, dt);
+        if (enemy.cooldown <= 0 && Math.abs(dx) < 470) {
+          enemy.vx = 0; enemy.targetX = player.x; enemy.targetY = player.y + player.h * .45; setEnemyState(enemy, 'telegraph', .58);
+        }
+      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+        fireEnemyVolley(enemy, [-.035, .035], 235); setEnemyState(enemy, 'attack', .18);
+      } else if (enemy.state === 'attack' && enemy.stateTimer <= 0) {
+        setEnemyState(enemy, 'recover', .72);
+      } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
+        enemy.cooldown = 1.1; setEnemyState(enemy, 'idle', 0);
+      }
+    } else if (enemy.type === 'turret') {
+      if (enemy.state === 'idle' && enemy.cooldown <= 0 && Math.abs(dx) < 560) {
+        enemy.targetX = player.x + player.w / 2; enemy.targetY = player.y + player.h / 2; setEnemyState(enemy, 'telegraph', .68);
+      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+        fireEnemyVolley(enemy, [0], 315); setEnemyState(enemy, 'attack', .16);
+      } else if (enemy.state === 'attack' && enemy.stateTimer <= 0) {
+        setEnemyState(enemy, 'recover', .92);
+      } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
+        enemy.cooldown = .72; setEnemyState(enemy, 'idle', 0);
+      }
+    } else if (enemy.type === 'drone') {
+      if (enemy.state === 'idle') {
+        enemy.y = enemy.baseY + Math.sin(Game.time * 2.2 + enemy.phase) * 28;
+        if (enemy.cooldown <= 0 && Math.abs(dx) < 480) {
+          enemy.targetX = player.x + player.w / 2; enemy.targetY = Math.min(GROUND_Y - 20, player.y + player.h / 2);
+          setEnemyState(enemy, 'telegraph', .52);
+        }
+      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+        enemy.vx = (enemy.targetX - enemy.x) / .46; enemy.vy = (enemy.targetY - enemy.y) / .46; setEnemyState(enemy, 'attack', .46);
+      } else if (enemy.state === 'attack') {
+        enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+        if (enemy.stateTimer <= 0) { enemy.vx = enemy.vy = 0; setEnemyState(enemy, 'recover', .72); }
+      } else if (enemy.state === 'recover') {
+        enemy.x = approach(enemy.x, enemy.home, 180 * dt); enemy.y = approach(enemy.y, enemy.baseY, 220 * dt);
+        if (enemy.stateTimer <= 0) { enemy.cooldown = 1.15; setEnemyState(enemy, 'idle', 0); }
       }
     }
+
     if (overlap(player, enemy)) {
-      if (enemy.type === 'beetle' && player.vy > 100 && player.y + player.h < enemy.y + enemy.h * .62) defeatEnemy(enemy, 'stomp');
+      if ((enemy.type === 'beetle' || enemy.type === 'leaper') && player.vy > 100 && player.y + player.h < enemy.y + enemy.h * .62) defeatEnemy(enemy, 'stomp');
       else if (enemy.type !== 'capsule') hurt();
     }
   }
 }
 
 function updateReinforcements(dt) {
+  if (Game.mode === 'mission') return;
   Game.reinforcementTimer -= dt;
   if (Game.reinforcementTimer > 0) return;
   const conf = DIFFICULTIES[Game.difficulty];
@@ -726,29 +1156,66 @@ function updateReinforcements(dt) {
   Game.reinforcementCount++;
 }
 
+function enemyBlocksBullet(enemy, bullet) {
+  if (enemy.type === 'boss' && enemy.bossPhase === 2) return true;
+  if (enemy.type !== 'guardian' || enemy.state === 'recover') return false;
+  const fromFront = Math.sign(bullet.vx || 1) === -enemy.facing;
+  const plunging = bullet.vy > 120 && bullet.y < enemy.y + enemy.h * .38;
+  return fromFront && !plunging;
+}
+
+function damageEnemy(enemy, bullet) {
+  if (enemyBlocksBullet(enemy, bullet)) {
+    burst(bullet.x, bullet.y, '#b9e3d6', 8);
+    Game.hitStop = Math.max(Game.hitStop, .025);
+    if (window.ArcadeAudio) ArcadeAudio.play('click', .12, 1.5);
+    return;
+  }
+  enemy.hp--;
+  enemy.hit = .12;
+  enemy.stun = .055;
+  enemy.knockback = Math.sign(bullet.vx || 1) * (enemy.type === 'boss' ? 28 : 95);
+  Game.hitStop = Math.max(Game.hitStop, .05);
+  Game.shake = Math.max(Game.shake, .055);
+  Game.shakeStrength = Math.max(Game.shakeStrength, 2.5);
+  burst(bullet.x, bullet.y, '#f4d37a', 7);
+  if (window.ArcadeAudio) ArcadeAudio.play('click', .08, enemy.type === 'guardian' || enemy.type === 'boss' ? .82 : 1.3);
+  if (enemy.hp <= 0) defeatEnemy(enemy, 'shot');
+}
+
 function updateProjectiles(dt) {
   for (let i = Game.bullets.length - 1; i >= 0; i--) {
     const bullet = Game.bullets[i];
-    bullet.x += bullet.vx * dt;
-    bullet.y += bullet.vy * dt;
+    const steps = Math.max(1, Math.ceil(Math.hypot(bullet.vx, bullet.vy) * dt / 10));
     let hit = false;
-    for (const enemy of Game.enemies) {
-      if (enemy.dead || !overlap(bullet, enemy)) continue;
-      enemy.hp--;
-      enemy.hit = .12;
-      hit = true;
-      burst(bullet.x, bullet.y, '#f4d37a', 5);
-      if (enemy.hp <= 0) defeatEnemy(enemy, 'shot');
-      break;
+    for (let step = 0; step < steps && !hit; step++) {
+      bullet.x += bullet.vx * dt / steps;
+      bullet.y += bullet.vy * dt / steps;
+      const boss = Game.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead && enemy.bossPhase === 2);
+      if (boss) {
+        const node = Game.bossNodes.find((item) => item.active && overlap(bullet, bossNodeRect(item, boss)));
+        if (node) { hitBossNode(node, boss); hit = true; break; }
+      }
+      for (const enemy of Game.enemies) {
+        if (enemy.dead || !overlap(bullet, enemy)) continue;
+        damageEnemy(enemy, bullet);
+        hit = true;
+        break;
+      }
     }
     if (hit || bullet.x < Game.camera - 80 || bullet.x > Game.camera + VIEW_W + 100 || bullet.y < -80 || bullet.y > VIEW_H + 80) Game.bullets.splice(i, 1);
   }
 
   for (let i = Game.enemyBullets.length - 1; i >= 0; i--) {
     const bullet = Game.enemyBullets[i];
-    bullet.x += bullet.vx * dt;
-    bullet.y += bullet.vy * dt;
-    if (overlap(bullet, Game.player)) {
+    const steps = Math.max(1, Math.ceil(Math.hypot(bullet.vx, bullet.vy) * dt / 10));
+    let struck = false;
+    for (let step = 0; step < steps && !struck; step++) {
+      bullet.x += bullet.vx * dt / steps;
+      bullet.y += bullet.vy * dt / steps;
+      struck = overlap(bullet, Game.player);
+    }
+    if (struck) {
       Game.enemyBullets.splice(i, 1);
       hurt();
       if (!Game.enemyBullets.length) break;
@@ -786,9 +1253,26 @@ function cullWorld() {
 }
 
 function update(dt) {
+  if (Game.hitStop > 0) {
+    Game.hitStop = Math.max(0, Game.hitStop - dt);
+    Game.shake = Math.max(0, Game.shake - dt);
+    Game.flash = Math.max(0, Game.flash - dt);
+    updateParticles(dt * .25);
+    return;
+  }
   Game.time += dt;
   Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
   Game.hudTimer = Math.max(0, Game.hudTimer - dt);
+  Game.shake = Math.max(0, Game.shake - dt);
+  Game.flash = Math.max(0, Game.flash - dt);
+  if (Game.stageBanner) {
+    Game.stageBanner.timer -= dt;
+    if (Game.stageBanner.timer <= 0) Game.stageBanner = null;
+  }
+  if (Game.victoryTimer > 0) {
+    Game.victoryTimer -= dt;
+    if (Game.victoryTimer <= 0) { missionComplete(); return; }
+  }
   if (Game.wordEcho) {
     Game.wordEcho.timer -= dt;
     if (Game.wordEcho.timer <= 0) Game.wordEcho = null;
@@ -805,7 +1289,13 @@ function update(dt) {
   const entered = chunkAt(Game.player.x + Game.player.w / 2);
   if (entered && entered.index !== Game.enteredChunk) {
     Game.enteredChunk = entered.index;
-    if (entered.index > 0) showFeedback('战况：' + entered.encounter);
+    Game.stageBanner = { tag: entered.tag || 'TEST', name: entered.encounter, hint: entered.hint || '', timer: 2.4 };
+    if (entered.checkpoint) Game.checkpoint = entered.start + 110;
+    if (entered.wordGate && !entered.gateUsed) {
+      entered.gateUsed = openWordGate(entered);
+    } else if (entered.index > 0) {
+      showFeedback('战况：' + entered.encounter);
+    }
   }
   const targetCamera = Math.max(0, Game.player.x - VIEW_W * .3);
   Game.camera += (targetCamera - Game.camera) * (1 - Math.exp(-9 * dt));
@@ -855,10 +1345,10 @@ function drawWeather(index) {
 function drawBackground() {
   const span = CHUNK_W * 3;
   const group = Math.floor(Game.camera / span);
-  const index = group % BIOMES.length;
+  const index = Game.mode === 'mission' ? 0 : group % BIOMES.length;
   const local = (Game.camera % span) / span;
   drawBiomeLayer(index, 1, local);
-  if (local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
+  if (Game.mode !== 'mission' && local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
   ctx.fillStyle = ['rgba(7,27,20,.22)', 'rgba(45,24,12,.18)', 'rgba(4,24,30,.3)', 'rgba(5,10,25,.34)'][index];
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   const shade = ctx.createLinearGradient(0, 0, 0, VIEW_H);
@@ -925,6 +1415,24 @@ function drawPlatforms(chunk) {
     ctx.fillStyle = 'rgba(8,20,18,.36)';
     for (let x = platform.x + 15; x < platform.x + platform.w; x += 32) ctx.fillRect(x, y + 8, 4, 8);
   }
+}
+
+function drawBarrier(chunk) {
+  if (!chunk.lock || chunk.cleared || !chunkHasThreats(chunk)) return;
+  const x = chunk.start + CHUNK_W - 58;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(239,104,72,.78)';
+  ctx.fillStyle = 'rgba(239,104,72,.16)';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = '#ef6848'; ctx.shadowBlur = 15;
+  ctx.fillRect(x - 7, 122, 14, GROUND_Y - 122);
+  for (let y = 132; y < GROUND_Y; y += 38) {
+    ctx.beginPath(); ctx.moveTo(x - 18, y); ctx.lineTo(x + 18, y + 24); ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffd2b8'; ctx.font = '900 11px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText('封锁', x, 110);
+  ctx.restore();
 }
 
 function drawHazards(chunk) {
@@ -1011,8 +1519,36 @@ function drawAtlasFrame(image, row, column, x, y, width, height, flip = false, c
   return true;
 }
 
+function drawEnemyTelegraph(enemy) {
+  if (enemy.state !== 'telegraph') return;
+  const pulse = .55 + Math.sin(Game.time * 22) * .25;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,112,73,' + pulse + ')';
+  ctx.fillStyle = 'rgba(255,112,73,' + (pulse * .22) + ')';
+  ctx.lineWidth = enemy.type === 'boss' ? 4 : 2.5;
+  ctx.shadowColor = '#ff7049'; ctx.shadowBlur = 12;
+  if (enemy.type === 'turret' || enemy.type === 'guardian' || enemy.type === 'boss') {
+    ctx.setLineDash([8, 7]);
+    ctx.beginPath();
+    ctx.moveTo(enemy.x + enemy.w / 2, enemy.y + enemy.h * .42);
+    ctx.lineTo(enemy.targetX, enemy.targetY);
+    ctx.stroke();
+  } else if (enemy.type === 'drone') {
+    ctx.beginPath(); ctx.arc(enemy.targetX, enemy.targetY, 24 + Math.sin(Game.time * 18) * 5, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(enemy.targetX - 34, enemy.targetY); ctx.lineTo(enemy.targetX + 34, enemy.targetY); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.ellipse(enemy.x + enemy.w / 2, enemy.y + enemy.h, enemy.w * .72, 10, 0, 0, TAU); ctx.fill(); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffd1bd'; ctx.font = '950 16px system-ui, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('!', enemy.x + enemy.w / 2, enemy.y - 12);
+  ctx.restore();
+}
+
 function drawEnemy(enemy) {
   if (enemy.dead || enemy.x < Game.camera - 140 || enemy.x > Game.camera + VIEW_W + 140) return;
+  drawEnemyTelegraph(enemy);
   if (enemy.type === 'capsule') {
     const mark = { spread: 'S', rapid: 'R', shield: '盾' }[enemy.dropType] || 'S';
     ctx.save();
@@ -1029,23 +1565,63 @@ function drawEnemy(enemy) {
     ctx.restore();
     return;
   }
-  const spec = {
-    beetle: { row: 0, w: 68, h: 58, ox: -13, oy: -20 },
-    drone: { row: 1, w: 72, h: 72, ox: -15, oy: -16 },
-    guardian: { row: 2, w: 88, h: 86, ox: -17, oy: -20 },
-    boss: { row: 3, w: 122, h: 118, ox: -22, oy: -24 },
-  }[enemy.type];
-  const frame = Math.floor(Game.time * (enemy.type === 'boss' ? 4 : 7) + enemy.phase) % 4;
-  ctx.save();
-  if (enemy.hit > 0) ctx.globalAlpha = .5;
-  if (!drawAtlasFrame(ASSETS.enemies, spec.row, frame, enemy.x + spec.ox, enemy.y + spec.oy, spec.w, spec.h, enemy.vx > 0)) {
-    ctx.fillStyle = enemy.type === 'boss' ? '#6c4932' : '#365e52';
-    ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
+  if (enemy.type === 'turret') {
+    ctx.save();
+    ctx.translate(enemy.x + enemy.w / 2, enemy.y + enemy.h);
+    if (enemy.hit > 0) ctx.globalAlpha = .5;
+    ctx.fillStyle = '#17372f'; ctx.strokeStyle = '#e2b858'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.roundRect(-24, -18, 48, 18, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#294f43'; ctx.beginPath(); ctx.arc(0, -29, 17, Math.PI, TAU); ctx.fill(); ctx.stroke();
+    const angle = Math.atan2(enemy.targetY - (enemy.y + 18), enemy.targetX - (enemy.x + enemy.w / 2));
+    ctx.rotate(angle); ctx.fillStyle = '#d8a94b'; ctx.beginPath(); ctx.roundRect(0, -5, 31, 10, 4); ctx.fill();
+    ctx.restore();
+  } else {
+    const spec = {
+      beetle: { row: 0, w: 68, h: 58, ox: -13, oy: -20 },
+      leaper: { row: 0, w: 78, h: 66, ox: -15, oy: -27 },
+      drone: { row: 1, w: 72, h: 72, ox: -15, oy: -16 },
+      guardian: { row: 2, w: 88, h: 86, ox: -17, oy: -20 },
+      boss: { row: 3, w: 122, h: 118, ox: -22, oy: -24 },
+    }[enemy.type];
+    const frameRate = enemy.state === 'recover' ? 3 : enemy.type === 'boss' ? 4 : 7;
+    const frame = Math.floor(Game.time * frameRate + enemy.phase) % 4;
+    ctx.save();
+    if (enemy.hit > 0) ctx.globalAlpha = .45;
+    if (!drawAtlasFrame(ASSETS.enemies, spec.row, frame, enemy.x + spec.ox, enemy.y + spec.oy, spec.w, spec.h, enemy.facing > 0)) {
+      ctx.fillStyle = enemy.type === 'boss' ? '#6c4932' : '#365e52';
+      ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
+    }
+    ctx.restore();
   }
-  ctx.restore();
-  if (enemy.type === 'boss' || enemy.type === 'guardian') {
+  if (enemy.type === 'guardian' && enemy.state !== 'recover') {
+    const frontX = enemy.facing < 0 ? enemy.x - 5 : enemy.x + enemy.w + 5;
+    ctx.save(); ctx.strokeStyle = 'rgba(157,221,199,.82)'; ctx.lineWidth = 5; ctx.shadowColor = '#8bd4bc'; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(frontX, enemy.y + enemy.h * .52, 31, enemy.facing < 0 ? Math.PI / 2 : -Math.PI / 2, enemy.facing < 0 ? Math.PI * 1.5 : Math.PI / 2); ctx.stroke(); ctx.restore();
+  }
+  if (enemy.type === 'boss' && enemy.bossPhase === 2) {
+    ctx.save(); ctx.strokeStyle = 'rgba(244,211,122,.9)'; ctx.lineWidth = 5; ctx.shadowColor = '#f4d37a'; ctx.shadowBlur = 18;
+    ctx.beginPath(); ctx.ellipse(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, 68, 76, 0, 0, TAU); ctx.stroke(); ctx.restore();
+  }
+  if (enemy.type === 'boss' || enemy.type === 'guardian' || enemy.type === 'turret') {
     ctx.fillStyle = 'rgba(11,28,24,.72)'; ctx.fillRect(enemy.x, enemy.y - 10, enemy.w, 5);
     ctx.fillStyle = '#f4d37a'; ctx.fillRect(enemy.x, enemy.y - 10, enemy.w * enemy.hp / enemy.maxHp, 5);
+  }
+}
+
+function drawBossNodes() {
+  const boss = Game.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead && enemy.bossPhase === 2);
+  if (!boss) return;
+  for (const node of Game.bossNodes) {
+    if (!node.active) continue;
+    const rect = bossNodeRect(node, boss);
+    ctx.save();
+    ctx.shadowColor = node.order < 0 ? '#ef704e' : '#f4d37a'; ctx.shadowBlur = 14;
+    ctx.fillStyle = node.order < 0 ? '#67362c' : '#f4d37a'; ctx.strokeStyle = '#fff0b6'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 9); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.fillStyle = node.order < 0 ? '#ffd6c5' : '#17372e';
+    ctx.font = '950 19px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(node.letter, rect.x + rect.w / 2, rect.y + rect.h / 2 + 1);
+    ctx.restore();
   }
 }
 
@@ -1104,8 +1680,17 @@ function drawPlayer() {
   const baselineOffset = atlas === ASSETS.hero && row === 1 ? [0, 4, 4, 0][column]
     : atlas === ASSETS.hero && row === 3 ? [0, 7, 7, 6][column] : 0;
   const drawY = player.y + player.h - 79 + baselineOffset + (atlas === ASSETS.actions ? (row === 1 ? 12 : 6) : 0);
-  if (!drawAtlasFrame(atlas, row, column, player.x - 25, drawY, 80, 82, player.facing < 0)) {
+  const recoilRatio = clamp(player.recoil / .09, 0, 1);
+  const poseX = player.x - player.aimX * recoilRatio * 7;
+  const poseY = drawY - player.aimY * recoilRatio * 5;
+  if (!drawAtlasFrame(atlas, row, column, poseX - 25, poseY, 80, 82, player.facing < 0)) {
     ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
+  }
+  if (player.muzzleFlash > 0) {
+    const size = 7 + player.muzzleFlash * 80;
+    ctx.save(); ctx.translate(player.muzzleX, player.muzzleY); ctx.rotate(Math.atan2(player.aimY, player.aimX));
+    ctx.shadowColor = '#ffe39a'; ctx.shadowBlur = 14; ctx.fillStyle = '#fff0ad';
+    ctx.beginPath(); ctx.moveTo(size, 0); ctx.lineTo(0, -size * .46); ctx.lineTo(-size * .35, 0); ctx.lineTo(0, size * .46); ctx.closePath(); ctx.fill(); ctx.restore();
   }
   const status = player.overdrive > 0
     ? '火力爆发 ' + Math.ceil(player.overdrive)
@@ -1123,7 +1708,8 @@ function drawWordEcho() {
   if (!echo) return;
   const width = Math.min(Math.max(170, echo.en.length * 25 + 30), VIEW_W - 20);
   const x = (VIEW_W - width) / 2;
-  const y = 104;
+  const bossActive = Game.enemies.some((enemy) => enemy.type === 'boss' && !enemy.dead);
+  const y = bossActive ? 148 : 104;
   const chip = Math.min(27, (width - 28) / echo.en.length - 3);
   const gap = 3;
   const total = echo.en.length * chip + (echo.en.length - 1) * gap;
@@ -1149,18 +1735,59 @@ function drawWordEcho() {
   ctx.restore();
 }
 
+function drawStageBanner() {
+  const banner = Game.stageBanner;
+  if (!banner) return;
+  const compact = VIEW_W < 420;
+  const width = Math.min(430, VIEW_W - 28);
+  const x = (VIEW_W - width) / 2;
+  const y = 214;
+  ctx.save();
+  ctx.globalAlpha = clamp(banner.timer * 2, 0, 1);
+  ctx.fillStyle = 'rgba(8,27,22,.82)'; ctx.strokeStyle = 'rgba(244,211,122,.54)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.roundRect(x, y, width, compact ? 88 : 64, 13); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f4d37a'; ctx.font = '900 10px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(BEAT_LABELS[banner.tag] || '战况', x + 15, y + 16);
+  ctx.fillStyle = '#f6f0dc'; ctx.font = '950 ' + (compact ? 18 : 20) + 'px system-ui, sans-serif'; ctx.fillText(banner.name, x + 15, y + 38);
+  ctx.fillStyle = '#bed2c8'; ctx.font = '600 ' + (compact ? 10 : 11) + 'px system-ui, sans-serif'; ctx.textAlign = compact ? 'left' : 'right';
+  ctx.fillText(banner.hint, compact ? x + 15 : x + width - 15, compact ? y + 65 : y + 48, width - 30);
+  ctx.restore();
+}
+
+function drawBossStatus() {
+  const boss = Game.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead);
+  if (!boss) return;
+  const width = Math.min(360, VIEW_W - 24);
+  const x = (VIEW_W - width) / 2;
+  const y = 96;
+  ctx.save();
+  ctx.fillStyle = 'rgba(8,24,21,.86)'; ctx.strokeStyle = 'rgba(239,112,78,.65)';
+  ctx.beginPath(); ctx.roundRect(x, y, width, 40, 11); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e8daca'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('林地核心 · 阶段 ' + boss.bossPhase, x + 12, y + 16);
+  ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.roundRect(x + 12, y + 25, width - 24, 5, 3); ctx.fill();
+  ctx.fillStyle = boss.bossPhase === 2 ? '#f4d37a' : '#ef704e'; ctx.beginPath(); ctx.roundRect(x + 12, y + 25, (width - 24) * boss.hp / boss.maxHp, 5, 3); ctx.fill();
+  if (boss.bossPhase === 2 && Game.bossWord) {
+    ctx.fillStyle = '#f4d37a'; ctx.textAlign = 'right'; ctx.fillText('口令：' + Game.bossWord.zh + '  ' + Game.bossNodeProgress + '/3', x + width - 12, y + 16);
+  }
+  ctx.restore();
+}
+
 function render() {
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
   drawBackground();
   ctx.save();
-  ctx.translate(-Game.camera, 0);
+  const shakeClock = performance.now() * .05;
+  const shakeX = Game.shake > 0 ? Math.sin(shakeClock) * Game.shakeStrength : 0;
+  const shakeY = Game.shake > 0 ? Math.cos(shakeClock * 1.17) * Game.shakeStrength * .55 : 0;
+  ctx.translate(-Game.camera + shakeX, shakeY);
   for (const chunk of Game.chunks) {
     if (chunk.start > Game.camera + VIEW_W + CHUNK_W || chunk.start + CHUNK_W < Game.camera - CHUNK_W) continue;
-    drawDecor(chunk); drawGround(chunk); drawPlatforms(chunk); drawHazards(chunk);
+    drawDecor(chunk); drawGround(chunk); drawPlatforms(chunk); drawHazards(chunk); drawBarrier(chunk);
   }
   drawPickups();
   drawPowerups();
   for (const enemy of Game.enemies) drawEnemy(enemy);
+  drawBossNodes();
   for (const bullet of Game.bullets) drawBullet(bullet, '#ffe49a');
   for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
   drawPlayer();
@@ -1171,7 +1798,13 @@ function render() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+  drawBossStatus();
   drawWordEcho();
+  drawStageBanner();
+  if (Game.flash > 0) {
+    ctx.fillStyle = 'rgba(239,103,76,' + clamp(Game.flash * 1.8, 0, .34) + ')';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
 }
 
 function resize() {
@@ -1238,7 +1871,12 @@ window.addEventListener('keydown', (event) => {
   }
   if ((event.code === 'KeyP' || event.code === 'Escape') && !event.repeat && (Game.state === 'playing' || Game.state === 'paused')) togglePause();
   if (event.code === 'KeyM' && !event.repeat) toggleMute();
-  if (event.code === 'Enter' && !event.repeat && (Game.state === 'menu' || Game.state === 'over')) startGame();
+  if (Game.state === 'word-gate' && /^Digit[123]$/.test(event.code)) {
+    const option = Game.wordGate?.options[Number(event.code.at(-1)) - 1];
+    if (option) answerWordGate(option);
+  }
+  if (event.code === 'Enter' && !event.repeat && Game.state === 'menu') startGame('mission');
+  else if (event.code === 'Enter' && !event.repeat && Game.state === 'over') startGame(Game.mode);
 });
 
 window.addEventListener('keyup', (event) => {
@@ -1255,13 +1893,19 @@ document.querySelectorAll('.difficulty').forEach((button) => button.addEventList
   button.classList.add('selected');
   Game.difficulty = button.dataset.difficulty;
 }));
-$('start-btn').addEventListener('click', startGame);
-$('retry-btn').addEventListener('click', startGame);
+$('start-btn').addEventListener('click', () => startGame('mission'));
+$('arcade-start-btn').addEventListener('click', () => startGame('arcade'));
+$('retry-btn').addEventListener('click', () => startGame(Game.mode));
 $('menu-btn').addEventListener('click', backToMenu);
 $('pause-menu-btn').addEventListener('click', backToMenu);
 $('resume-btn').addEventListener('click', togglePause);
 $('pause-btn').addEventListener('click', togglePause);
 $('mute-btn').addEventListener('click', toggleMute);
+$('auto-btn').addEventListener('click', () => {
+  Game.autoFire = !Game.autoFire;
+  $('auto-btn').setAttribute('aria-pressed', String(Game.autoFire));
+  $('auto-btn').textContent = Game.autoFire ? '自动开' : '自动';
+});
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
@@ -1274,10 +1918,19 @@ setMuteButton();
 render();
 
 let lastTime = performance.now();
+let accumulator = 0;
 function frame(now) {
-  const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
+  const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
   lastTime = now;
-  if (Game.state === 'playing') update(dt);
+  if (Game.state === 'playing') {
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+      update(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+    }
+  } else {
+    accumulator = 0;
+  }
   render();
   requestAnimationFrame(frame);
 }
@@ -1289,8 +1942,10 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
   requestAnimationFrame(() => {
     try {
       Game.difficulty = 'easy';
-      startGame();
+      startGame('mission');
+      if (Game.mode !== 'mission' || FIXED_STEP !== 1 / 60) throw new Error('mission or fixed-step setup failed');
       if (Game.generatedTo < VIEW_W * 3) throw new Error('world did not generate ahead');
+      if (Game.chunks.slice(0, 4).map((chunk) => chunk.tag).join(',') !== 'TEACH,TEST,RECOVERY,TEACH') throw new Error('curated mission order failed');
       const startX = Game.player.x;
       input.right = true;
       for (let i = 0; i < 40; i++) update(1 / 60);
@@ -1336,13 +1991,38 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.pickups.slice().sort((a, b) => a.index - b.index).forEach(collectLetter);
       if (Game.wordsDone !== 1 || Game.currentWord === firstWord) throw new Error('word loop did not continue');
       if (!Game.wordEcho || !Game.wordEcho.complete || Game.wordEcho.en !== firstWord.en) throw new Error('word memory echo failed');
+      ensureWorld(CHUNK_W * 8);
+      const gateChunk = Game.chunks.find((chunk) => chunk.wordGate);
+      if (!gateChunk || !openWordGate(gateChunk) || Game.state !== 'word-gate') throw new Error('active recall gate failed to open');
+      answerWordGate(Game.wordGate.word.en);
+      if (Game.state !== 'playing' || !Game.recallResults.at(-1)?.correct || Game.player.overdrive <= 0) throw new Error('active recall reward failed');
+      const turret = makeEnemy('turret', Game.player.x + 220, gateChunk.index);
+      turret.cooldown = 0;
+      Game.enemies = [turret];
+      updateEnemies(FIXED_STEP);
+      if (turret.state !== 'telegraph') throw new Error('enemy telegraph state failed');
+      const sweepTarget = makeEnemy('beetle', Game.player.x + 180, gateChunk.index);
+      sweepTarget.hp = sweepTarget.maxHp = 2;
+      Game.enemies = [sweepTarget];
+      Game.bullets = [{ x: sweepTarget.x - 80, y: sweepTarget.y + 12, w: 8, h: 8, vx: 2400, vy: 0 }];
+      updateProjectiles(.05);
+      if (sweepTarget.hp !== 1) throw new Error('swept bullet collision failed');
+      const boss = makeEnemy('boss', Game.player.x + 420, MISSION_BEATS.length - 1);
+      Game.enemies = [boss];
+      Game.completedWords = [{ en: 'BRIDGE', zh: '桥' }];
+      boss.hp = Math.floor(boss.maxHp * .6);
+      updateBoss(boss, FIXED_STEP, -300, 0, DIFFICULTIES.easy);
+      if (boss.bossPhase !== 2 || Game.bossNodes.length !== 4 || new Set(Game.bossNodes.filter((node) => node.order >= 0).map((node) => node.letter)).size !== 3) throw new Error('boss word shield failed');
+      for (let order = 0; order < 3; order++) hitBossNode(Game.bossNodes.find((node) => node.order === order), boss);
+      if (!Game.bossGateDone || boss.bossPhase !== 3 || Game.player.overdrive < 6) throw new Error('boss phase transition failed');
+      startGame('arcade');
       ensureWorld(CHUNK_W * 13);
       if (new Set(Game.chunks.map((chunk) => chunk.biome)).size !== 4) throw new Error('biome rotation missing');
       if (new Set(Game.chunks.map((chunk) => chunk.encounter)).size < 5) throw new Error('encounter rotation missing');
       const hazardTypes = new Set(Game.chunks.flatMap((chunk) => chunk.hazards.map((hazard) => hazard.type)));
       if (Object.keys(HAZARD_SPRITES).length !== 6 || ['updraft', 'rock', 'puddle', 'steam', 'laser', 'spring'].some((type) => !hazardTypes.has(type))) throw new Error('biome-specific mechanics missing');
       if (!Game.enemies.some((enemy) => enemy.type === 'capsule')) throw new Error('supply capsules missing');
-      startGame();
+      startGame('arcade');
       Game.hp = 999;
       input.right = input.fire = true;
       let jumpHold = 0;

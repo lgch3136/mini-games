@@ -50,12 +50,13 @@
     start() {
       if (!muted && music.paused) music.play().catch(() => {});
     },
-    play(name, volume) {
+    play(name, volume, rate) {
       if (muted || !files[name]) return;
       const pool = soundPool(name);
       const audio = pool.find((item) => item.paused || item.ended) || pool[0];
       audio.currentTime = 0;
       audio.volume = volume == null ? 0.32 : volume;
+      audio.playbackRate = Math.max(.5, Math.min(2, rate == null ? 1 : rate));
       audio.play().catch(() => {});
     },
   };
