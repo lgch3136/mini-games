@@ -10,6 +10,9 @@ body {
 }
 button, a { font: inherit; }
 button { color: inherit; }
+.difficulty:focus-visible, .primary:focus-visible, .secondary:focus-visible, .gate-option:focus-visible, #touch-controls button:focus-visible {
+  outline: 3px solid #fff0ad; outline-offset: 3px;
+}
 .hidden { display: none !important; }
 
 #game-wrap {
@@ -87,6 +90,25 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 #over-stats { display: grid; gap: 6px; min-width: min(320px, 84vw); color: #d6e3dc; }
 #over-stats div { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(245, 241, 223, .18); padding: 7px 2px; }
 #over-stats b { color: #f4d37a; }
+#over-recap { display: flex; width: min(620px, 88vw); flex-wrap: wrap; justify-content: center; gap: 7px; }
+#over-recap span { padding: 6px 9px; border: 1px solid rgba(244, 211, 122, .32); border-radius: 7px; background: rgba(8, 27, 22, .62); color: #e7ded0; font: 700 11px ui-monospace, monospace; }
+
+#word-gate { background: rgba(7, 22, 18, .78); backdrop-filter: blur(10px) saturate(.85); }
+#word-gate::before {
+  content: ""; position: absolute; width: min(560px, calc(100% - 30px)); height: min(360px, calc(100% - 30px));
+  border: 1px solid rgba(244, 211, 122, .48); border-radius: 22px; background: rgba(14, 39, 32, .92);
+  box-shadow: inset 0 1px rgba(255,255,255,.08), 0 28px 90px rgba(2, 14, 10, .48); z-index: 0;
+}
+#word-gate > * { position: relative; z-index: 1; }
+#word-gate h1 { color: #f4d37a; font-size: clamp(42px, 9vw, 76px); letter-spacing: -.05em; }
+#word-gate > p:not(.eyebrow) { max-width: 38ch; color: #c9d8d1; font-size: 13px; line-height: 1.65; }
+#gate-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; }
+.gate-option {
+  min-width: 132px; padding: 13px 18px; border: 1px solid rgba(244, 211, 122, .52); border-radius: 10px;
+  background: rgba(7, 25, 20, .82); color: #fff0ba; font: 900 17px ui-monospace, monospace;
+  cursor: pointer; transition: transform .16s ease, background .16s ease, border-color .16s ease;
+}
+.gate-option:hover { transform: translateY(-2px); border-color: #fff0ad; background: rgba(97, 72, 25, .68); }
 
 #touch-controls { --control-size: 70px; display: none; position: absolute; inset: 0; z-index: 5; pointer-events: none; }
 #touch-controls button {
@@ -109,9 +131,16 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 #right-btn { grid-area: 2 / 3; }
 #jump-btn { transform: translateY(-28px); }
 #jump-btn.active, #jump-btn:active { transform: translateY(-28px) scale(.94); }
+#auto-btn { width: calc(var(--control-size) * .68); height: calc(var(--control-size) * .68); font-size: 10px; border-style: dashed; }
+#auto-btn[aria-pressed="true"] { border-style: solid; border-color: #8de0b5; background: rgba(31, 100, 74, .86); color: #d9ffeb; }
 
 @media (pointer: coarse), (max-width: 800px) {
   #touch-controls:not(.hidden) { display: block; }
+  .move-controls { grid-template: var(--control-size) / repeat(3, var(--control-size)); }
+  #up-btn { display: none; }
+  #left-btn { grid-area: 1 / 1; }
+  #down-btn { grid-area: 1 / 2; }
+  #right-btn { grid-area: 1 / 3; }
 }
 
 @media (max-width: 680px) and (orientation: portrait) {
