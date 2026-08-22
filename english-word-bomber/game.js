@@ -20,9 +20,9 @@ const OY = 704 - ROWS * CELL - 24;
 const TAU = Math.PI * 2;
 
 const DIFFS = {
-  easy:   { enemySpeed: 52, enemyCount: 2, fuse: 2.6, label: '初级' },
-  medium: { enemySpeed: 66, enemyCount: 3, fuse: 2.2, label: '中级' },
-  hard:   { enemySpeed: 82, enemyCount: 4, fuse: 1.8, label: '高级' },
+  easy:   { enemySpeed: 58, enemyCount: 2, fuse: 2.1, label: '初级' },
+  medium: { enemySpeed: 74, enemyCount: 3, fuse: 1.8, label: '中级' },
+  hard:   { enemySpeed: 92, enemyCount: 4, fuse: 1.5, label: '高级' },
 };
 
 /* ---------------- 工具 ---------------- */
@@ -56,8 +56,8 @@ function newPlayer() {
   return {
     col: 1, row: 1,
     px: 0, py: 0,           // 像素位置(插值用)
-    speed: 132,
-    bombPower: 2, bombMax: 1,
+    speed: 152,
+    bombPower: 2, bombMax: 3,
     kicking: false,
     moving: false, facing: 'down', pendingDir: null,
     inv: 2,                 // 出生无敌
@@ -66,8 +66,45 @@ function newPlayer() {
 }
 
 /* ---------------- 地图生成 ---------------- */
+/* 8种地形图案, 每轮随机选一种+随机镜像翻转, 再叠随机砖块。
+ * 图案让地形有"性格"(走廊/密林/房间), 随机翻转保证不重复。 */
+const TERRAIN_PATTERNS = [
+  // 0 密林: 高密度砖块
+  () => .62,
+  // 1 走廊型: 中间留出十字大道
+  (c, r) => {
+    const midC = (COLS - 1) / 2, midR = (ROWS - 1) / 2;
+    if (Math.abs(c - midC) < 1.6 || Math.abs(r - midR) < 1.6) return .08;
+    return .55;
+  },
+  // 2 房间型: 四个象限房间+门口
+  (c, r) => {
+    const mc = (COLS - 1) / 2, mr = (ROWS - 1) / 2;
+    const nearDoor = c % 4 === 1 || r % 3 === 1;
+    if ((Math.abs(c - mc) < 1 || Math.abs(r - mr) < 1)) return nearDoor ? .15 : .7;
+    return nearDoor ? .25 : .5;
+  },
+  // 3 环形: 外圈密内圈疏
+  (c, r) => {
+    const dc = Math.abs(c - (COLS - 1) / 2), dr = Math.abs(r - (ROWS - 1) / 2);
+    const ring = Math.max(dc, dr);
+    return ring > 3 ? .68 : .22;
+  },
+  // 4 斜纹: 对角线条带
+  (c, r) => ((c + r) % 4 < 2 ? .66 : .12),
+  // 5 洞穴团簇: 用伪随机种子成片生成
+  (c, r) => {
+    const n = Math.sin(c * 12.9898 + r * 78.233) * 43758.5453;
+    const v = n - Math.floor(n);
+    return v > .38 ? .72 : .1;
+  },
+  // 6 竖栅栏: 竖条砖列
+  (c) => (c % 3 === 2 ? .74 : .14),
+  // 7 撒点(经典): 均匀随机
+  () => .48,
+];
+
 function buildStage() {
-  // 边界硬墙 + 棋盘硬柱 + 随机砖块(保留出生角落)
   Game.grid = [];
   for (let r = 0; r < ROWS; r++) {
     Game.grid[r] = [];
@@ -78,14 +115,23 @@ function buildStage() {
     }
   }
   const safe = new Set(['1,1', '2,1', '1,2']);
-  const brickChance = clamp(.42 + Game.round * .015, .42, .58);
+  // 随机图案 + 随机镜像(水平/垂直), 同一图案每轮观感不同
+  const patFn = TERRAIN_PATTERNS[Math.floor(Math.random() * TERRAIN_PATTERNS.length)];
+  const flipH = Math.random() < .5, flipV = Math.random() < .5;
+  const densityJitter = rand(-.06, .06);   // 整局密度微调
   for (let r = 1; r < ROWS - 1; r++) {
     for (let c = 1; c < COLS - 1; c++) {
       if (Game.grid[r][c] !== 0) continue;
       if (safe.has(c + ',' + r)) continue;
-      if (Math.random() < brickChance) Game.grid[r][c] = 2;
+      // 随机镜像: 同一图案每轮观感不同
+      const sc = flipH ? COLS - 1 - c : c;
+      const sr = flipV ? ROWS - 1 - r : r;
+      const chance = clamp(patFn(sc, sr) + densityJitter, .05, .78);
+      if (Math.random() < chance) Game.grid[r][c] = 2;
     }
   }
+  // 连通性保障: 出生点周围3x3必为空地
+  for (let r = 1; r <= 2; r++) for (let c = 1; c <= 2; c++) Game.grid[r][c] = 0;
 }
 
 function placeLettersAndPortal() {
