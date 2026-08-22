@@ -359,24 +359,57 @@ function moveEntity(e, dc, dr, dist, isGhost) {
 function updatePlayer(dt) {
   const p = Game.player;
   p.inv = Math.max(0, p.inv - dt);
-  let dc = 0, dr = 0;
-  if (input.up) { dr = -1; p.facing = 'up'; }
-  else if (input.down) { dr = 1; p.facing = 'down'; }
-  else if (input.left) { dc = -1; p.facing = 'left'; }
-  else if (input.right) { dc = 1; p.facing = 'right'; }
-  p.moving = !!(dc || dr);
-  if (p.moving) {
-    const cx = OX + p.col * CELL + CELL / 2;
-    const cy = OY + p.row * CELL + CELL / 2;
-    const atCenter = Math.abs(p.px - cx) < 2.5 && Math.abs(p.py - cy) < 2.5;
-    if (atCenter) {
-      if (!cellBlocked(p.col + dc, p.row + dr)) { p.col += dc; p.row += dr; }
+
+  // 当前按住的方向
+  let held = null;
+  if (input.up) held = [0, -1];
+  else if (input.down) held = [0, 1];
+  else if (input.left) held = [-1, 0];
+  else if (input.right) held = [1, 0];
+  if (held) {
+    p.facing = held[0] < 0 ? 'left' : held[0] > 0 ? 'right' : held[1] < 0 ? 'up' : 'down';
+    p.pendingDir = held;
+  } else {
+    p.pendingDir = null;   // 松键即清缓冲, 杜绝"幽灵输入"
+  }
+
+  const tcx = OX + p.col * CELL + CELL / 2;
+  const tcy = OY + p.row * CELL + CELL / 2;
+  const dx = tcx - p.px, dy = tcy - p.py;
+  const dist = Math.hypot(dx, dy);
+  const step = p.speed * dt;
+
+  if (dist <= 0.6) {
+    // 位于格中心: 结算下一步走向
+    p.px = tcx; p.py = tcy;
+    const dir = p.pendingDir;
+    p.moving = false;
+    if (dir && !cellBlocked(p.col + dir[0], p.row + dir[1])) {
+      p.col += dir[0]; p.row += dir[1];
+      p.pendingDir = null;
     }
-    const tcx = OX + p.col * CELL + CELL / 2;
-    const tcy = OY + p.row * CELL + CELL / 2;
-    const step = p.speed * dt;
-    p.px += Math.sign(tcx - p.px) * Math.min(Math.abs(tcx - p.px), step);
-    p.py += Math.sign(tcy - p.py) * Math.min(Math.abs(tcy - p.py), step);
+  } else {
+    // 正在两格之间滑动
+    const slideX = Math.sign(dx), slideY = Math.sign(dy);
+    if (held) {
+      const [hc, hr] = held;
+      // 同轴反向: 立即掉头回来源格(来路必然通畅) —— FC炸弹人的即时响应核心
+      const opposite = (slideX !== 0 && hc === -slideX) || (slideY !== 0 && hr === -slideY);
+      if (opposite) {
+        p.col -= slideX; p.row -= slideY;
+        p.pendingDir = null;
+      }
+    }
+    // 朝目标格中心匀速滑动
+    const ncx = OX + p.col * CELL + CELL / 2;
+    const ncy = OY + p.row * CELL + CELL / 2;
+    const mdx = ncx - p.px, mdy = ncy - p.py;
+    const mdist = Math.hypot(mdx, mdy);
+    p.moving = mdist > 0.5;
+    if (mdist > 0) {
+      p.px += mdx / mdist * Math.min(mdist, step);
+      p.py += mdy / mdist * Math.min(mdist, step);
+    }
   }
   // 走到传送门
   if (Game.portal && Game.portal.open && p.col === Game.portal.col && p.row === Game.portal.row) {
