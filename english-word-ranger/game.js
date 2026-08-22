@@ -61,8 +61,11 @@ const MISSION_LEVELS = [
       { tag: 'TEACH', name: '跃击预警', hint: '压低蓄力时后撤，从落点下方穿过', foes: [['leaper', 430]], lock: true },
       { tag: 'TEST', name: '高台炮线', hint: '瞄准线锁定后立刻改变高度', platforms: [[405, 96, 150]], foes: [['turret', 485, 96]], lock: true },
       { tag: 'COMBINE', name: '盾墙交叉火力', hint: '绕过盾面，在炮台恢复窗口反击', platforms: [[455, 92, 145]], foes: [['guardian', 315], ['turret', 520, 92]], lock: true },
+      { tag: 'TWIST', name: '蜂群来袭', hint: '两架无人机交错俯冲', gaps: [[300, 88]], foes: [['drone', 320], ['drone', 520]], lock: true },
+      { tag: 'COMBINE', name: '壕沟双哨', hint: '越壕后立刻处理跃击者', gaps: [[280, 96]], platforms: [[430, 90, 130]], foes: [['leaper', 480], ['beetle', 560]], lock: true },
       { tag: 'WORD_GATE', name: '回忆补给门', hint: '只看中文，主动回忆刚才的单词', wordGate: true, checkpoint: true },
       { tag: 'TWIST', name: '林冠俯冲', hint: '锁定标记出现后横向撤离', gaps: [[330, 92]], foes: [['drone', 430], ['leaper', 585]], lock: true },
+      { tag: 'TEST', name: '林间竞速', hint: '连续三段跳跃保持节奏', gaps: [[240, 84], [420, 92], [580, 88]], platforms: [[330, 82, 100], [500, 96, 104]], lock: true },
       { tag: 'CLIMAX', name: '三向夹击', hint: '先拆炮台，再处理盾兵与冲锋', platforms: [[520, 88, 138]], foes: [['beetle', 250], ['guardian', 420], ['turret', 580, 88]], lock: true },
       { tag: 'RECOVERY', name: '守卫前庭', hint: '补充火力，准备首领战', foes: [['capsule', 455]], wordGate: true, checkpoint: true, drop: 'rapid' },
       { tag: 'BOSS', name: '林地核心', hint: '观察预兆，击破单词护盾', foes: [['boss', 520]], lock: true },
@@ -76,6 +79,8 @@ const MISSION_LEVELS = [
       { tag: 'WORD_GATE', name: '回忆石门', hint: '只看中文，主动回忆单词', wordGate: true, checkpoint: true },
       { tag: 'TWIST', name: '断桥强风', hint: '逆风会拉低跳跃距离', gaps: [[285, 200]], hazards: [['updraft', 285, 248, 200]], foes: [['drone', 420], ['beetle', 560]], lock: true },
       { tag: 'TEST', name: '滚石坡道', hint: '双落石交错，走外线', hazards: [['rock', 300, 0, 40], ['rock', 520, 0, 40]], foes: [['leaper', 430]], lock: true },
+      { tag: 'COMBINE', name: '风眼窄桥', hint: '强风中走窄平台', gaps: [[250, 180], [500, 170]], platforms: [[340, 118, 110], [580, 132, 108]], hazards: [['updraft', 250, 246, 180]], foes: [['drone', 450]], lock: true },
+      { tag: 'TWIST', name: '落石雨', hint: '四块落石封锁路面', hazards: [['rock', 260, 0, 40], ['rock', 400, 0, 40], ['rock', 540, 0, 40]], foes: [['beetle', 620]], lock: true },
       { tag: 'CLIMAX', name: '峡谷绞索', hint: '三线夹击，先拆空中', platforms: [[450, 128, 135]], hazards: [['updraft', 300, 260, 105]], foes: [['drone', 260], ['guardian', 430], ['turret', 590, 128]], lock: true },
       { tag: 'RECOVERY', name: '暴君前厅', hint: '最后补给，准备首领战', foes: [['capsule', 460]], wordGate: true, checkpoint: true, drop: 'shield' },
       { tag: 'BOSS', name: '峡谷暴君', hint: '落石+冲锋交替，保持移动', foes: [['boss', 520]], lock: true },
@@ -89,9 +94,25 @@ const MISSION_LEVELS = [
       { tag: 'WORD_GATE', name: '回忆圣堂', hint: '主动回忆，奖励翻倍', wordGate: true, checkpoint: true },
       { tag: 'TWIST', name: '暴雨空袭', hint: '无人机群+湿滑地面', hazards: [['puddle', 320, 0, 120]], foes: [['drone', 260], ['drone', 480], ['leaper', 590]], lock: true },
       { tag: 'COMBINE', name: '钟楼防线', hint: '高台双炮，用蒸汽掩护推进', platforms: [[200, 110, 130], [470, 140, 135]], hazards: [['steam', 350, 0, 40]], foes: [['turret', 240, 110], ['turret', 510, 140]], lock: true },
+      { tag: 'TWIST', name: '双廊蒸汽', hint: '两组蒸汽交替喷射', hazards: [['steam', 220, 0, 40], ['steam', 380, 0, 40], ['steam', 540, 0, 40]], foes: [['leaper', 300], ['leaper', 600]], lock: true },
+      { tag: 'COMBINE', name: '钟摆激光', hint: '移动中跨越激光阵', hazards: [['laser', 200, 0, 96], ['laser', 360, 0, 104], ['laser', 520, 0, 96]], platforms: [[290, 92, 90], [450, 98, 90]], lock: true },
       { tag: 'CLIMAX', name: '广场总攻', hint: '全兵种会师，逐个击破', platforms: [[430, 96, 140]], hazards: [['laser', 200, 0, 100]], foes: [['beetle', 240], ['guardian', 400], ['turret', 570, 96], ['drone', 620]], lock: true },
       { tag: 'RECOVERY', name: '主宰王庭', hint: '最终补给', foes: [['capsule', 450]], wordGate: true, checkpoint: true, drop: 'shield' },
       { tag: 'BOSS', name: '古城主宰', hint: '三阶段狂暴，护盾口令是关键', foes: [['boss', 520]], lock: true },
+    ] },
+  { name: '第四关 · 月晶遗迹', biome: 3, bossName: '月晶守卫', music: 'ranger-boss',
+    beats: [
+      { tag: 'TEACH', name: '低重力训练', hint: '月球重力下跳得更高更飘', gaps: [[320, 150]], foes: [['beetle', 500]], lock: true },
+      { tag: 'TEST', name: '晶簧起跳', hint: '弹簧把你送上高台', gaps: [[300, 145]], hazards: [['spring', 238, 0, 50]], platforms: [[325, 132, 96]], foes: [['drone', 480]], lock: true },
+      { tag: 'RECOVERY', name: '星尘补给', hint: '月色下的喘息', foes: [['capsule', 440]], checkpoint: true, drop: 'spread' },
+      { tag: 'COMBINE', name: '悬浮炮台', hint: '弹簧近身拆炮', gaps: [[205, 125], [505, 130]], hazards: [['spring', 145, 0, 50], ['spring', 445, 0, 50]], platforms: [[190, 105, 150]], foes: [['turret', 300, 105]], lock: true },
+      { tag: 'WORD_GATE', name: '回忆星门', hint: '最终回忆考验', wordGate: true, checkpoint: true },
+      { tag: 'TWIST', name: '晶柱迷宫', hint: '低重力连续跳台', gaps: [[240, 120], [430, 125], [600, 120]], platforms: [[350, 122, 92], [520, 138, 92]], lock: true },
+      { tag: 'TEST', name: '激光走廊', hint: '低重力下小心越过激光', hazards: [['laser', 210, 0, 110], ['laser', 460, 0, 110]], foes: [['guardian', 600]], lock: true },
+      { tag: 'COMBINE', name: '水晶夹缝', hint: '弹簧+浮台+无人机', gaps: [[410, 155]], platforms: [[405, 125, 165]], hazards: [['spring', 345, 0, 50]], foes: [['drone', 250], ['leaper', 550]], lock: true },
+      { tag: 'CLIMAX', name: '月台会战', hint: '全兵种终极考验', platforms: [[300, 118, 120], [520, 142, 120]], hazards: [['spring', 200, 0, 50], ['laser', 440, 0, 100]], foes: [['guardian', 260], ['drone', 420], ['turret', 545, 142]], lock: true },
+      { tag: 'RECOVERY', name: '守卫圣殿', hint: '决战前最后的补给', foes: [['capsule', 450]], wordGate: true, checkpoint: true, drop: 'rapid' },
+      { tag: 'BOSS', name: '月晶守卫', hint: '最终首领：低重力下的终极试炼', foes: [['boss', 520]], lock: true },
     ] },
 ];
 // 兼容: 当前关卡的节拍表
@@ -178,7 +199,35 @@ function aimDirection(source = input, player = Game.player) {
   return { x: x / length, y: y / length };
 }
 
+// 护盾阶段的辅助瞄准: up键即锁定应击节点(解决八方向瞄不到上方节点的死局)
+function playerFacingPositive() { return (Game.player.facing || 1) >= 0; }
 function shotDirection() {
+  const bossShieldActive = Game.enemies.some((enemy) => enemy.type === 'boss' && !enemy.dead && enemy.bossPhase === 2);
+  if (bossShieldActive && input.up && Game.player.onGround) {
+    // 护盾阶段辅助瞄准: 子弹自动导向当前应击的节点(顺序正确的优先)
+    const boss = Game.enemies.find((e) => e.type === 'boss' && !e.dead && e.bossPhase === 2);
+    if (boss) {
+      const targetNode =
+        Game.bossNodes.find((n) => n.active && n.order === Game.bossNodeProgress) ||
+        Game.bossNodes.find((n) => n.active && n.order >= 0);
+      if (targetNode) {
+        const rect = bossNodeRect(targetNode, boss);
+        const ox = Game.player.x + Game.player.w / 2 + 28;
+        const oy = Game.player.y + Game.player.h * .42;
+        const dx = rect.x + rect.w / 2 - ox;
+        const dy = rect.y + rect.h / 2 - oy;
+        const len = Math.hypot(dx, dy) || 1;
+        return { x: dx / len, y: dy / len };
+      }
+    }
+    // 没有节点可瞄时退回普通斜射
+    const dirX = input.right || playerFacingPositive() ? 1 : -1;
+    return { x: Math.cos(.5) * dirX, y: -Math.sin(.5) };
+  }
+  return baseAimShot();
+}
+
+function baseAimShot() {
   const manual = aimDirection();
   if (!mobileAssist || input.up || input.down) return manual;
   const player = Game.player;
@@ -1244,7 +1293,13 @@ function updateReinforcements(dt) {
 }
 
 function enemyBlocksBullet(enemy, bullet) {
-  if (enemy.type === 'boss' && enemy.bossPhase === 2) return true;
+  // 护盾阶段boss本体不再挡弹: 中间两个节点与boss矩形重叠,
+  // 旧逻辑会让子弹在到达节点前被boss吞掉(实测死局)。
+  // 错误节点的惩罚机制(hitBossNode里)已足够防乱射。
+  if (enemy.type === 'boss') return false;
+  // Boss护盾战期间 guardian 不挡弹(防止小怪卡死节点射击)
+  const bossShielding = Game.enemies.some((e) => e.type === 'boss' && !e.dead && e.bossPhase === 2);
+  if (bossShielding && enemy.type === 'guardian') return false;
   if (enemy.type !== 'guardian' || enemy.state === 'recover') return false;
   const fromFront = Math.sign(bullet.vx || 1) === -enemy.facing;
   const plunging = bullet.vy > 120 && bullet.y < enemy.y + enemy.h * .38;
@@ -1280,7 +1335,10 @@ function updateProjectiles(dt) {
       bullet.y += bullet.vy * dt / steps;
       const boss = Game.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead && enemy.bossPhase === 2);
       if (boss) {
-        const node = Game.bossNodes.find((item) => item.active && overlap(bullet, bossNodeRect(item, boss)));
+        // 只检测"当前应击节点": 节点间距离近, 全开判定会让子弹误触错误节点
+        // (实测: 打节点1的弹道穿过节点0 => progress被重置, 死循环)
+        const node = Game.bossNodes.find((item) => item.active && item.order === Game.bossNodeProgress
+          && overlap(bullet, bossNodeRect(item, boss)));
         if (node) { hitBossNode(node, boss); hit = true; break; }
       }
       for (const enemy of Game.enemies) {
@@ -1744,14 +1802,41 @@ function drawBossNodes() {
   if (!boss) return;
   for (const node of Game.bossNodes) {
     if (!node.active) continue;
+    const isCurrent = node.order === Game.bossNodeProgress;
+    const isDecoy = node.order < 0;
     const rect = bossNodeRect(node, boss);
     ctx.save();
-    ctx.shadowColor = node.order < 0 ? '#ef704e' : '#f4d37a'; ctx.shadowBlur = 14;
-    ctx.fillStyle = node.order < 0 ? '#67362c' : '#f4d37a'; ctx.strokeStyle = '#fff0b6'; ctx.lineWidth = 2;
+    if (isCurrent) {
+      // 当前应击: 高亮金+脉动+序号角标
+      const pulse = 1 + Math.sin(Game.time * 6) * .08;
+      ctx.translate(rect.x + rect.w / 2, rect.y + rect.h / 2);
+      ctx.scale(pulse, pulse);
+      ctx.translate(-(rect.x + rect.w / 2), -(rect.y + rect.h / 2));
+      ctx.shadowColor = '#ffe89a'; ctx.shadowBlur = 16;
+      ctx.fillStyle = '#ffe89a';
+      ctx.strokeStyle = '#fffbe8'; ctx.lineWidth = 3;
+    } else if (isDecoy) {
+      ctx.shadowColor = '#ef704e'; ctx.shadowBlur = 10;
+      ctx.fillStyle = '#67362c';
+      ctx.strokeStyle = '#ffd6c5'; ctx.lineWidth = 2;
+    } else {
+      // 后续节点: 暗金半透明(可见但明确不是现在打的)
+      ctx.globalAlpha = .55;
+      ctx.shadowColor = '#f4d37a'; ctx.shadowBlur = 6;
+      ctx.fillStyle = '#8a7434';
+      ctx.strokeStyle = '#d9c27a'; ctx.lineWidth = 2;
+    }
     ctx.beginPath(); ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 9); ctx.fill(); ctx.stroke();
-    ctx.shadowBlur = 0; ctx.fillStyle = node.order < 0 ? '#ffd6c5' : '#17372e';
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = isCurrent ? '#3b2a06' : isDecoy ? '#ffd6c5' : '#e8dcb5';
     ctx.font = '950 19px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(node.letter, rect.x + rect.w / 2, rect.y + rect.h / 2 + 1);
+    if (isCurrent) {
+      // 序号角标
+      ctx.fillStyle = '#86efac';
+      ctx.font = '900 11px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('第' + (Game.bossNodeProgress + 1) + '个', rect.x + rect.w / 2, rect.y - 10);
+    }
     ctx.restore();
   }
 }
@@ -2138,7 +2223,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.pickups.slice().sort((a, b) => a.index - b.index).forEach(collectLetter);
       if (Game.wordsDone !== 1 || Game.currentWord === firstWord) throw new Error('word loop did not continue');
       if (!Game.wordEcho || !Game.wordEcho.complete || Game.wordEcho.en !== firstWord.en) throw new Error('word memory echo failed');
-      ensureWorld(CHUNK_W * 8);
+      ensureWorld(CHUNK_W * 10);
       const gateChunk = Game.chunks.find((chunk) => chunk.wordGate);
       if (!gateChunk || !openWordGate(gateChunk) || Game.state !== 'word-gate') throw new Error('active recall gate failed to open');
       answerWordGate(Game.wordGate.word.en);

@@ -59,7 +59,7 @@ function newPlayer() {
     speed: 132,
     bombPower: 2, bombMax: 1,
     kicking: false,
-    moving: false, facing: 'down',
+    moving: false, facing: 'down', pendingDir: null,
     inv: 2,                 // 出生无敌
     dieTimer: 0,
   };
