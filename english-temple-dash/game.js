@@ -90,6 +90,7 @@ function resetPlayer() {
 }
 
 function startGame() {
+  if (window.ChipMusic) ChipMusic.play('temple-loop');
   const conf = DIFFICULTIES[Game.difficulty];
   Object.assign(Game, {
     state: 'playing', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0, bestCombo: 0,
@@ -132,6 +133,7 @@ function togglePause() {
 
 function gameOver() {
   Game.state = 'over';
+  if (window.ChipMusic) ChipMusic.stop();
   $('hud').classList.add('hidden');
   $('touch-controls').classList.add('hidden');
   $('over').classList.remove('hidden');

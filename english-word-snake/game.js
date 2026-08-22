@@ -1014,6 +1014,7 @@ function hsKey() {
 /* ---------------- 流程控制 ---------------- */
 function startGame() {
   Game.state = 'playing';
+  if (window.ChipMusic) ChipMusic.play('snake-loop');
   Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0;
   Game._hudKey = '';
   Game.hp = 3;
@@ -1078,6 +1079,7 @@ function backToMenu() {
 
 function gameOver() {
   Game.state = 'over';
+  if (window.ChipMusic) ChipMusic.stop();
   const head = Game.snake[0];
   burst(head.x * CELL + CELL / 2, GRID_Y + head.y * CELL + CELL / 2, '#7dffa8', 40);
   burst(head.x * CELL + CELL / 2, GRID_Y + head.y * CELL + CELL / 2, '#ffd166', 30);

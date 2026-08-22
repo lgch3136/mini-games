@@ -234,11 +234,18 @@ function generateMissionChunk(index, start) {
   for (let i = 0; i < 5; i++) chunk.decor.push({ x: start + 88 + i * 132 + (index * 29 + i * 19) % 38, size: .74 + ((index + i) % 3) * .13 });
   Game.chunks.push(chunk);
   Game.generatedTo += CHUNK_W;
+  maybeSwitchBossMusic(chunk);
   for (const [type, offset, rise = 0] of beat.foes || []) {
     const enemy = makeEnemy(type, start + offset, index, GROUND_Y - rise);
     if (type === 'capsule') enemy.dropType = beat.drop || 'shield';
     Game.enemies.push(enemy);
   }
+}
+
+// 任务模式进入 Boss 节拍时切换战斗曲（在 chunk 生成时检测）
+function maybeSwitchBossMusic(chunk) {
+  if (!window.ChipMusic || Game.mode !== 'mission') return;
+  if (chunk.tag === 'BOSS' && ChipMusic.playing !== 'ranger-boss') ChipMusic.play('ranger-boss');
 }
 
 function generateChunk() {
@@ -424,6 +431,8 @@ function startGame(mode = Game.mode) {
   $('hud').classList.remove('hidden');
   $('touch-controls').classList.remove('hidden');
   if (window.ArcadeAudio) ArcadeAudio.start();
+  // 芯片配乐：任务=丛林行动曲, 无尽=同曲循环
+  if (window.ChipMusic) ChipMusic.play('ranger-stage');
   updateHud();
 }
 
@@ -469,6 +478,7 @@ function renderRecap() {
 function finishRun(victory) {
   Game.state = 'over';
   resetInput();
+  if (!victory && window.ChipMusic) ChipMusic.stop();
   $('hud').classList.add('hidden');
   $('touch-controls').classList.add('hidden');
   $('word-gate').classList.add('hidden');
@@ -581,6 +591,7 @@ function defeatEnemy(enemy, source) {
     if (Game.mode === 'mission') {
       Game.victoryTimer = 1.15;
       showFeedback('林地核心崩解，任务完成');
+      if (window.ChipMusic) ChipMusic.play('victory');
     } else {
       dropPowerup(enemy, 'shield');
       showFeedback('区域守卫已击败，护盾补给已投放');

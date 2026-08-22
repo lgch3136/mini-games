@@ -209,6 +209,7 @@ function hit() {
 function gameOver() {
   if (Game.state === 'over') return;
   Game.state = 'over';
+  if (window.ChipMusic) ChipMusic.stop();
   SFX.over();
   const isNew = saveHS();
   $id('over-stats').innerHTML =
@@ -735,7 +736,7 @@ function backToMenu() {
 }
 
 function flap() {
-  if (Game.state === 'ready') { Game.state = 'playing'; }
+  if (Game.state === 'ready') { Game.state = 'playing'; if (window.ChipMusic) ChipMusic.play('flappy-loop'); }
   if (Game.state !== 'playing') return;
   Game.bird.vy = FLAP_V;
   SFX.flap();

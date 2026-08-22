@@ -613,6 +613,60 @@ function ringShoot(e) {
   SFX.shoot();
 }
 
+/* ---------- 经典弹幕图案库(致敬雷电/1942的几何美学) ----------
+ * 弹幕是"舞谱"不是散点: 螺旋/玫瑰/瀑布/激光雨各有节奏与解法 */
+// 双手螺旋: 两臂反向旋转, 玩家从间隙穿入
+function spiralShoot(e, arms = 2, speed = 165) {
+  const step = Game.time * 2.4;
+  for (let a = 0; a < arms; a++) {
+    const ang = step + (a / arms) * Math.PI * 2;
+    Game.enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(ang) * speed, vy: Math.abs(Math.sin(ang)) * speed * .8 + 40, r: 5 });
+  }
+}
+// 玫瑰弹幕: 花瓣状正弦展开, 视觉华丽但留有路径
+function roseShoot(e, petals = 5, speed = 175) {
+  const baseAng = Math.PI / 2; // 朝下
+  for (let i = 0; i < petals * 2; i++) {
+    const t = (i - (petals - .5)) / petals; // -1..1
+    const ang = baseAng + t * .85;
+    const sp = speed * (1 - Math.abs(t) * .22);
+    Game.enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: 5 });
+  }
+}
+// 弹幕状态机: Boss按阶段轮换图案, 每种有独立的节拍
+function bossDanmaku(e, dt) {
+  if (e.danmakuKind == null) { e.danmakuKind = 0; e.danmakuTimer = 2.2; e.danmakuTick = 0; }
+  e.danmakuTimer -= dt;
+  e.danmakuTick -= dt;
+  const phase2 = Game.level >= 3 || e.hp < e.maxHp * .55;
+  if (e.danmakuTimer <= 0) {
+    e.danmakuKind = (e.danmakuKind + 1) % (phase2 ? 4 : 3);
+    e.danmakuTimer = phase2 ? 3.4 : 4.2;
+    e.danmakuTick = 0;
+  }
+  if (e.danmakuTick > 0) return;
+  switch (e.danmakuKind) {
+    case 0: // 单发瞄准(喘息期)
+      e.danmakuTick = .9;
+      fireAtPlayer(e, DIFF_CONF[Game.difficulty].bulletSpeed + 40);
+      break;
+    case 1: // 双手螺旋
+      e.danmakuTick = phase2 ? .11 : .15;
+      spiralShoot(e, 2, 160);
+      break;
+    case 2: // 玫瑰
+      e.danmakuTick = phase2 ? .75 : 1.0;
+      roseShoot(e, phase2 ? 6 : 5, 170);
+      SFX.shoot();
+      break;
+    case 3: // 相位3: 环+螺旋叠加(高潮)
+      e.danmakuTick = .13;
+      spiralShoot(e, 3, 185);
+      if (Math.floor(Game.time * 8) % 16 === 0) ringShoot(e);
+      break;
+  }
+}
+
 /* ---------------- 特效 ---------------- */
 function explode(x, y, color, count, power) {
   count = count || 24; power = power || 1;
@@ -753,10 +807,7 @@ function updateEnemies(dt) {
       } else {
         e.y = 130 + Math.sin(e.t * 0.8) * 26;
         e.x = W / 2 + Math.sin(e.t * 0.55) * Math.min(260, W / 2 - 80);
-        e.nextShot -= dt;
-        if (e.nextShot <= 0) { e.nextShot = e.shotInterval; aimedSpread(e, 3, 0.22); }
-        e.patternT -= dt;
-        if (e.patternT <= 0) { e.patternT = 5.2; ringShoot(e); }
+        bossDanmaku(e, dt);
         if (e.t > 32) e.leaving = true;
       }
       continue;
@@ -1202,6 +1253,7 @@ function updateHighScore() {
 function startGame() {
   Game.state = 'playing';
   releaseTouchControls();
+  if (window.ChipMusic) ChipMusic.play('thunder-stage');
   Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0;
   Game.hp = 100; Game.shield = 0; Game.bombs = 1;
   Game.level = 1;
@@ -1254,6 +1306,7 @@ function backToMenu() {
 }
 
 function gameOver() {
+  if (window.ChipMusic) ChipMusic.stop();
   releaseTouchControls();
   Game.state = 'over';
   explode(Game.player.x, Game.player.y, '#4f9dff', 70, 2.4);
