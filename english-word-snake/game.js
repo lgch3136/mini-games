@@ -549,12 +549,14 @@ function currentInterval() {
 function tick() {
   if (Game.state !== 'playing' || Game.time < Game.freezeUntil) return;
   Game.prevSnake = Game.snake.map((seg) => ({ x: seg.x, y: seg.y }));
-  while (Game.queue.length) {
+  let turns = 0;
+  while (Game.queue.length && turns < 2) {
     const d = Game.queue.shift();
     if (d.x === -Game.dir.x && d.y === -Game.dir.y) continue;
     if (d.x === Game.dir.x && d.y === Game.dir.y) continue;
     Game.dir = d;
-    break;
+    turns++;
+    break;  // 每个tick只应用一次有效转向(第二次留给下tick, 保持可预测性)
   }
   const head = Game.snake[0];
   const nx = head.x + Game.dir.x, ny = head.y + Game.dir.y;
@@ -893,8 +895,8 @@ function drawSnake() {
     ctx.stroke();
   }
 
-  // 眼睛
-  const d = Game.dir;
+  // 眼睛: 预瞄队列中的下一个方向, 输入立即反映在头部朝向上(消除视觉延迟)
+  const d = (Game.queue.length ? Game.queue[0] : Game.dir);
   const ex = d.x, ey = d.y;
   const px = -ey, py = ex;   // 垂直方向
   ctx.save();

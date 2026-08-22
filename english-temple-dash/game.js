@@ -308,7 +308,8 @@ function hit() {
 
 function clearedObstacle() {
   const player = Game.player;
-  player.combo = player.comboTimer > 0 ? Math.min(12, player.combo + 1) : 1;
+  // 无限连击: 不再封顶12, 高连击有里程碑奖励(每5连击回血/护盾)
+  player.combo = player.comboTimer > 0 ? player.combo + 1 : 1;
   player.comboTimer = 3.2;
   player.comboPulse = .28;
   Game.bestCombo = Math.max(Game.bestCombo, player.combo);
@@ -316,8 +317,21 @@ function clearedObstacle() {
   if (player.combo >= 2) showFeedback('连续闪避 ×' + player.combo);
   if (player.combo >= 3 && player.combo % 3 === 0) {
     const point = project(player.lanePos, 0);
-    burst(point.x, point.y - 70, '#f2c864', 14);
-    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .16);
+    burst(point.x, point.y - 70, '#f2c864', Math.min(14 + player.combo, 40));
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .16, 1 + Math.min(.5, player.combo * .03));
+  }
+  // 里程碑: 每5连击给奖励
+  if (player.combo > 0 && player.combo % 5 === 0) {
+    if (player.combo % 10 === 0 && !player.shield) {
+      player.shield = 1;
+      showFeedback('×' + player.combo + ' 神庙庇佑：获得护盾！');
+    } else if (Game.hp < 3) {
+      Game.hp++;
+      showFeedback('×' + player.combo + ' 连击回血！');
+    } else {
+      Game.score += 500;
+      showFeedback('×' + player.combo + ' 奖励 +500');
+    }
   }
 }
 

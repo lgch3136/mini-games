@@ -52,19 +52,50 @@ const STAGES = [
   ],
 ];
 
-const MISSION_BEATS = [
-  { tag: 'TEACH', name: '巡逻线', hint: '橙光亮起后，巡逻兽会直线冲锋', foes: [['beetle', 420]], lock: true },
-  { tag: 'TEST', name: '壕沟试跳', hint: '先越过壕沟，再处理冲锋', gaps: [[330, 105]], foes: [['beetle', 555]], lock: true },
-  { tag: 'RECOVERY', name: '林间补给', hint: '短暂喘息，击落补给舱', foes: [['capsule', 470]], checkpoint: true, drop: 'spread' },
-  { tag: 'TEACH', name: '跃击预警', hint: '压低蓄力时后撤，从落点下方穿过', foes: [['leaper', 430]], lock: true },
-  { tag: 'TEST', name: '高台炮线', hint: '瞄准线锁定后立刻改变高度', platforms: [[405, 96, 150]], foes: [['turret', 485, 96]], lock: true },
-  { tag: 'COMBINE', name: '盾墙交叉火力', hint: '绕过盾面，在炮台恢复窗口反击', platforms: [[455, 92, 145]], foes: [['guardian', 315], ['turret', 520, 92]], lock: true },
-  { tag: 'WORD_GATE', name: '回忆补给门', hint: '只看中文，主动回忆刚才的单词', wordGate: true, checkpoint: true },
-  { tag: 'TWIST', name: '林冠俯冲', hint: '锁定标记出现后横向撤离', gaps: [[330, 92]], foes: [['drone', 430], ['leaper', 585]], lock: true },
-  { tag: 'CLIMAX', name: '三向夹击', hint: '先拆炮台，再处理盾兵与冲锋', platforms: [[520, 88, 138]], foes: [['beetle', 250], ['guardian', 420], ['turret', 580, 88]], lock: true },
-  { tag: 'RECOVERY', name: '守卫前庭', hint: '补充火力，准备首领战', foes: [['capsule', 455]], wordGate: true, checkpoint: true, drop: 'rapid' },
-  { tag: 'BOSS', name: '林地核心', hint: '观察预兆，击破单词护盾', foes: [['boss', 520]], lock: true },
+const MISSION_LEVELS = [
+  { name: '第一关 · 曙光森林', biome: 0, bossName: '林地核心', music: 'ranger-stage',
+    beats: [
+      { tag: 'TEACH', name: '巡逻线', hint: '橙光亮起后，巡逻兽会直线冲锋', foes: [['beetle', 420]], lock: true },
+      { tag: 'TEST', name: '壕沟试跳', hint: '先越过壕沟，再处理冲锋', gaps: [[330, 105]], foes: [['beetle', 555]], lock: true },
+      { tag: 'RECOVERY', name: '林间补给', hint: '短暂喘息，击落补给舱', foes: [['capsule', 470]], checkpoint: true, drop: 'spread' },
+      { tag: 'TEACH', name: '跃击预警', hint: '压低蓄力时后撤，从落点下方穿过', foes: [['leaper', 430]], lock: true },
+      { tag: 'TEST', name: '高台炮线', hint: '瞄准线锁定后立刻改变高度', platforms: [[405, 96, 150]], foes: [['turret', 485, 96]], lock: true },
+      { tag: 'COMBINE', name: '盾墙交叉火力', hint: '绕过盾面，在炮台恢复窗口反击', platforms: [[455, 92, 145]], foes: [['guardian', 315], ['turret', 520, 92]], lock: true },
+      { tag: 'WORD_GATE', name: '回忆补给门', hint: '只看中文，主动回忆刚才的单词', wordGate: true, checkpoint: true },
+      { tag: 'TWIST', name: '林冠俯冲', hint: '锁定标记出现后横向撤离', gaps: [[330, 92]], foes: [['drone', 430], ['leaper', 585]], lock: true },
+      { tag: 'CLIMAX', name: '三向夹击', hint: '先拆炮台，再处理盾兵与冲锋', platforms: [[520, 88, 138]], foes: [['beetle', 250], ['guardian', 420], ['turret', 580, 88]], lock: true },
+      { tag: 'RECOVERY', name: '守卫前庭', hint: '补充火力，准备首领战', foes: [['capsule', 455]], wordGate: true, checkpoint: true, drop: 'rapid' },
+      { tag: 'BOSS', name: '林地核心', hint: '观察预兆，击破单词护盾', foes: [['boss', 520]], lock: true },
+    ] },
+  { name: '第二关 · 风蚀峡谷', biome: 1, bossName: '峡谷暴君', music: 'ranger-boss',
+    beats: [
+      { tag: 'TEACH', name: '峡谷风口', hint: '上升气流可以托住跳跃', gaps: [[335, 100]], hazards: [['updraft', 505, 255, 112]], foes: [['beetle', 240]], lock: true },
+      { tag: 'TEST', name: '落石走廊', hint: '落石往返巡逻，看准节奏通过', hazards: [['rock', 345, 0, 40]], foes: [['beetle', 180], ['leaper', 540]], lock: true },
+      { tag: 'RECOVERY', name: '岩架补给', hint: '击落补给舱，补充弹药', foes: [['capsule', 450]], checkpoint: true, drop: 'spread' },
+      { tag: 'COMBINE', name: '双层哨位', hint: '先清高台炮，再处理地面盾兵', platforms: [[380, 120, 140]], hazards: [['updraft', 560, 250, 110]], foes: [['turret', 420, 120], ['guardian', 560]], lock: true },
+      { tag: 'WORD_GATE', name: '回忆石门', hint: '只看中文，主动回忆单词', wordGate: true, checkpoint: true },
+      { tag: 'TWIST', name: '断桥强风', hint: '逆风会拉低跳跃距离', gaps: [[285, 200]], hazards: [['updraft', 285, 248, 200]], foes: [['drone', 420], ['beetle', 560]], lock: true },
+      { tag: 'TEST', name: '滚石坡道', hint: '双落石交错，走外线', hazards: [['rock', 300, 0, 40], ['rock', 520, 0, 40]], foes: [['leaper', 430]], lock: true },
+      { tag: 'CLIMAX', name: '峡谷绞索', hint: '三线夹击，先拆空中', platforms: [[450, 128, 135]], hazards: [['updraft', 300, 260, 105]], foes: [['drone', 260], ['guardian', 430], ['turret', 590, 128]], lock: true },
+      { tag: 'RECOVERY', name: '暴君前厅', hint: '最后补给，准备首领战', foes: [['capsule', 460]], wordGate: true, checkpoint: true, drop: 'shield' },
+      { tag: 'BOSS', name: '峡谷暴君', hint: '落石+冲锋交替，保持移动', foes: [['boss', 520]], lock: true },
+    ] },
+  { name: '第三关 · 雨中古城', biome: 2, bossName: '古城主宰', music: 'ranger-stage',
+    beats: [
+      { tag: 'TEACH', name: '湿滑石街', hint: '水洼会打滑，提前刹车', hazards: [['puddle', 180, 0, 115], ['puddle', 475, 0, 130]], foes: [['beetle', 300]], lock: true },
+      { tag: 'TEST', name: '蒸汽管廊', hint: '蒸汽有喷射节奏', platforms: [[180, 105, 145]], hazards: [['steam', 350, 0, 40], ['steam', 625, 0, 40]], foes: [['leaper', 480]], lock: true },
+      { tag: 'RECOVERY', name: '骑楼补给', hint: '雨中喘息', foes: [['capsule', 440]], checkpoint: true, drop: 'rapid' },
+      { tag: 'COMBINE', name: '激光回廊', hint: '双激光交错，走对角线', hazards: [['laser', 190, 0, 96], ['laser', 520, 0, 104]], foes: [['drone', 380]], lock: true },
+      { tag: 'WORD_GATE', name: '回忆圣堂', hint: '主动回忆，奖励翻倍', wordGate: true, checkpoint: true },
+      { tag: 'TWIST', name: '暴雨空袭', hint: '无人机群+湿滑地面', hazards: [['puddle', 320, 0, 120]], foes: [['drone', 260], ['drone', 480], ['leaper', 590]], lock: true },
+      { tag: 'COMBINE', name: '钟楼防线', hint: '高台双炮，用蒸汽掩护推进', platforms: [[200, 110, 130], [470, 140, 135]], hazards: [['steam', 350, 0, 40]], foes: [['turret', 240, 110], ['turret', 510, 140]], lock: true },
+      { tag: 'CLIMAX', name: '广场总攻', hint: '全兵种会师，逐个击破', platforms: [[430, 96, 140]], hazards: [['laser', 200, 0, 100]], foes: [['beetle', 240], ['guardian', 400], ['turret', 570, 96], ['drone', 620]], lock: true },
+      { tag: 'RECOVERY', name: '主宰王庭', hint: '最终补给', foes: [['capsule', 450]], wordGate: true, checkpoint: true, drop: 'shield' },
+      { tag: 'BOSS', name: '古城主宰', hint: '三阶段狂暴，护盾口令是关键', foes: [['boss', 520]], lock: true },
+    ] },
 ];
+// 兼容: 当前关卡的节拍表
+let MISSION_BEATS = MISSION_LEVELS[0].beats;
 
 const BEAT_LABELS = {
   TEACH: '教学', TEST: '测试', RECOVERY: '喘息', COMBINE: '组合',
@@ -111,6 +142,7 @@ const mobileAssist = matchMedia('(pointer: coarse)').matches || navigator.maxTou
 
 const Game = {
   state: 'menu', mode: 'mission', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
+  missionLevel: 0,
   distance: 0, maxX: 70, camera: 0, checkpoint: 70, time: 0,
   feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null,
   generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
@@ -225,12 +257,17 @@ function makeEnemy(type, x, chunkIndex, floorY = GROUND_Y) {
 function generateMissionChunk(index, start) {
   const beat = MISSION_BEATS[index] || { tag: 'EXIT', name: '守卫封锁线', hint: '前线任务已结束', foes: [] };
   const chunk = {
-    index, start, biome: 0, encounter: beat.name, tag: beat.tag, hint: beat.hint,
+    index, start, biome: MISSION_LEVELS[Game.missionLevel].biome, encounter: beat.name, tag: beat.tag, hint: beat.hint,
     lock: Boolean(beat.lock), wordGate: Boolean(beat.wordGate), checkpoint: Boolean(beat.checkpoint),
     gateUsed: false, cleared: false, gaps: [], platforms: [], hazards: [], decor: [],
   };
   for (const [offset, width] of beat.gaps || []) chunk.gaps.push({ x: start + offset, w: width });
   for (const [offset, rise, width] of beat.platforms || []) chunk.platforms.push({ x: start + offset, y: GROUND_Y - rise, w: width, move: 0, phase: 0 });
+  for (const [type, offset, y, w] of beat.hazards || []) {
+    const h = type === 'updraft' ? GROUND_Y - y : type === 'puddle' ? 8 : type === 'rock' ? 40 : type === 'steam' ? 96 : type === 'laser' ? 12 : 18;
+    chunk.hazards.push({ type, x: start + offset, y: type === 'updraft' ? y : GROUND_Y - h - (y || 0), w: w || (type === 'rock' ? 40 : 100), h,
+      phase: index * .7 + offset * .01, home: start + offset, range: 82, vx: type === 'rock' ? 62 : 0 });
+  }
   for (let i = 0; i < 5; i++) chunk.decor.push({ x: start + 88 + i * 132 + (index * 29 + i * 19) % 38, size: .74 + ((index + i) % 3) * .13 });
   Game.chunks.push(chunk);
   Game.generatedTo += CHUNK_W;
@@ -483,8 +520,15 @@ function finishRun(victory) {
   $('touch-controls').classList.add('hidden');
   $('word-gate').classList.add('hidden');
   $('over').classList.remove('hidden');
-  $('over-kicker').textContent = victory ? '第一关完成' : '本次行动结束';
-  $('over-title').textContent = victory ? '林地哨站已突破' : '再向前一点';
+  const lvName = (MISSION_LEVELS[Game.missionLevel] || MISSION_LEVELS[0]).name;
+  if (victory) {
+    const allClear = Game.missionLevel >= MISSION_LEVELS.length - 1;
+    $('over-kicker').textContent = allClear ? '全线告捷 · 三关通关' : lvName + ' 完成';
+    $('over-title').textContent = allClear ? '你是单词突击之王！' : MISSION_LEVELS[Game.missionLevel].bossName + ' 已被击败';
+  } else {
+    $('over-kicker').textContent = lvName;
+    $('over-title').textContent = '再向前一点';
+  }
   const key = 'word-ranger-highscore-' + Game.mode + '-' + Game.difficulty;
   let high = 0;
   try {
@@ -503,6 +547,35 @@ function finishRun(victory) {
 
 function gameOver() { finishRun(false); }
 function missionComplete() { finishRun(true); }
+
+// 魂斗罗式过关: 分数继承, HP+1奖励(上限5), 进入下一关
+function advanceLevel() {
+  Game.missionLevel = Math.min(MISSION_LEVELS.length - 1, Game.missionLevel + 1);
+  MISSION_BEATS = MISSION_LEVELS[Game.missionLevel].beats;
+  const keepScore = Game.score, keepWords = Game.wordsDone,
+        keepCompleted = Game.completedWords.slice(), keepMastery = Game.recallResults.slice(),
+        nextLv = Game.missionLevel;
+  Object.assign(Game, {
+    hp: Math.min(5, Game.hp + 1), distance: 0, maxX: 70,
+    camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0,
+    generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
+    reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
+    hitStop: 0, shake: 0, shakeStrength: 0, flash: 0, victoryTimer: 0,
+    bossNodes: [], bossNodeProgress: 0, bossGateDone: false, bossWord: null,
+    wordGate: null,
+  });
+  for (const list of [Game.chunks, Game.pickups, Game.powerups, Game.enemies, Game.bullets, Game.enemyBullets]) list.length = 0;
+  Game.score = keepScore; Game.wordsDone = keepWords;
+  Game.completedWords = keepCompleted; Game.recallResults = keepMastery;
+  resetInput();
+  resetPlayer(70);
+  ensureWorld(VIEW_W * 3);
+  nextWord(false);
+  Game.state = 'playing';
+  Game.stageBanner = { tag: 'TEST', name: MISSION_LEVELS[nextLv].name, hint: '分数延续 · 士气如虹', timer: 3 };
+  if (window.ChipMusic) ChipMusic.play(MISSION_LEVELS[nextLv].music);
+  updateHud();
+}
 
 function queueJump() {
   if (Game.state !== 'playing') return;
@@ -589,8 +662,11 @@ function defeatEnemy(enemy, source) {
   }
   if (enemy.type === 'boss') {
     if (Game.mode === 'mission') {
-      Game.victoryTimer = 1.15;
-      showFeedback('林地核心崩解，任务完成');
+      const isLast = Game.missionLevel >= MISSION_LEVELS.length - 1;
+      Game.victoryTimer = 1.6;
+      Game.victoryNextLevel = !isLast;
+      showFeedback(isLast ? MISSION_LEVELS[Game.missionLevel].bossName + ' 崩解，全线告捷！'
+                          : MISSION_LEVELS[Game.missionLevel].bossName + ' 已败！进军下一关');
       if (window.ChipMusic) ChipMusic.play('victory');
     } else {
       dropPowerup(enemy, 'shield');
@@ -778,7 +854,7 @@ function updateHud() {
   $('distance').textContent = Game.distance + 'm';
   const chunk = chunkAt(Game.player.x + Game.player.w / 2);
   $('biome').textContent = Game.mode === 'mission' && chunk
-    ? Math.min(MISSION_BEATS.length, chunk.index + 1) + '/' + MISSION_BEATS.length + ' ' + chunk.encounter
+    ? (MISSION_LEVELS[Game.missionLevel] ? MISSION_LEVELS[Game.missionLevel].name.split(' · ')[0] + ' ' : '') + Math.min(MISSION_BEATS.length, chunk.index + 1) + '/' + MISSION_BEATS.length + ' ' + chunk.encounter
     : BIOMES[biomeIndexAt(Game.player.x)].name;
   const word = Game.currentWord;
   if (word) {
@@ -1282,7 +1358,11 @@ function update(dt) {
   }
   if (Game.victoryTimer > 0) {
     Game.victoryTimer -= dt;
-    if (Game.victoryTimer <= 0) { missionComplete(); return; }
+    if (Game.victoryTimer <= 0) {
+      if (Game.victoryNextLevel) { advanceLevel(); return; }
+      missionComplete();
+      return;
+    }
   }
   if (Game.wordEcho) {
     Game.wordEcho.timer -= dt;
@@ -1356,7 +1436,7 @@ function drawWeather(index) {
 function drawBackground() {
   const span = CHUNK_W * 3;
   const group = Math.floor(Game.camera / span);
-  const index = Game.mode === 'mission' ? 0 : group % BIOMES.length;
+  const index = Game.mode === 'mission' ? (MISSION_LEVELS[Game.missionLevel] || MISSION_LEVELS[0]).biome : group % BIOMES.length;
   const local = (Game.camera % span) / span;
   drawBiomeLayer(index, 1, local);
   if (Game.mode !== 'mission' && local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
@@ -1958,7 +2038,11 @@ document.querySelectorAll('.difficulty').forEach((button) => button.addEventList
 }));
 $('start-btn').addEventListener('click', () => startGame('mission'));
 $('arcade-start-btn').addEventListener('click', () => startGame('arcade'));
-$('retry-btn').addEventListener('click', () => startGame(Game.mode));
+$('retry-btn').addEventListener('click', () => {
+  // 战败/结算后重开: 若是通关结算, 从第一关重新开始
+  if (Game.victoryNextLevel === false && Game.state === 'over') Game.keepLevel = false;
+  startGame(Game.mode);
+});
 $('menu-btn').addEventListener('click', backToMenu);
 $('pause-menu-btn').addEventListener('click', backToMenu);
 $('resume-btn').addEventListener('click', togglePause);
