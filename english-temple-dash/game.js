@@ -471,38 +471,35 @@ function drawRoad() {
   roadGrad.addColorStop(1, shadeColor(biome.road, .06));
   ctx.fillStyle = roadGrad;
   ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.closePath(); ctx.fill();
-  // 石板横向纹理：随 travel 滚动，近大远小（速度感的核心来源）；相邻板明度交替增强可读性
-  const slabOffset = (Game.travel * 3.1) % 34;
-  for (let y = HORIZON_Y + slabOffset, rowIdx = 0; y < VIEW_H + 34; y += 34, rowIdx++) {
-    const depth = clamp((y - HORIZON_Y) / (VIEW_H - HORIZON_Y), 0, 1);
-    const halfW = 40 + (VIEW_W * .48 - 40) * depth;
+  // 石板纹理: 世界锚定透视投影 —— 石板以固定世界间距(z轴)摆放,
+  // 近处自然滑得快、远处滑得慢, 彻底消除"匀速刷屏"的频闪。
+  // 明暗交替只做极轻微的暖色变化(不做高对比黑白), 保护眼睛。
+  const SLAB_WORLD = 9;                       // 每块石板占9个世界z单位
+  const worldBase = Game.travel;              // 玩家前进的世界距离
+  const firstSlab = Math.floor(worldBase / SLAB_WORLD) + 1;
+  for (let si = 0; si < 26; si++) {
+    const zz = (firstSlab + si) * SLAB_WORLD - worldBase;   // 该石板近端距玩家的世界距离
+    if (zz < 1 || zz > MAX_Z + SLAB_WORLD) continue;
+    const nearEdge = project(0, Math.max(1, zz - SLAB_WORLD * .5));
+    const farEdge = project(0, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
+    const yNear = nearEdge.y, yFar = farEdge.y;
+    if (yNear - yFar < .6) continue;
+    const depth = clamp((yFar - HORIZON_Y) / (VIEW_H - HORIZON_Y), 0, 1);
     const cX = farCenter + (nearCenter - farCenter) * depth;
-    // 相邻石板 ±12% 明度交替（滚动频闪=速度感的直接来源）
-    if (rowIdx % 2 === 0) {
-      ctx.fillStyle = 'rgba(255,244,200,' + (.05 + depth * .07) + ')';
-      ctx.fillRect(cX - halfW, y, halfW * 2, Math.min(34, VIEW_H - y));
-    }
-    ctx.strokeStyle = 'rgba(0,0,0,' + (.16 + depth * .22) + ')';
-    ctx.lineWidth = 1.5 + depth * 2.5;
+    const halfW = lerp(42, VIEW_W * .48, depth * depth);
+    // 交替石板: 极轻的暖色差(±3%), 远处几乎不可见 —— 有节奏但不刺眼
+    const slabIdx = firstSlab + si;
+    const alt = slabIdx % 2 === 0;
+    ctx.fillStyle = 'rgba(255,238,190,' + (alt ? .028 + depth * .03 : 0) + ')';
+    ctx.fillRect(cX - halfW, yFar, halfW * 2, yNear - yFar);
+    // 横缝: 近处清晰远处淡出(大气透视), 无高对比
+    const seamAlpha = .10 + depth * .14;
+    ctx.strokeStyle = 'rgba(8,14,11,' + seamAlpha + ')';
+    ctx.lineWidth = 1 + depth * 1.6;
     ctx.beginPath();
-    ctx.moveTo(cX - halfW, y);
-    ctx.lineTo(cX + halfW, y);
+    ctx.moveTo(cX - halfW, yNear);
+    ctx.lineTo(cX + halfW, yNear);
     ctx.stroke();
-    // 分缝亮边：下侧 1px 高光制造凹槽立体感
-    if (y + 2 < VIEW_H) {
-      ctx.strokeStyle = 'rgba(255,240,190,' + (.05 + depth * .09) + ')';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(cX - halfW, y + 2); ctx.lineTo(cX + halfW, y + 2); ctx.stroke();
-    }
-    // 石板错缝竖线，交替偏移
-    if (Math.round((y - slabOffset) / 34) % 2 === 0) {
-      for (const fx of [-.45, .05, .55]) {
-        const px = cX + halfW * 2 * fx;
-        ctx.strokeStyle = 'rgba(0,0,0,' + (.08 + depth * .14) + ')';
-        ctx.lineWidth = 1 + depth;
-        ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px, Math.min(VIEW_H, y + 34)); ctx.stroke();
-      }
-    }
   }
   // 中央引导虚线：透视收缩，滚动
   const dashOffset = (Game.travel * LANE_MARKER_RATE) % (LANE_MARKER_SPACING * 2);
@@ -733,8 +730,10 @@ function drawWeather() {
 function render() {
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
-  const shakeX = Game.shake > 0 ? Math.sin(Game.time * 72) * Game.shake * 18 : 0;
-  const shakeY = Game.shake > 0 ? Math.cos(Game.time * 58) * Game.shake * 8 : 0;
+  // 屏幕震动限幅+平滑: 高频大幅抖动会破坏近景速度预估(用户实测反馈)
+  const shakeAmp = Math.min(Game.shake, .16);
+  const shakeX = shakeAmp > 0 ? Math.sin(Game.time * 46) * shakeAmp * 11 : 0;
+  const shakeY = shakeAmp > 0 ? Math.cos(Game.time * 39) * shakeAmp * 5 : 0;
   ctx.save(); ctx.translate(shakeX, shakeY);
   drawBackground(); drawRoad(); drawEdgeScenery();
   [...Game.objects].sort((a, b) => b.z - a.z).forEach(drawObject);

@@ -1,17 +1,11 @@
 'use strict';
 
 /* ============================================================
- * ChipMusic — FC风格芯片音乐引擎 (纯 WebAudio 合成, 零素材字节)
+ * ChipMusic v2 — FC风格芯片音乐引擎 · 音轨器架构
  *
- * 致敬 NES APU 架构: 2 方波声部 + 1 三角波贝斯 + 噪声鼓组。
- * 每首曲子是一个 pattern 数组, 音符用科学音高记号("E4")或 null(休止)。
- * 调度器用 lookahead 精确排程, 与帧率无关, 不会卡顿走音。
- *
- * 用法:
- *   ChipMusic.play('ranger-stage');   // 循环播放
- *   ChipMusic.crossfade('boss');      // Boss战无缝切歌
- *   ChipMusic.stop();
- *   ChipMusic.setMuted(bool)          // 跟随全局静音
+ * 学经典游戏的做法: 曲子 = pattern(小节片段) + order(排列顺序)
+ * 正是 Konami/Capcom 作曲家的谱曲方式。每首曲 40~90 秒完整结构:
+ * 前奏 → A段 → A' → B段 → 回旋。循环的是整个 order, 不是2小节。
  * ============================================================ */
 (function () {
   const NOTE_OFFSET = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
@@ -21,99 +15,208 @@
     if (!m) return 0;
     return 440 * Math.pow(2, (NOTE_OFFSET[m[1]] + (Number(m[2]) + 1) * 12 - 69) / 12);
   };
+  /* 简写: "E4:2" = E4 持续2步; 数组内 null = 延音/休止由前值决定
+   * 展开器把 [ 'E4:3', null, 'G4', ... ] 变成逐步序列 */
 
-  /* ---------- 曲库 ----------
-   * lead/r harmony: 主旋律+和声(方波), bass: 贝斯(三角波), drums: K=底鼓 S=军鼓 h=闭镲
-   * step 单位=十六分音符。tempo = BPM。
+  function expand(row) {
+    // row: 字符串数组, 'X:n' 表示持续n步, 其后自动补null
+    const out = [];
+    for (const tok of row) {
+      if (tok == null) { out.push(null); continue; }
+      const m = /^([A-G]#?\d)(?::(\d+))?$/.exec(tok);
+      if (!m) { out.push(null); continue; }
+      out.push(m[1]);
+      for (let i = 1; i < Number(m[2] || 1); i++) out.push(null); // null=延音
+    }
+    return out;
+  }
+
+  /* ================= 曲库: 每首 = patterns + order =================
+   * 一个 pattern = 32步(2小节4/4)。lead/harmony/bass/drums 同步长。
+   * drums: K底鼓 S军鼓 h闭镲 o开镲 . 休止
+   * ================================================================ */
+
+  const SONGS = {};
+
+  /* ---------- 单词突击队·丛林行动曲 (~64秒) ----------
+   * Em 调。Intro(4) A(8) A'(8) B(8) A''(8) 尾奏回Intro变体(4) = 40小节
    */
-  const SONGS = {
-    // —— 单词突击队·丛林行动: 明快进行曲, E小调带希望感 ——
-    'ranger-stage': {
-      tempo: 152,
-      lead:    ['E4',null,'B4',null,'E5',null,'D5','B4','G4',null,'B4',null,'D5',null,'B4',null,
-                'A4',null,'E5',null,'D5',null,'B4','G4','E4',null,'G4',null,'A4',null,'B4',null],
-      harmony: ['B3',null,'E4',null,'G4',null,'F#4','E4','B3',null,'D4',null,'G4',null,'F#4',null,
-                'E4',null,'C5',null,'B4',null,'G4','E4','B3',null,'E4',null,'F#4',null,'G4',null],
-      bass:    ['E2',null,'E2',null,'B2',null,'E2',null,'C3',null,'C3',null,'G2',null,'C3',null,
-                'A2',null,'A2',null,'E3',null,'A2',null,'B2',null,'B2',null,'B2',null,'B2',null],
-      drums:   ['K',null,'h',null,'S',null,'h',null,'K',null,'h','K','S',null,'h',null,
-                'K',null,'h',null,'S',null,'h',null,'K','K','h',null,'S',null,'h',null],
+  SONGS['ranger-stage'] = (() => {
+    const P = {};
+    // 主A段: 明快进行曲动机
+    P.a1 = {
+      lead: expand(['E4:2', 'B4', 'E5:2', 'D5', 'B4', 'G4:2', 'B4', 'D5:2', 'B4', 'G4', 'A4:2', 'E5', 'D5:2', 'B4', 'G4', 'E4:2', 'G4', 'A4:2', 'B4', null, null, null, null, null]),
+      harmony: expand(['B3:2', 'E4', 'G4:2', 'F#4', 'E4', 'B3:2', 'D4', 'G4:2', 'F#4', 'D4', 'C4:2', 'A4', 'G4:2', 'F#4', 'E4', 'B3:2', 'E4', 'F#4:2', 'G4', null, null, null, null, null]),
+      bass: expand(['E2:2', 'B2', 'E3:2', 'B2', 'C3:2', 'G2', 'C3:2', 'G2', 'A2:2', 'E3', 'A2:2', 'E3', 'B2:2', 'F#2', 'B2:2', 'B2', null, null, null, null, null, null, null, null]),
+      drums: ['K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', '.', 'h', 'K', 'S', '.', 'h', '.',
+              'K', '.', 'h', '.', 'S', '.', 'h', 'o', 'K', 'K', 'h', '.', 'S', '.', 'h', '.'],
+    };
+    P.a2 = JSON.parse(JSON.stringify(P.a1)); // 同结构, 后面微调结尾
+    P.a2.lead = expand(['E4:2', 'B4', 'E5:2', 'D5', 'B4', 'G4:2', 'B4', 'D5:2', 'B4', 'G4', 'A4:2', 'C5', 'B4:2', 'G4', 'E5', 'D5:2', 'B4', 'G4:2', 'E4', null, null, null, null, null]);
+    P.a2.harmony = expand(['B3:2', 'E4', 'G4:2', 'F#4', 'E4', 'B3:2', 'D4', 'G4:2', 'F#4', 'D4', 'E4:2', 'A4', 'G4:2', 'E4', 'B4', 'A4:2', 'G4', 'E4:2', 'B3', null, null, null, null, null]);
+    // B段: 上扬对答 (C大调离调感), 制造对比
+    P.b1 = {
+      lead: expand(['C5:2', 'B4', 'C5:2', 'E5', 'D5:2', 'C5', 'B4:2', 'G4', 'A4:2', 'B4', 'C5:2', 'D5', 'E5:3', null, 'D5:2', 'B4', 'G4:2', 'A4', 'B4:2', null, null]),
+      harmony: expand(['G4:2', 'G4', 'A4:2', 'C5', 'B4:2', 'A4', 'G4:2', 'E4', 'F4:2', 'G4', 'A4:2', 'B4', 'C5:3', null, 'B4:2', 'G4', 'D4:2', 'F4', 'G4:2', null, null]),
+      bass: expand(['C2:2', 'G2', 'C3:2', 'G2', 'G1:2', 'D2', 'G2:2', 'D2', 'F2:2', 'C3', 'F2:2', 'C3', 'G2:2', 'D3', 'G2:2', 'G2', null, null, null, null, null, null, null, null]),
+      drums: ['K', 'K', 'h', '.', 'S', '.', 'h', '.', 'K', '.', 'h', 'K', 'S', '.', 'o', '.',
+              'K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', 'K', 'h', 'K', 'S', 'S', 'h', 'o'],
+    };
+    // Intro: 鼓+贝斯铺垫, 引出主题
+    P.intro = {
+      lead: expand([null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]),
+      harmony: expand([null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]),
+      bass: expand(['E2:4', 'E2', 'B2:4', 'C3', 'A2:4', 'A2', 'B2:4', 'B2', null, null, null, null, null, null, null, null, null, null, null, null]),
+      drums: ['K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', '.', 'h', '.', 'S', '.', 'h', '.',
+              'K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', 'K', 'S', '.', 'S', 'S', 'h', 'o'],
+    };
+    return {
+      tempo: 150,
+      patterns: P,
+      order: ['intro', 'a1', 'a2', 'b1', 'a1', 'a2', 'b1', 'a2', 'b1', 'a1', 'a2', 'b1', 'a1', 'a2'],  // ~29s @150bpm x3循环=86s
+    };
+  })();
+
+  /* ---------- Boss战·钢铁咆哮 (~48秒) ---------- */
+  SONGS['ranger-boss'] = (() => {
+    const P = {};
+    P.v1 = {
+      lead: expand(['E4', 'F4', 'E4', 'B3:2', 'E4', 'G4', 'F4', 'E4', 'F4', 'A4', 'B4', 'A4:2', 'F4', 'E4',
+                    'D4', 'E4', 'F4', 'G4', 'A4:2', 'B4', 'C5', 'B4', 'A4', 'G4', 'F4', 'E4:4']),
+      harmony: expand(['B3', 'C4', 'B3', 'G3:2', 'B3', 'E4', 'D4', 'C4', 'D4', 'F4', 'G4', 'F4:2', 'D4', 'C4',
+                       'A3', 'B3', 'C4', 'D4', 'E4:2', 'G4', 'A4', 'G4', 'F4', 'E4', 'D4', 'C4:4']),
+      bass: expand(['E2', 'E2', 'E3', 'E2', 'D2', 'D2', 'D3', 'D2', 'C2', 'C2', 'C3', 'C2', 'B1', 'B1', 'B2', 'B1', 'A1', 'A1', 'A2', 'A1', 'G1', 'G1', 'G2', 'G1', 'B1', 'B1', 'B2', 'B1', 'E2:4']),
+      drums: ['K', 'h', 'S', 'h', 'K', 'h', 'S', 'h', 'K', 'h', 'S', 'h', 'K', 'K', 'S', 'h',
+              'K', 'h', 'S', 'h', 'K', 'h', 'S', 'h', 'K', 'h', 'S', 'K', 'S', '.', 'h', 'o'],
+    };
+    // 变奏: 旋律翻高八度片段+切分
+    P.v2 = {
+      lead: expand(['E5', 'F5', 'E5', 'B4:2', 'E5', 'G5', 'F5', 'E5', null, 'A4', 'B4', 'C5:2', 'B4', 'A4',
+                    'G4', 'A4', 'B4', 'C5', 'D5:2', 'E5', 'F5', 'E5', 'D5', 'C5', 'B4', 'E5:4']),
+      harmony: expand(['G4', 'A4', 'G4', 'E4:2', 'G4', 'B4', 'A4', 'G4', null, 'C5', 'D5', 'E5:2', 'D5', 'C5',
+                       'B4', 'C5', 'D5', 'E5', 'F5:2', 'G5', 'A5', 'G5', 'F5', 'E5', 'D5', 'G5:4']),
+      bass: expand(['E2', 'E2', 'E3', 'E2', 'C2', 'C2', 'C3', 'C2', 'A1', 'A1', 'A2', 'A1', 'F2', 'F2', 'F3', 'F2', 'G1', 'G1', 'G2', 'G1', 'B1', 'B1', 'B2', 'B1', 'E2', 'E2', 'E3', 'E2', 'E2:4']),
+      drums: ['K', 'h', 'S', 'h', 'K', 'h', 'S', 'h', 'KK', 'h', 'S', 'h', 'K', 'K', 'S', 'o',
+              'K', 'h', 'S', 'h', 'K', 'h', 'S', 'h', 'KK', 'h', 'S', 'K', 'S', 'S', 'h', 'o'],
+    };
+    return { tempo: 170, patterns: P, order: ['v1', 'v2', 'v1', 'v2', 'v1', 'v2', 'v1', 'v2', 'v1', 'v2', 'v1', 'v2', 'v1', 'v2', 'v1', 'v2'] };  // ~45s
+  })();
+
+  /* ---------- 雷霆战机·星际巡航 (~72秒) ---------- */
+  SONGS['thunder-stage'] = (() => {
+    const P = {};
+    // Am 琶音冷冽主题
+    P.s1 = {
+      lead: expand(['A4', 'C5', 'E5', 'A5:2', 'G5', 'E5', 'F5:2', 'A4', 'C5', 'F5:2', 'E5', 'C5', 'D5', 'F4', 'A4', 'D5:2', 'E5', 'D5', 'C5:2', 'E4', 'G4', 'C5:2', 'B4', 'G4', null, null]),
+      harmony: expand(['A3', 'E4', 'A4', 'C5:2', 'B4', 'A4', 'C4:2', 'F4', 'A4', 'C5:2', 'B4', 'A4', 'A3', 'D4', 'F4', 'A4:2', 'C5', 'A4', 'G4:2', 'C5', 'E5', 'G5:2', 'F5', 'E5', null, null]),
+      bass: expand(['A1:4', 'A2', 'A1:4', 'A2', 'F1:4', 'F2', 'F1:4', 'F2', 'D1:4', 'D2', 'D1:4', 'D2', 'C2:2']),
+      drums: ['K', '.', 'h', 'h', 'S', '.', 'h', '.', 'K', '.', 'h', 'h', 'S', '.', 'h', 'o',
+              'K', '.', 'h', 'h', 'S', '.', 'h', '.', 'K', 'K', 'h', 'h', 'S', 'S', 'h', 'o'],
+    };
+    // 副歌: 上五度爆发
+    P.s2 = {
+      lead: expand(['E5', 'G5', 'C6:2', 'B5', 'G5', 'A5:2', 'E5', 'C5', 'F5', 'A5', 'C6:2', 'B5', 'A5', 'G5:2', 'D6', 'C6', 'B5', 'A5', 'G5:2', 'E5', 'G5', 'A5:4', null, null]),
+      harmony: expand(['C5', 'E5', 'G5:2', 'F5', 'E5', 'F5:2', 'C5', 'A4', 'D5', 'F5', 'A5:2', 'G5', 'F5', 'E5:2', 'B5', 'A5', 'G5', 'F5', 'E5:2', 'C5', 'E5', 'F5:4', null, null]),
+      bass: expand(['C2:4', 'C3', 'C2:4', 'C3', 'F2:4', 'F3', 'F2:4', 'F3', 'G1:4', 'G2', 'G1:4', 'G2', 'A1:2']),
+      drums: ['K', '.', 'h', 'h', 'S', '.', 'h', 'o', 'K', '.', 'h', 'h', 'S', '.', 'h', '.',
+              'K', '.', 'h', 'h', 'S', '.', 'h', 'o', 'K', 'K', 'S', 'h', 'S', 'S', 'o', 'o'],
+    };
+    // Bridge: 半空拍紧张段
+    P.sb = {
+      lead: expand(['A4:2', null, 'E5:2', null, 'D5:2', null, 'C5:2', null, 'B4:2', null, 'F5:2', null, 'E5:4', null, null, null, null, null, null, null, null, null, null]),
+      harmony: expand(['C4:2', null, 'A4:2', null, 'G4:2', null, 'E4:2', null, 'G4:2', null, 'D5:2', null, 'C5:4', null, null, null, null, null, null, null, null, null, null]),
+      bass: expand(['A1:8', 'F1:8', 'D1:8', 'E2:8']),
+      drums: ['K', '.', '.', '.', 'S', '.', '.', '.', 'K', '.', '.', '.', 'S', '.', 'h', '.',
+              'K', '.', 'h', '.', 'S', '.', 'h', '.', 'KK', 'KK', 'S', 'S', 'S', 'S', 'o', 'o'],
+    };
+    return { tempo: 162, patterns: P, order: ['s1', 's1', 's2', 'sb', 's2', 's1', 's1', 's2', 'sb', 's2', 's1', 's2', 'sb', 's2'] };  // ~74s
+  })();
+
+  /* ---------- 贪吃蛇·霓虹隧道 (~60秒) ---------- */
+  SONGS['snake-loop'] = (() => {
+    const P = {};
+    // C 宫五声俏皮主题
+    P.n1 = {
+      lead: expand(['C5:2', 'D5', 'E5:2', 'G5', 'E5:2', 'D5', 'C5:2', 'A4', 'C5', 'D5:2', null, 'E5:2', 'G5', 'A5:2', 'C6', 'A5:2', 'G5', 'E5:2', 'D5', 'E5', 'C5:3']),
+      harmony: expand(['E4:2', 'G4', 'C5:2', 'E5', 'C5:2', 'G4', 'E4:2', 'C4', 'E4', 'G4:2', null, 'C5:2', 'E5', 'G5:2', 'C6', 'G5:2', 'E5', 'C5:2', 'G4', 'C5', 'E5:3']),
+      bass: expand(['C2:2', 'G2', 'C3:2', 'G2', 'A1:2', 'E2', 'A2:2', 'E2', 'F1:2', 'C2', 'F2:2', 'C2', 'G1:2', 'D2', 'G2:2', 'C2', null, null, null, null, null, null, null, null]),
+      drums: ['K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', '.', 'h', 'K', 'S', '.', 'h', '.',
+              'K', '.', 'h', '.', 'S', '.', 'h', 'K', 'K', 'K', 'h', '.', 'S', '.', 'h', '.'],
+    };
+    // 变奏: 切分跳弓
+    P.n2 = {
+      lead: expand(['G4', 'C5', 'E5', 'G5', 'E5', 'C5', 'A4', 'C5', 'D5', null, 'E5', null, 'G5', null, null, null, 'A4', 'C5', 'F5', 'A5', 'F5', 'C5', 'G4', 'C5', 'E5', null, 'D5', null, 'C5:4']),
+      harmony: expand(['E4', 'G4', 'C5', 'E5', 'C5', 'G4', 'E4', 'G4', 'A4', null, 'C5', null, 'E5', null, null, null, 'F4', 'A4', 'C5', 'F5', 'C5', 'A4', 'E4', 'G4', 'C5', null, 'B4', null, 'C5:4']),
+      bass: expand(['C2', 'C2', 'G2', 'C3', 'A1', 'A1', 'E2', 'A2', 'F1', 'F1', 'C2', 'F2', 'G1', 'G1', 'D2', 'G2', 'C2', 'C2', 'G2', 'C3', 'A1', 'A1', 'E2', 'A2', 'F1', 'F1', 'G1', 'G1', 'C2:4']),
+      drums: ['K', 'h', 'S', 'h', 'K', 'h', 'S', 'h', 'K', 'h', 'S', 'h', 'K', 'K', 'S', 'o',
+              'K', 'h', 'S', 'h', 'K', 'h', 'S', 'h', 'K', 'h', 'S', 'K', 'S', '.', 'h', 'o'],
+    };
+    return { tempo: 138, patterns: P, order: ['n1', 'n2', 'n1', 'n2', 'n1', 'n2', 'n1', 'n2', 'n1', 'n2', 'n1', 'n2'] };  // ~62s
+  })();
+
+  /* ---------- 飞鸟·晨风翱翔 (~56秒) ---------- */
+  SONGS['flappy-loop'] = (() => {
+    const P = {};
+    P.f1 = {
+      lead: expand(['G4:2', 'C5', 'E5:2', 'D5', 'C5:2', 'D5', 'E5:2', 'G5', 'E5', 'D5', 'A4:2', 'D5', 'F5:2', 'E5', 'D5:2', 'E5', 'D5:2', 'C5', 'D5', 'E5', 'G4:2', 'C5', 'E5']),
+      harmony: expand(['E4:2', 'G4', 'C5:2', 'B4', 'G4:2', 'B4', 'C5:2', 'E5', 'C5', 'B4', 'F4:2', 'A4', 'D5:2', 'C5', 'A4:2', 'C5', 'B4:2', 'G4', 'A4', 'B4', 'E4:2', 'G4', 'C5']),
+      bass: expand(['C2:4', 'G2', 'C2:4', 'G2', 'F1:4', 'C2', 'G1:4', 'G2', 'C2:4', 'G2', 'A1:4', 'E2', 'F1:2']),
+      drums: ['K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', '.', 'h', 'K', 'S', '.', 'h', '.',
+              'K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', '.', 'h', 'K', 'S', '.', 'h', '.'],
+    };
+    P.f2 = {
+      lead: expand(['E5:2', 'D5', 'C5:2', 'D5', 'E5:2', 'G5', 'A5:2', 'G5', 'E5', 'D5', 'C5:2', 'E5', 'D5:2', 'C5', 'A4:2', 'C5', 'D5:4', null, 'E5', 'G5', 'C6:2']),
+      harmony: expand(['C5:2', 'B4', 'G4:2', 'B4', 'C5:2', 'E5', 'F5:2', 'E5', 'C5', 'B4', 'A4:2', 'C5', 'B4:2', 'A4', 'F4:2', 'A4', 'B4:4', null, 'C5', 'E5', 'G5:2']),
+      bass: expand(['A1:4', 'E2', 'F1:4', 'C2', 'C2:4', 'G2', 'G1:4', 'G2', 'C2:4', 'E2', 'F1:4', 'G1', 'C2:2']),
+      drums: ['K', 'K', 'h', '.', 'S', '.', 'h', 'o', 'K', '.', 'h', '.', 'S', '.', 'h', '.',
+              'K', '.', 'h', 'K', 'S', '.', 'h', '.', 'KK', '.', 'h', 'K', 'S', 'S', 'h', 'o'],
+    };
+    return { tempo: 128, patterns: P, order: ['f1', 'f2', 'f1', 'f2', 'f1', 'f2', 'f1', 'f2', 'f1', 'f2', 'f1', 'f2', 'f1', 'f2'] };  // ~60s
+  })();
+
+  /* ---------- 神庙跑酷·遗迹狂奔 (~58秒) ---------- */
+  SONGS['temple-loop'] = (() => {
+    const P = {};
+    // Dm 密集鼓点推进
+    P.t1 = {
+      lead: expand(['D4', 'D4', 'F4:2', 'A4', 'G4:2', 'F4', 'E4', 'E4', 'G4:2', 'B4', 'A4:2', 'G4', 'F4', 'F4', 'A4:2', 'C5', 'B4:2', 'A4', 'G4', 'F4', 'E4', 'D4:4', null]),
+      harmony: expand(['A3', 'A3', 'D4:2', 'F4', 'E4:2', 'D4', 'C4', 'C4', 'E4:2', 'G4', 'F4:2', 'E4', 'D4', 'D4', 'F4:2', 'A4', 'G4:2', 'F4', 'E4', 'D4', 'C4', 'B3:4', null]),
+      bass: expand(['D2', 'D2', 'D2', 'D3', 'C2', 'C2', 'C2', 'C3', 'B1', 'B1', 'B1', 'B2', 'F2', 'F2', 'F2', 'F3', 'G2', 'G2', 'G2', 'G3', 'A2', 'A2', 'A2', 'A2', null, null, null, null, null, null, null, null]),
+      drums: ['K', 'h', 'K', 'h', 'S', 'h', 'K', 'h', 'K', 'h', 'K', 'h', 'S', 'h', 'h', 'h',
+              'K', 'h', 'K', 'h', 'S', 'h', 'K', 'h', 'K', 'K', 'h', 'h', 'S', 'S', 'h', 'h'],
+    };
+    // 副歌: 八度跳跃冲刺
+    P.t2 = {
+      lead: expand(['D5', 'A4', 'D5', 'F5', 'E5', 'A4', 'E5', 'G5', 'F5', 'C5', 'F5', 'A5', 'G5', 'D5', 'G5', 'B5', 'A5', 'E5', 'A5', 'C6', 'B5', 'A5', 'G5', 'F5', 'E5', 'D5:4', null, null, null]),
+      harmony: expand(['A4', 'F4', 'A4', 'D5', 'C5', 'A4', 'C5', 'E5', 'D5', 'A4', 'D5', 'F5', 'E5', 'B4', 'E5', 'G5', 'C5', 'A4', 'C5', 'F5', 'E5', 'D5', 'C5', 'B4', 'A4', 'D5:4', null, null, null]),
+      bass: expand(['D2', 'D3', 'D2', 'D3', 'A2', 'A3', 'A2', 'A3', 'F2', 'F3', 'F2', 'F3', 'G2', 'G3', 'G2', 'G3', 'C3', 'C3', 'C3', 'C3', 'D2:4', 'D2', 'D2', null, null, null, null, null, null]),
+      drums: ['Kh', 'Kh', 'Sh', 'hh', 'Kh', 'Kh', 'Sh', 'hh', 'Kh', 'Kh', 'Sh', 'hh', 'SSS', '.', 'h', 'o',
+              'K', 'h', 'K', 'h', 'S', 'h', 'K', 'h', 'KKK', 'h', 'S', 'K', 'S', 'S', 'o', 'o'],
+    };
+    return { tempo: 156, patterns: P, order: ['t1', 't1', 't2', 't1', 't2', 't1', 't2', 't1', 't2', 't1', 't2', 't1', 't2', 't1', 't2'] };  // ~58s
+  })();
+
+  /* ---------- 通用胜利调 (短, 不循环) ---------- */
+  SONGS['victory'] = {
+    tempo: 150, noLoop: true,
+    patterns: {
+      v: {
+        lead: expand(['C5:2', 'E5:2', 'G5:2', 'C6:4', 'B5', 'G5', 'E5:2', 'G5:4', null, null, null, null, null, null, null, null, null, null, null, null, null, null]),
+        harmony: expand(['E4:2', 'G4:2', 'C5:2', 'E5:4', 'D5', 'B4', 'C5:2', 'E5:4', null, null, null, null, null, null, null, null, null, null, null, null, null, null]),
+        bass: expand(['C2:4', 'G2:4', 'F2:4', 'C2:4']),
+        drums: ['K', '.', 'S', '.', 'K', '.', 'S', 'K', 'S', '.', 'K', 'K', 'S', '.', 'h', 'o'],
+      },
     },
-    // —— Boss战: 紧迫半音阶推进 ——
-    'ranger-boss': {
-      tempo: 172,
-      lead:    ['E4','F4','E4','B3','E4',null,'G4','F4','E4','F4','A4','B4','A4',null,'F4','E4',
-                'D4','E4','F4','G4','A4',null,'B4','C5','B4','A4','G4','F4','E4',null,null,null],
-      harmony: ['B3','C4','B3','G3','B3',null,'E4','D4','C4','D4','F4','G4','F4',null,'D4','C4',
-                'A3','B3','C4','D4','E4',null,'G4','A4','G4','F4','E4','D4','C4',null,null,null],
-      bass:    ['E2','E2','E3','E2','D2','D2','D3','D2','C2','C2','C3','C2','B1','B1','B2','B1',
-                'A1','A1','A2','A1','G1','G1','G2','G1','B1','B1','B2','B1','E2','E2','E2','E2'],
-      drums:   ['K','h','S','h','K','h','S','h','K','h','S','h','K','K','S','h',
-                'K','h','S','h','K','h','S','h','K','h','S','K','S','S','S','S'],
-    },
-    // —— 雷霆战机·星际巡航: 冷冽电子感, 小调琶音 ——
-    'thunder-stage': {
-      tempo: 164,
-      lead:    ['A4',null,'C5','E5','A5',null,'G5','E5','F5',null,'A4','C5','F5',null,'E5','C5',
-                'D5',null,'F4','A4','D5',null,'E5','D5','C5',null,'E4','G4','C5',null,'B4','G4'],
-      harmony: ['A3',null,'E4','A4','C5',null,'B4','A4','C4',null,'F4','A4','C5',null,'B4','A4',
-                'A3',null,'D4','F4','A4',null,'C5','A4','G4',null,'C5','E5','G5',null,'F5','E5'],
-      bass:    ['A1',null,'A1','A2',null,'A1',null,'A2','F1',null,'F1','F2',null,'F1',null,'F2',
-                'D1',null,'D1','D2',null,'D1',null,'D2','C2',null,'C2','C3',null,'C2',null,'G1'],
-      drums:   ['K',null,'h','h','S',null,'h',null,'K',null,'h','h','S',null,'h','K',
-                'K',null,'h','h','S',null,'h',null,'K','K','h','h','S','S','h',null],
-    },
-    // —— 贪吃蛇·霓虹隧道: 幽默跳跃的五声音阶 ——
-    'snake-loop': {
-      tempo: 140,
-      lead:    ['C5',null,'D5','E5','G5',null,'E5','D5','C5',null,'A4','C5','D5',null,null,null,
-                'E5',null,'G5','A5','C6',null,'A5','G5','E5',null,'D5','E5','C5',null,null,null],
-      harmony: ['E4',null,'G4','C5','E5',null,'C5','G4','E4',null,'C4','E4','G4',null,null,null,
-                'C5',null,'E5','G5','C6',null,'G5','E5','C5',null,'G4','C5','E5',null,null,null],
-      bass:    ['C2',null,'G2',null,'C3',null,'G2',null,'A1',null,'E2',null,'A2',null,'E2',null,
-                'F1',null,'C2',null,'F2',null,'C2',null,'G1',null,'D2',null,'G2',null,'C2',null],
-      drums:   ['K',null,'h',null,'S',null,'h',null,'K',null,'h',null,'S',null,'h',null,
-                'K',null,'h','K','S',null,'h',null,'K',null,'h','K','S',null,'S',null],
-    },
-    // —— 飞鸟·晨风翱翔: 大调轻快 ——
-    'flappy-loop': {
-      tempo: 132,
-      lead:    ['G4',null,'C5',null,'E5',null,'D5','C5','D5',null,'E5',null,'G5',null,null,null,
-                'A4',null,'D5',null,'F5',null,'E5','D5','E5',null,'D5',null,'C5',null,null,null],
-      harmony: ['E4',null,'G4',null,'C5',null,'B4','G4','B4',null,'C5',null,'E5',null,null,null,
-                'F4',null,'A4',null,'D5',null,'C5','A4','C5',null,'B4',null,'G4',null,null,null],
-      bass:    ['C2',null,null,'C3',null,'G2',null,null,'G1',null,null,'G2',null,'B1',null,null,
-                'F1',null,null,'F2',null,'C2',null,null,'C2',null,'G1',null,'C2',null,null,null],
-      drums:   ['K',null,'h',null,'S',null,'h',null,'K',null,'h','K','S',null,'h',null,
-                'K',null,'h',null,'S',null,'h','K','K',null,'h',null,'S',null,'h',null],
-    },
-    // —— 神庙跑酷·遗迹狂奔: 密集鼓点+附重低音 ——
-    'temple-loop': {
-      tempo: 158,
-      lead:    ['D4','D4','F4',null,'A4',null,'G4','F4','E4','E4','G4',null,'B4',null,'A4','G4',
-                'F4','F4','A4',null,'C5',null,'B4','A4','G4',null,'F4','E4','D4',null,null,null],
-      harmony: ['A3','A3','D4',null,'F4',null,'E4','D4','C4','C4','E4',null,'G4',null,'F4','E4',
-                'D4','D4','F4',null,'A4',null,'G4','F4','E4',null,'D4','C4','B3',null,null,null],
-      bass:    ['D2','D2','D2','D3','D2','D2','D2','D3','C2','C2','C2','C3','B1','B1','B1','B2',
-                'F2','F2','F2','F3','F2','F2','F2','F3','G2','G2','G2','G3','A2','A2','A2','A2'],
-      drums:   ['K','h','K','h','S','h','K','h','K','h','K','h','S','h','h','h',
-                'K','h','K','h','S','h','K','h','K','K','h','h','S','S','h','h'],
-    },
-    // —— 通用胜利小调 ——
-    'victory': { tempo: 150,
-      lead:    ['C5',null,'E5',null,'G5',null,'C6',null],
-      harmony: ['E4',null,'G4',null,'C5',null,'E5',null],
-      bass:    ['C2',null,'G2',null,'C3',null,'C3',null],
-      drums:   ['K',null,'S',null,'K','K','K',null],
-    },
+    order: ['v', 'v'],
   };
 
+  /* ================= 引擎核心 ================= */
   let ctx = null;
   let masterGain = null;
   let muted = false;
   let currentName = null;
   let schedulerTimer = null;
-  let songState = null; // { song, step, nextTime, startTime }
+  let songState = null;
 
   function ensureCtx() {
     if (!ctx) {
@@ -121,26 +224,31 @@
       if (!AC) return false;
       ctx = new AC();
       masterGain = ctx.createGain();
-      masterGain.gain.value = muted ? 0 : 0.55;
-      // 轻压限防止多声部叠加爆音
+      masterGain.gain.value = muted ? 0 : 0.5;
       const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -18;
-      comp.ratio.value = 6;
-      masterGain.connect(comp);
-      comp.connect(ctx.destination);
+      comp.threshold.value = -18; comp.ratio.value = 6;
+      masterGain.connect(comp); comp.connect(ctx.destination);
     }
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
     return true;
   }
 
-  /* ---------- 乐器 ---------- */
+  let _pulseWaves = {};
+  function getPulseWave(duty) {
+    const key = String(duty);
+    if (_pulseWaves[key]) return _pulseWaves[key];
+    const n = 32, real = new Float32Array(n), imag = new Float32Array(n);
+    for (let i = 1; i < n; i++) {
+      imag[i] = (2 / (i * Math.PI)) * Math.sin(i * Math.PI * duty) * (1 - Math.cos(i * Math.PI));
+    }
+    _pulseWaves[key] = ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+    return _pulseWaves[key];
+  }
+
   function playPulse(freq, t, dur, vol, duty) {
-    // 方波用周期波近似 NES pulse, duty 25% 更接近原机音色
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    try {
-      osc.setPeriodicWave(getPulseWave(duty == null ? .25 : duty));
-    } catch (e) { osc.type = 'square'; }
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    try { osc.setPeriodicWave(getPulseWave(duty == null ? .25 : duty)); }
+    catch (e) { osc.type = 'square'; }
     osc.frequency.setValueAtTime(freq, t);
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(Math.max(.0008, vol * .28), t + dur * .82);
@@ -149,24 +257,8 @@
     osc.start(t); osc.stop(t + dur + .02);
   }
 
-  let _pulseWaves = null;
-  function getPulseWave(duty) {
-    if (!_pulseWaves) _pulseWaves = {};
-    const key = String(duty);
-    if (_pulseWaves[key]) return _pulseWaves[key];
-    const n = 32, real = new Float32Array(n), imag = new Float32Array(n);
-    for (let i = 1; i < n; i++) {
-      // 脉冲波傅里叶系数
-      imag[i] = (2 / (i * Math.PI)) * Math.sin(i * Math.PI * duty) * (1 - Math.cos(i * Math.PI));
-    }
-    const w = ctx.createPeriodicWave(real, imag, { disableNormalization: false });
-    _pulseWaves[key] = w;
-    return w;
-  }
-
   function playTriangle(freq, t, dur, vol) {
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
+    const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(freq, t);
     g.gain.setValueAtTime(vol, t);
@@ -177,6 +269,12 @@
   }
 
   function playDrum(kind, t, vol) {
+    if (!kind || kind === '.') return;
+    // 复合token: 'Kh'=同时底鼓+闭镲, 'KK'=双底鼓, 'SSS'=滚奏军鼓
+    if (kind.length > 1 && !'Ko'.includes(kind)) {
+      for (const ch of kind) playDrum(ch, t, ch === 'S' ? vol * .55 : vol);
+      return;
+    }
     if (kind === 'K') {
       const osc = ctx.createOscillator(), g = ctx.createGain();
       osc.frequency.setValueAtTime(130, t);
@@ -187,7 +285,6 @@
       osc.start(t); osc.stop(t + .15);
       return;
     }
-    // 噪声: 军鼓/镲共用 buffer, 不同滤波
     if (!playDrum._noise) {
       const len = ctx.sampleRate * .3;
       const buf = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -198,28 +295,37 @@
     const src = ctx.createBufferSource(); src.buffer = playDrum._noise;
     const f = ctx.createBiquadFilter(), g = ctx.createGain();
     if (kind === 'S') { f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = .8; }
+    else if (kind === 'o') { f.type = 'highpass'; f.frequency.value = 5200; }
     else { f.type = 'highpass'; f.frequency.value = 6500; }
-    const dur = kind === 'S' ? .09 : .04;
+    const dur = kind === 'S' ? .09 : kind === 'o' ? .16 : .04;
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(.001, t + dur);
     src.connect(f); f.connect(g); g.connect(masterGain);
     src.start(t, Math.random() * .1); src.stop(t + dur + .01);
   }
 
-  /* ---------- 调度器 ---------- */
-  const LOOKAHEAD = .16;   // 提前排程窗口(秒)
-  const TICK = 40;         // 调度间隔(ms)
+  const LOOKAHEAD = .18;
+  const TICK = 40;
 
-  function scheduleStep(song, step, t) {
+  function scheduleStep(song, stepIdx, t) {
     const stepDur = 60 / song.tempo / 4;
-    const L = song.lead || [], H = song.harmony || [], B = song.bass || [], D = song.drums || [];
-    const idx = step % L.length;
-    const ln = L[idx], hn = H[idx], bn = B[idx], dn = D[idx];
+    const names = song.order;
+    const patName = names[Math.floor(stepIdx / 32) % names.length];
+    const pat = song.patterns[patName];
+    const local = stepIdx % 32;
+    const L = pat._L || (pat._L = expand(pat.lead));
+    const H = pat._H || (pat._H = expand(pat.harmony));
+    const B = pat._B || (pat._B = expand(pat.bass));
+    const D = pat._D || (pat._D = pat.drums);
+    const ln = L[local], hn = H[local], bn = B[local], dn = D[local % D.length];
+    // 延音符: null 表示不触发新音(前面的音还在响)
     if (ln) playPulse(noteHz(ln), t, stepDur * 1.05, .17);
     if (hn) playPulse(noteHz(hn), t, stepDur * .95, .10, .125);
     if (bn) playTriangle(noteHz(bn), t, stepDur * 1.6, .30);
-    if (dn) playDrum(dn, t, dn === 'K' ? .34 : dn === 'S' ? .20 : .07);
+    if (dn && dn !== '.') playDrum(dn, t, dn.startsWith('S') ? .20 : dn.includes('S') ? .14 : dn === 'K' ? .34 : .07);
   }
+
+  function totalSteps(song) { return song.order.length * 32; }
 
   function schedulerTick() {
     if (!songState) return;
@@ -228,10 +334,16 @@
       scheduleStep(songState.song, songState.step, songState.nextTime);
       songState.nextTime += 60 / songState.song.tempo / 4;
       songState.step++;
+      if (songState.song.noLoop && songState.step >= totalSteps(songState.song)) {
+        const stopAt = songState.nextTime;
+        setTimeout(() => api.stop(), Math.max(0, (stopAt - now) * 1000 + 400));
+        clearInterval(schedulerTimer);
+        schedulerTimer = null;
+        return;
+      }
     }
   }
 
-  /* ---------- 对外 API ---------- */
   const api = {
     get playing() { return currentName; },
     unlock() { ensureCtx(); },
@@ -246,25 +358,21 @@
     },
     stop() {
       if (schedulerTimer) { clearInterval(schedulerTimer); schedulerTimer = null; }
-      songState = null;
-      currentName = null;
+      songState = null; currentName = null;
     },
     setMuted(value) {
       muted = Boolean(value);
-      if (masterGain) masterGain.gain.value = muted ? 0 : .55;
+      if (masterGain) masterGain.gain.value = muted ? 0 : .5;
     },
     get muted() { return muted; },
     songs: Object.keys(SONGS),
+    durationOf(name) {
+      const s = SONGS[name];
+      return s ? Math.round(totalSteps(s) * (60 / s.tempo / 4)) : 0;
+    },
   };
 
   window.ChipMusic = api;
-  // 与全局静音联动
-  const syncMute = () => {
-    let m = false;
-    try { m = localStorage.getItem('mini-games-muted') === '1'; } catch (e) {}
-    api.setMuted(m);
-  };
-  syncMute();
   window.addEventListener('pointerdown', () => api.unlock(), { passive: true });
   window.addEventListener('keydown', () => api.unlock(), { passive: true });
 }());
