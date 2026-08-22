@@ -549,12 +549,14 @@ function currentInterval() {
 function tick() {
   if (Game.state !== 'playing' || Game.time < Game.freezeUntil) return;
   Game.prevSnake = Game.snake.map((seg) => ({ x: seg.x, y: seg.y }));
-  while (Game.queue.length) {
+  let turns = 0;
+  while (Game.queue.length && turns < 2) {
     const d = Game.queue.shift();
     if (d.x === -Game.dir.x && d.y === -Game.dir.y) continue;
     if (d.x === Game.dir.x && d.y === Game.dir.y) continue;
     Game.dir = d;
-    break;
+    turns++;
+    break;  // 每个tick只应用一次有效转向(第二次留给下tick, 保持可预测性)
   }
   const head = Game.snake[0];
   const nx = head.x + Game.dir.x, ny = head.y + Game.dir.y;
@@ -818,14 +820,57 @@ function drawSnake() {
   const blink = Game.invuln > 0 && (Math.floor(Game.invuln * 10) % 2 === 0);
   const cc = (v) => Math.max(0, Math.min(255, Math.round(v)));
   const move = Game.time < Game.freezeUntil ? 1 : clamp(1 - Game.tickTimer / currentInterval(), 0, 1);
-  let hx = 0, hy = 0;
+
+  // 先算出所有节的插值坐标（用于连续身体绘制）
+  const pts = [];
   for (let i = s.length - 1; i >= 0; i--) {
     const seg = s[i];
     const prev = Game.prevSnake[i] || seg;
+    pts.push({
+      x: (prev.x + (seg.x - prev.x) * move) * CELL + CELL / 2,
+      y: GRID_Y + (prev.y + (seg.y - prev.y) * move) * CELL + CELL / 2,
+      i,
+    });
+  }
+  let hx = pts.length ? pts[pts.length - 1].x : 0;
+  let hy = pts.length ? pts[pts.length - 1].y : 0;
+
+  // 身体底层：一条连贯的粗描边路径把所有节串起来（消除"糖葫芦"断裂感）+ 头尾锥度
+  if (pts.length > 1) {
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(16,84,38,.92)';
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    // 分段变宽：头部粗、尾部细（锥度是形体感的关键）
+    for (let k = 1; k < pts.length; k++) {
+      const tCur = s.length > 1 ? pts[k].i / (s.length - 1) : 0;
+      ctx.lineWidth = CELL - 8 - (tCur * CELL * .3);
+      ctx.lineTo(pts[k].x, pts[k].y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pts[k].x, pts[k].y);
+    }
+    ctx.strokeStyle = 'rgba(52,168,72,.95)';
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let k = 1; k < pts.length; k++) {
+      const tCur = s.length > 1 ? pts[k].i / (s.length - 1) : 0;
+      ctx.lineWidth = CELL - 12 - (tCur * CELL * .3);
+      ctx.lineTo(pts[k].x, pts[k].y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pts[k].x, pts[k].y);
+    }
+    ctx.restore();
+  }
+
+  // 上层：每节的高光渐变圆角块，头亮尾暗形成体积渐变
+  for (const p of pts) {
+    const i = p.i;
     const t = s.length > 1 ? i / (s.length - 1) : 0;
-    const cx = (prev.x + (seg.x - prev.x) * move) * CELL + CELL / 2;
-    const cy = GRID_Y + (prev.y + (seg.y - prev.y) * move) * CELL + CELL / 2;
-    if (i === 0) { hx = cx; hy = cy; }
+    const cx = p.x, cy = p.y;
     const size = CELL - 4 - t * 6;
     const grad = ctx.createLinearGradient(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
     if (i === 0) {
@@ -833,8 +878,8 @@ function drawSnake() {
       grad.addColorStop(1, '#3fd94e');
     } else {
       const k = 1 - t;
-      grad.addColorStop(0, 'rgb(' + cc(95 + 105 * k) + ',' + cc(255) + ',' + cc(60 + 110 * k) + ')');
-      grad.addColorStop(1, 'rgb(' + cc(40 + 55 * k) + ',' + cc(150 + 105 * k) + ',' + cc(30 + 55 * k) + ')');
+      grad.addColorStop(0, 'rgb(' + cc(120 + 110 * k) + ',' + cc(255) + ',' + cc(80 + 105 * k) + ')');
+      grad.addColorStop(1, 'rgb(' + cc(46 + 60 * k) + ',' + cc(165 + 90 * k) + ',' + cc(36 + 58 * k) + ')');
     }
     ctx.fillStyle = grad;
     if (i === 0) {
@@ -844,13 +889,14 @@ function drawSnake() {
     roundRectPath(cx - size / 2, cy - size / 2, size, size, 9);
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = i === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = i === 0 ? 2.5 : 1.5;
+    ctx.strokeStyle = i === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = i === 0 ? 2.5 : 1.2;
     roundRectPath(cx - size / 2, cy - size / 2, size, size, 9);
     ctx.stroke();
   }
-  // 眼睛
-  const d = Game.dir;
+
+  // 眼睛: 预瞄队列中的下一个方向, 输入立即反映在头部朝向上(消除视觉延迟)
+  const d = (Game.queue.length ? Game.queue[0] : Game.dir);
   const ex = d.x, ey = d.y;
   const px = -ey, py = ex;   // 垂直方向
   ctx.save();
@@ -970,6 +1016,7 @@ function hsKey() {
 /* ---------------- 流程控制 ---------------- */
 function startGame() {
   Game.state = 'playing';
+  if (window.ChipMusic) ChipMusic.play('snake-loop');
   Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0;
   Game._hudKey = '';
   Game.hp = 3;
@@ -1034,6 +1081,7 @@ function backToMenu() {
 
 function gameOver() {
   Game.state = 'over';
+  if (window.ChipMusic) ChipMusic.stop();
   const head = Game.snake[0];
   burst(head.x * CELL + CELL / 2, GRID_Y + head.y * CELL + CELL / 2, '#7dffa8', 40);
   burst(head.x * CELL + CELL / 2, GRID_Y + head.y * CELL + CELL / 2, '#ffd166', 30);
