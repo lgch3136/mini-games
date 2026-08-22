@@ -59,7 +59,7 @@ function newPlayer() {
     speed: 152,
     bombPower: 2, bombMax: 3,
     kicking: false,
-    moving: false, facing: 'down', pendingDir: null,
+    moving: false, facing: 'down', pendingDir: null, turnLock: 0,
     inv: 2,                 // 出生无敌
     dieTimer: 0,
   };
@@ -260,13 +260,24 @@ function gameOver() {
 }
 
 /* ---------------- 输入 ---------------- */
-const input = { up: false, down: false, left: false, right: false, bombQueued: false };
+const input = { up: false, down: false, left: false, right: false, bombQueued: false,
+  turnRequest: null };   // keydown时记录的反向掉头请求 [dc,dr]
+const DIRS = { up: {x:0,y:-1}, down: {x:0,y:1}, left: {x:-1,y:0}, right: {x:1,y:0} };
 const KEYMAP = {
   ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
 };
 window.addEventListener('keydown', (ev) => {
-  if (KEYMAP[ev.code]) { ev.preventDefault(); input[KEYMAP[ev.code]] = true; }
+  if (KEYMAP[ev.code]) {
+    ev.preventDefault();
+    const wasDown = input[KEYMAP[ev.code]];
+    input[KEYMAP[ev.code]] = true;
+    // 新按下方向键: 记录掉头请求(滑动中反向时由updatePlayer消费)
+    if (!wasDown && !ev.repeat && Game.state === 'playing') {
+      const d = DIRS[KEYMAP[ev.code]];
+      if (d) input.turnRequest = [d.x, d.y];
+    }
+  }
   if ((ev.code === 'Space' || ev.code === 'KeyJ') && !ev.repeat) {
     ev.preventDefault();
     if (Game.state === 'playing') dropBomb();
@@ -425,7 +436,7 @@ function updatePlayer(dt) {
   const dist = Math.hypot(dx, dy);
   const step = p.speed * dt;
 
-  if (dist <= 0.6) {
+    if (dist <= 0.6) {
     // 位于格中心: 结算下一步走向
     p.px = tcx; p.py = tcy;
     const dir = p.pendingDir;
@@ -435,14 +446,14 @@ function updatePlayer(dt) {
       p.pendingDir = null;
     }
   } else {
-    // 正在两格之间滑动
-    const slideX = Math.sign(dx), slideY = Math.sign(dy);
-    if (held) {
-      const [hc, hr] = held;
-      // 同轴反向: 立即掉头回来源格(来路必然通畅) —— FC炸弹人的即时响应核心
-      const opposite = (slideX !== 0 && hc === -slideX) || (slideY !== 0 && hr === -slideY);
+    // 掉头只由 keydown 事件驱动(input.turnRequest), 按住不放不重复触发
+    if (input.turnRequest) {
+      const [rc, rr] = input.turnRequest;
+      input.turnRequest = null;
+      const slideX = Math.sign(dx), slideY = Math.sign(dy);
+      const opposite = (slideX !== 0 && rc === -slideX) || (slideY !== 0 && rr === -slideY);
       if (opposite) {
-        p.col -= slideX; p.row -= slideY;
+        p.col -= slideX; p.row -= slideY;   // 立即回来源格
         p.pendingDir = null;
       }
     }
