@@ -66,7 +66,7 @@ const D = () => DIFFS[Game.difficulty];
 const now = () => Game.time;
 
 /* ---------------- 素材加载（品红底色自动抠透明） ---------------- */
-const Assets = { bird: null, pipe: null, bg: null };
+const Assets = { bird: null, birdSheet: null, pipe: null, bg: null };
 let pendingAssets = 3;
 function assetDone() { pendingAssets = Math.max(0, pendingAssets - 1); }
 
@@ -94,6 +94,7 @@ function loadSprite(src, cb) {
 }
 loadSprite('assets/bird.png', (i) => { Assets.bird = i; });
 loadSprite('assets/pipe.png', (i) => { Assets.pipe = i; });
+(function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet.png'; })();
 (function () { const i = new Image(); i.onload = () => { Assets.bg = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bg.png'; })();
 
 /* ---------------- 音效 ---------------- */
@@ -574,7 +575,18 @@ function drawBird() {
   ctx.translate(b.x, b.y);
   ctx.rotate(b.rot);
   if (b.inv > 0 && Math.floor(Game.time * 12) % 2 === 0) ctx.globalAlpha = 0.35;
-  if (Assets.bird && Assets.bird.width && Assets.bird.height) {
+  // 主体白色轮廓光，让小鸟从任何背景中跳出来（经典Flappy的可读性纪律）
+  ctx.shadowColor = 'rgba(255,255,255,.85)';
+  ctx.shadowBlur = 7;
+  if (Assets.birdSheet && Assets.birdSheet.width) {
+    // 3帧扇翅动画：上升快扇、下落滑翔
+    const flapRate = b.vy < 0 ? 22 : 9;
+    const frame = Math.floor(Game.time * flapRate) % 3;
+    const sw = Assets.birdSheet.width / 3;
+    const sq = 1 + Math.sin(Game.time * 18) * 0.045;
+    ctx.scale(sq, 2 - sq);
+    ctx.drawImage(Assets.birdSheet, frame * sw, 0, sw, Assets.birdSheet.height, -s / 2, -s / 2, s, s);
+  } else if (Assets.bird && Assets.bird.width && Assets.bird.height) {
     const sq = 1 + Math.sin(Game.time * 18) * 0.045;
     ctx.scale(sq, 2 - sq);
     ctx.drawImage(Assets.bird, -s / 2, -s / 2, s, s);

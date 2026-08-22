@@ -172,6 +172,17 @@ for (let i = 0; i < 110; i++) {
     size: [0.7, 1.3, 2.2][layer],
     speed: [16, 30, 48][layer],
     tw: Math.random() * Math.PI * 2,
+    hue: Math.random(),           // 星色：偏蓝/偏白/偏暖，打破单调
+  });
+}
+// 远景星云：大而暗的径向光斑，给纯黑星空加层次
+Game.nebulae = [];
+for (let i = 0; i < 5; i++) {
+  Game.nebulae.push({
+    x: Math.random() * W, y: Math.random() * H,
+    r: rand(90, 190),
+    speed: rand(6, 14),
+    tint: ['#1b3a6e', '#3d2470', '#12474a'][randInt(3)],
   });
 }
 
@@ -858,11 +869,37 @@ function drawNebula() {
 
 function drawStars(dt) {
   const speedMul = (Game.state === 'playing' || Game.state === 'over' || Game.state === 'menu') ? 1 : 0;
-  ctx.fillStyle = '#cfe4ff';
+  // 远景星云层：最慢速滚动的大光斑（视差最远层）
+  for (const n of (Game.nebulae || [])) {
+    n.y += n.speed * dt * speedMul;
+    if (n.y - n.r > H) { n.y = -n.r; n.x = Math.random() * W; }
+    const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+    g.addColorStop(0, n.tint + '88');
+    g.addColorStop(.7, n.tint + '33');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
+  }
+  const starTints = [
+    (a) => 'rgba(190,205,255,' + a + ')',   // 偏蓝
+    (a) => 'rgba(235,240,255,' + a + ')',   // 白
+    (a) => 'rgba(255,196,120,' + a + ')',   // 暖橙（冷暖对比拉开深度）
+  ];
   for (const s of Game.stars) {
     s.y += s.speed * dt * speedMul * (Game.state === 'menu' ? 0.35 : 1);
     if (s.y > H + 4) { s.y = -4; s.x = Math.random() * W; }
-    ctx.globalAlpha = 0.3 + 0.55 * (0.5 + 0.5 * Math.sin(s.tw + Game.time * 2.4));
+    const alpha = 0.3 + 0.55 * (0.5 + 0.5 * Math.sin(s.tw + Game.time * 2.4));
+    ctx.fillStyle = starTints[Math.floor((s.hue || 0) * 3) % 3](alpha);
+    if (s.size > 1.8) {
+      // 大星加十字光芒+光晕，近层更醒目（前后景深的关键）
+      ctx.save();
+      ctx.shadowColor = 'rgba(200,220,255,.9)';
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = starTints[Math.floor((s.hue || 0) * 3) % 3](alpha + .15 > 1 ? 1 : alpha + .15);
+      ctx.fillRect(s.x - s.size * .9, s.y + s.size * .18, s.size * 2.8, s.size * .62);
+      ctx.fillRect(s.x + s.size * .18, s.y - s.size * .9, s.size * .62, s.size * 2.8);
+      ctx.restore();
+    }
     ctx.fillRect(s.x, s.y, s.size, s.size);
   }
   ctx.globalAlpha = 1;

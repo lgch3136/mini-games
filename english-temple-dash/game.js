@@ -462,15 +462,63 @@ function drawRoad() {
   const nearCenter = roadCenter(0);
   ctx.fillStyle = '#0b1714';
   ctx.beginPath(); ctx.moveTo(farCenter - 55, HORIZON_Y); ctx.lineTo(farCenter + 55, HORIZON_Y); ctx.lineTo(VIEW_W + 80, VIEW_H); ctx.lineTo(-80, VIEW_H); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = biome.road;
+  // 路基渐变：远处压暗融入雾气，近处提亮，强化纵深（大气透视）
+  const roadGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, VIEW_H);
+  roadGrad.addColorStop(0, shadeColor(biome.road, -.42));
+  roadGrad.addColorStop(.55, shadeColor(biome.road, -.12));
+  roadGrad.addColorStop(1, shadeColor(biome.road, .06));
+  ctx.fillStyle = roadGrad;
   ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = biome.edge; ctx.lineWidth = 3;
+  // 石板横向纹理：随 travel 滚动，近大远小（速度感的核心来源）；相邻板明度交替增强可读性
+  const slabOffset = (Game.travel * 3.1) % 34;
+  for (let y = HORIZON_Y + slabOffset, rowIdx = 0; y < VIEW_H + 34; y += 34, rowIdx++) {
+    const depth = clamp((y - HORIZON_Y) / (VIEW_H - HORIZON_Y), 0, 1);
+    const halfW = 40 + (VIEW_W * .48 - 40) * depth;
+    const cX = farCenter + (nearCenter - farCenter) * depth;
+    // 相邻石板 ±12% 明度交替（滚动频闪=速度感的直接来源）
+    if (rowIdx % 2 === 0) {
+      ctx.fillStyle = 'rgba(255,244,200,' + (.05 + depth * .07) + ')';
+      ctx.fillRect(cX - halfW, y, halfW * 2, Math.min(34, VIEW_H - y));
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,' + (.16 + depth * .22) + ')';
+    ctx.lineWidth = 1.5 + depth * 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cX - halfW, y);
+    ctx.lineTo(cX + halfW, y);
+    ctx.stroke();
+    // 分缝亮边：下侧 1px 高光制造凹槽立体感
+    if (y + 2 < VIEW_H) {
+      ctx.strokeStyle = 'rgba(255,240,190,' + (.05 + depth * .09) + ')';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cX - halfW, y + 2); ctx.lineTo(cX + halfW, y + 2); ctx.stroke();
+    }
+    // 石板错缝竖线，交替偏移
+    if (Math.round((y - slabOffset) / 34) % 2 === 0) {
+      for (const fx of [-.45, .05, .55]) {
+        const px = cX + halfW * 2 * fx;
+        ctx.strokeStyle = 'rgba(0,0,0,' + (.08 + depth * .14) + ')';
+        ctx.lineWidth = 1 + depth;
+        ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px, Math.min(VIEW_H, y + 34)); ctx.stroke();
+      }
+    }
+  }
+  // 中央引导虚线：透视收缩，滚动
+  const dashOffset = (Game.travel * LANE_MARKER_RATE) % (LANE_MARKER_SPACING * 2);
+  ctx.strokeStyle = 'rgba(246,231,183,.30)';
+  ctx.setLineDash([26, 22]);
+  ctx.lineDashOffset = dashOffset;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(roadCenter(90), HORIZON_Y + 6); ctx.lineTo(nearCenter, PLAYER_GROUND_Y + 40); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
+  // 路缘石：亮色描边加宽，明确"台面"边界
+  ctx.strokeStyle = shadeColor(biome.edge, .08); ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.stroke();
 
   const markerOffset = laneMarkerOffset(Game.travel);
   for (const boundary of [-.5, .5]) {
-    ctx.strokeStyle = 'rgba(238,226,185,.12)'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(238,226,185,.14)'; ctx.lineWidth = 1.5;
     ctx.beginPath();
     for (let y = HORIZON_Y; y <= PLAYER_GROUND_Y; y += 18) {
       const point = project(boundary, zAtScreenY(y));
@@ -486,6 +534,21 @@ function drawRoad() {
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     }
   }
+}
+
+// 十六进制颜色明暗调整（正=提亮，负=压暗），用于路面渐变
+function shadeColor(hex, amount) {
+  const num = parseInt(hex.slice(1), 16);
+  let r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  if (amount >= 0) {
+    r = Math.round(r + (255 - r) * amount);
+    g = Math.round(g + (255 - g) * amount);
+    b = Math.round(b + (255 - b) * amount);
+  } else {
+    const k = 1 + amount;
+    r = Math.round(r * k); g = Math.round(g * k); b = Math.round(b * k);
+  }
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
 function drawEdgeScenery() {
@@ -518,6 +581,15 @@ function drawObject(object) {
   if (object.z > MAX_Z + 30 || object.z < -8) return;
   const point = project(object.lane, Math.max(0, object.z));
   const s = point.scale;
+  // 统一接地软阴影：伪3D可信度的生命线（随高度略缩放）
+  if (object.type !== 'beam' && object.type !== 'puddle') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(4,12,9,.34)';
+    ctx.beginPath();
+    ctx.ellipse(point.x, point.y + 2, 26 * s, 6.5 * s, 0, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
   ctx.save(); ctx.translate(point.x, point.y);
   if (object.type === 'relic') {
     ctx.translate(0, -28 * s); ctx.rotate(Game.time * 2 + object.phase);

@@ -1352,10 +1352,11 @@ function drawBackground() {
   ctx.fillStyle = ['rgba(7,27,20,.22)', 'rgba(45,24,12,.18)', 'rgba(4,24,30,.3)', 'rgba(5,10,25,.34)'][index];
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   const shade = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  shade.addColorStop(0, 'rgba(8,20,18,.02)');
-  shade.addColorStop(.5, 'rgba(8,20,18,.16)');
-  shade.addColorStop(.72, 'rgba(7,17,16,.38)');
-  shade.addColorStop(1, 'rgba(5,13,12,.72)');
+  // 可读性纪律：背景整体压暗降饱和，把对比度留给玩法元素（魂斗罗/马里奥的前后景分离原则）
+  shade.addColorStop(0, 'rgba(6,16,15,.30)');
+  shade.addColorStop(.5, 'rgba(6,15,14,.42)');
+  shade.addColorStop(.72, 'rgba(5,13,12,.58)');
+  shade.addColorStop(1, 'rgba(4,10,9,.80)');
   ctx.fillStyle = shade;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   drawWeather(index);
@@ -1420,18 +1421,25 @@ function drawPlatforms(chunk) {
 function drawBarrier(chunk) {
   if (!chunk.lock || chunk.cleared || !chunkHasThreats(chunk)) return;
   const x = chunk.start + CHUNK_W - 58;
+  // 危险语义强化：脉冲发光 + 扫描线动画，一眼读懂"此路不通"
+  const pulse = .55 + Math.sin(Game.time * 5) * .35;
   ctx.save();
-  ctx.strokeStyle = 'rgba(239,104,72,.78)';
-  ctx.fillStyle = 'rgba(239,104,72,.16)';
-  ctx.lineWidth = 3;
-  ctx.shadowColor = '#ef6848'; ctx.shadowBlur = 15;
-  ctx.fillRect(x - 7, 122, 14, GROUND_Y - 122);
+  ctx.strokeStyle = 'rgba(239,104,72,' + clamp(.55 + pulse * .4, 0, 1) + ')';
+  ctx.fillStyle = 'rgba(239,104,72,' + (.14 + pulse * .1) + ')';
+  ctx.lineWidth = 4;
+  ctx.shadowColor = '#ef6848';
+  ctx.shadowBlur = 16 + pulse * 14;
+  ctx.fillRect(x - 8, 118, 16, GROUND_Y - 118);
+  ctx.strokeRect(x - 8, 118, 16, GROUND_Y - 118);
+  // 上下端盖：明确的"墙"读感
+  ctx.fillRect(x - 20, 112, 40, 9);
+  ctx.fillRect(x - 20, GROUND_Y - 10, 40, 9);
   for (let y = 132; y < GROUND_Y; y += 38) {
     ctx.beginPath(); ctx.moveTo(x - 18, y); ctx.lineTo(x + 18, y + 24); ctx.stroke();
   }
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#ffd2b8'; ctx.font = '900 11px system-ui, sans-serif';
-  ctx.textAlign = 'center'; ctx.fillText('封锁', x, 110);
+  ctx.textAlign = 'center'; ctx.fillText('封锁', x, 104);
   ctx.restore();
 }
 
@@ -1471,17 +1479,43 @@ function drawHazards(chunk) {
 function drawPickups() {
   for (const pickup of Game.pickups) {
     if (pickup.taken || pickup.x < Game.camera - 80 || pickup.x > Game.camera + VIEW_W + 80) continue;
-    const pulse = 1 + Math.sin(Game.time * 5 + pickup.index) * .06;
+    const pulse = 1 + Math.sin(Game.time * 5 + pickup.index) * .07;
+    // 形状即语义：圆形发光宝珠 = 收集物（区别于平台/机关的矩形语言）
+    const isNext = Game.currentWord && pickup.index === Game.currentWord.progress;
+    const bob = Math.sin(Game.time * 3.2 + pickup.index * 1.3) * 4;
     ctx.save();
-    ctx.translate(pickup.x + 15, pickup.y + 17);
+    ctx.translate(pickup.x + 15, pickup.y + 17 + bob);
     ctx.scale(pulse, pulse);
-    ctx.shadowColor = 'rgba(244,211,122,.7)'; ctx.shadowBlur = 12;
-    ctx.fillStyle = '#f4d37a';
+    // 当前目标字母：额外旋转光环提示
+    if (isNext) {
+      ctx.save();
+      ctx.rotate(Game.time * 1.6);
+      ctx.strokeStyle = 'rgba(255,240,170,.85)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([9, 7]);
+      ctx.beginPath(); ctx.arc(0, 0, 25, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    ctx.shadowColor = isNext ? 'rgba(255,240,180,1)' : 'rgba(210,190,140,.45)';
+    ctx.shadowBlur = isNext ? 20 : 8;
+    const grad = ctx.createRadialGradient(-6, -8, 3, 0, 0, 21);
+    if (isNext) {
+      // 当前目标：炽白金高亮，与后续字母的暗金色明显分层（颜色语义 > 光环语义）
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(.5, '#ffe89a');
+      grad.addColorStop(1, '#e8b23e');
+    } else {
+      grad.addColorStop(0, '#f7ecc4');
+      grad.addColorStop(.55, '#cbb26a');
+      grad.addColorStop(1, '#96772c');
+    }
+    ctx.fillStyle = grad;
     ctx.strokeStyle = '#fff2b8'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(-15, -17, 30, 34, 8); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 20, 0, TAU); ctx.fill(); ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#17372e';
-    ctx.font = '900 19px ui-monospace, monospace';
+    ctx.font = '900 20px ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(pickup.letter, 0, 1);
     ctx.restore();
@@ -1642,6 +1676,13 @@ function drawPlayer() {
   ctx.fillStyle = '#071512';
   ctx.beginPath(); ctx.ellipse(player.x + player.w / 2, Math.min(GROUND_Y - 2, player.y + player.h + 2), player.onGround ? 25 : 18, player.onGround ? 6 : 4, 0, 0, TAU); ctx.fill();
   ctx.restore();
+  // 主角存在感：底部接触阴影(不是全身暗晕!) + 金色轮廓光
+  ctx.save();
+  ctx.fillStyle = 'rgba(5,14,11,.5)';
+  ctx.beginPath();
+  ctx.ellipse(player.x + player.w / 2, Math.min(GROUND_Y - 3, player.y + player.h + 1), 20, 5, 0, 0, TAU);
+  ctx.fill();
+  ctx.restore();
   if (player.shield) {
     ctx.save();
     ctx.strokeStyle = 'rgba(244,211,122,.8)'; ctx.lineWidth = 3;
@@ -1683,9 +1724,14 @@ function drawPlayer() {
   const recoilRatio = clamp(player.recoil / .09, 0, 1);
   const poseX = player.x - player.aimX * recoilRatio * 7;
   const poseY = drawY - player.aimY * recoilRatio * 5;
+  // 金色轮廓光直接叠在精灵绘制上：光晕跟随实际姿势轮廓（比圆形圈自然得多）
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,206,105,.85)';
+  ctx.shadowBlur = 15;
   if (!drawAtlasFrame(atlas, row, column, poseX - 25, poseY, 80, 82, player.facing < 0)) {
     ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
   }
+  ctx.restore();
   if (player.muzzleFlash > 0) {
     const size = 7 + player.muzzleFlash * 80;
     ctx.save(); ctx.translate(player.muzzleX, player.muzzleY); ctx.rotate(Math.atan2(player.aimY, player.aimX));
