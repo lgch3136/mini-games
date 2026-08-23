@@ -48,8 +48,11 @@
     },
     toggle() { return this.setMuted(!muted); },
     start() {
+      // ChipMusic 接管配乐时不再播放旧的 ogg 循环(双音乐打架)
+      if (window.ChipMusic && window.ChipMusic.playing) { music.pause(); return; }
       if (!muted && music.paused) music.play().catch(() => {});
     },
+    stopBgm() { music.pause(); },
     play(name, volume, rate) {
       if (muted || !files[name]) return;
       const pool = soundPool(name);

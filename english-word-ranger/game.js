@@ -496,6 +496,11 @@ function resetPlayer(x) {
 
 function startGame(mode = Game.mode) {
   Game.mode = mode === 'arcade' ? 'arcade' : 'mission';
+  // 任务模式: 从菜单选中的关卡开始; 街机/过关链: 保持当前关
+  if (mode === 'mission' && Game.state === 'menu') {
+    Game.missionLevel = clamp(Game.selectedLevel || 0, 0, MISSION_LEVELS.length - 1);
+  }
+  MISSION_BEATS = MISSION_LEVELS[Game.missionLevel].beats;
   Object.assign(Game, {
     state: 'playing', score: 0, wordsDone: 0, hp: 3, distance: 0, maxX: 70,
     camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '',
@@ -516,8 +521,11 @@ function startGame(mode = Game.mode) {
   $('word-gate').classList.add('hidden');
   $('hud').classList.remove('hidden');
   $('touch-controls').classList.remove('hidden');
-  if (window.ArcadeAudio) ArcadeAudio.start();
-  // 芯片配乐：任务=丛林行动曲, 无尽=同曲循环
+  if (window.ArcadeAudio) {
+    ArcadeAudio.start();
+    ArcadeAudio.stopBgm();   // 停掉旧ogg循环, 避免与ChipMusic双音乐
+  }
+  // 芯片配乐：任务=丛林行动曲
   if (window.ChipMusic) ChipMusic.play('ranger-stage');
   updateHud();
 }
@@ -657,8 +665,7 @@ function shoot() {
     });
   }
   burst(muzzleX, muzzleY, '#f4d37a', 3);
-  Game.shake = Math.max(Game.shake, .035);
-  Game.shakeStrength = Math.max(Game.shakeStrength, 1.4);
+  // 射击不再全屏震动(用户反馈: 平时射击震屏干扰), 震动留给受击和爆炸
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .14, player.weapon === 'spread' ? .82 : player.weapon === 'rapid' ? 1.22 : 1);
 }
 
@@ -2121,6 +2128,16 @@ document.querySelectorAll('.difficulty').forEach((button) => button.addEventList
   button.classList.add('selected');
   Game.difficulty = button.dataset.difficulty;
 }));
+// 关卡选择(解锁制: 最高到达关+1可选; 也允许自由选, 单机游戏不必卡)
+document.querySelectorAll('.level-btn').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.level-btn').forEach((x) => x.classList.remove('selected'));
+  b.classList.add('selected');
+  Game.selectedLevel = Number(b.dataset.level);
+  const names = ['曙光森林', '风蚀峡谷', '雨中古城', '月晶遗迹'];
+  $('start-btn').textContent = '开始任务 · ' + names[Game.selectedLevel];
+}));
+Game.selectedLevel = 0;
+
 $('start-btn').addEventListener('click', () => startGame('mission'));
 $('arcade-start-btn').addEventListener('click', () => startGame('arcade'));
 $('retry-btn').addEventListener('click', () => {

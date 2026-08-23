@@ -54,9 +54,9 @@ const Game = {
 
 function newPlayer() {
   return {
-    col: 1, row: 1,
-    px: 0, py: 0,           // 像素位置(插值用)
-    speed: 152,
+    col: 1, row: 1,         // 逻辑格(炸弹归属用)
+    px: 0, py: 0,           // 像素位置(真实坐标, 自由移动)
+    speed: 168,
     bombPower: 2, bombMax: 3,
     kicking: false,
     moving: false, facing: 'down', pendingDir: null, turnLock: 0,
@@ -417,61 +417,70 @@ function updatePlayer(dt) {
   const p = Game.player;
   p.inv = Math.max(0, p.inv - dt);
 
-  // 当前按住的方向
-  let held = null;
-  if (input.up) held = [0, -1];
-  else if (input.down) held = [0, 1];
-  else if (input.left) held = [-1, 0];
-  else if (input.right) held = [1, 0];
-  if (held) {
-    p.facing = held[0] < 0 ? 'left' : held[0] > 0 ? 'right' : held[1] < 0 ? 'up' : 'down';
-    p.pendingDir = held;
-  } else {
-    p.pendingDir = null;   // 松键即清缓冲, 杜绝"幽灵输入"
-  }
-
-  const tcx = OX + p.col * CELL + CELL / 2;
-  const tcy = OY + p.row * CELL + CELL / 2;
-  const dx = tcx - p.px, dy = tcy - p.py;
-  const dist = Math.hypot(dx, dy);
-  const step = p.speed * dt;
-
-    if (dist <= 0.6) {
-    // 位于格中心: 结算下一步走向
-    p.px = tcx; p.py = tcy;
-    const dir = p.pendingDir;
-    p.moving = false;
-    if (dir && !cellBlocked(p.col + dir[0], p.row + dir[1])) {
-      p.col += dir[0]; p.row += dir[1];
-      p.pendingDir = null;
-    }
-  } else {
-    // 掉头只由 keydown 事件驱动(input.turnRequest), 按住不放不重复触发
-    if (input.turnRequest) {
-      const [rc, rr] = input.turnRequest;
-      input.turnRequest = null;
-      const slideX = Math.sign(dx), slideY = Math.sign(dy);
-      const opposite = (slideX !== 0 && rc === -slideX) || (slideY !== 0 && rr === -slideY);
-      if (opposite) {
-        p.col -= slideX; p.row -= slideY;   // 立即回来源格
-        p.pendingDir = null;
+  // 自由移动: 方向即时生效, 不再等"走到格中心"
+  let vx = 0, vy = 0;
+  if (input.up) { vy -= 1; p.facing = 'up'; }
+  if (input.down) { vy += 1; p.facing = 'down'; }
+  if (input.left) { vx -= 1; p.facing = 'left'; }
+  if (input.right) { vx += 1; p.facing = 'right'; }
+  if (vx && vy) { vx *= 0.7071; vy *= 0.7071; }   // 斜向归一化
+  p.moving = !!(vx || vy);
+  if (p.moving) {
+    const step = p.speed * dt;
+    // X/Y轴分别做AABB碰撞(贴墙滑动)
+    const half = 15;   // 碰撞半径
+    let nx = p.px + vx * step;
+    // X轴
+    if (vx !== 0) {
+      const edgeX = nx + Math.sign(vx) * half;
+      const cFront = Math.floor((edgeX - OX) / CELL);
+      const cMid = Math.floor((nx - OX) / CELL);
+      let blocked = false;
+      for (const rr of [p.py - half + 4, p.py + half - 4]) {
+        const rRow = Math.floor((rr - OY) / CELL);
+        if (Game.grid[rRow] && Game.grid[rRow][vx > 0 ? cFront : cFront] !== 0) blocked = true;
       }
+      if (!blocked) {
+        // 检查炸弹阻挡(自己刚放的炸弹有通行宽限)
+        for (const b of Game.bombs) {
+          if ((b.ownerPass || 0) <= 0) {
+            const bx = OX + b.col * CELL + CELL / 2, by = OY + b.row * CELL + CELL / 2;
+            if (Math.abs(nx - bx) < CELL / 2 + half - 6 && Math.abs(p.py - by) < CELL / 2 + half - 10) { blocked = true; break; }
+          }
+        }
+      }
+      if (!blocked) p.px = nx;
     }
-    // 朝目标格中心匀速滑动
-    const ncx = OX + p.col * CELL + CELL / 2;
-    const ncy = OY + p.row * CELL + CELL / 2;
-    const mdx = ncx - p.px, mdy = ncy - p.py;
-    const mdist = Math.hypot(mdx, mdy);
-    p.moving = mdist > 0.5;
-    if (mdist > 0) {
-      p.px += mdx / mdist * Math.min(mdist, step);
-      p.py += mdy / mdist * Math.min(mdist, step);
+    // Y轴
+    if (vy !== 0) {
+      const ny = p.py + vy * step;
+      const edgeY = ny + Math.sign(vy) * half;
+      const rFront = Math.floor((edgeY - OY) / CELL);
+      const rMid = Math.floor((ny - OY) / CELL);
+      let blocked = false;
+      for (const cc of [p.px - half + 4, p.px + half - 4]) {
+        const cCol = Math.floor((cc - OX) / CELL);
+        if (Game.grid[rFront] && Game.grid[rFront][cCol] !== 0) blocked = true;
+      }
+      if (!blocked) {
+        for (const b of Game.bombs) {
+          if ((b.ownerPass || 0) <= 0) {
+            const bx = OX + b.col * CELL + CELL / 2, by = OY + b.row * CELL + CELL / 2;
+            if (Math.abs(p.px - bx) < CELL / 2 + half - 10 && Math.abs(ny - by) < CELL / 2 + half - 6) { blocked = true; break; }
+          }
+        }
+      }
+      if (!blocked) p.py = ny;
     }
   }
+  // 同步逻辑格(炸弹放置/拾取判定用)
+  p.col = clamp(Math.floor((p.px - OX) / CELL), 0, COLS - 1);
+  p.row = clamp(Math.floor((p.py - OY) / CELL), 0, ROWS - 1);
+
   // 走到传送门
   if (Game.portal && Game.portal.open && p.col === Game.portal.col && p.row === Game.portal.row) {
-    const pcx = OX + p.col * CELL + CELL / 2, pcy = OY + p.row * CELL + CELL / 2;
-    if (Math.abs(p.px - pcx) < 10 && Math.abs(p.py - pcy) < 10) {
+    const pcx = OX + Game.portal.col * CELL + CELL / 2, pcy = OY + Game.portal.row * CELL + CELL / 2;
+    if (Math.hypot(p.px - pcx, p.py - pcy) < CELL * .5) {
       roundClear();
       return;
     }
@@ -479,7 +488,8 @@ function updatePlayer(dt) {
   // 拾取
   for (let i = Game.pickups.length - 1; i >= 0; i--) {
     const k = Game.pickups[i];
-    if (k.col === p.col && k.row === p.row) {
+    const kx = OX + k.col * CELL + CELL / 2, ky = OY + k.row * CELL + CELL / 2;
+    if (Math.hypot(p.px - kx, p.py - ky) < CELL * .62) {
       if (k.kind === 'bomb+') { p.bombMax = Math.min(6, p.bombMax + 1); showFeedback('💣 炸弹容量 +1（当前 ' + p.bombMax + '）'); }
       else if (k.kind === 'fire+') { p.bombPower = Math.min(8, p.bombPower + 1); showFeedback('🔥 火力 +1（当前 ' + p.bombPower + '）'); }
       else { p.speed = Math.min(210, p.speed + 14); showFeedback('👟 移速提升！'); }
@@ -575,9 +585,13 @@ function updateBombs(dt) {
 function updateLetters(dt) {
   const p = Game.player;
   const w = Game.word;
+  const lx = OX + p.col * CELL + CELL / 2, ly = OY + p.row * CELL + CELL / 2;
+  void lx; void ly;
   for (const L of Game.letters) {
     if (L.taken || L.hidden) continue;
-    if (L.col === p.col && L.row === p.row) {
+    const cx = OX + L.col * CELL + CELL / 2, cy = OY + L.row * CELL + CELL / 2;
+    if (Math.hypot(p.px - cx, p.py - cy) > CELL * .6) continue;
+    {
       if (L.index !== w.progress) {
         // 顺序错误提示
         if (Game.time > (L.lastWrongAt || 0)) {
