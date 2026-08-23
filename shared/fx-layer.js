@@ -94,6 +94,25 @@
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE);   // 加色混合: 发光感
       this.resize();
+      // 布局稳定后再校准一次尺寸(构造时父容器可能尚未排版)
+      setTimeout(() => this.resize(), 60);
+      window.addEventListener('resize', () => this.resize());
+      // 上下文丢失(切后台/显存压力)时自动恢复
+      cv.addEventListener('webglcontextlost', (e) => {
+        e.preventDefault();
+        this.available = false;
+        setTimeout(() => {
+          try {
+            const restored = new Layer(gameCanvas);
+            if (restored.available) {
+              Object.assign(this, { gl: restored.gl, prog: restored.prog, buf: restored.buf,
+                aPos: restored.aPos, aSize: restored.aSize, aColor: restored.aColor,
+                aAlpha: restored.aAlpha, uRes: restored.uRes, available: true });
+              this.resize();
+            }
+          } catch (err) { /* 保持降级 */ }
+        }, 300);
+      });
       this.available = true;
     }
 

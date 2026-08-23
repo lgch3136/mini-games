@@ -1030,12 +1030,17 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
 
+/* WebGL增效层: 暖色矿尘氛围 */
+const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
+if (FX.available) FX.setStarfield({ count: 120, speed: 8, tint: [1, .82, .5] });
+
 let lastTime = performance.now();
 function frame(now) {
   const dt = Math.min(.04, (now - lastTime) / 1000 || .016);
   lastTime = now;
   if (Game.state === 'playing' || Game.state === 'dying') update(dt);
   render();
+  if (FX.available) FX.frame(dt, 0);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

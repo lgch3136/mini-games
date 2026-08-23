@@ -499,12 +499,17 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
 
+/* WebGL增效层: 金色矿井尘埃 */
+const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
+if (FX.available) FX.setStarfield({ count: 130, speed: 9, tint: [1, .85, .45] });
+
 let lastTime = performance.now();
 function frame(now) {
   const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
   lastTime = now;
   if (Game.state === 'playing') update(dt);
   render();
+  if (FX.available) FX.frame(dt, 0);
   requestAnimationFrame(frame);
 }
 

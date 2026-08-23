@@ -1379,8 +1379,13 @@ function frame(now) {
     updateFx(dt);
   }
   render(Game.state === 'paused' ? 0 : dt);
+  if (FX.available) FX.frame(dt, 0);
   requestAnimationFrame(frame);
 }
+/* WebGL增效层: 远景发光星尘(垫在游戏画面下) */
+const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
+if (FX.available) FX.setStarfield({ count: 240, speed: 42, tint: [0.55, 0.72, 1] });
+
 requestAnimationFrame(frame);
 
 updateHighScore();

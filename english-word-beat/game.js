@@ -547,6 +547,7 @@ function frame(nowMs) {
     Game.shakeX *= .85;
   }
   render();
+  if (window.FX && FX.available) FX.frame(dt, 0);
   requestAnimationFrame(frame);
 }
 
@@ -579,6 +580,10 @@ document.querySelectorAll('.spd-btn').forEach((b) => b.addEventListener('click',
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
+
+/* WebGL增效层: 紫色星尘氛围 */
+const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
+if (FX.available) FX.setStarfield({ count: 160, speed: 12, tint: [0.78, 0.6, 1] });
 
 let lastTime = performance.now();
 requestAnimationFrame(frame);
