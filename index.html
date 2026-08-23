@@ -4,112 +4,151 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#05070f">
-<title>🎮 英语小游戏合集 · English Mini-Games</title>
-<link rel="stylesheet" href="style.css?v=20260821b">
+<title>🎮 英语小游戏街机厅 · English Arcade</title>
+<link rel="stylesheet" href="style.css?v=20260822a">
 </head>
 <body>
 <div class="page">
   <header>
-    <h1>🎮 英语小游戏合集</h1>
-    <p class="sub">ENGLISH MINI-GAMES · 边玩边学单词和语法</p>
+    <h1>🎮 英语小游戏街机厅</h1>
+    <p class="sub">ENGLISH ARCADE · 7 款 FC 风格游戏 · 边玩边学</p>
   </header>
 
-  <main class="cards">
-    <!-- 遗迹词途 -->
-    <a class="card" href="english-word-bomber/index.html">
-      <div class="art runner-art" style="background:linear-gradient(135deg,#1e293b,#7c2d12);">
-        <span class="emoji">💣</span>
+  <nav class="filters" aria-label="游戏分类筛选">
+    <button class="filter selected" data-filter="all">全部 <b>7</b></button>
+    <button class="filter" data-filter="action">动作射击 <b>3</b></button>
+    <button class="filter" data-filter="puzzle">益智策略 <b>2</b></button>
+    <button class="filter" data-filter="casual">休闲反应 <b>2</b></button>
+  </nav>
+
+  <main class="grid">
+
+    <a class="card" href="english-word-ranger/index.html?v=20260821g" data-cat="action">
+      <div class="art art-ranger">
+        <img src="english-word-ranger/assets/logo.svg" alt="单词突击队" loading="eager">
       </div>
       <div class="info">
-        <h2>英语炸弹人 · WORD BOMBER</h2>
-        <p class="desc">FC经典炸弹人 × 拼单词。炸开砖墙寻找隐藏字母，按顺序拼出单词开启传送门。道具成长、敌人逐轮增强，无限轮次挑战高分。</p>
-        <div class="tags"><span>单屏策略</span><span>炸弹连锁</span><span>拼单词开门</span><span>无限轮次</span></div>
-        <p class="ctrl">电脑：方向键 / WASD 移动 · 空格放炸弹 · 手机：虚拟摇杆 + 炸弹键</p>
-        <span class="play">开始游戏 →</span>
+        <span class="badge hot">招牌</span>
+        <h2>单词突击队</h2>
+        <p class="en">WORD RANGER</p>
+        <p class="desc">横版跑跳射击 × 主动回忆。4 大关卡、行为敌人、三阶段首领战。</p>
+        <div class="meta"><span>⌨️ A/D+空格+J</span><span>📱 支持</span></div>
       </div>
     </a>
 
-    <a class="card" href="english-temple-dash/index.html?v=20260821c">
-      <div class="art runner-art">
-        <img src="english-temple-dash/assets/biome-panorama-atlas.webp" alt="遗迹词途 · TEMPLE DASH" loading="eager">
-        <span class="emoji">TD</span>
-      </div>
+    <a class="card" href="english-word-bomber/index.html" data-cat="puzzle">
+      <div class="art art-bomber"><span class="emoji">💣</span></div>
       <div class="info">
-        <h2>遗迹词途 · TEMPLE DASH</h2>
-        <p class="desc">三线无限跑酷 × 项目词库。左右换道、跳跃和滑铲穿过神庙、峡谷、雨城与月晶遗迹，只收集当前单词需要的字母。</p>
-        <div class="tags"><span>无限跑酷</span><span>滑动操作</span><span>拼写</span><span>四种规则</span></div>
-        <p class="ctrl">电脑：方向键 / WASD · 手机：左右、上、下滑动，或使用底部按钮</p>
-        <span class="play">开始游戏 →</span>
+        <span class="badge new">NEW</span>
+        <h2>英语炸弹人</h2>
+        <p class="en">WORD BOMBER</p>
+        <p class="desc">FC 炸弹人 × 拼单词开门。8 种随机地形，道具成长无限轮次。</p>
+        <div class="meta"><span>⌨️ 方向键+空格</span><span>📱 支持</span></div>
       </div>
     </a>
 
-    <!-- 单词突击队 -->
-    <a class="card" href="english-word-ranger/index.html?v=20260821g">
-      <div class="art">
-        <img src="english-word-ranger/assets/logo.svg" alt="单词突击队 · WORD RANGER" loading="eager">
-        <span class="emoji">WR</span>
-      </div>
+    <a class="card" href="english-word-miner/index.html" data-cat="casual">
+      <div class="art art-miner"><span class="emoji">⛏️</span></div>
       <div class="info">
-        <h2>单词突击队 · WORD RANGER</h2>
-        <p class="desc">人工编排横版跑跳射击 × 主动回忆。读懂敌人预兆、突破单词奖励门，挑战三阶段林地首领。</p>
-        <div class="tags"><span>剧情第一关</span><span>行为敌人</span><span>主动回忆</span><span>三阶段首领</span></div>
-        <p class="ctrl">电脑：A/D 移动 · W/空格 跳跃 · J/K/X 射击 · 手机：左手移动、右手跳跃和射击</p>
-        <span class="play">开始游戏 →</span>
+        <span class="badge new">NEW</span>
+        <h2>英语挖金子</h2>
+        <p class="en">WORD MINER</p>
+        <p class="desc">金钩子摆动抓字母块，掐准时机发射。石头炸弹钻石并存。</p>
+        <div class="meta"><span>⌨️ 空格发射</span><span>📱 点按</span></div>
       </div>
     </a>
 
-    <!-- 雷霆战机 -->
-    <a class="card" href="english-thunder-fighter/index.html?v=20260820a">
-      <div class="art">
-        <img src="english-thunder-fighter/assets/logo.png" alt="雷霆战机·英语风暴" loading="lazy"
-             onerror="this.remove()">
+    <a class="card" href="english-word-breaker/index.html" data-cat="casual">
+      <div class="art art-breaker"><span class="emoji">🧱</span></div>
+      <div class="info">
+        <span class="badge new">NEW</span>
+        <h2>英语打砖块</h2>
+        <p class="en">WORD BREAKER</p>
+        <p class="desc">弹球撞砖收字母，挡板角度决定一切。多球/加长/减速道具。</p>
+        <div class="meta"><span>⌨️ ←→+空格</span><span>📱 拖动</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="english-temple-dash/index.html?v=20260821c" data-cat="action">
+      <div class="art art-temple">
+        <img src="english-temple-dash/assets/biome-panorama-atlas.webp" alt="遗迹词途" loading="lazy">
+      </div>
+      <div class="info">
+        <h2>遗迹词途</h2>
+        <p class="en">TEMPLE DASH</p>
+        <p class="desc">三线伪 3D 无限跑酷。换道跳跃滑铲，四场景视差滚动。</p>
+        <div class="meta"><span>⌨️ 方向键</span><span>📱 滑动</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="english-thunder-fighter/index.html?v=20260820a" data-cat="action">
+      <div class="art art-thunder">
+        <img src="english-thunder-fighter/assets/logo.png" alt="雷霆战机" loading="lazy" onerror="this.remove()">
         <span class="emoji">🚀</span>
       </div>
       <div class="info">
-        <h2>雷霆战机 · 英语风暴</h2>
-        <p class="desc">2D 弹幕射击 × 背单词练语法。敌机挂着题目选项，击毁正确答案才能得分，还有 BOSS 战和补给道具。</p>
-        <div class="tags"><span>射击</span><span>词汇</span><span>语法</span><span>3 档难度</span></div>
-        <p class="ctrl">🕹 ⬆⬇⬅➡ / WASD 移动 · 空格 / J 开火 · B / X 炸弹 · 📱 左手移动、右手射击</p>
-        <span class="play">开始游戏 →</span>
+        <h2>雷霆战机</h2>
+        <p class="en">英语风暴</p>
+        <p class="desc">纵版弹幕射击。螺旋/玫瑰弹幕 Boss 战，击毁正确答案敌机。</p>
+        <div class="meta"><span>⌨️ WASD+J</span><span>📱 支持</span></div>
       </div>
     </a>
 
-    <!-- 贪吃蛇 -->
-    <a class="card" href="english-word-snake/index.html?v=20260820a">
-      <div class="art">
-        <img src="english-word-snake/assets/logo.png" alt="贪吃蛇背单词" loading="lazy"
-             onerror="this.remove()">
+    <a class="card" href="english-word-snake/index.html?v=20260820a" data-cat="puzzle">
+      <div class="art art-snake">
+        <img src="english-word-snake/assets/logo.png" alt="贪吃蛇背单词" loading="lazy" onerror="this.remove()">
         <span class="emoji">🐍</span>
       </div>
       <div class="info">
-        <h2>贪吃蛇背单词 · WORD SNAKE</h2>
-        <p class="desc">经典贪吃蛇 × 拼单词。按顺序吃掉字母拼出单词，或吃掉正确选项完成语法填空，撞墙撞自己都会扣血。</p>
-        <div class="tags"><span>贪吃蛇</span><span>拼写</span><span>语法</span><span>3 档难度</span></div>
-        <p class="ctrl">🕹 ⬆⬇⬅➡ / WASD / 滑动·点按 转向 · 💡 H 提示 · 📱 适配触屏</p>
-        <span class="play">开始游戏 →</span>
+        <h2>贪吃蛇背单词</h2>
+        <p class="en">WORD SNAKE</p>
+        <p class="desc">经典贪吃蛇。按序吃字母拼单词或答语法题，霓虹隧道画风。</p>
+        <div class="meta"><span>⌨️ 方向键</span><span>📱 滑动</span></div>
       </div>
     </a>
-    <!-- 飞鸟背单词 -->
-    <a class="card" href="english-flappy-word/index.html?v=20260820a">
-      <div class="art">
-        <img src="english-flappy-word/assets/logo.png" alt="飞鸟背单词 · FLAPPY WORDS" loading="lazy"
-             onerror="this.remove()">
+
+    <a class="card" href="english-flappy-word/index.html?v=20260820a" data-cat="casual">
+      <div class="art art-flappy">
+        <img src="english-flappy-word/assets/logo.png" alt="飞鸟背单词" loading="lazy" onerror="this.remove()">
         <span class="emoji">🐦</span>
       </div>
       <div class="info">
-        <h2>飞鸟背单词 · FLAPPY WORDS</h2>
-        <p class="desc">经典 Flappy Bird × 背单词练语法。扇动翅膀穿越管道，收集字母气泡拼单词，或穿过写有正确答案的门洞。</p>
-        <div class="tags"><span>休闲</span><span>词汇</span><span>语法</span><span>3 档难度</span></div>
-        <p class="ctrl">🕹 点击 / 空格 / ⬆ 扇翅膀 · 💡 H 提示 · P 暂停 · M 静音 · 📱 触屏点按</p>
-        <span class="play">开始游戏 →</span>
+        <h2>飞鸟背单词</h2>
+        <p class="en">FLAPPY WORDS</p>
+        <p class="desc">Flappy Bird × 扇翅动画。穿管道收字母气泡，一指休闲。</p>
+        <div class="meta"><span>🖱 点击起飞</span><span>📱 点按</span></div>
       </div>
     </a>
+
+    <a class="card more-card" href="https://github.com/lgch3136/mini-games/issues" target="_blank" rel="noopener">
+      <div class="art art-more"><span class="emoji">✨</span></div>
+      <div class="info">
+        <h2>更多游戏制作中</h2>
+        <p class="en">COMING SOON</p>
+        <p class="desc">想玩什么 FC 经典？去仓库提 issue 点名，下一个就是它。</p>
+        <div class="meta"><span>📝 提建议</span><span>🔧 开源欢迎 PR</span></div>
+      </div>
+    </a>
+
   </main>
 
   <footer>
-    <p>开源项目 · CC0 游戏音乐与音效 · 部署于 GitHub Pages · 欢迎提建议</p>
+    <p>开源项目 · CC0 音乐音效 + WebAudio 芯片配乐 · 部署于 GitHub Pages</p>
     <p><a class="gh" href="https://github.com/lgch3136/mini-games" target="_blank" rel="noopener">GitHub 仓库 ↗</a></p>
   </footer>
 </div>
+
+<script>
+  // 分类筛选
+  document.querySelectorAll('.filter').forEach((btn) => btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter').forEach((b) => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    const f = btn.dataset.filter;
+    document.querySelectorAll('.card').forEach((card) => {
+      const show = f === 'all' || card.dataset.cat === f;
+      card.classList.toggle('hidden', !show);
+    });
+  }));
+</script>
 </body>
 </html>
