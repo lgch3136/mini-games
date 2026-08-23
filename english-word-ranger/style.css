@@ -169,3 +169,22 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- 关卡选择 ---------- */
+#level-select { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0 10px; }
+.level-btn {
+  cursor: pointer; font-family: inherit;
+  background: rgba(12,31,26,.7); border: 1.5px solid rgba(244,211,122,.35);
+  color: #d9e6df; border-radius: 11px; padding: 9px 6px;
+  font-size: 13px; font-weight: 700;
+  transition: all .14s;
+}
+.level-btn small { display: block; font-size: 10px; color: #8fa89c; margin-top: 3px; font-weight: 500; }
+.level-btn:hover { border-color: rgba(244,211,122,.75); }
+.level-btn.selected {
+  background: linear-gradient(135deg,#d9a53c,#b3741f);
+  color: #1c1204; border-color: #ffe9ad;
+  box-shadow: 0 0 16px rgba(217,165,60,.4);
+}
+.level-btn.selected small { color: #5c420e; }
+@media (max-width: 520px) { #level-select { grid-template-columns: repeat(2, 1fr); } }

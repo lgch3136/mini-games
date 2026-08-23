@@ -172,6 +172,17 @@ for (let i = 0; i < 110; i++) {
     size: [0.7, 1.3, 2.2][layer],
     speed: [16, 30, 48][layer],
     tw: Math.random() * Math.PI * 2,
+    hue: Math.random(),           // 星色：偏蓝/偏白/偏暖，打破单调
+  });
+}
+// 远景星云：大而暗的径向光斑，给纯黑星空加层次
+Game.nebulae = [];
+for (let i = 0; i < 5; i++) {
+  Game.nebulae.push({
+    x: Math.random() * W, y: Math.random() * H,
+    r: rand(90, 190),
+    speed: rand(6, 14),
+    tint: ['#1b3a6e', '#3d2470', '#12474a'][randInt(3)],
   });
 }
 
@@ -602,6 +613,60 @@ function ringShoot(e) {
   SFX.shoot();
 }
 
+/* ---------- 经典弹幕图案库(致敬雷电/1942的几何美学) ----------
+ * 弹幕是"舞谱"不是散点: 螺旋/玫瑰/瀑布/激光雨各有节奏与解法 */
+// 双手螺旋: 两臂反向旋转, 玩家从间隙穿入
+function spiralShoot(e, arms = 2, speed = 165) {
+  const step = Game.time * 2.4;
+  for (let a = 0; a < arms; a++) {
+    const ang = step + (a / arms) * Math.PI * 2;
+    Game.enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(ang) * speed, vy: Math.abs(Math.sin(ang)) * speed * .8 + 40, r: 5 });
+  }
+}
+// 玫瑰弹幕: 花瓣状正弦展开, 视觉华丽但留有路径
+function roseShoot(e, petals = 5, speed = 175) {
+  const baseAng = Math.PI / 2; // 朝下
+  for (let i = 0; i < petals * 2; i++) {
+    const t = (i - (petals - .5)) / petals; // -1..1
+    const ang = baseAng + t * .85;
+    const sp = speed * (1 - Math.abs(t) * .22);
+    Game.enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: 5 });
+  }
+}
+// 弹幕状态机: Boss按阶段轮换图案, 每种有独立的节拍
+function bossDanmaku(e, dt) {
+  if (e.danmakuKind == null) { e.danmakuKind = 0; e.danmakuTimer = 2.2; e.danmakuTick = 0; }
+  e.danmakuTimer -= dt;
+  e.danmakuTick -= dt;
+  const phase2 = Game.level >= 3 || e.hp < e.maxHp * .55;
+  if (e.danmakuTimer <= 0) {
+    e.danmakuKind = (e.danmakuKind + 1) % (phase2 ? 4 : 3);
+    e.danmakuTimer = phase2 ? 3.4 : 4.2;
+    e.danmakuTick = 0;
+  }
+  if (e.danmakuTick > 0) return;
+  switch (e.danmakuKind) {
+    case 0: // 单发瞄准(喘息期)
+      e.danmakuTick = .9;
+      fireAtPlayer(e, DIFF_CONF[Game.difficulty].bulletSpeed + 40);
+      break;
+    case 1: // 双手螺旋
+      e.danmakuTick = phase2 ? .11 : .15;
+      spiralShoot(e, 2, 160);
+      break;
+    case 2: // 玫瑰
+      e.danmakuTick = phase2 ? .75 : 1.0;
+      roseShoot(e, phase2 ? 6 : 5, 170);
+      SFX.shoot();
+      break;
+    case 3: // 相位3: 环+螺旋叠加(高潮)
+      e.danmakuTick = .13;
+      spiralShoot(e, 3, 185);
+      if (Math.floor(Game.time * 8) % 16 === 0) ringShoot(e);
+      break;
+  }
+}
+
 /* ---------------- 特效 ---------------- */
 function explode(x, y, color, count, power) {
   count = count || 24; power = power || 1;
@@ -742,10 +807,7 @@ function updateEnemies(dt) {
       } else {
         e.y = 130 + Math.sin(e.t * 0.8) * 26;
         e.x = W / 2 + Math.sin(e.t * 0.55) * Math.min(260, W / 2 - 80);
-        e.nextShot -= dt;
-        if (e.nextShot <= 0) { e.nextShot = e.shotInterval; aimedSpread(e, 3, 0.22); }
-        e.patternT -= dt;
-        if (e.patternT <= 0) { e.patternT = 5.2; ringShoot(e); }
+        bossDanmaku(e, dt);
         if (e.t > 32) e.leaving = true;
       }
       continue;
@@ -858,11 +920,37 @@ function drawNebula() {
 
 function drawStars(dt) {
   const speedMul = (Game.state === 'playing' || Game.state === 'over' || Game.state === 'menu') ? 1 : 0;
-  ctx.fillStyle = '#cfe4ff';
+  // 远景星云层：最慢速滚动的大光斑（视差最远层）
+  for (const n of (Game.nebulae || [])) {
+    n.y += n.speed * dt * speedMul;
+    if (n.y - n.r > H) { n.y = -n.r; n.x = Math.random() * W; }
+    const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+    g.addColorStop(0, n.tint + '88');
+    g.addColorStop(.7, n.tint + '33');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
+  }
+  const starTints = [
+    (a) => 'rgba(190,205,255,' + a + ')',   // 偏蓝
+    (a) => 'rgba(235,240,255,' + a + ')',   // 白
+    (a) => 'rgba(255,196,120,' + a + ')',   // 暖橙（冷暖对比拉开深度）
+  ];
   for (const s of Game.stars) {
     s.y += s.speed * dt * speedMul * (Game.state === 'menu' ? 0.35 : 1);
     if (s.y > H + 4) { s.y = -4; s.x = Math.random() * W; }
-    ctx.globalAlpha = 0.3 + 0.55 * (0.5 + 0.5 * Math.sin(s.tw + Game.time * 2.4));
+    const alpha = 0.3 + 0.55 * (0.5 + 0.5 * Math.sin(s.tw + Game.time * 2.4));
+    ctx.fillStyle = starTints[Math.floor((s.hue || 0) * 3) % 3](alpha);
+    if (s.size > 1.8) {
+      // 大星加十字光芒+光晕，近层更醒目（前后景深的关键）
+      ctx.save();
+      ctx.shadowColor = 'rgba(200,220,255,.9)';
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = starTints[Math.floor((s.hue || 0) * 3) % 3](alpha + .15 > 1 ? 1 : alpha + .15);
+      ctx.fillRect(s.x - s.size * .9, s.y + s.size * .18, s.size * 2.8, s.size * .62);
+      ctx.fillRect(s.x + s.size * .18, s.y - s.size * .9, s.size * .62, s.size * 2.8);
+      ctx.restore();
+    }
     ctx.fillRect(s.x, s.y, s.size, s.size);
   }
   ctx.globalAlpha = 1;
@@ -1165,6 +1253,7 @@ function updateHighScore() {
 function startGame() {
   Game.state = 'playing';
   releaseTouchControls();
+  if (window.ChipMusic) ChipMusic.play('thunder-stage');
   Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0;
   Game.hp = 100; Game.shield = 0; Game.bombs = 1;
   Game.level = 1;
@@ -1217,6 +1306,7 @@ function backToMenu() {
 }
 
 function gameOver() {
+  if (window.ChipMusic) ChipMusic.stop();
   releaseTouchControls();
   Game.state = 'over';
   explode(Game.player.x, Game.player.y, '#4f9dff', 70, 2.4);
@@ -1289,8 +1379,13 @@ function frame(now) {
     updateFx(dt);
   }
   render(Game.state === 'paused' ? 0 : dt);
+  if (FX.available) FX.frame(dt, 0);
   requestAnimationFrame(frame);
 }
+/* WebGL增效层: 远景发光星尘(垫在游戏画面下) */
+const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
+if (FX.available) FX.setStarfield({ count: 240, speed: 42, tint: [0.55, 0.72, 1] });
+
 requestAnimationFrame(frame);
 
 updateHighScore();

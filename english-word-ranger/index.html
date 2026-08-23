@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#10251f">
 <title>单词突击队 · 林地哨站</title>
-<link rel="stylesheet" href="style.css?v=20260821g">
+<link rel="stylesheet" href="style.css?v=20260824a">
 </head>
 <body>
 <main id="game-wrap" aria-label="单词突击队游戏区">
@@ -53,7 +53,13 @@
       <button class="difficulty" data-difficulty="medium" type="button">中级<small>核心词汇 · 标准火力</small></button>
       <button class="difficulty" data-difficulty="hard" type="button">高级<small>进阶词汇 · 快速攻势</small></button>
     </div>
-    <button class="primary" id="start-btn" type="button">开始第一关 · 林地哨站</button>
+    <div id="level-select" aria-label="选择关卡">
+      <button class="level-btn selected" data-level="0" type="button">第一关<small>曙光森林</small></button>
+      <button class="level-btn" data-level="1" type="button">第二关<small>风蚀峡谷</small></button>
+      <button class="level-btn" data-level="2" type="button">第三关<small>雨中古城</small></button>
+      <button class="level-btn" data-level="3" type="button">第四关<small>月晶遗迹</small></button>
+    </div>
+    <button class="primary" id="start-btn" type="button">开始任务 · 曙光森林</button>
     <button class="secondary" id="arcade-start-btn" type="button">无限远征 · 街机模式</button>
     <div class="howto">
       <p>电脑：A/D 或左右键移动，W/S 或上下键瞄准/下蹲，空格跳跃，J/K/X 射击，P 暂停，M 静音。</p>
@@ -87,8 +93,9 @@
 </main>
 
 <script src="../shared/audio.js?v=20260821b"></script>
+  <script src="../shared/chip-music.js?v=3"></script>
 <script src="../english-thunder-fighter/data.js?v=20260814c"></script>
 <script src="../shared/vocabulary.js?v=20260820a"></script>
-<script src="game.js?v=20260821g"></script>
+<script src="game.js?v=20260824a"></script>
 </body>
 </html>

@@ -90,6 +90,7 @@ function resetPlayer() {
 }
 
 function startGame() {
+  if (window.ChipMusic) ChipMusic.play('temple-loop');
   const conf = DIFFICULTIES[Game.difficulty];
   Object.assign(Game, {
     state: 'playing', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0, bestCombo: 0,
@@ -132,6 +133,7 @@ function togglePause() {
 
 function gameOver() {
   Game.state = 'over';
+  if (window.ChipMusic) ChipMusic.stop();
   $('hud').classList.add('hidden');
   $('touch-controls').classList.add('hidden');
   $('over').classList.remove('hidden');
@@ -306,7 +308,8 @@ function hit() {
 
 function clearedObstacle() {
   const player = Game.player;
-  player.combo = player.comboTimer > 0 ? Math.min(12, player.combo + 1) : 1;
+  // 无限连击: 不再封顶12, 高连击有里程碑奖励(每5连击回血/护盾)
+  player.combo = player.comboTimer > 0 ? player.combo + 1 : 1;
   player.comboTimer = 3.2;
   player.comboPulse = .28;
   Game.bestCombo = Math.max(Game.bestCombo, player.combo);
@@ -314,8 +317,21 @@ function clearedObstacle() {
   if (player.combo >= 2) showFeedback('连续闪避 ×' + player.combo);
   if (player.combo >= 3 && player.combo % 3 === 0) {
     const point = project(player.lanePos, 0);
-    burst(point.x, point.y - 70, '#f2c864', 14);
-    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .16);
+    burst(point.x, point.y - 70, '#f2c864', Math.min(14 + player.combo, 40));
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .16, 1 + Math.min(.5, player.combo * .03));
+  }
+  // 里程碑: 每5连击给奖励
+  if (player.combo > 0 && player.combo % 5 === 0) {
+    if (player.combo % 10 === 0 && !player.shield) {
+      player.shield = 1;
+      showFeedback('×' + player.combo + ' 神庙庇佑：获得护盾！');
+    } else if (Game.hp < 3) {
+      Game.hp++;
+      showFeedback('×' + player.combo + ' 连击回血！');
+    } else {
+      Game.score += 500;
+      showFeedback('×' + player.combo + ' 奖励 +500');
+    }
   }
 }
 
@@ -462,15 +478,60 @@ function drawRoad() {
   const nearCenter = roadCenter(0);
   ctx.fillStyle = '#0b1714';
   ctx.beginPath(); ctx.moveTo(farCenter - 55, HORIZON_Y); ctx.lineTo(farCenter + 55, HORIZON_Y); ctx.lineTo(VIEW_W + 80, VIEW_H); ctx.lineTo(-80, VIEW_H); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = biome.road;
+  // 路基渐变：远处压暗融入雾气，近处提亮，强化纵深（大气透视）
+  const roadGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, VIEW_H);
+  roadGrad.addColorStop(0, shadeColor(biome.road, -.42));
+  roadGrad.addColorStop(.55, shadeColor(biome.road, -.12));
+  roadGrad.addColorStop(1, shadeColor(biome.road, .06));
+  ctx.fillStyle = roadGrad;
   ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = biome.edge; ctx.lineWidth = 3;
+  // 石板纹理: 世界锚定透视投影 —— 石板以固定世界间距(z轴)摆放,
+  // 近处自然滑得快、远处滑得慢, 彻底消除"匀速刷屏"的频闪。
+  // 明暗交替只做极轻微的暖色变化(不做高对比黑白), 保护眼睛。
+  const SLAB_WORLD = 9;                       // 每块石板占9个世界z单位
+  const worldBase = Game.travel;              // 玩家前进的世界距离
+  const firstSlab = Math.floor(worldBase / SLAB_WORLD) + 1;
+  for (let si = 0; si < 26; si++) {
+    const zz = (firstSlab + si) * SLAB_WORLD - worldBase;   // 该石板近端距玩家的世界距离
+    if (zz < 1 || zz > MAX_Z + SLAB_WORLD) continue;
+    const nearEdge = project(0, Math.max(1, zz - SLAB_WORLD * .5));
+    const farEdge = project(0, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
+    const yNear = nearEdge.y, yFar = farEdge.y;
+    if (yNear - yFar < .6) continue;
+    const depth = clamp((yFar - HORIZON_Y) / (VIEW_H - HORIZON_Y), 0, 1);
+    const cX = farCenter + (nearCenter - farCenter) * depth;
+    const halfW = lerp(42, VIEW_W * .48, depth * depth);
+    // 交替石板: 极轻的暖色差(±3%), 远处几乎不可见 —— 有节奏但不刺眼
+    const slabIdx = firstSlab + si;
+    const alt = slabIdx % 2 === 0;
+    ctx.fillStyle = 'rgba(255,238,190,' + (alt ? .028 + depth * .03 : 0) + ')';
+    ctx.fillRect(cX - halfW, yFar, halfW * 2, yNear - yFar);
+    // 横缝: 近处清晰远处淡出(大气透视), 无高对比
+    const seamAlpha = .10 + depth * .14;
+    ctx.strokeStyle = 'rgba(8,14,11,' + seamAlpha + ')';
+    ctx.lineWidth = 1 + depth * 1.6;
+    ctx.beginPath();
+    ctx.moveTo(cX - halfW, yNear);
+    ctx.lineTo(cX + halfW, yNear);
+    ctx.stroke();
+  }
+  // 中央引导虚线：透视收缩，滚动
+  const dashOffset = (Game.travel * LANE_MARKER_RATE) % (LANE_MARKER_SPACING * 2);
+  ctx.strokeStyle = 'rgba(246,231,183,.30)';
+  ctx.setLineDash([26, 22]);
+  ctx.lineDashOffset = dashOffset;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(roadCenter(90), HORIZON_Y + 6); ctx.lineTo(nearCenter, PLAYER_GROUND_Y + 40); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
+  // 路缘石：亮色描边加宽，明确"台面"边界
+  ctx.strokeStyle = shadeColor(biome.edge, .08); ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.stroke();
 
   const markerOffset = laneMarkerOffset(Game.travel);
   for (const boundary of [-.5, .5]) {
-    ctx.strokeStyle = 'rgba(238,226,185,.12)'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(238,226,185,.14)'; ctx.lineWidth = 1.5;
     ctx.beginPath();
     for (let y = HORIZON_Y; y <= PLAYER_GROUND_Y; y += 18) {
       const point = project(boundary, zAtScreenY(y));
@@ -486,6 +547,21 @@ function drawRoad() {
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     }
   }
+}
+
+// 十六进制颜色明暗调整（正=提亮，负=压暗），用于路面渐变
+function shadeColor(hex, amount) {
+  const num = parseInt(hex.slice(1), 16);
+  let r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  if (amount >= 0) {
+    r = Math.round(r + (255 - r) * amount);
+    g = Math.round(g + (255 - g) * amount);
+    b = Math.round(b + (255 - b) * amount);
+  } else {
+    const k = 1 + amount;
+    r = Math.round(r * k); g = Math.round(g * k); b = Math.round(b * k);
+  }
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
 function drawEdgeScenery() {
@@ -518,6 +594,15 @@ function drawObject(object) {
   if (object.z > MAX_Z + 30 || object.z < -8) return;
   const point = project(object.lane, Math.max(0, object.z));
   const s = point.scale;
+  // 统一接地软阴影：伪3D可信度的生命线（随高度略缩放）
+  if (object.type !== 'beam' && object.type !== 'puddle') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(4,12,9,.34)';
+    ctx.beginPath();
+    ctx.ellipse(point.x, point.y + 2, 26 * s, 6.5 * s, 0, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+  }
   ctx.save(); ctx.translate(point.x, point.y);
   if (object.type === 'relic') {
     ctx.translate(0, -28 * s); ctx.rotate(Game.time * 2 + object.phase);
@@ -659,8 +744,10 @@ function drawWeather() {
 function render() {
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
-  const shakeX = Game.shake > 0 ? Math.sin(Game.time * 72) * Game.shake * 18 : 0;
-  const shakeY = Game.shake > 0 ? Math.cos(Game.time * 58) * Game.shake * 8 : 0;
+  // 屏幕震动限幅+平滑: 高频大幅抖动会破坏近景速度预估(用户实测反馈)
+  const shakeAmp = Math.min(Game.shake, .16);
+  const shakeX = shakeAmp > 0 ? Math.sin(Game.time * 46) * shakeAmp * 11 : 0;
+  const shakeY = shakeAmp > 0 ? Math.cos(Game.time * 39) * shakeAmp * 5 : 0;
   ctx.save(); ctx.translate(shakeX, shakeY);
   drawBackground(); drawRoad(); drawEdgeScenery();
   [...Game.objects].sort((a, b) => b.z - a.z).forEach(drawObject);

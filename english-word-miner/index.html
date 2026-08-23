@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>英语挖金子 · WORD MINER</title>
+<link rel="stylesheet" href="style.css?v=20260824a">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game" width="720" height="560"></canvas>
+
+  <div id="hud">
+    <div id="stats">
+      <div class="chips">
+        <span class="chip">⭐ <b id="score">0</b></span>
+        <span class="chip">🧡 <b id="lives">3</b></span>
+        <span class="chip">⛏️ 第<b id="level">1</b>关</span>
+        <span class="chip">⏱ <b id="timer">60</b></span>
+      </div>
+      <div class="chips">
+        <button id="mute-btn">声音</button>
+        <button id="pause-btn">暂停</button>
+      </div>
+    </div>
+    <div id="word-bar" class="hidden">
+      <span id="wb-kind">挖字母</span><span id="wb-word"></span>
+      <div id="wb-zh"></div>
+    </div>
+    <div id="feedback"></div>
+  </div>
+
+  <div class="overlay" id="menu">
+    <div class="panel">
+      <h1>英语挖金子<small>WORD MINER</small></h1>
+      <p class="sub">摆动抓钩，掐准时机发射！<br>按顺序抓回当前单词的字母块，躲开石头和炸弹，钻石值500分。</p>
+      <div class="keys">
+        <span>空格 / 点击 发射抓钩</span><span>P 暂停</span><span>M 静音</span><span>📱 触屏点按</span>
+      </div>
+      <div class="diff-row">
+        <button class="difficulty selected" data-difficulty="easy">初级</button>
+        <button class="difficulty" data-difficulty="medium">中级</button>
+        <button class="difficulty" data-difficulty="hard">高级</button>
+      </div>
+      <button class="btn-main" id="start-btn">开始游戏</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="paused">
+    <div class="panel">
+      <h1 style="font-size:30px;">暂停中</h1>
+      <div class="btn-row">
+        <button class="btn-main" id="resume-btn" style="padding:10px 34px;font-size:15px;">继续</button>
+        <button class="btn-sub" id="pause-menu-btn">回主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="over">
+    <div class="panel">
+      <p id="over-kicker" style="color:#fbbf24;letter-spacing:4px;font-size:12px;margin-bottom:6px;">行动结束</p>
+      <h1 id="over-title" style="font-size:32px;color:#fde68a;text-shadow:0 3px 16px rgba(250,204,21,.4);">再来一局？</h1>
+      <div id="over-stats"></div>
+      <div class="btn-row">
+        <button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
+        <button class="btn-sub" id="menu-btn">回主菜单</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/vocabulary.js"></script>
+<script src="../shared/audio.js?v=20260819a"></script>
+<script src="../shared/chip-music.js?v=3"></script>
+<script src="game.js?v=20260824a"></script>
+</body>
+</html>
