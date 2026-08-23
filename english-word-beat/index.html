@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>英语节奏大师 · WORD BEAT</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game" width="560" height="640"></canvas>
+
+  <div id="hud">
+    <div class="top">
+      <div class="chips">
+        <span class="chip">⭐ <b id="score">0</b></span>
+        <span class="chip">🏁 谱面 <b id="level">1</b></span>
+      </div>
+      <div class="life-wrap"><div id="life-bar"></div></div>
+      <div class="chips">
+        <button id="mute-btn">声音</button>
+        <button id="pause-btn">暂停</button>
+      </div>
+    </div>
+    <div id="word-bar" class="hidden">
+      <span id="wb-kind">节奏拼词</span><span id="wb-word"></span>
+      <div id="wb-zh"></div>
+    </div>
+    <div id="feedback"></div>
+  </div>
+
+  <div class="overlay" id="menu">
+    <div class="panel">
+      <h1>英语节奏大师<small>WORD BEAT</small></h1>
+      <p class="sub">下落式音击 × 拼单词。字母音符沿四轨落下，在判定线按对应键击打。<br>绿色字母音符按顺序集齐即拼写完成！</p>
+      <div class="keys">
+        <span>D F J K 四轨击打</span><span>📱 点击轨道</span><span>P 暂停</span><span>M 静音</span>
+      </div>
+      <div class="judge-guide">
+        <span class="j p">PERFECT ±45ms</span>
+        <span class="j g">GREAT ±90ms</span>
+        <span class="j o">GOOD ±140ms</span>
+      </div>
+      <div class="diff-row">
+        <button class="difficulty" data-difficulty="easy">初级 · 慢速</button>
+        <button class="difficulty selected" data-difficulty="medium">中级 · 标准</button>
+        <button class="difficulty" data-difficulty="hard">高级 · 疾速</button>
+      </div>
+      <br>
+      <button class="btn-main" id="start-btn">开始演奏</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="paused">
+    <div class="panel">
+      <h1 style="font-size:30px;">暂停中</h1>
+      <p class="sub">暂停期间谱面时钟已冻结，继续后无缝衔接</p>
+      <div class="btn-row">
+        <button class="btn-main" id="resume-btn" style="padding:10px 34px;font-size:15px;">继续</button>
+        <button class="btn-sub" id="pause-menu-btn">回主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="over">
+    <div class="panel">
+      <p id="over-kicker" style="color:#c084fc;letter-spacing:4px;font-size:12px;margin-bottom:6px;">演出结束</p>
+      <h1 id="over-title" style="font-size:32px;color:#e9d5ff;text-shadow:0 3px 16px rgba(168,85,247,.4);">再来一局？</h1>
+      <div id="over-stats"></div>
+      <div class="btn-row">
+        <button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
+        <button class="btn-sub" id="menu-btn">回主菜单</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/vocabulary.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

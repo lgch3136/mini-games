@@ -227,6 +227,8 @@ function backToMenu() {
 /* ---------------- 物理 ---------------- */
 function update(dt) {
   Game.time += dt;
+  Game.comboTimer = Math.max(0, Game.comboTimer - dt);
+  if (!Game.comboTimer) Game.comboCount = 0;
   Game.shake = Math.max(0, Game.shake - dt * 2);
   Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
   if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
@@ -271,6 +273,8 @@ function update(dt) {
       b.vx = Math.sin(ang) * sp;
       b.vy = -Math.abs(Math.cos(ang) * sp);
       b.y = p.y - b.r - 1;
+      if (Game.comboCount >= 3) floatText('连击 x' + Game.comboCount + '!', p.x + p.w / 2, p.y - 24, '#fbbf24');
+      Game.comboCount = 0; Game.comboTimer = 0;
       if (window.ArcadeAudio) ArcadeAudio.play('click', .1, 1.1);
     }
 
@@ -319,7 +323,11 @@ function update(dt) {
 
 function wallHit() { if (window.ArcadeAudio) ArcadeAudio.play('click', .06, 1.4); }
 
+Game.comboCount = 0; Game.comboTimer = 0;
 function hitBrick(k, idx) {
+  // 空中连击: 球触板前每碎一块砖连击+1
+  Game.comboCount++; Game.comboTimer = 3;
+  Game.score += 10 * Math.min(5, Game.comboCount);
   k.hp--;
   if (k.hp > 0) {
     if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .8);

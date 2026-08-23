@@ -81,6 +81,7 @@ header h1 {
 .art-snake  { background: radial-gradient(circle at 50% 58%, #064e3b 0%, #01110c 75%); }
 .art-flappy { background: radial-gradient(circle at 50% 58%, #0c4a6e 0%, #04121f 75%); }
 .art-more   { background: radial-gradient(circle at 50% 58%, #312e81 0%, #0d091f 75%); }
+.art-beat   { background: radial-gradient(circle at 50% 58%, #581c87 0%, #17082b 75%); }
 .more-card { border-style: dashed; border-color: rgba(110,190,255,.35); opacity: .88; }
 .more-card:hover { opacity: 1; }
 

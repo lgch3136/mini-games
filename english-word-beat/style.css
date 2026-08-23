@@ -1,0 +1,118 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: radial-gradient(1100px 700px at 50% 12%, #1d1030 0%, #0e0818 58%, #050309 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+  color: #f3e8ff;
+  overflow: hidden;
+  user-select: none; -webkit-user-select: none;
+  height: 100vh; height: 100dvh; width: 100vw;
+}
+.hidden { display: none !important; }
+
+#game-wrap {
+  position: relative;
+  width: min(96vw, calc(92dvh * 0.875));
+  aspect-ratio: 560 / 640;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(168,85,247,0.22), 0 0 140px rgba(88,28,135,0.1);
+  border: 1px solid rgba(216,180,254,0.32);
+  background: #0c0616;
+}
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+#hud { position: absolute; inset: 0; pointer-events: none; }
+.top {
+  position: absolute; top: 6px; left: 10px; right: 10px;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.chips { display: flex; gap: 6px; font-weight: 800; font-size: 13px; }
+.chip { background: rgba(18,8,32,.82); border: 1px solid rgba(216,180,254,.4); border-radius: 8px; padding: 3px 10px; }
+.life-wrap {
+  flex: 1; max-width: 150px; height: 9px;
+  background: rgba(255,255,255,.09); border-radius: 999px; overflow: hidden;
+  border: 1px solid rgba(216,180,254,.35);
+}
+#life-bar { height: 100%; width: 100%; background: linear-gradient(90deg,#a78bfa,#f472b6); transition: width .2s; }
+#pause-btn, #mute-btn {
+  pointer-events: auto; cursor: pointer;
+  background: rgba(18,8,32,.85); border: 1px solid rgba(216,180,254,.45);
+  color: #e9d5ff; border-radius: 8px; padding: 3px 12px; font-size: 12px; font-family: inherit;
+}
+
+#word-bar {
+  position: absolute; left: 50%; transform: translateX(-50%); top: 40px;
+  background: rgba(14,8,26,.92);
+  border: 1px solid rgba(216,180,254,.55);
+  border-radius: 11px; padding: 4px 16px;
+  text-align: center;
+}
+#wb-kind { font-size: 10.5px; color: #c084fc; margin-right: 8px; vertical-align: middle; }
+#wb-word { font-family: ui-monospace, monospace; font-size: 15px; letter-spacing: 3px; font-weight: 800; color: #e9d5ff; vertical-align: middle; }
+#wb-word .got { color: #86efac; }
+#wb-word .next { color: #fff; border-bottom: 2px solid #a855f7; }
+#wb-zh { font-size: 10.5px; color: #b394cc; margin-top: 1px; }
+
+#feedback {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 84px;
+  background: rgba(14,8,26,.88); border: 1px solid rgba(216,180,254,.45);
+  border-radius: 10px; padding: 4px 15px; font-size: 13px; color: #e9d5ff;
+  opacity: 0; transition: opacity .18s; white-space: nowrap;
+}
+#feedback.show { opacity: 1; }
+
+.overlay {
+  position: absolute; inset: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(800px 600px at 50% 32%, rgba(29,16,48,.94) 0%, rgba(5,3,9,.97) 68%);
+  backdrop-filter: blur(3px);
+}
+.panel { text-align: center; max-width: min(520px, 94%); padding: 18px; }
+.panel h1 {
+  font-size: clamp(26px, 5.4vw, 40px); letter-spacing: 2px; color: #e9d5ff;
+  text-shadow: 0 3px 16px rgba(168,85,247,.45);
+}
+.panel h1 small { display: block; font-size: .38em; letter-spacing: 8px; color: #9d7bbb; margin-top: 6px; font-weight: 600; }
+.panel p.sub { margin: 13px auto 4px; font-size: 13.5px; line-height: 1.85; color: #cdbce4; max-width: 440px; }
+.keys { margin: 12px auto 2px; display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
+.keys span { border: 1px solid rgba(216,180,254,.45); border-radius: 8px; padding: 3px 11px; font-size: 12px; color: #e9d5ff; background: rgba(24,12,42,.5); }
+.judge-guide { display: flex; gap: 7px; justify-content: center; margin-top: 9px; flex-wrap: wrap; }
+.judge-guide .j { font-size: 11px; padding: 2px 10px; border-radius: 999px; font-weight: 700; }
+.j.p { background: rgba(253,230,138,.15); color: #fde68a; border: 1px solid rgba(253,230,138,.4); }
+.j.g { background: rgba(134,239,172,.12); color: #86efac; border: 1px solid rgba(134,239,172,.35); }
+.j.o { background: rgba(147,197,253,.12); color: #93c5fd; border: 1px solid rgba(147,197,253,.35); }
+.diff-row { margin: 15px 0 4px; display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }
+button.difficulty {
+  pointer-events: auto; cursor: pointer;
+  background: rgba(24,12,42,.65); border: 1.5px solid rgba(216,180,254,.5);
+  color: #e9d5ff; border-radius: 999px; padding: 6px 18px; font-size: 13px; font-weight: 700;
+  transition: all .15s; font-family: inherit;
+}
+button.difficulty:hover { border-color: #c084fc; }
+button.difficulty.selected { background: linear-gradient(135deg,#a855f7,#6d28d9); color: #fff; border-color: #e9d5ff; box-shadow: 0 0 16px rgba(168,85,247,.5); }
+.btn-main {
+  pointer-events: auto; cursor: pointer; margin-top: 15px;
+  background: linear-gradient(135deg,#a855f7,#7c3aed); color: #fff;
+  border: none; border-radius: 999px; padding: 12px 44px;
+  font-size: 17px; font-weight: 800; letter-spacing: 3px; font-family: inherit;
+  box-shadow: 0 6px 24px rgba(124,58,237,.45); transition: transform .13s, box-shadow .13s;
+}
+.btn-main:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(124,58,237,.6); }
+.btn-main:active { transform: translateY(0) scale(.98); }
+#over-stats { margin: 13px auto 3px; display: grid; grid-template-columns: repeat(auto-fit,minmax(96px,1fr)); gap: 8px; max-width: 430px; }
+#over-stats > div { background: rgba(24,12,42,.62); border: 1px solid rgba(216,180,254,.32); border-radius: 11px; padding: 8px 6px; }
+#over-stats span { display: block; font-size: 10.5px; color: #a98fc9; }
+#over-stats b { font-size: 19px; color: #e9d5ff; }
+.btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+.btn-sub {
+  pointer-events: auto; cursor: pointer;
+  background: rgba(24,12,42,.6); border: 1.5px solid rgba(216,180,254,.45);
+  color: #e9d5ff; border-radius: 999px; padding: 9px 26px; font-size: 14px; font-weight: 700; font-family: inherit;
+}
+.btn-sub:hover { border-color: #c084fc; }
+
+@media (max-width: 480px) {
+  .judge-guide .j { font-size: 10px; padding: 2px 7px; }
+}

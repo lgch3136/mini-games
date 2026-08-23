@@ -374,9 +374,11 @@ function breakBrick(c, r) {
   }
 }
 
+let hitStopTimer = 0;
 function killEnemy(e) {
   e.dead = true;
   Game.score += 100;
+  hitStopTimer = .06;   // 命中停顿60ms: 打击感核心
   const x = OX + e.col * CELL + CELL / 2, y = OY + e.row * CELL + CELL / 2;
   for (let i = 0; i < 12; i++) {
     Game.particles.push({ x, y, vx: rand(-150, 150), vy: rand(-180, 40), life: rand(.3, .55), color: '#9be7ff', size: rand(2.5, 5) });
@@ -638,7 +640,9 @@ function floatText(text, x, y, color) {
   Game.floaters.push({ text, x, y, color, life: .9 });
 }
 
-function update(dt) {
+function update(rawDt) {
+  if (hitStopTimer > 0) { hitStopTimer -= rawDt; return; }   // 命中停顿: 全局冻结
+  const dt = rawDt;
   Game.time += dt;
   Game.shake = Math.max(0, Game.shake - dt * 1.6);
   Game.flash = Math.max(0, Game.flash - dt * 2.2);

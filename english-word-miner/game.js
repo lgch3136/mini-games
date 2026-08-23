@@ -206,6 +206,7 @@ function deliverItem(it) {
     if (it.index === w.progress) {
       w.progress++;
       Game.score += it.value;
+      Game.shake = Math.max(Game.shake, .18);
       floatText('✓ ' + it.letter, x, y - 20, '#86efac');
       burst(x, y, '#86efac', 12);
       if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1 + w.progress * .07);
