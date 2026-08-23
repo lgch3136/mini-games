@@ -19,7 +19,17 @@ const ctx = canvas.getContext('2d');
 
 let W = 560, H = 640;
 const TAU = Math.PI * 2;
-const LANES = 4;
+let LANES = 4;
+const LANE_MODES = {
+  4: { keys: ['KeyD','KeyF','KeyJ','KeyK'], labels: ['D','F','J','K'],
+       colors: ['#f472b6','#fbbf24','#4ade80','#38bdf8'], notes: [523.25, 587.33, 659.25, 783.99] },
+  5: { keys: ['KeyD','KeyF','Space','KeyJ','KeyK'], labels: ['D','F','␣','J','K'],
+       colors: ['#f472b6','#fbbf24','#e879f9','#4ade80','#38bdf8'], notes: [523.25, 587.33, 698.46, 659.25, 783.99] },
+  7: { keys: ['KeyS','KeyD','KeyF','Space','KeyJ','KeyK','KeyL'], labels: ['S','D','F','␣','J','K','L'],
+       colors: ['#fb7185','#f472b6','#fbbf24','#e879f9','#4ade80','#38bdf8','#818cf8'],
+       notes: [493.88, 554.37, 622.25, 698.46, 783.99, 880, 987.77] },
+};
+function laneCfg() { return LANE_MODES[LANES]; }
 const HIT_Y = 520;                    // 判定线
 const NOTE_SPEED_BASE = 300;          // px/s 基准下落速度
 const APPROACH_TIME = (HIT_Y - 60) / NOTE_SPEED_BASE;   // 音符提前量
@@ -32,10 +42,12 @@ const DIFFS = {
   medium: { speedMul: 1.0, density: 1.0, label: '中级' },
   hard:   { speedMul: 1.25, density: 1.3, label: '高级' },
 };
+// 滚速倍率独立调节(音游标配): 与判定窗口无关, 只改下落速度
+const SCROLL_STEPS = [.7, .85, 1.0, 1.15, 1.3, 1.5];
 
-const LANE_KEYS = ['KeyD', 'KeyF', 'KeyJ', 'KeyK'];
-const LANE_LABEL = ['D', 'F', 'J', 'K'];
-const LANE_COLORS = ['#f472b6', '#fbbf24', '#4ade80', '#38bdf8'];
+const LANE_KEYS = () => laneCfg().keys;
+const LANE_LABEL = () => laneCfg().labels;
+const LANE_COLORS = () => laneCfg().colors;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -72,16 +84,26 @@ function ensureAudioClock() {
 /* ---------------- 打击音效(WebAudio合成, 零延迟) ---------------- */
 let sfxCtx = null, noiseBuf = null;
 function initSfx() { ensureAudioClock(); sfxCtx = Game.actx; }
-function tapSound(strong) {
+function tapSound(strong, lane) {
   if (!sfxCtx || Game.muted) return;
   const t = sfxCtx.currentTime;
+  const cfg = laneCfg();
+  const base = cfg.notes[lane != null ? lane : 0] || 660;
+  // 双振荡器: 三角波主体+方波泛音, 更接近钢琴敲击质感
   const osc = sfxCtx.createOscillator(), g = sfxCtx.createGain();
   osc.type = 'triangle';
-  osc.frequency.setValueAtTime(strong ? 880 : 660, t);
-  g.gain.setValueAtTime(.14, t);
-  g.gain.exponentialRampToValueAtTime(.001, t + .08);
+  osc.frequency.setValueAtTime(base * (strong ? 1.0 : .92), t);
+  g.gain.setValueAtTime(strong ? .16 : .10, t);
+  g.gain.exponentialRampToValueAtTime(.001, t + .11);
   osc.connect(g); g.connect(sfxCtx.destination);
-  osc.start(t); osc.stop(t + .09);
+  osc.start(t); osc.stop(t + .12);
+  const o2 = sfxCtx.createOscillator(), g2 = sfxCtx.createGain();
+  o2.type = 'square';
+  o2.frequency.setValueAtTime(base * 2, t);
+  g2.gain.setValueAtTime(.03, t);
+  g2.gain.exponentialRampToValueAtTime(.0008, t + .05);
+  o2.connect(g2); g2.connect(sfxCtx.destination);
+  o2.start(t); o2.stop(t + .06);
 }
 function missSound() {
   if (!sfxCtx || Game.muted) return;
@@ -145,6 +167,8 @@ function buildChart() {
 
 function startGame() {
   ensureAudioClock(); initSfx();
+  LANES = Game.keyMode || 4;
+  Game.scrollMul = Game.scrollMul || 1.0;
   Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0;
   Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   Game.level = 1; Game.wordsDone = 0; Game.time = 0;
@@ -185,7 +209,7 @@ function judgeHit(lane) {
   }
   // 空敲: 轻微惩罚连击断
   if (!best || bestD > JUDGE.good) {
-    tapSound(false);
+    tapSound(false, lane);
     return;
   }
   best.judged = true;
@@ -203,7 +227,7 @@ function judgeHit(lane) {
 
   floatText(verdict, laneX(lane), HIT_Y - 46,
     verdict === 'PERFECT' ? '#fde68a' : verdict === 'GREAT' ? '#86efac' : '#93c5fd');
-  tapSound(verdict !== 'GOOD');
+  tapSound(verdict !== 'GOOD', lane);
 
   // 字母音符推进拼写
   if (best.isLetter && best.index === Game.word.progress) {
@@ -267,7 +291,7 @@ function totalNotes() { return Game.counts.perfect + Game.counts.great + Game.co
 
 /* ---------------- 输入 ---------------- */
 window.addEventListener('keydown', (ev) => {
-  const li = LANE_KEYS.indexOf(ev.code);
+  const li = LANE_KEYS().indexOf(ev.code);
   if (li >= 0 && !ev.repeat) { ev.preventDefault(); judgeHit(li); return; }
   if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
   if (ev.code === 'KeyM') toggleMute();
@@ -305,6 +329,10 @@ function backToMenu() {
 const laneW = () => (W - 40) / LANES;
 const laneX = (l) => 20 + l * laneW();
 
+function scrollSpeed() {
+  return NOTE_SPEED_BASE * DIFFS[Game.difficulty].speedMul * (Game.scrollMul || 1);
+}
+
 function render() {
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   const bg = ctx.createLinearGradient(0, 0, 0, H);
@@ -329,8 +357,7 @@ function render() {
   // 小节线(BPM网格): 节奏参照
   {
     const beat = 60 / 104;
-    const speedMul = DIFFS[Game.difficulty].speedMul;
-    const pxPerSec = NOTE_SPEED_BASE * speedMul;
+    const pxPerSec = NOTE_SPEED_BASE * scrollSpeed();
     const t = now();
     const firstBeat = Math.ceil((t - 44 / pxPerSec) / beat) * beat;
     ctx.strokeStyle = 'rgba(168,85,247,.16)';
@@ -360,7 +387,7 @@ function render() {
   // 判定按键座
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
-    ctx.fillStyle = LANE_COLORS[l];
+    ctx.fillStyle = LANE_COLORS()[l];
     ctx.globalAlpha = .22 + Game.flashLane[l] * .6;
     ctx.beginPath(); ctx.roundRect(x + 6, HIT_Y + 6, laneW() - 12, 34, 8); ctx.fill();
     ctx.globalAlpha = 1;
@@ -405,12 +432,11 @@ function render() {
 
   // 音符
   const t = now();
-  const speedMul = DIFFS[Game.difficulty].speedMul;
   for (const n of Game.notes) {
     if (n.judged && !n.missed) continue;
     const dt = n.hitAt - t;
     if (dt < -.2) continue;
-    const y = HIT_Y - dt * (NOTE_SPEED_BASE * speedMul);
+    const y = HIT_Y - dt * scrollSpeed();
     if (y > H + 30) continue;
     const x = laneX(n.lane);
     const isNextLetter = n.isLetter && n.index === Game.word.progress;
@@ -464,12 +490,14 @@ function drawParticles() {
 function drawMenuDemo() {
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
-    ctx.fillStyle = LANE_COLORS[l]; ctx.globalAlpha = .3;
+    ctx.fillStyle = LANE_COLORS()[l]; ctx.globalAlpha = .3;
     ctx.beginPath(); ctx.roundRect(x + 6, HIT_Y + 6, laneW() - 12, 34, 8); ctx.fill();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = LANE_COLORS[l];
     ctx.font = '900 17px ui-monospace, monospace'; ctx.textAlign = 'center';
-    ctx.fillText(LANE_LABEL[l], x + laneW() / 2, HIT_Y + 24);
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,5,20,.85)';
+    ctx.strokeText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
+    ctx.fillStyle = LANE_COLORS()[l];
+    ctx.fillText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
   }
   ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
@@ -535,6 +563,18 @@ document.querySelectorAll('.difficulty').forEach((b) => b.addEventListener('clic
   document.querySelectorAll('.difficulty').forEach((x) => x.classList.remove('selected'));
   b.classList.add('selected');
   Game.difficulty = b.dataset.difficulty;
+}));
+// 键位模式
+document.querySelectorAll('.seg-btn[data-keys]').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.seg-btn[data-keys]').forEach((x) => x.classList.remove('selected'));
+  b.classList.add('selected');
+  Game.keyMode = Number(b.dataset.keys);
+}));
+// 滚速
+document.querySelectorAll('.spd-btn').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.spd-btn').forEach((x) => x.classList.remove('selected'));
+  b.classList.add('selected');
+  Game.scrollMul = Number(b.dataset.scroll);
 }));
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
