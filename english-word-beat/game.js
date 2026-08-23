@@ -70,6 +70,7 @@ const Game = {
   time: 0, shakeX: 0,
   word: null, lastWord: '',
   notes: [], actx: null, audioStart: 0, songEndAt: Infinity,
+  backingStep: 0,
   feedback: '', feedbackUntil: 0,
   flashLane: [0, 0, 0, 0, 0, 0, 0],
   pulses: [],           // 命中冲击波
@@ -125,6 +126,31 @@ function missSound() {
   src.start(t);
 }
 
+/* 与谱面共用 AudioContext 时钟，避免视觉音符和节拍漂移。 */
+function scheduleBackingBeat() {
+  if (!Game.actx || Game.state !== 'playing') return;
+  const stepDuration = 30 / Game.bpm;
+  const audioNow = Game.actx.currentTime;
+  const horizon = audioNow + .12;
+  while (Game.audioStart + Game.backingStep * stepDuration < horizon) {
+    const when = Game.audioStart + Game.backingStep * stepDuration;
+    if (!Game.muted && when >= audioNow - .01) playBackingStep(when, Game.backingStep);
+    Game.backingStep++;
+  }
+}
+function playBackingStep(when, step) {
+  const strongBeat = step % 2 === 0;
+  const accent = step % 8 === 0;
+  const osc = Game.actx.createOscillator(), gain = Game.actx.createGain();
+  osc.type = strongBeat ? 'sine' : 'square';
+  osc.frequency.setValueAtTime(strongBeat ? (accent ? 135 : 105) : 1500, when);
+  if (strongBeat) osc.frequency.exponentialRampToValueAtTime(55, when + .08);
+  gain.gain.setValueAtTime(strongBeat ? (accent ? .11 : .075) : .018, when);
+  gain.gain.exponentialRampToValueAtTime(.001, when + (strongBeat ? .1 : .035));
+  osc.connect(gain); gain.connect(Game.actx.destination);
+  osc.start(when); osc.stop(when + .11);
+}
+
 /* ============================================================
  * 谱面生成器 v2 —— 有音乐性的节奏型编排
  * ============================================================ */
@@ -138,14 +164,16 @@ const RHYTHM_PATTERNS = [
   { name: '回旋', steps: [0, 2, 1, 2], lane: (i, L) => (i % 2 === 0) ? (i / 2) % L : L - 1 - ((i - 1) / 2) % L, minLv: 5 },
 ];
 
-function buildChart() {
-  const bank = wordBank();
-  let item;
-  do { item = bank[Math.floor(Math.random() * bank.length)]; }
-  while (item && item.en === Game.lastWord && bank.length > 1);
-  item = item || bank[0];
-  Game.lastWord = item.en;
-  Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
+function buildChart(retryWord) {
+  if (!retryWord || !Game.word) {
+    const bank = wordBank();
+    let item;
+    do { item = bank[Math.floor(Math.random() * bank.length)]; }
+    while (item && item.en === Game.lastWord && bank.length > 1);
+    item = item || bank[0];
+    Game.lastWord = item.en;
+    Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
+  }
   Game.notes = [];
   Game.pulses = [];
 
@@ -158,10 +186,12 @@ function buildChart() {
   const L = LANES;
 
   // 1) 字母音符: 落在强拍(每拍头), 保证可读
-  const letters = [...Game.word.en];
+  const letterStart = Game.word.progress;
+  const letters = [...Game.word.en].slice(letterStart);
   let t = beat * 4;
   const letterSlots = [];
-  letters.forEach((ch, idx) => {
+  letters.forEach((ch, offset) => {
+    const idx = letterStart + offset;
     Game.notes.push({ lane: idx % L, hitAt: t, letter: ch, index: idx, judged: false, isLetter: true });
     letterSlots.push(t);
     t += beat;                       // 字母占整拍, 越快BPM越难
@@ -217,6 +247,7 @@ function startGame() {
   $id('word-bar').classList.remove('hidden');
   buildChart();
   Game.audioStart = Game.actx.currentTime + 1.2;
+  Game.backingStep = 0;
 }
 
 function nextChart() {
@@ -227,6 +258,7 @@ function nextChart() {
   Game.lives = Math.min(100, Game.lives + 12);
   buildChart();
   Game.audioStart = Game.actx.currentTime + 1.0;
+  Game.backingStep = 0;
   showFeedback(`谱面完成! +${bonus}`);
 }
 
@@ -257,7 +289,7 @@ function judgeHit(lane) {
   Game.lives = Math.min(100, Game.lives + (verdict === 'PERFECT' ? 2 : verdict === 'GREAT' ? 1 : 0));
   Game.bgPulse = Math.min(1, Game.bgPulse + .18);
   Game.pulses.push({ lane, t: Game.time, color: verdict === 'PERFECT' ? '#fde68a' : verdict === 'GREAT' ? '#86efac' : '#93c5fd' });
-  floatText(verdict, laneX(lane), HIT_Y - 46,
+  floatText(verdict, laneX(lane) + laneW() / 2, HIT_Y - 46,
     verdict === 'PERFECT' ? '#fde68a' : verdict === 'GREAT' ? '#86efac' : '#93c5fd');
   burst(laneX(lane) + laneW() / 2, HIT_Y, LANE_COLORS()[lane], verdict === 'PERFECT' ? 10 : 6);
   tapSound(verdict !== 'GOOD', lane);
@@ -288,7 +320,14 @@ function scanMisses() {
     Game.notes = Game.notes.filter((n) => !n.judged || n.hitAt > t - 2);
   }
   const remaining = Game.notes.some((n) => !n.judged);
-  if (!remaining && t > Game.songEndAt) nextChart();
+  if (!remaining && t > Game.songEndAt) {
+    if (Game.word.progress < Game.word.en.length) {
+      buildChart(true);
+      Game.audioStart = Game.actx.currentTime + .8;
+      Game.backingStep = 0;
+      showFeedback(`还差 ${Game.word.en.length - Game.word.progress} 个字母 · 再听一次`);
+    } else nextChart();
+  }
 }
 
 function gameOver() {
@@ -467,24 +506,6 @@ function render() {
     ctx.fillText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
   }
 
-  // 单词进度
-  const w = Game.word;
-  if (w && w.en) {
-    ctx.font = '900 26px ui-monospace, monospace';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const total = w.en.length;
-    for (let i = 0; i < total; i++) {
-      const cx = W / 2 + (i - (total - 1) / 2) * 34;
-      if (i < w.progress) { ctx.fillStyle = '#86efac'; ctx.fillText(w.en[i], cx, 70); }
-      else if (i === w.progress) {
-        ctx.fillStyle = '#fff';
-        ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 18;
-        ctx.fillText(w.en[i], cx, 70);
-        ctx.shadowBlur = 0;
-      } else { ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillText('_', cx, 70); }
-    }
-  }
-
   // 连击大字
   if (Game.combo >= 2) {
     const scale = 1 + Math.min(.25, Game.combo / 400);
@@ -605,6 +626,7 @@ function frame(nowMs) {
   lastTime = nowMs;
   if (Game.state === 'playing') {
     Game.time += dt;
+    scheduleBackingBeat();
     scanMisses();
     for (let i = Game.particles.length - 1; i >= 0; i--) {
       const pt = Game.particles[i];
@@ -621,7 +643,29 @@ function frame(nowMs) {
     Game.shakeX *= .85;
   }
   render();
-  if (window.FX && FX.available) FX.frame(dt, 0);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+/* ---------------- 自检 ---------------- */
+if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    try {
+      Game.difficulty = 'easy'; Game.level = 6;
+      for (const lanes of [4, 5, 7]) {
+        LANES = lanes; buildChart();
+        const letters = Game.notes.filter((n) => n.isLetter);
+        if (letters.length !== Game.word.en.length) throw new Error(lanes + 'K letter count mismatch');
+        if (Game.notes.some((n) => !Number.isFinite(n.hitAt) || n.lane < 0 || n.lane >= lanes)) throw new Error(lanes + 'K invalid note');
+      }
+      Game.word.progress = 2; buildChart(true);
+      if (Game.notes.filter((n) => n.isLetter).some((n) => n.index < 2)) throw new Error('retry repeated collected letters');
+      floatText('PERFECT', 10, 10, '#fff');
+      if (!Game.floaters.at(-1).color) throw new Error('floater color missing');
+      document.title = 'SELFTEST-OK';
+    } catch (e) {
+      document.title = 'SELFTEST-FAIL: ' + e.message;
+      console.error(e);
+    }
+  });
+}

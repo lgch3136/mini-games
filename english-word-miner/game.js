@@ -335,6 +335,7 @@ function render() {
   bg.addColorStop(1, '#120c06');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+  drawMineBackdrop();
   // 地表
   ctx.fillStyle = '#3d2c17';
   ctx.fillRect(0, 86, W, 14);
@@ -376,6 +377,26 @@ function render() {
     ctx.fillText(f.text, f.x, f.y);
   }
   ctx.globalAlpha = 1;
+}
+
+function drawMineBackdrop() {
+  // 深度线和矿脉让空旷区域更易读，也给抓钩距离提供参照。
+  ctx.lineWidth = 1;
+  for (let y = 150; y < H; y += 72) {
+    ctx.strokeStyle = 'rgba(232,197,110,.1)';
+    ctx.beginPath(); ctx.moveTo(18, y); ctx.lineTo(W - 18, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(232,197,110,.34)';
+    ctx.font = '700 10px ui-monospace, monospace'; ctx.textAlign = 'left';
+    ctx.fillText(String(y - 78) + 'm', 24, y - 6);
+  }
+  ctx.fillStyle = 'rgba(122,82,33,.24)';
+  for (let i = 0; i < 34; i++) {
+    const x = 24 + (i * 97) % (W - 48), y = 118 + (i * 137) % (H - 145);
+    ctx.beginPath(); ctx.arc(x, y, 2 + i % 4, 0, TAU); ctx.fill();
+  }
+  const lamp = ctx.createRadialGradient(W / 2, 92, 12, W / 2, 120, 250);
+  lamp.addColorStop(0, 'rgba(255,226,139,.13)'); lamp.addColorStop(1, 'rgba(255,226,139,0)');
+  ctx.fillStyle = lamp; ctx.fillRect(90, 88, W - 180, H - 88);
 }
 
 function drawMiner() {
@@ -499,17 +520,12 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
 
-/* WebGL增效层: 金色矿井尘埃 */
-const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
-if (FX.available) FX.setStarfield({ count: 130, speed: 9, tint: [1, .85, .45] });
-
 let lastTime = performance.now();
 function frame(now) {
   const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
   lastTime = now;
   if (Game.state === 'playing') update(dt);
   render();
-  if (FX.available) FX.frame(dt, 0);
   requestAnimationFrame(frame);
 }
 

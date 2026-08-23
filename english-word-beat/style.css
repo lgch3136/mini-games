@@ -56,7 +56,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 #wb-zh { font-size: 10.5px; color: #b394cc; margin-top: 1px; }
 
 #feedback {
-  position: absolute; left: 50%; transform: translateX(-50%); bottom: 84px;
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 125px;
   background: rgba(14,8,26,.88); border: 1px solid rgba(216,180,254,.45);
   border-radius: 10px; padding: 4px 15px; font-size: 13px; color: #e9d5ff;
   opacity: 0; transition: opacity .18s; white-space: nowrap;
@@ -121,16 +121,32 @@ button.difficulty.selected { background: linear-gradient(135deg,#a855f7,#6d28d9)
 .opt-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 11px; }
 .opt-label { font-size: 12px; color: #b394cc; font-weight: 700; width: 34px; text-align: right; }
 .seg { display: flex; gap: 5px; }
-.seg-btn {
+.seg-btn, .spd-btn {
   cursor: pointer; font-family: inherit;
   background: rgba(24,12,42,.6); border: 1.5px solid rgba(216,180,254,.4);
   color: #cdbce4; border-radius: 8px; padding: 5px 13px;
   font-size: 12.5px; font-weight: 700; transition: all .13s;
 }
-.seg-btn:hover { border-color: #c084fc; color: #fff; }
-.seg-btn.selected {
+.seg-btn:hover, .spd-btn:hover { border-color: #c084fc; color: #fff; }
+.seg-btn.selected, .spd-btn.selected {
   background: linear-gradient(135deg,#a855f7,#7c3aed);
   color: #fff; border-color: #e9d5ff;
   box-shadow: 0 2px 12px rgba(168,85,247,.45);
 }
-@media (max-width: 480px) { .seg-btn { padding: 4px 9px; font-size: 11px; } .opt-label { width: auto; } }
+.seg-btn:focus-visible, .spd-btn:focus-visible, button:focus-visible { outline: 3px solid #f5d0fe; outline-offset: 2px; }
+@media (max-width: 600px) {
+  .overlay { align-items: flex-start; overflow-y: auto; overscroll-behavior: contain; }
+  .panel { padding: 7px 12px; }
+  .panel h1 { font-size: 24px; line-height: 1.05; }
+  .panel h1 small { margin-top: 3px; }
+  .panel p.sub { margin-top: 6px; font-size: 11.5px; line-height: 1.42; }
+  .keys { margin-top: 5px; gap: 4px; }
+  .keys span { padding: 2px 7px; font-size: 10.5px; }
+  .judge-guide { margin-top: 5px; }
+  .opt-row { gap: 6px; margin-top: 5px; }
+  .diff-row { margin-top: 6px; }
+  button.difficulty { padding: 4px 12px; font-size: 11.5px; }
+  .btn-main { margin-top: 5px; padding: 9px 36px; font-size: 15px; }
+  .seg-btn, .spd-btn { padding: 4px 8px; font-size: 11px; }
+  .opt-label { width: auto; }
+}

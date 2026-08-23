@@ -121,3 +121,16 @@ button.difficulty.selected { background: linear-gradient(135deg,#f59e0b,#d97706)
   background: rgba(30,21,6,.78); border: 1px solid rgba(250,204,120,.4);
   color: #f3dfae; border-radius: 8px; padding: 3px 12px; font-size: 12px; font-family: inherit;
 }
+button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
+@media (max-width: 600px) {
+  .overlay { align-items: flex-start; overflow-y: auto; overscroll-behavior: contain; }
+  .panel { padding: 7px 12px; }
+  .panel h1 { font-size: 24px; line-height: 1.05; }
+  .panel h1 small { margin-top: 3px; }
+  .panel p.sub { margin-top: 6px; font-size: 11.5px; line-height: 1.42; }
+  .keys { margin-top: 5px; gap: 4px; }
+  .keys span { padding: 2px 7px; font-size: 10.5px; }
+  .diff-row { margin-top: 8px; }
+  button.difficulty { padding: 4px 15px; font-size: 12px; }
+  .btn-main { margin-top: 6px; padding: 9px 36px; font-size: 15px; }
+}

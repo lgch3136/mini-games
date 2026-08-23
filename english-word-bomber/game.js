@@ -890,8 +890,8 @@ function drawEnemies() {
 function drawPlayer() {
   const p = Game.player;
   if (!p) return;
-  if (p.inv > 0 && Math.floor(Game.time * 12) % 2 === 0 && Game.state === 'playing') return;
   ctx.save();
+  if (p.inv > 0 && Math.floor(Game.time * 12) % 2 === 0 && Game.state === 'playing') ctx.globalAlpha = .38;
   ctx.translate(p.px, p.py - 4);
   // 白色轮廓光
   ctx.shadowColor = 'rgba(255,220,140,.8)';
@@ -1030,17 +1030,12 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
 
-/* WebGL增效层: 暖色矿尘氛围 */
-const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
-if (FX.available) FX.setStarfield({ count: 120, speed: 8, tint: [1, .82, .5] });
-
 let lastTime = performance.now();
 function frame(now) {
   const dt = Math.min(.04, (now - lastTime) / 1000 || .016);
   lastTime = now;
   if (Game.state === 'playing' || Game.state === 'dying') update(dt);
   render();
-  if (FX.available) FX.frame(dt, 0);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

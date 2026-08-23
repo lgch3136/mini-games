@@ -461,6 +461,10 @@ function render() {
   // 顶部HUD条背景
   ctx.fillStyle = '#0c1524';
   ctx.fillRect(0, 0, W, 44);
+  // 低对比竞技场网格填补空区，并提供弹道参照。
+  ctx.strokeStyle = 'rgba(125,211,252,.055)'; ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 44); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 176; y < H; y += 56) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
   if (Game.state !== 'menu') {
     const sx = Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;

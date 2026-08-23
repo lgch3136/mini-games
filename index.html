@@ -5,25 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#05070f">
 <title>🎮 英语小游戏街机厅 · English Arcade</title>
-<link rel="stylesheet" href="style.css?v=20260822a">
+<link rel="stylesheet" href="style.css?v=20260824a">
 </head>
 <body>
 <div class="page">
   <header>
     <h1>🎮 英语小游戏街机厅</h1>
-    <p class="sub">ENGLISH ARCADE · 8 款 FC 风格游戏 · 边玩边学</p>
+    <p class="sub">ENGLISH ARCADE · 9 款经典玩法 · 边玩边学</p>
   </header>
 
   <nav class="filters" aria-label="游戏分类筛选">
-    <button class="filter selected" data-filter="all">全部 <b>8</b></button>
-    <button class="filter" data-filter="action">动作射击 <b>3</b></button>
-    <button class="filter" data-filter="puzzle">益智策略 <b>2</b></button>
-    <button class="filter" data-filter="casual">休闲反应 <b>3</b></button>
+    <button class="filter selected" data-filter="all" aria-pressed="true">全部 <b>9</b></button>
+    <button class="filter" data-filter="action" aria-pressed="false">动作射击 <b>3</b></button>
+    <button class="filter" data-filter="puzzle" aria-pressed="false">益智策略 <b>2</b></button>
+    <button class="filter" data-filter="casual" aria-pressed="false">休闲反应 <b>4</b></button>
   </nav>
 
   <main class="grid">
 
-    <a class="card" href="english-word-ranger/index.html?v=20260821g" data-cat="action">
+    <a class="card" href="english-word-ranger/index.html?v=20260824a" data-cat="action">
       <div class="art art-ranger">
         <img src="english-word-ranger/assets/logo.svg" alt="单词突击队" loading="eager">
       </div>
@@ -36,7 +36,7 @@
       </div>
     </a>
 
-    <a class="card" href="english-word-bomber/index.html" data-cat="puzzle">
+    <a class="card" href="english-word-bomber/index.html?v=20260824a" data-cat="puzzle">
       <div class="art art-bomber"><span class="emoji">💣</span></div>
       <div class="info">
         <span class="badge new">NEW</span>
@@ -47,7 +47,7 @@
       </div>
     </a>
 
-    <a class="card" href="english-word-miner/index.html" data-cat="casual">
+    <a class="card" href="english-word-miner/index.html?v=20260824a" data-cat="casual">
       <div class="art art-miner"><span class="emoji">⛏️</span></div>
       <div class="info">
         <span class="badge new">NEW</span>
@@ -58,7 +58,7 @@
       </div>
     </a>
 
-    <a class="card" href="english-word-breaker/index.html" data-cat="casual">
+    <a class="card" href="english-word-breaker/index.html?v=20260824a" data-cat="casual">
       <div class="art art-breaker"><span class="emoji">🧱</span></div>
       <div class="info">
         <span class="badge new">NEW</span>
@@ -120,14 +120,14 @@
       </div>
     </a>
 
-    <a class="card" href="english-word-beat/index.html" data-cat="casual">
+    <a class="card" href="english-word-beat/index.html?v=20260824a" data-cat="casual">
       <div class="art art-beat"><span class="emoji">🎵</span></div>
       <div class="info">
         <span class="badge new">NEW</span>
         <h2>英语节奏大师</h2>
         <p class="en">WORD BEAT</p>
-        <p class="desc">劲乐团式 4 轨下落音击。PERFECT 判定拼字母，连击越高分越高。</p>
-        <div class="meta"><span>⌨️ D F J K</span><span>📱 点轨道</span></div>
+        <p class="desc">同步节拍的 4/5/7 轨下落音击。PERFECT 判定拼字母，连击越高分越高。</p>
+        <div class="meta"><span>⌨️ 4K / 5K / 7K</span><span>📱 点轨道</span></div>
       </div>
     </a>
 
@@ -152,8 +152,9 @@
 <script>
   // 分类筛选
   document.querySelectorAll('.filter').forEach((btn) => btn.addEventListener('click', () => {
-    document.querySelectorAll('.filter').forEach((b) => b.classList.remove('selected'));
+    document.querySelectorAll('.filter').forEach((b) => { b.classList.remove('selected'); b.setAttribute('aria-pressed', 'false'); });
     btn.classList.add('selected');
+    btn.setAttribute('aria-pressed', 'true');
     const f = btn.dataset.filter;
     document.querySelectorAll('.card').forEach((card) => {
       const show = f === 'all' || card.dataset.cat === f;

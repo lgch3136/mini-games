@@ -2194,6 +2194,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       startGame('mission');
       if (Game.mode !== 'mission' || FIXED_STEP !== 1 / 60) throw new Error('mission or fixed-step setup failed');
       if (Game.generatedTo < VIEW_W * 3) throw new Error('world did not generate ahead');
+      ensureWorld(CHUNK_W * 4); // 自检与设备宽度无关，固定覆盖前四个编排节拍。
       if (Game.chunks.slice(0, 4).map((chunk) => chunk.tag).join(',') !== 'TEACH,TEST,RECOVERY,TEACH') throw new Error('curated mission order failed');
       const startX = Game.player.x;
       input.right = true;
