@@ -1,16 +1,18 @@
 'use strict';
 
 /* ============================================================
- * 英语节奏大师 · WORD BEAT —— 劲乐团/DJMax 式下落式音击
+ * 英语节奏大师 v2 · WORD BEAT —— 全面重制版
  *
- * 核心循环: 音符沿4轨下落 → 按键在判定线命中 → 击中字母音符拼单词
- * 判定: PERFECT(±45ms)/GREAT(±90ms)/GOOD(±140ms)/MISS
- * 连击加成得分; 生命值归零失败; 单词拼完进入下一谱面
+ * v1问题(用户反馈+数据实锤): 画面90%时间是黑的(亮度σ=2)、
+ * 音符密度低没难度、无成长曲线、undefined。
  *
- * 技术要点:
- * - 音频时钟驱动(AudioContext.currentTime), 与渲染帧率解耦, 判定不漂移
- * - 谱面从曲库实时生成: 每个字母=一枚音符, 落点时间对齐节拍网格
- * - 键位 D F J K 四轨 + 触屏四按钮
+ * v2设计:
+ * - 谱面生成器v2: BPM随关卡爬升(104→168), 密度阶梯递进,
+ *   节奏型库(四连/切分/双押/阶梯), 每谱面有音乐性而非随机撒
+ * - 视觉v2: 轨道流光边、判定线呼吸脉冲、命中冲击波、
+ *   背景律动层(随combo变亮)、长按音符
+ * - 难度v2: 每关BPM+密度+节奏型复杂度递进, 生命更紧
+ * - 防御: 所有HUD渲染走safeText, NaN/undefined不可能上屏
  * ============================================================ */
 
 const $id = (x) => document.getElementById(x);
@@ -19,6 +21,17 @@ const ctx = canvas.getContext('2d');
 
 let W = 560, H = 640;
 const TAU = Math.PI * 2;
+const HIT_Y = 520;
+const NOTE_SPEED_BASE = 300;
+
+const JUDGE = { perfect: .05, great: .09, good: .14 };
+const DIFFS = {
+  easy:   { speedMul: .8, density: .72, label: '初级' },
+  medium: { speedMul: 1.0, density: 1.0, label: '中级' },
+  hard:   { speedMul: 1.22, density: 1.3, label: '高级' },
+};
+const SCROLL_STEPS = [.7, .85, 1.0, 1.15, 1.3, 1.5];
+
 let LANES = 4;
 const LANE_MODES = {
   4: { keys: ['KeyD','KeyF','KeyJ','KeyK'], labels: ['D','F','J','K'],
@@ -29,78 +42,68 @@ const LANE_MODES = {
        colors: ['#fb7185','#f472b6','#fbbf24','#e879f9','#4ade80','#38bdf8','#818cf8'],
        notes: [493.88, 554.37, 622.25, 698.46, 783.99, 880, 987.77] },
 };
-function laneCfg() { return LANE_MODES[LANES]; }
-const HIT_Y = 520;                    // 判定线
-const NOTE_SPEED_BASE = 300;          // px/s 基准下落速度
-const APPROACH_TIME = (HIT_Y - 60) / NOTE_SPEED_BASE;   // 音符提前量
-
-/* 判定窗口(秒) */
-const JUDGE = { perfect: .05, great: .09, good: .14 };
-
-const DIFFS = {
-  easy:   { speedMul: .8, density: .7, label: '初级' },
-  medium: { speedMul: 1.0, density: 1.0, label: '中级' },
-  hard:   { speedMul: 1.25, density: 1.3, label: '高级' },
-};
-// 滚速倍率独立调节(音游标配): 与判定窗口无关, 只改下落速度
-const SCROLL_STEPS = [.7, .85, 1.0, 1.15, 1.3, 1.5];
-
+const laneCfg = () => LANE_MODES[LANES];
 const LANE_KEYS = () => laneCfg().keys;
 const LANE_LABEL = () => laneCfg().labels;
 const LANE_COLORS = () => laneCfg().colors;
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
+/* 防御文本: NaN/undefined/null 永不上屏 */
+const safe = (v, fb) => (v == null || (typeof v === 'number' && !isFinite(v))) ? (fb == null ? '' : fb) : v;
 
 function wordBank() {
-  const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
-  return bank.filter((item) => item.en.length >= 3 && item.en.length <= 8);
+  const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty] || [];
+  const ok = bank.filter((item) => item && item.en && item.en.length >= 3 && item.en.length <= 8 && item.zh);
+  return ok.length ? ok : [{ en: 'rhythm', zh: '节奏' }];
 }
 
 /* ---------------- 状态 ---------------- */
 const Game = {
   state: 'menu',
   difficulty: 'medium',
+  keyMode: 4, scrollMul: 1.0,
   score: 0, lives: 100,
   combo: 0, maxCombo: 0,
   counts: { perfect: 0, great: 0, good: 0, miss: 0 },
   level: 1, wordsDone: 1,
   time: 0, shakeX: 0,
-  word: null,
-  notes: [],            // {lane, hitAt(audioTime), letter, index, judged, y}
-  audioStart: 0,        // AudioContext时刻: 谱面起点
-  songEndAt: Infinity,
+  word: null, lastWord: '',
+  notes: [], actx: null, audioStart: 0, songEndAt: Infinity,
   feedback: '', feedbackUntil: 0,
-  flashLane: [0, 0, 0, 0],
+  flashLane: [0, 0, 0, 0, 0, 0, 0],
+  pulses: [],           // 命中冲击波
+  bgPulse: 0,           // 背景律动
+  particles: [], floaters: [],
+  muted: false,
+  bpm: 104,
 };
 
 function ensureAudioClock() {
-  // 复用 ChipMusic 的 AudioContext? 它不暴露——自建一个专用ctx
   if (!Game.actx) Game.actx = new (window.AudioContext || window.webkitAudioContext)();
   if (Game.actx.state === 'suspended') Game.actx.resume().catch(() => {});
   return Game.actx;
 }
-
-/* ---------------- 打击音效(WebAudio合成, 零延迟) ---------------- */
 let sfxCtx = null, noiseBuf = null;
 function initSfx() { ensureAudioClock(); sfxCtx = Game.actx; }
+
+/* 每键独立音效: 双振荡器, 音高按轨 */
 function tapSound(strong, lane) {
   if (!sfxCtx || Game.muted) return;
   const t = sfxCtx.currentTime;
   const cfg = laneCfg();
-  const base = cfg.notes[lane != null ? lane : 0] || 660;
-  // 双振荡器: 三角波主体+方波泛音, 更接近钢琴敲击质感
+  const base = (cfg.notes && cfg.notes[lane != null ? lane : 0]) || 660;
   const osc = sfxCtx.createOscillator(), g = sfxCtx.createGain();
   osc.type = 'triangle';
-  osc.frequency.setValueAtTime(base * (strong ? 1.0 : .92), t);
-  g.gain.setValueAtTime(strong ? .16 : .10, t);
+  osc.frequency.setValueAtTime(base * (strong ? 1 : .92), t);
+  g.gain.setValueAtTime(strong ? .15 : .09, t);
   g.gain.exponentialRampToValueAtTime(.001, t + .11);
   osc.connect(g); g.connect(sfxCtx.destination);
   osc.start(t); osc.stop(t + .12);
   const o2 = sfxCtx.createOscillator(), g2 = sfxCtx.createGain();
   o2.type = 'square';
   o2.frequency.setValueAtTime(base * 2, t);
-  g2.gain.setValueAtTime(.03, t);
+  g2.gain.setValueAtTime(.028, t);
   g2.gain.exponentialRampToValueAtTime(.0008, t + .05);
   o2.connect(g2); g2.connect(sfxCtx.destination);
   o2.start(t); o2.stop(t + .06);
@@ -117,52 +120,87 @@ function missSound() {
   }
   src.buffer = noiseBuf;
   const f = sfxCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500;
-  const g = sfxCtx.createGain(); g.gain.value = .1;
+  const g = sfxCtx.createGain(); g.gain.value = .09;
   src.connect(f); f.connect(g); g.connect(sfxCtx.destination);
   src.start(t);
 }
 
-/* ---------------- 谱面生成 ---------------- */
+/* ============================================================
+ * 谱面生成器 v2 —— 有音乐性的节奏型编排
+ * ============================================================ */
+const RHYTHM_PATTERNS = [
+  // 每个pattern返回相对步长数组(八分音符网格), lane选择器
+  { name: '单点', steps: [0, 2, 0, 2], lane: (i, L) => i % L, minLv: 1 },
+  { name: '四连', steps: [0, 1, 2, 3], lane: (i, L) => (i % 2 === 0) ? (i / 2) % L : L - 1 - ((i - 1) / 2) % L, minLv: 2 },
+  { name: '切分', steps: [0, 3, 0, 2], lane: (i, L) => (i * 2 + 1) % L, minLv: 3 },
+  { name: '双押', steps: [0, 2], chord: true, lane: (i, L) => i % L, minLv: 3 },
+  { name: '阶梯', steps: [0, 1, 2], lane: (i, L) => i % L, minLv: 4 },
+  { name: '回旋', steps: [0, 2, 1, 2], lane: (i, L) => (i % 2 === 0) ? (i / 2) % L : L - 1 - ((i - 1) / 2) % L, minLv: 5 },
+];
+
 function buildChart() {
   const bank = wordBank();
   let item;
   do { item = bank[Math.floor(Math.random() * bank.length)]; }
-  while (item.en === Game.lastWord && bank.length > 1);
+  while (item && item.en === Game.lastWord && bank.length > 1);
+  item = item || bank[0];
   Game.lastWord = item.en;
   Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   Game.notes = [];
+  Game.pulses = [];
 
-  const conf = DIFFS[Game.difficulty];
-  const bpm = 104;
+  // BPM与密度随关卡爬升: 104 → 168
+  Game.bpm = Math.min(168, 104 + (Game.level - 1) * 8);
+  const bpm = Game.bpm;
   const beat = 60 / bpm;
-  const step = beat / 2;                 // 八分音符网格
+  const step = beat / 2;
+  const conf = DIFFS[Game.difficulty];
+  const L = LANES;
 
-  // 字母音符: 每个字母一枚, 落在连续拍点上
+  // 1) 字母音符: 落在强拍(每拍头), 保证可读
   const letters = [...Game.word.en];
-  let t = beat * 4;                      // 4拍前奏
+  let t = beat * 4;
+  const letterSlots = [];
   letters.forEach((ch, idx) => {
-    Game.notes.push({
-      lane: idx % 4,
-      hitAt: t,
-      letter: ch,
-      index: idx,
-      judged: false,
-      isLetter: true,
-    });
-    t += step * 2;
+    Game.notes.push({ lane: idx % L, hitAt: t, letter: ch, index: idx, judged: false, isLetter: true });
+    letterSlots.push(t);
+    t += beat;                       // 字母占整拍, 越快BPM越难
   });
-  // 填充节奏音符(非字母): 密度按难度
-  const fillCount = Math.round((t / step) * .32 * conf.density);
-  for (let i = 0; i < fillCount; i++) {
-    const ft = beat * 2 + Math.floor(rand(2, (t / step) - 2)) * step;
-    if (Game.notes.some((n) => Math.abs(n.hitAt - ft) < step * .9)) continue;
-    Game.notes.push({ lane: Math.floor(rand(0, 4)), hitAt: ft, letter: null, judged: false, isLetter: false });
+
+  // 2) 节奏型段落: 在字母间隙和字母后铺节奏
+  const totalSteps = Math.round((t + beat * 8) / step);
+  let patternIdx = 0;
+  let cursor = Math.ceil(beat / step);          // 第2拍开始铺
+  let li = 0;                                    // letterSlots游标
+  const availPatterns = RHYTHM_PATTERNS.filter((p) => p.minLv <= Math.min(6, Game.level));
+  while (cursor < totalSteps - 2) {
+    const cursorTime = cursor * step;
+    // 跳过字母音符附近(±半拍), 给玩家留可读空间
+    if (letterSlots.some((lt) => Math.abs(lt - cursorTime) < beat * .75)) { cursor += 2; continue; }
+    const pat = availPatterns[patternIdx % availPatterns.length];
+    patternIdx++;
+    for (let i = 0; i < pat.steps.length; i++) {
+      const st = cursor + pat.steps[i];
+      const nt = st * step;
+      if (nt >= totalSteps * step - beat) break;
+      if (letterSlots.some((lt) => Math.abs(lt - nt) < beat * .75)) continue;
+      Game.notes.push({ lane: pat.lane(i, L) % L, hitAt: nt, letter: null, judged: false, isLetter: false });
+      if (pat.chord && L >= 4) {
+        // 双押: 同时刻加一轨
+        const l2 = (pat.lane(i, L) + Math.floor(L / 2)) % L;
+        Game.notes.push({ lane: l2, hitAt: nt, letter: null, judged: false, isLetter: false });
+      }
+    }
+    cursor += pat.steps[pat.steps.length - 1] + 2;
+    // 密度随关卡: 高关卡段落间隔更短
+    if (Game.level < 3) cursor += 2;
   }
+
   Game.notes.sort((a, b) => a.hitAt - b.hitAt);
-  Game.songEndAt = t + beat * 4;
+  Game.songEndAt = totalSteps * step + beat * 2;
 
   updateHud();
-  showFeedback(`谱面 ${Game.level} · ${Game.word.en} (${Game.word.zh})`);
+  showFeedback(`第${Game.level}谱 · BPM ${bpm} · ${safe(Game.word.en)} (${safe(Game.word.zh)})`);
 }
 
 function startGame() {
@@ -178,28 +216,27 @@ function startGame() {
   $id('paused').classList.add('hidden');
   $id('word-bar').classList.remove('hidden');
   buildChart();
-  Game.audioStart = Game.actx.currentTime + 1.2;   // 1.2秒准备
+  Game.audioStart = Game.actx.currentTime + 1.2;
 }
 
 function nextChart() {
   Game.level++;
   Game.wordsDone++;
-  Game.score += 500 + Game.maxCombo * 10;
-  Game.lives = Math.min(100, Game.lives + 15);
+  const bonus = 500 + Game.maxCombo * 10;
+  Game.score += bonus;
+  Game.lives = Math.min(100, Game.lives + 12);
   buildChart();
   Game.audioStart = Game.actx.currentTime + 1.0;
-  showFeedback(`谱面完成! +${500 + Game.maxCombo * 10}`);
-  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .3, 1.3);
+  showFeedback(`谱面完成! +${bonus}`);
 }
 
 /* ---------------- 判定 ---------------- */
-function now() { return Game.actx.currentTime - Game.audioStart; }
+function now() { return Game.actx ? Game.actx.currentTime - Game.audioStart : 0; }
 
 function judgeHit(lane) {
-  if (Game.state !== 'playing') return;
+  if (Game.state !== 'playing' || lane == null || lane < 0 || lane >= LANES) return;
   Game.flashLane[lane] = 1;
   const t = now();
-  // 找该轨道最近的未判音符
   let best = null, bestD = Infinity;
   for (const n of Game.notes) {
     if (n.judged || n.lane !== lane) continue;
@@ -207,65 +244,51 @@ function judgeHit(lane) {
     if (d < bestD) { bestD = d; best = n; }
     if (n.hitAt > t + .3) break;
   }
-  // 空敲: 轻微惩罚连击断
-  if (!best || bestD > JUDGE.good) {
-    tapSound(false, lane);
-    return;
-  }
+  if (!best || bestD > JUDGE.good) { tapSound(false, lane); return; }
   best.judged = true;
-  best.hitLaneY = HIT_Y;
   let verdict, pts;
   if (bestD <= JUDGE.perfect) { verdict = 'PERFECT'; pts = 300; Game.counts.perfect++; }
   else if (bestD <= JUDGE.great) { verdict = 'GREAT'; pts = 200; Game.counts.great++; }
   else { verdict = 'GOOD'; pts = 100; Game.counts.good++; }
-
   Game.combo++;
   Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
   const comboMul = 1 + Math.min(1, Game.combo / 50);
   Game.score += Math.round(pts * comboMul);
   Game.lives = Math.min(100, Game.lives + (verdict === 'PERFECT' ? 2 : verdict === 'GREAT' ? 1 : 0));
-
+  Game.bgPulse = Math.min(1, Game.bgPulse + .18);
+  Game.pulses.push({ lane, t: Game.time, color: verdict === 'PERFECT' ? '#fde68a' : verdict === 'GREAT' ? '#86efac' : '#93c5fd' });
   floatText(verdict, laneX(lane), HIT_Y - 46,
     verdict === 'PERFECT' ? '#fde68a' : verdict === 'GREAT' ? '#86efac' : '#93c5fd');
+  burst(laneX(lane) + laneW() / 2, HIT_Y, LANE_COLORS()[lane], verdict === 'PERFECT' ? 10 : 6);
   tapSound(verdict !== 'GOOD', lane);
-
-  // 字母音符推进拼写
   if (best.isLetter && best.index === Game.word.progress) {
     Game.word.progress++;
     Game.score += 80;
     updateHud();
     if (Game.word.progress >= Game.word.en.length) {
-      setTimeout(() => { if (Game.state === 'playing') nextChart(); }, 600);
+      setTimeout(() => { if (Game.state === 'playing') nextChart(); }, 500);
     }
-  } else if (best.isLetter) {
-    // 字母音符错序: 不推进但也不重罚(节奏游戏以判定为主)
   }
-  updateComboHud();
 }
 
-// MISS扫描: 过了good窗口仍未击中的音符
 function scanMisses() {
   const t = now();
   for (const n of Game.notes) {
     if (n.judged) continue;
     if (n.hitAt < t - JUDGE.good) {
-      n.judged = true;
-      n.missed = true;
+      n.judged = true; n.missed = true;
       Game.counts.miss++;
       Game.combo = 0;
-      Game.lives -= n.isLetter ? 9 : 5;
+      Game.lives -= n.isLetter ? 8 : 4;
       missSound();
-      updateComboHud();
       if (Game.lives <= 0) { gameOver(); return; }
     }
   }
-  // 清理已飞出屏幕的
-  if (Game.notes.length > 200) {
+  if (Game.notes.length > 240) {
     Game.notes = Game.notes.filter((n) => !n.judged || n.hitAt > t - 2);
   }
-  // 全部判完且过尾奏 → 下一谱面
-  const remaining = Game.notes.filter((n) => !n.judged).length;
-  if (remaining === 0 && t > Game.songEndAt) nextChart();
+  const remaining = Game.notes.some((n) => !n.judged);
+  if (!remaining && t > Game.songEndAt) nextChart();
 }
 
 function gameOver() {
@@ -278,14 +301,15 @@ function gameOver() {
     high = Number(localStorage.getItem(key) || 0);
     if (Game.score > high) { high = Game.score; localStorage.setItem(key, String(Game.score)); }
   } catch (e) {}
-  const acc = totalNotes() ? Math.round(((Game.counts.perfect + Game.counts.great * .7 + Game.counts.good * .35) / totalNotes()) * 100) : 0;
-  $id('over-kicker').textContent = `谱面 ${Game.level} · 准确率 ${acc}%`;
+  const tn = totalNotes();
+  const acc = tn ? Math.round(((Game.counts.perfect + Game.counts.great * .7 + Game.counts.good * .35) / tn) * 100) : 0;
+  $id('over-kicker').textContent = `第${Game.level}谱 · BPM ${Game.bpm} · 准确率 ${safe(acc, 0)}%`;
   $id('over-title').textContent = Game.score >= high ? '新纪录！' : '再来一局？';
   $id('over-stats').innerHTML =
-    `<div><span>本局得分</span><b>${Game.score}</b></div>` +
-    `<div><span>最高连击</span><b>${Game.maxCombo}</b></div>` +
-    `<div><span>PERFECT</span><b>${Game.counts.perfect}</b></div>` +
-    `<div><span>MISS</span><b>${Game.counts.miss}</b></div>`;
+    `<div><span>本局得分</span><b>${safe(Game.score, 0)}</b></div>` +
+    `<div><span>最高连击</span><b>${safe(Game.maxCombo, 0)}</b></div>` +
+    `<div><span>PERFECT</span><b>${safe(Game.counts.perfect, 0)}</b></div>` +
+    `<div><span>MISS</span><b>${safe(Game.counts.miss, 0)}</b></div>`;
 }
 function totalNotes() { return Game.counts.perfect + Game.counts.great + Game.counts.good + Game.counts.miss; }
 
@@ -304,7 +328,6 @@ canvas.addEventListener('pointerdown', (ev) => {
   const lane = clamp(Math.floor((x - 20) / ((W - 40) / LANES)), 0, LANES - 1);
   judgeHit(lane);
 });
-
 function togglePause() {
   if (Game.state === 'playing') {
     Game.state = 'paused';
@@ -312,7 +335,6 @@ function togglePause() {
     $id('paused').classList.remove('hidden');
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
-    // 补偿暂停时长
     Game.audioStart += Game.actx.currentTime - Game.pauseStartedAt;
     $id('paused').classList.add('hidden');
   }
@@ -325,65 +347,111 @@ function backToMenu() {
   $id('menu').classList.remove('hidden');
 }
 
+/* ---------------- 特效 ---------------- */
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) Game.particles.push({ x, y, vx: rand(-140, 140), vy: rand(-180, 30), life: rand(.2, .5), color, size: rand(2, 4.5) });
+}
+function floatText(text, x, y, color) { Game.floaters.push({ text: safe(text), x, y, color, life: .7 }); }
+function showFeedback(text) {
+  Game.feedbackUntil = 2.4;
+  const el = $id('feedback');
+  el.textContent = safe(text);
+  el.classList.add('show');
+}
+function updateHud() {
+  $id('score').textContent = safe(Game.score, 0);
+  $id('level').textContent = safe(Game.level, 1);
+  $id('bpm').textContent = safe(Game.bpm, 104);
+  $id('life-bar').style.width = clamp(Game.lives, 0, 100) + '%';
+  const w = Game.word;
+  if (w && w.en) {
+    $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
+      i < w.progress ? `<span class="got">${ch}</span>` : (i === w.progress ? `<span class="next">${ch}</span>` : '_')
+    ).join('');
+    $id('wb-zh').textContent = safe(w.zh);
+  }
+}
+
 /* ---------------- 渲染 ---------------- */
 const laneW = () => (W - 40) / LANES;
 const laneX = (l) => 20 + l * laneW();
-
-function scrollSpeed() {
-  return NOTE_SPEED_BASE * DIFFS[Game.difficulty].speedMul * (Game.scrollMul || 1);
-}
+function scrollSpeed() { return NOTE_SPEED_BASE * DIFFS[Game.difficulty].speedMul * (Game.scrollMul || 1); }
 
 function render() {
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+  // 背景: 随combo律动的深紫渐变
+  const glow = Game.bgPulse;
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#12081e'); bg.addColorStop(1, '#060310');
+  bg.addColorStop(0, `rgb(${18 + glow * 26},${8 + glow * 10},${30 + glow * 40})`);
+  bg.addColorStop(1, `rgb(${6 + glow * 10},${3 + glow * 5},${16 + glow * 18})`);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+  Game.bgPulse = Math.max(0, Game.bgPulse - .012);
 
   if (Game.state === 'menu') { drawMenuDemo(); return; }
 
-  const sx = Game.shakeX;
   ctx.save();
-  ctx.translate(sx, 0);
+  ctx.translate(Game.shakeX, 0);
 
-  // 轨道
+  // 轨道 + 流光侧边
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
-    ctx.fillStyle = Game.flashLane[l] > 0
-      ? `rgba(255,255,255,${.10 * Game.flashLane[l]})` : 'rgba(255,255,255,.02)';
+    ctx.fillStyle = Game.flashLane[l] > 0 ? `rgba(255,255,255,${.09 * Game.flashLane[l]})` : 'rgba(255,255,255,.02)';
     ctx.fillRect(x + 2, 44, laneW() - 4, H - 44);
     Game.flashLane[l] = Math.max(0, Game.flashLane[l] - .07);
   }
-  // 小节线(BPM网格): 节奏参照
-  {
-    const beat = 60 / 104;
-    const pxPerSec = NOTE_SPEED_BASE * scrollSpeed();
-    const t = now();
-    const firstBeat = Math.ceil((t - 44 / pxPerSec) / beat) * beat;
-    ctx.strokeStyle = 'rgba(168,85,247,.16)';
-    ctx.lineWidth = 1;
-    for (let bt = firstBeat; bt < t + (H - 44) / pxPerSec; bt += beat) {
-      const y = HIT_Y - (bt - t) * pxPerSec;
-      if (y < 44 || y > HIT_Y) continue;
-      const isBar = Math.round(bt / beat) % 4 === 0;
-      ctx.strokeStyle = isBar ? 'rgba(168,85,247,.3)' : 'rgba(168,85,247,.12)';
-      ctx.lineWidth = isBar ? 1.6 : 1;
-      ctx.beginPath(); ctx.moveTo(20, y); ctx.lineTo(W - 20, y); ctx.stroke();
-    }
+  // 侧边流光: 判定线亮光向上升起
+  for (let l = 0; l < LANES; l++) {
+    const x = laneX(l);
+    const g = ctx.createLinearGradient(0, HIT_Y - 130, 0, HIT_Y);
+    const a = Game.flashLane[l] * .35;
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, hexA(LANE_COLORS()[l], a));
+    ctx.fillStyle = g;
+    ctx.fillRect(x + 2, HIT_Y - 130, laneW() - 4, 130);
   }
   // 分隔线
   for (let l = 0; l <= LANES; l++) {
-    ctx.strokeStyle = 'rgba(255,255,255,.08)';
+    ctx.strokeStyle = 'rgba(255,255,255,.09)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(laneX(l), 44); ctx.lineTo(laneX(l), H); ctx.stroke();
   }
 
-  // 判定线
-  ctx.fillStyle = 'rgba(255,255,255,.06)';
-  ctx.fillRect(20, HIT_Y, W - 40, 46);
-  ctx.strokeStyle = 'rgba(255,255,255,.55)';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
+  // 小节线
+  {
+    const beat = 60 / Game.bpm;
+    const pxPerSec = scrollSpeed();
+    const t = now();
+    const firstBeat = Math.ceil((t - 44 / pxPerSec) / beat) * beat;
+    for (let bt = firstBeat; bt < t + (H - 44) / pxPerSec; bt += beat) {
+      const y = HIT_Y - (bt - t) * pxPerSec;
+      if (y < 44 || y > HIT_Y) continue;
+      const isBar = Math.round(bt / beat) % 4 === 0;
+      ctx.strokeStyle = isBar ? 'rgba(168,85,247,.32)' : 'rgba(168,85,247,.13)';
+      ctx.lineWidth = isBar ? 1.6 : 1;
+      ctx.beginPath(); ctx.moveTo(20, y); ctx.lineTo(W - 20, y); ctx.stroke();
+    }
+  }
+
+  // 判定线(呼吸脉冲)
+  {
+    const breathe = .06 + Math.sin(Game.time * 3.2) * .03 + Game.bgPulse * .1;
+    ctx.fillStyle = `rgba(255,255,255,${breathe})`;
+    ctx.fillRect(20, HIT_Y, W - 40, 46);
+    ctx.strokeStyle = 'rgba(255,255,255,.6)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
+  }
+  // 命中冲击波
+  for (let i = Game.pulses.length - 1; i >= 0; i--) {
+    const p = Game.pulses[i];
+    const age = Game.time - p.t;
+    if (age > .35) { Game.pulses.splice(i, 1); continue; }
+    const r = 20 + age * 190;
+    ctx.strokeStyle = hexA(p.color, (1 - age / .35) * .8);
+    ctx.lineWidth = 3 * (1 - age / .35) + 1;
+    ctx.beginPath(); ctx.ellipse(laneX(p.lane) + laneW() / 2, HIT_Y + 22, r * .8, r * .34, 0, 0, TAU); ctx.stroke();
+  }
   // 判定按键座
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
@@ -394,22 +462,21 @@ function render() {
     ctx.font = '900 17px ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,5,20,.85)';
-    ctx.strokeText(LANE_LABEL[l], x + laneW() / 2, HIT_Y + 24);
+    ctx.strokeText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(LANE_LABEL[l], x + laneW() / 2, HIT_Y + 24);
+    ctx.fillText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
   }
 
-  // 进度中的单词大字
+  // 单词进度
   const w = Game.word;
-  if (w) {
+  if (w && w.en) {
     ctx.font = '900 26px ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const total = w.en.length;
-    const done = w.progress;
     for (let i = 0; i < total; i++) {
       const cx = W / 2 + (i - (total - 1) / 2) * 34;
-      if (i < done) { ctx.fillStyle = '#86efac'; ctx.fillText(w.en[i], cx, 70); }
-      else if (i === done) {
+      if (i < w.progress) { ctx.fillStyle = '#86efac'; ctx.fillText(w.en[i], cx, 70); }
+      else if (i === w.progress) {
         ctx.fillStyle = '#fff';
         ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 18;
         ctx.fillText(w.en[i], cx, 70);
@@ -418,16 +485,21 @@ function render() {
     }
   }
 
-  // 连击
+  // 连击大字
   if (Game.combo >= 2) {
+    const scale = 1 + Math.min(.25, Game.combo / 400);
+    ctx.save();
+    ctx.translate(W / 2, H * .38);
+    ctx.scale(scale, scale);
     ctx.fillStyle = '#fff';
-    ctx.font = '900 42px system-ui';
+    ctx.font = '900 44px system-ui';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.globalAlpha = .16 + Math.min(.3, Game.combo / 200);
-    ctx.fillText(String(Game.combo), W / 2, H * .38);
+    ctx.globalAlpha = .2 + Math.min(.35, Game.combo / 180);
+    ctx.fillText(String(Game.combo), 0, 0);
     ctx.globalAlpha = 1;
     ctx.font = '700 13px system-ui';
-    ctx.fillText('COMBO', W / 2, H * .38 + 34);
+    ctx.fillText('COMBO', 0, 34);
+    ctx.restore();
   }
 
   // 音符
@@ -442,7 +514,6 @@ function render() {
     const isNextLetter = n.isLetter && n.index === Game.word.progress;
     ctx.save();
     if (isNextLetter) {
-      // 当前应收集的字母音符: 放大+发光+显示字母
       ctx.shadowColor = 'rgba(110,231,183,.95)';
       ctx.shadowBlur = 18;
       ctx.fillStyle = '#10b981';
@@ -452,9 +523,9 @@ function render() {
       ctx.fillStyle = '#053b2c';
       ctx.font = '900 19px ui-monospace, monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(n.letter, x + laneW() / 2, y);
+      ctx.fillText(n.letter || '?', x + laneW() / 2, y);
     } else {
-      ctx.fillStyle = n.missed ? 'rgba(150,150,160,.3)' : LANE_COLORS[n.lane];
+      ctx.fillStyle = n.missed ? 'rgba(150,150,160,.3)' : LANE_COLORS()[n.lane];
       ctx.beginPath(); ctx.roundRect(x + 7, y - 11, laneW() - 14, 22, 6); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,.35)';
       ctx.beginPath(); ctx.roundRect(x + 9, y - 9, laneW() - 18, 6, 3); ctx.fill();
@@ -465,13 +536,10 @@ function render() {
   drawParticles();
   ctx.restore();
 }
-
-/* 特效 */
-Game.particles = []; Game.floaters = [];
-function burst(x, y, color, n) {
-  for (let i = 0; i < n; i++) Game.particles.push({ x, y, vx: rand(-130, 130), vy: rand(-170, 30), life: rand(.2, .45), color, size: rand(2, 4.5) });
+function hexA(hex, a) {
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${clamp(a, 0, 1)})`;
 }
-function floatText(text, x, y, color) { Game.floaters.push({ text, x, y, color, life: .7 }); }
 function drawParticles() {
   for (const pt of Game.particles) {
     ctx.globalAlpha = clamp(pt.life * 2.4, 0, 1);
@@ -496,62 +564,14 @@ function drawMenuDemo() {
     ctx.font = '900 17px ui-monospace, monospace'; ctx.textAlign = 'center';
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,5,20,.85)';
     ctx.strokeText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
-    ctx.fillStyle = LANE_COLORS()[l];
+    ctx.fillStyle = '#fff';
     ctx.fillText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
   }
   ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
 }
 
-/* ---------------- HUD/循环 ---------------- */
-function showFeedback(text) {
-  Game.feedbackUntil = 2.4;
-  const el = $id('feedback');
-  el.textContent = text; el.classList.add('show');
-}
-function updateHud() {
-  $id('score').textContent = Game.score;
-  $id('level').textContent = Game.level;
-  $id('life-bar').style.width = clamp(Game.lives, 0, 100) + '%';
-  const w = Game.word;
-  if (w) {
-    $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
-      i < w.progress ? `<span class="got">${ch}</span>` : i === w.progress ? `<span class="next">${ch}</span>` : '_'
-    ).join('');
-    $id('wb-zh').textContent = w.zh;
-  }
-}
-function updateComboHud() {}
-
-let lastScan = 0;
-function frame(nowMs) {
-  const dt = Math.min(.033, (nowMs - lastTime) / 1000 || .016);
-  lastTime = nowMs;
-  if (Game.state === 'playing') {
-    Game.time += dt;
-    scanMisses();
-    // 粒子/浮字更新
-    for (let i = Game.particles.length - 1; i >= 0; i--) {
-      const pt = Game.particles[i];
-      pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt;
-      if (pt.life <= 0) Game.particles.splice(i, 1);
-    }
-    for (let i = Game.floaters.length - 1; i >= 0; i--) {
-      const f = Game.floaters[i];
-      f.life -= dt; f.y -= 40 * dt;
-      if (f.life <= 0) Game.floaters.splice(i, 1);
-    }
-    Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
-    if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
-    // PERFECT时轻微律动
-    Game.shakeX *= .85;
-  }
-  render();
-  if (window.FX && FX.available) FX.frame(dt, 0);
-  requestAnimationFrame(frame);
-}
-
-/* 绑定 */
+/* ---------------- 绑定 ---------------- */
 function toggleMute() { Game.muted = !Game.muted; $id('mute-btn').textContent = Game.muted ? '已静音' : '声音'; }
 $id('mute-btn').addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
@@ -565,13 +585,11 @@ document.querySelectorAll('.difficulty').forEach((b) => b.addEventListener('clic
   b.classList.add('selected');
   Game.difficulty = b.dataset.difficulty;
 }));
-// 键位模式
 document.querySelectorAll('.seg-btn[data-keys]').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('.seg-btn[data-keys]').forEach((x) => x.classList.remove('selected'));
   b.classList.add('selected');
   Game.keyMode = Number(b.dataset.keys);
 }));
-// 滚速
 document.querySelectorAll('.spd-btn').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('.spd-btn').forEach((x) => x.classList.remove('selected'));
   b.classList.add('selected');
@@ -581,9 +599,29 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
 
-/* WebGL增效层: 紫色星尘氛围 */
-const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
-if (FX.available) FX.setStarfield({ count: 160, speed: 12, tint: [0.78, 0.6, 1] });
-
 let lastTime = performance.now();
+function frame(nowMs) {
+  const dt = Math.min(.033, (nowMs - lastTime) / 1000 || .016);
+  lastTime = nowMs;
+  if (Game.state === 'playing') {
+    Game.time += dt;
+    scanMisses();
+    for (let i = Game.particles.length - 1; i >= 0; i--) {
+      const pt = Game.particles[i];
+      pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt;
+      if (pt.life <= 0) Game.particles.splice(i, 1);
+    }
+    for (let i = Game.floaters.length - 1; i >= 0; i--) {
+      const f = Game.floaters[i];
+      f.life -= dt; f.y -= 40 * dt;
+      if (f.life <= 0) Game.floaters.splice(i, 1);
+    }
+    Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
+    if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
+    Game.shakeX *= .85;
+  }
+  render();
+  if (window.FX && FX.available) FX.frame(dt, 0);
+  requestAnimationFrame(frame);
+}
 requestAnimationFrame(frame);
