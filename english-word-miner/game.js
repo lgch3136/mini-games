@@ -364,6 +364,15 @@ function deliverItem(it) {
     ctx.strokeStyle = 'rgba(255,255,230,.85)';
     ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.stroke();
+    if (!big) {
+      // 小金块棱面转折线(与大金块同款立体)
+      ctx.strokeStyle = 'rgba(120,70,10,.55)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-w2*.18, hgt*.15); ctx.lineTo(-w2*.05, -hgt*.28);
+      ctx.moveTo(w2*.02, -hgt*.28); ctx.lineTo(w2*.16, hgt*.15);
+      ctx.stroke();
+    }
     // 周期星光
     const tw2 = (Math.sin(Game.time * 3 + it.wobble * 4) + 1) / 2;
     if (tw2 > .8) {
@@ -497,16 +506,41 @@ function render() {
     const pc = document.createElement('canvas');
     pc.width = W; pc.height = H;
     const px = pc.getContext('2d');
-    for (let band = 0; band < 7; band++) {
-      const y = 120 + band * (H - 120) / 7;
-      px.fillStyle = `rgba(0,0,0,${.08 + (band % 2) * .05})`;
-      px.fillRect(0, y, W, 10 + band * 2);
+    // 分层色带: 表土/黏土/岩层/深矿 四段色差
+    const bands = [
+      [120, 180, 'rgba(80,58,26,.20)'],
+      [300, 190, 'rgba(40,28,12,.24)'],
+      [490, 170, 'rgba(22,14,5,.30)'],
+      [660, H - 660, 'rgba(10,6,2,.42)'],
+    ];
+    for (const [by, bh2, bc] of bands) {
+      px.fillStyle = bc;
+      px.fillRect(0, by, W, bh2);
+    }
+    // 岩石剪影群(埋藏感)
+    for (let i = 0; i < 26; i++) {
+      const rx = Math.random() * W, ry = 150 + Math.random() * (H - 160);
+      const rs = rand(8, 26);
+      px.fillStyle = `rgba(12,8,3,${rand(.18, .38)})`;
+      px.beginPath();
+      px.moveTo(rx - rs, ry + rs * .4);
+      px.lineTo(rx - rs * .4, ry - rs * .7);
+      px.lineTo(rx + rs * .5, ry - rs);
+      px.lineTo(rx + rs, ry + rs * .3);
+      px.lineTo(rx + rs * .3, ry + rs);
+      px.closePath(); px.fill();
     }
     for (let i = 0; i < 260; i++) {
       const x = Math.random() * W, y = 110 + Math.random() * (H - 110);
       const s = rand(1.5, 4.5);
       px.fillStyle = Math.random() < .5 ? 'rgba(255,220,150,.06)' : 'rgba(0,0,0,.18)';
       px.fillRect(x, y, s, s);
+    }
+    // 矿石闪光点
+    for (let i = 0; i < 34; i++) {
+      const sx2 = Math.random() * W, sy2 = 140 + Math.random() * (H - 150);
+      px.fillStyle = `rgba(255,235,150,${rand(.25, .6)})`;
+      px.beginPath(); px.arc(sx2, sy2, rand(1, 2.4), 0, TAU); px.fill();
     }
     Game._rockPattern = pc;
   }
@@ -537,13 +571,29 @@ function render() {
     ctx.strokeStyle = '#8a6d3b';
     ctx.lineWidth = 5;
     ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(tipX, tipY); ctx.stroke();
-    for (let d = 8; d < len - 6; d += 13) {
+    let linkFlip = false;
+    for (let d = 8; d < len - 6; d += 12) {
       const lx = h.x + ux * d, ly = h.y + uy * d;
-      ctx.strokeStyle = '#e8c56e';
-      ctx.lineWidth = 3.4;
+      const ang = Math.atan2(dy, dx) + (linkFlip ? Math.PI / 2 : 0);   // 链环交替90°穿插
+      // 暗侧(链环厚度)
+      ctx.strokeStyle = '#7a5f33';
+      ctx.lineWidth = 4.2;
       ctx.beginPath();
-      ctx.ellipse(lx + uy * 1.2, ly - ux * 1.2, 3.4, 6, Math.atan2(dy, dx), 0, TAU);
+      ctx.ellipse(lx, ly, 3.2, 6.2, ang, 0, TAU);
       ctx.stroke();
+      // 亮面
+      ctx.strokeStyle = '#e8c56e';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.ellipse(lx - .6, ly - .6, 3.2, 6.2, ang, 0, TAU);
+      ctx.stroke();
+      // 高光弧
+      ctx.strokeStyle = 'rgba(255,240,200,.9)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(lx - .9, ly - .9, 3.2, 6.2, ang, -1.9, -.6);
+      ctx.stroke();
+      linkFlip = !linkFlip;
     }
     drawClaw(tipX, tipY, h.angle, h.state === 'retract' && h.grabbed);
   }
@@ -715,6 +765,15 @@ function drawItem(it) {
     ctx.strokeStyle = 'rgba(255,255,230,.85)';
     ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.stroke();
+    if (!big) {
+      // 小金块棱面转折线(与大金块同款立体)
+      ctx.strokeStyle = 'rgba(120,70,10,.55)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-w2*.18, hgt*.15); ctx.lineTo(-w2*.05, -hgt*.28);
+      ctx.moveTo(w2*.02, -hgt*.28); ctx.lineTo(w2*.16, hgt*.15);
+      ctx.stroke();
+    }
     // 周期星光
     const tw2 = (Math.sin(Game.time * 3 + it.wobble * 4) + 1) / 2;
     if (tw2 > .8) {
