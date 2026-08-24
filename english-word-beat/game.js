@@ -18,6 +18,7 @@
 const $id = (x) => document.getElementById(x);
 const canvas = $id('game');
 const ctx = canvas.getContext('2d');
+const wrap = $id('game-wrap');
 const StageBackground = new Image();
 StageBackground.src = 'assets/stage-bg-v3.webp';
 
@@ -41,9 +42,12 @@ const DIFFS = {
 const SCROLL_STEPS = [.7, .85, 1.0, 1.15, 1.3, 1.5];
 
 let LANES = 4;
+const O2_BLUE = '#43a6ff';
+const O2_WHITE = '#eef6ff';
+const O2_GOLD = '#ffc94d';
 const KEY_COLORS = {
-  KeyS: '#ff5b69', KeyD: '#ff8a45', KeyF: '#ffd84d', Space: '#63dc78',
-  KeyJ: '#27d3bd', KeyK: '#3d9cff', KeyL: '#8b7cff',
+  KeyS: O2_BLUE, KeyD: O2_WHITE, KeyF: O2_BLUE, Space: O2_GOLD,
+  KeyJ: O2_BLUE, KeyK: O2_WHITE, KeyL: O2_BLUE,
 };
 const LANE_MODES = {
   4: { keys: ['KeyD','KeyF','KeyJ','KeyK'], labels: ['D','F','J','K'],
@@ -85,6 +89,8 @@ const Game = {
   backingStep: 0,
   feedback: '', feedbackUntil: 0,
   flashLane: [0, 0, 0, 0, 0, 0, 0],
+  heldLane: [0, 0, 0, 0, 0, 0, 0],
+  judgement: null,
   pulses: [],           // 命中冲击波
   bgPulse: 0,           // 背景律动
   particles: [], floaters: [],
@@ -290,6 +296,7 @@ function startGame() {
   Game.shields = 1;
   Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   Game.level = 1; Game.wordsDone = 0; Game.time = 0;
+  Game.flashLane.fill(0); Game.heldLane.fill(0); Game.judgement = null;
   Game.state = 'playing';
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
@@ -338,6 +345,11 @@ function judgeHit(lane) {
   if (bestD <= JW.perfect) { verdict = 'PERFECT'; pts = 300; Game.counts.perfect++; }
   else if (bestD <= JW.great) { verdict = 'GREAT'; pts = 200; Game.counts.great++; }
   else { verdict = 'GOOD'; pts = 100; Game.counts.good++; }
+  Game.judgement = {
+    text: verdict,
+    color: verdict === 'PERFECT' ? O2_GOLD : verdict === 'GREAT' ? '#86efac' : O2_BLUE,
+    until: Game.time + .48,
+  };
   Game.combo++;
   Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
   const comboMul = 1 + Math.min(1, Game.combo / 50);
@@ -378,6 +390,7 @@ function scanMisses() {
       }
       Game.combo = 0;
       Game.lives -= n.isLetter ? 8 : 4;
+      Game.judgement = { text: 'MISS', color: '#ff6688', until: Game.time + .42 };
       missSound();
       if (Game.lives <= 0) { gameOver(); return; }
     }
@@ -419,18 +432,37 @@ function totalNotes() { return Game.counts.perfect + Game.counts.great + Game.co
 /* ---------------- 输入 ---------------- */
 window.addEventListener('keydown', (ev) => {
   const li = LANE_KEYS().indexOf(ev.code);
-  if (li >= 0 && !ev.repeat) { ev.preventDefault(); judgeHit(li); return; }
+  if (li >= 0) {
+    ev.preventDefault();
+    if (!ev.repeat) { Game.heldLane[li] = 1; judgeHit(li); }
+    return;
+  }
   if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
   if (ev.code === 'KeyM') toggleMute();
   if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
 });
+window.addEventListener('keyup', (ev) => {
+  const li = LANE_KEYS().indexOf(ev.code);
+  if (li >= 0) Game.heldLane[li] = 0;
+});
+const pointerLanes = new Map();
 canvas.addEventListener('pointerdown', (ev) => {
   if (Game.state !== 'playing') return;
   const rect = canvas.getBoundingClientRect();
   const x = (ev.clientX - rect.left) * W / rect.width;
   const lane = clamp(Math.floor((x - 20) / ((W - 40) / LANES)), 0, LANES - 1);
+  pointerLanes.set(ev.pointerId, lane);
+  Game.heldLane[lane] = 1;
+  canvas.setPointerCapture?.(ev.pointerId);
   judgeHit(lane);
 });
+function releasePointer(ev) {
+  const lane = pointerLanes.get(ev.pointerId);
+  if (lane != null) Game.heldLane[lane] = 0;
+  pointerLanes.delete(ev.pointerId);
+}
+canvas.addEventListener('pointerup', releasePointer);
+canvas.addEventListener('pointercancel', releasePointer);
 function togglePause() {
   if (Game.state === 'playing') {
     Game.state = 'paused';
@@ -524,7 +556,7 @@ function render() {
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
     const g = ctx.createLinearGradient(0, HIT_Y - 130, 0, HIT_Y);
-    const a = .08 + Game.flashLane[l] * .72;
+    const a = .08 + Math.max(Game.flashLane[l], Game.heldLane[l]) * .72;
     g.addColorStop(0, 'rgba(0,0,0,0)');
     g.addColorStop(1, hexA(LANE_COLORS()[l], a));
     ctx.fillStyle = g;
@@ -556,6 +588,12 @@ function render() {
     }
   }
 
+  const keyBed = ctx.createLinearGradient(0, HIT_Y, 0, H);
+  keyBed.addColorStop(0, 'rgba(25,35,58,.96)'); keyBed.addColorStop(.32, 'rgba(8,13,26,.98)'); keyBed.addColorStop(1, 'rgba(2,5,13,1)');
+  ctx.fillStyle = keyBed; ctx.fillRect(15, HIT_Y, W - 30, H - HIT_Y);
+  ctx.strokeStyle = 'rgba(166,212,255,.42)'; ctx.lineWidth = 2;
+  ctx.strokeRect(16, HIT_Y + 1, W - 32, H - HIT_Y - 3);
+
   // 判定线(呼吸脉冲)
   {
     const breathe = .06 + Math.sin(Game.time * 3.2) * .03 + Game.bgPulse * .1;
@@ -584,10 +622,10 @@ function render() {
     ctx.lineWidth = 3 * (1 - age / .35) + 1;
     ctx.beginPath(); ctx.ellipse(laneX(p.lane) + laneW() / 2, HIT_Y + 22, r * .8, r * .34, 0, 0, TAU); ctx.stroke();
   }
-  // 判定按键座：固定彩色键帽 + 明显的按下行程，不再只是透明度闪一下。
+  // 劲乐团式机械键床：蓝/白/金颜色固定，按下时键帽有真实行程与持续光柱。
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
-    const press = Game.flashLane[l];
+    const press = Math.max(Game.flashLane[l], Game.heldLane[l]);
     const color = LANE_COLORS()[l];
     const capY = HIT_Y + 6 + press * 5;
     const capH = 34 - press * 3;
@@ -601,14 +639,17 @@ function render() {
     ctx.fillStyle = keyGradient;
     ctx.beginPath(); ctx.roundRect(x + 8, capY, laneW() - 16, capH, 7); ctx.fill();
     ctx.restore();
-    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.fillStyle = color === O2_BLUE ? 'rgba(255,255,255,.62)' : 'rgba(255,255,255,.9)';
     ctx.fillRect(x + 12, capY + 3, laneW() - 24, 2);
     ctx.font = '900 17px ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,5,20,.85)';
     ctx.strokeText(LANE_LABEL()[l], x + laneW() / 2, capY + capH / 2 + 1);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = color === O2_BLUE ? '#ffffff' : '#152239';
     ctx.fillText(LANE_LABEL()[l], x + laneW() / 2, capY + capH / 2 + 1);
+    ctx.fillStyle = 'rgba(190,220,255,.22)';
+    ctx.beginPath(); ctx.arc(x + 9, HIT_Y + 53, 2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + laneW() - 9, HIT_Y + 53, 2, 0, TAU); ctx.fill();
   }
 
   // 连击大字
@@ -625,6 +666,19 @@ function render() {
     ctx.globalAlpha = 1;
     ctx.font = '700 13px system-ui';
     ctx.fillText('COMBO', 0, 34);
+    ctx.restore();
+  }
+
+  if (Game.judgement && Game.judgement.until > Game.time) {
+    const life = clamp((Game.judgement.until - Game.time) / .48, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, life * 2.5);
+    ctx.translate(W / 2, H * .29);
+    ctx.scale(1 + (1 - life) * .16, 1 + (1 - life) * .16);
+    ctx.shadowColor = Game.judgement.color; ctx.shadowBlur = 22;
+    ctx.fillStyle = Game.judgement.color; ctx.strokeStyle = 'rgba(5,7,18,.88)'; ctx.lineWidth = 7;
+    ctx.font = '950 36px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.strokeText(Game.judgement.text, 0, 0); ctx.fillText(Game.judgement.text, 0, 0);
     ctx.restore();
   }
 
@@ -763,6 +817,13 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
 
+function resize() {
+  W = H * wrap.clientWidth / wrap.clientHeight;
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 160));
+resize();
+
 let lastTime = performance.now();
 function frame(nowMs) {
   const dt = Math.min(.033, (nowMs - lastTime) / 1000 || .016);
@@ -795,14 +856,17 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
   requestAnimationFrame(() => {
     try {
       Game.difficulty = 'easy'; Game.level = 6;
+      if (Math.abs(W / H - wrap.clientWidth / wrap.clientHeight) > .01) throw new Error('responsive playfield ratio failed');
       for (const lanes of [4, 5, 7]) {
         LANES = lanes; buildChart();
         const letters = Game.notes.filter((n) => n.isLetter);
         if (letters.length !== Game.word.en.length) throw new Error(lanes + 'K letter count mismatch');
         if (Game.notes.some((n) => !Number.isFinite(n.hitAt) || n.lane < 0 || n.lane >= lanes)) throw new Error(lanes + 'K invalid note');
       }
+      LANES = 7;
+      if (LANE_COLORS().join(',') !== [O2_BLUE, O2_WHITE, O2_BLUE, O2_GOLD, O2_BLUE, O2_WHITE, O2_BLUE].join(',')) throw new Error('O2Jam key pattern failed');
       LANES = 4;
-      if (LANE_COLORS()[0] !== KEY_COLORS.KeyD || LANE_COLORS()[3] !== KEY_COLORS.KeyK) throw new Error('fixed key colors failed');
+      if (LANE_COLORS().join(',') !== [O2_WHITE, O2_BLUE, O2_BLUE, O2_WHITE].join(',')) throw new Error('4K fixed key colors failed');
       judgeHit(0);
       if (Game.flashLane[0] !== 1) throw new Error('key press feedback failed');
       Game.word.progress = 2; buildChart(true);

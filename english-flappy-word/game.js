@@ -96,7 +96,7 @@ function loadSprite(src, cb) {
 loadSprite('assets/bird.png', (i) => { Assets.bird = i; });
 // 旧pipe.png素材是米色楼房风格, 与原版绿色管道不符——已禁用, 改用矢量绘制
 // loadSprite('assets/pipe.png', (i) => { Assets.pipe = i; });
-(function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet-v3.webp'; })();
+(function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet-v4.webp'; })();
 (function () { const i = new Image(); i.onload = () => { Assets.bg = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bg-v3.webp'; })();
 
 /* ---------------- 音效 ---------------- */
@@ -1096,7 +1096,7 @@ if (/[?&]probe/.test(location.search)) {
         ' canvas=' + canvas.width + 'x' + canvas.height +
         ' css=' + Math.round(canvas.getBoundingClientRect().width) + 'x' + Math.round(canvas.getBoundingClientRect().height) +
         ' pipes=' + Game.pipes.length + ' bubbles=' + Game.bubbles.length +
-        ' assets=' + (!!Assets.bird) + (!!Assets.pipe) + (!!Assets.bg) +
+        ' assets=' + (!!Assets.bird) + (!!Assets.birdSheet) + (!!Assets.pipe) + (!!Assets.bg) +
         ' wrap=' + $id('game-wrap').clientWidth + 'x' + $id('game-wrap').clientHeight +
         ' dpr=' + window.devicePixelRatio;
     } catch (e) {

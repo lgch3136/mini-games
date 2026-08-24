@@ -55,8 +55,8 @@ const STAGES = [
 const MISSION_LEVELS = [
   { name: '第一关 · 曙光森林', biome: 0, bossName: '林地核心', music: 'ranger-stage',
     beats: [
-      { tag: 'TEACH', name: '空投接敌', hint: '先击落 S 补给舱，再用散射压制巡逻兽', foes: [['capsule', 230], ['beetle', 470]], lock: true, drop: 'spread' },
-      { tag: 'TEST', name: '壕沟空袭', hint: '越过壕沟，同时处理地面冲锋和空中俯冲', gaps: [[330, 105]], foes: [['beetle', 300], ['drone', 560]], lock: true },
+      { tag: 'TEACH', name: '空投接敌', hint: '击落 S 补给；走高台直射，或引爆油桶清场', platforms: [[330, 86, 138]], foes: [['capsule', 230], ['barrel', 420], ['beetle', 486]], lock: true, drop: 'spread' },
+      { tag: 'TEST', name: '壕沟空袭', hint: '越过壕沟，引爆油桶后处理俯冲无人机', gaps: [[330, 105]], platforms: [[505, 82, 118]], foes: [['beetle', 300], ['barrel', 485], ['drone', 575]], lock: true },
       { tag: 'RECOVERY', name: '林间补给', hint: '短暂喘息，击落补给舱', foes: [['capsule', 470]], checkpoint: true, drop: 'spread' },
       { tag: 'TEACH', name: '跃击预警', hint: '压低蓄力时后撤，从落点下方穿过', foes: [['leaper', 430]], lock: true },
       { tag: 'TEST', name: '高台炮线', hint: '瞄准线锁定后立刻改变高度', platforms: [[405, 96, 150]], foes: [['turret', 485, 96]], lock: true },
@@ -131,6 +131,7 @@ const ENEMY_SPECS = {
   turret: { w: 52, h: 46, hp: 3, range: 0 },
   boss: { w: 78, h: 92, hp: 16, range: 115 },
   capsule: { w: 46, h: 28, hp: 2, range: 150, air: true },
+  barrel: { w: 38, h: 48, hp: 2, range: 0 },
 };
 
 const ASSETS = {};
@@ -140,6 +141,10 @@ for (const [name, src] of Object.entries({
   enemies: 'assets/enemy-sprites.webp',
   biomes: 'assets/biomes.webp',
   hazards: 'assets/hazard-atlas-v2.webp',
+  terrain0: 'assets/terrain-forest-v1.webp',
+  terrain1: 'assets/terrain-canyon-v1.webp',
+  terrain2: 'assets/terrain-city-v1.webp',
+  terrain3: 'assets/terrain-crystal-v1.webp',
 })) {
   const image = new Image();
   image.src = src;
@@ -281,7 +286,7 @@ function groundAt(x) {
 
 function chunkHasThreats(chunk) {
   const openingLesson = Game.mode === 'mission' && Game.missionLevel === 0 && chunk.index === 0;
-  return Game.enemies.some((enemy) => !enemy.dead && (enemy.type !== 'capsule' || openingLesson) && enemy.chunkIndex === chunk.index);
+  return Game.enemies.some((enemy) => !enemy.dead && enemy.type !== 'barrel' && (enemy.type !== 'capsule' || openingLesson) && enemy.chunkIndex === chunk.index);
 }
 
 function platformTop(platform) {
@@ -709,8 +714,35 @@ function grantWeapon(type) {
   return player.weaponLevel;
 }
 
+function detonateBarrel(barrel) {
+  if (barrel.dead) return;
+  barrel.dead = true;
+  const cx = barrel.x + barrel.w / 2;
+  const cy = barrel.y + barrel.h / 2;
+  Game.score += 220;
+  Game.hitStop = Math.max(Game.hitStop, .085);
+  Game.shake = Math.max(Game.shake, .22);
+  Game.shakeStrength = Math.max(Game.shakeStrength, 6);
+  burst(cx, cy, '#ffb34f', 34);
+  for (const enemy of Game.enemies) {
+    if (enemy.dead || enemy === barrel || Math.hypot(enemy.x + enemy.w / 2 - cx, enemy.y + enemy.h / 2 - cy) > 132) continue;
+    if (enemy.type === 'barrel') detonateBarrel(enemy);
+    else {
+      enemy.hp -= 4;
+      enemy.hit = .18;
+      if (enemy.hp <= 0) defeatEnemy(enemy, 'barrel');
+    }
+  }
+  const player = Game.player;
+  if (Math.hypot(player.x + player.w / 2 - cx, player.y + player.h / 2 - cy) < 72) hurt();
+  showFeedback('连锁爆破 · 清场奖励 +220');
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .28, .68);
+  updateHud();
+}
+
 function defeatEnemy(enemy, source) {
   if (enemy.dead) return;
+  if (enemy.type === 'barrel') { detonateBarrel(enemy); return; }
   enemy.dead = true;
   enemy.state = 'dead';
   Game.hitStop = Math.max(Game.hitStop, enemy.type === 'boss' ? .11 : .055);
@@ -1012,7 +1044,7 @@ function updatePlayer(dt) {
   }
   if (!wasOnGround && player.onGround && fallingSpeed > 180) {
     player.landingTimer = .12;
-    burst(player.x + player.w / 2, player.y + player.h, '#c7b37d', 9);
+    dust(player.x + player.w / 2, player.y + player.h, 7);
     Game.shake = Math.max(Game.shake, .09);
     Game.shakeStrength = Math.max(Game.shakeStrength, fallingSpeed > 520 ? 4 : 2);
     if (window.ArcadeAudio) ArcadeAudio.play('click', fallingSpeed > 520 ? .16 : .08, fallingSpeed > 520 ? .62 : .78);
@@ -1022,7 +1054,7 @@ function updatePlayer(dt) {
     player.stepTimer -= dt;
     if (player.stepTimer <= 0) {
       player.stepTimer = .22;
-      burst(player.x + player.w / 2 - player.facing * 8, player.y + player.h, '#b8a878', 2);
+      dust(player.x + player.w / 2 - player.facing * 8, player.y + player.h, 2);
     }
   } else {
     player.stepTimer = 0;
@@ -1213,6 +1245,8 @@ function updateEnemies(dt) {
 
     if (enemy.type === 'capsule') {
       enemy.y = enemy.baseY + Math.sin(Game.time * 2.8 + enemy.phase) * 22;
+    } else if (enemy.type === 'barrel') {
+      enemy.vx = 0;
     } else if (enemy.type === 'boss') {
       updateBoss(enemy, dt, dx, dy, conf);
     } else if (enemy.type === 'beetle') {
@@ -1287,7 +1321,7 @@ function updateEnemies(dt) {
 
     if (overlap(player, enemy)) {
       if ((enemy.type === 'beetle' || enemy.type === 'leaper') && player.vy > 100 && player.y + player.h < enemy.y + enemy.h * .62) defeatEnemy(enemy, 'stomp');
-      else if (enemy.type !== 'capsule') hurt();
+      else if (enemy.type !== 'capsule' && enemy.type !== 'barrel') hurt();
     }
   }
 }
@@ -1330,6 +1364,14 @@ function enemyBlocksBullet(enemy, bullet) {
 }
 
 function damageEnemy(enemy, bullet) {
+  if (enemy.type === 'barrel') {
+    enemy.hp -= bullet.damage || 1;
+    enemy.hit = .12;
+    Game.hitStop = Math.max(Game.hitStop, .035);
+    burst(bullet.x, bullet.y, '#ffcf66', 6);
+    if (enemy.hp <= 0) detonateBarrel(enemy);
+    return;
+  }
   if (enemyBlocksBullet(enemy, bullet)) {
     burst(bullet.x, bullet.y, '#b9e3d6', 8);
     Game.hitStop = Math.max(Game.hitStop, .025);
@@ -1402,13 +1444,23 @@ function burst(x, y, color, count) {
   if (Game.particles.length > 160) Game.particles.splice(0, Game.particles.length - 160);
 }
 
+function dust(x, y, count) {
+  for (let i = 0; i < count; i++) {
+    Game.particles.push({
+      kind: 'dust', x: x + (Math.random() - .5) * 18, y: y - 2,
+      vx: (Math.random() - .5) * 42, vy: -8 - Math.random() * 18,
+      life: .16 + Math.random() * .12, color: 'rgba(204,190,139,.55)',
+    });
+  }
+}
+
 function updateParticles(dt) {
   for (let i = Game.particles.length - 1; i >= 0; i--) {
     const particle = Game.particles[i];
     particle.life -= dt;
     particle.x += particle.vx * dt;
     particle.y += particle.vy * dt;
-    particle.vy += 280 * dt;
+    particle.vy += (particle.kind === 'dust' ? 90 : 280) * dt;
     if (particle.life <= 0) Game.particles.splice(i, 1);
   }
 }
@@ -1506,9 +1558,9 @@ function drawWeather(index) {
   } else {
     const color = type === 'dust' ? 'rgba(239,193,112,.25)' : type === 'glow' ? 'rgba(244,211,122,.5)' : 'rgba(236,224,151,.32)';
     ctx.fillStyle = color;
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 14; i++) {
       const x = (i * 97 + Game.time * (type === 'dust' ? 54 : 16)) % VIEW_W;
-      const y = 70 + (i * 61 + Math.sin(Game.time + i) * 35) % 350;
+      const y = 58 + (i * 61 + Math.sin(Game.time + i) * 28) % 250;
       const size = type === 'glow' ? 2 + (i % 3) : 1 + (i % 2);
       ctx.beginPath(); ctx.arc(x, y, size, 0, TAU); ctx.fill();
     }
@@ -1561,6 +1613,22 @@ function drawDecor(chunk) {
   ctx.globalAlpha = 1;
 }
 
+function drawTerrain(biomeIndex, x, y, width, height) {
+  const image = ASSETS['terrain' + biomeIndex];
+  if (!image || !image.complete || !image.naturalWidth) return false;
+  const crop = [
+    { y: .13, h: .66 }, { y: .13, h: .64 }, { y: .23, h: .58 }, { y: .23, h: .55 },
+  ][biomeIndex];
+  const sourceY = image.naturalHeight * crop.y;
+  const sourceH = image.naturalHeight * crop.h;
+  const sourceW = Math.min(image.naturalWidth, sourceH * width / height);
+  const sourceX = Math.max(0, image.naturalWidth - sourceW)
+    ? Math.abs(Math.floor(x * 1.37)) % (image.naturalWidth - sourceW)
+    : 0;
+  ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, x, y, width, height);
+  return true;
+}
+
 function drawGround(chunk) {
   const biome = BIOMES[chunk.biome];
   const gaps = chunk.gaps.slice().sort((a, b) => a.x - b.x);
@@ -1569,11 +1637,11 @@ function drawGround(chunk) {
     const width = gap.x - x;
     if (width > 0) {
       ctx.fillStyle = biome.ground;
-      ctx.fillRect(x, GROUND_Y, width, VIEW_H - GROUND_Y);
-      ctx.fillStyle = biome.edge;
-      ctx.fillRect(x, GROUND_Y, width, 7);
-      ctx.fillStyle = 'rgba(255,255,255,.08)';
-      for (let mark = x + 18; mark < x + width; mark += 58) ctx.fillRect(mark, GROUND_Y + 24, 30, 3);
+      ctx.fillRect(x, GROUND_Y - 2, width, VIEW_H - GROUND_Y + 2);
+      if (!drawTerrain(chunk.biome, x, GROUND_Y - 3, width, 158)) {
+        ctx.fillStyle = biome.edge;
+        ctx.fillRect(x, GROUND_Y, width, 7);
+      }
     }
     x = gap.x + gap.w;
   }
@@ -1583,39 +1651,43 @@ function drawPlatforms(chunk) {
   const biome = BIOMES[chunk.biome];
   for (const platform of chunk.platforms) {
     const y = platformTop(platform);
-    ctx.fillStyle = biome.ground;
-    ctx.beginPath(); ctx.roundRect(platform.x, y, platform.w, 18, 5); ctx.fill();
-    ctx.fillStyle = biome.edge;
-    ctx.fillRect(platform.x + 3, y, platform.w - 6, 5);
-    ctx.fillStyle = 'rgba(8,20,18,.36)';
-    for (let x = platform.x + 15; x < platform.x + platform.w; x += 32) ctx.fillRect(x, y + 8, 4, 8);
+    if (!drawTerrain(chunk.biome, platform.x, y - 2, platform.w, 54)) {
+      ctx.fillStyle = biome.ground;
+      ctx.beginPath(); ctx.roundRect(platform.x, y, platform.w, 18, 5); ctx.fill();
+      ctx.fillStyle = biome.edge;
+      ctx.fillRect(platform.x + 3, y, platform.w - 6, 5);
+    }
   }
 }
 
 function drawBarrier(chunk) {
   if (!chunk.lock || chunk.cleared || !chunkHasThreats(chunk)) return;
   const x = chunk.start + CHUNK_W - 58;
-  // 两根细桩与三道能量带足以表达封锁，不再用整面光墙遮住战斗。
-  const pulse = .55 + Math.sin(Game.time * 5) * .35;
+  if (Game.player.x < x - Math.min(320, VIEW_W * .4)) return;
+  const pulse = .5 + Math.sin(Game.time * 5) * .5;
+  const top = 306;
   ctx.save();
-  ctx.strokeStyle = 'rgba(239,104,72,' + clamp(.55 + pulse * .4, 0, 1) + ')';
-  ctx.fillStyle = 'rgba(239,104,72,' + (.12 + pulse * .08) + ')';
-  ctx.lineWidth = 3;
-  ctx.shadowColor = '#ef6848';
-  ctx.shadowBlur = 10 + pulse * 9;
-  ctx.fillRect(x - 6, 160, 5, GROUND_Y - 160);
-  ctx.fillRect(x + 1, 160, 5, GROUND_Y - 160);
-  for (let y = 205; y < GROUND_Y - 22; y += 72) {
-    ctx.globalAlpha = .55 + pulse * .35;
-    ctx.fillRect(x - 23, y, 46, 5);
-    ctx.beginPath(); ctx.moveTo(x - 20, y + 12); ctx.lineTo(x + 20, y + 30); ctx.stroke();
+  const metal = ctx.createLinearGradient(x - 30, 0, x + 30, 0);
+  metal.addColorStop(0, '#142a2b'); metal.addColorStop(.5, '#58706a'); metal.addColorStop(1, '#101f23');
+  ctx.fillStyle = metal; ctx.strokeStyle = '#d79b45'; ctx.lineWidth = 2;
+  for (const px of [x - 30, x + 14]) {
+    ctx.beginPath(); ctx.roundRect(px, top, 16, GROUND_Y - top, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f1b551'; ctx.fillRect(px + 4, top + 10, 8, 8); ctx.fillRect(px + 4, GROUND_Y - 21, 8, 8);
+    ctx.fillStyle = metal;
   }
-  ctx.globalAlpha = 1;
-  ctx.fillRect(x - 15, 154, 30, 7);
-  ctx.fillRect(x - 15, GROUND_Y - 8, 30, 7);
+  const energy = ctx.createLinearGradient(0, top, 0, GROUND_Y);
+  energy.addColorStop(0, 'rgba(255,137,68,0)'); energy.addColorStop(.25, 'rgba(255,137,68,.22)'); energy.addColorStop(1, 'rgba(255,75,45,.08)');
+  ctx.fillStyle = energy; ctx.fillRect(x - 14, top + 6, 28, GROUND_Y - top - 6);
+  ctx.shadowColor = '#ff7449'; ctx.shadowBlur = 14 + pulse * 8;
+  ctx.strokeStyle = 'rgba(255,157,84,' + (.72 + pulse * .25) + ')'; ctx.lineWidth = 4;
+  for (let y = top + 28; y < GROUND_Y - 18; y += 45) {
+    ctx.beginPath(); ctx.moveTo(x - 13, y); ctx.lineTo(x + 13, y - 10); ctx.stroke();
+  }
   ctx.shadowBlur = 0;
-  ctx.fillStyle = '#ffd2b8'; ctx.font = '900 11px system-ui, sans-serif';
-  ctx.textAlign = 'center'; ctx.fillText('封锁', x, 104);
+  ctx.fillStyle = '#1a2c2c'; ctx.strokeStyle = '#f1b551';
+  ctx.beginPath(); ctx.roundRect(x - 39, top - 27, 68, 24, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffd995'; ctx.font = '900 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('区域封锁', x - 5, top - 15);
   ctx.restore();
 }
 
@@ -1774,6 +1846,28 @@ function drawEnemy(enemy) {
     ctx.restore();
     return;
   }
+  if (enemy.type === 'barrel') {
+    const pulse = enemy.hp === 1 ? .45 + Math.sin(Game.time * 18) * .25 : 0;
+    ctx.save();
+    ctx.translate(enemy.x + enemy.w / 2, enemy.y + enemy.h);
+    if (enemy.hit > 0) ctx.globalAlpha = .55;
+    ctx.fillStyle = 'rgba(4,12,10,.45)';
+    ctx.beginPath(); ctx.ellipse(0, 2, 21, 5, 0, 0, TAU); ctx.fill();
+    const body = ctx.createLinearGradient(-17, 0, 17, 0);
+    body.addColorStop(0, '#5d241b'); body.addColorStop(.35, '#db6a32'); body.addColorStop(.65, '#f28a3d'); body.addColorStop(1, '#4a1a18');
+    ctx.fillStyle = body; ctx.strokeStyle = '#ffd06a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(-18, -47, 36, 47, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#172b2a';
+    ctx.fillRect(-18, -41, 36, 6); ctx.fillRect(-18, -10, 36, 6);
+    ctx.fillStyle = '#ffd85e';
+    ctx.beginPath(); ctx.moveTo(-9, -31); ctx.lineTo(0, -25); ctx.lineTo(-6, -16); ctx.lineTo(9, -24); ctx.lineTo(1, -29); ctx.lineTo(7, -37); ctx.closePath(); ctx.fill();
+    if (pulse) {
+      ctx.globalAlpha = pulse; ctx.strokeStyle = '#fff0a8'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-14, -33); ctx.lineTo(-5, -27); ctx.lineTo(-12, -19); ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
   if (enemy.type === 'turret') {
     ctx.save();
     ctx.translate(enemy.x + enemy.w / 2, enemy.y + enemy.h);
@@ -1881,25 +1975,20 @@ function drawBullet(bullet, color) {
 function drawPlayer() {
   const player = Game.player;
   ctx.save();
-  ctx.globalAlpha = player.onGround ? .34 : clamp(.28 - Math.abs(player.vy) / 2600, .1, .24);
-  ctx.fillStyle = '#071512';
-  ctx.beginPath(); ctx.ellipse(player.x + player.w / 2, Math.min(GROUND_Y - 2, player.y + player.h + 2), player.onGround ? 25 : 18, player.onGround ? 6 : 4, 0, 0, TAU); ctx.fill();
-  ctx.restore();
-  // 主角存在感：底部接触阴影(不是全身暗晕!) + 金色轮廓光
-  ctx.save();
-  ctx.fillStyle = 'rgba(5,14,11,.5)';
+  ctx.globalAlpha = player.onGround ? .38 : .18;
+  ctx.fillStyle = 'rgba(3,10,8,.74)';
   ctx.beginPath();
-  ctx.ellipse(player.x + player.w / 2, Math.min(GROUND_Y - 3, player.y + player.h + 1), 20, 5, 0, 0, TAU);
+  ctx.ellipse(player.x + player.w / 2, Math.min(GROUND_Y - 2, player.y + player.h + 1), player.onGround ? 25 : 17, player.onGround ? 5 : 3, 0, 0, TAU);
   ctx.fill();
   ctx.restore();
   if (player.shield) {
     ctx.save();
     ctx.strokeStyle = 'rgba(244,211,122,.8)'; ctx.lineWidth = 3;
     ctx.shadowColor = '#f4d37a'; ctx.shadowBlur = 12;
-    ctx.beginPath(); ctx.ellipse(player.x + player.w / 2, player.y + player.h / 2, 30, 39, 0, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(player.x + player.w / 2, player.y + player.h / 2, 39, 49, 0, 0, TAU); ctx.stroke();
     ctx.restore();
   }
-  if (player.inv > 0 && Math.floor(Game.time * 14) % 2) return;
+  const invFlash = player.inv > 0 && Math.floor(Game.time * 14) % 2;
   let row = 0;
   let column = Math.floor(Game.time * 3) % 4;
   let atlas = ASSETS.hero;
@@ -1929,24 +2018,15 @@ function drawPlayer() {
   }
   const baselineOffset = atlas === ASSETS.hero && row === 1 ? [0, 4, 4, 0][column]
     : atlas === ASSETS.hero && row === 3 ? [0, 7, 7, 6][column] : 0;
-  const drawY = player.y + player.h - 79 + baselineOffset + (atlas === ASSETS.actions ? (row === 1 ? 12 : 6) : 0);
-  // 剪影分离: 精灵背后一圈深色柔光, 从丛林背景里浮出(魂斗罗式可读性)
-  ctx.save();
-  ctx.shadowColor = 'rgba(8,20,14,.85)';
-  ctx.shadowBlur = 18;
-  ctx.fillStyle = 'rgba(8,20,14,.4)';
-  ctx.beginPath();
-  ctx.ellipse(player.x + player.w / 2, drawY + player.h * .52, player.w * .62, player.h * .55, 0, 0, TAU);
-  ctx.fill();
-  ctx.restore();
+  const drawY = player.y + player.h - 96 + baselineOffset + (atlas === ASSETS.actions ? (row === 1 ? 14 : 7) : 0);
   const recoilRatio = clamp(player.recoil / .09, 0, 1);
   const poseX = player.x - player.aimX * recoilRatio * 7;
   const poseY = drawY - player.aimY * recoilRatio * 5;
-  // 金色轮廓光直接叠在精灵绘制上：光晕跟随实际姿势轮廓（比圆形圈自然得多）
   ctx.save();
-  ctx.shadowColor = 'rgba(255,206,105,.85)';
-  ctx.shadowBlur = 15;
-  if (!drawAtlasFrame(atlas, row, column, poseX - 25, poseY, 80, 82, player.facing < 0)) {
+  if (invFlash) ctx.globalAlpha = .38;
+  ctx.shadowColor = 'rgba(1,7,5,.92)';
+  ctx.shadowBlur = 5;
+  if (!drawAtlasFrame(atlas, row, column, poseX - 34, poseY, 98, 100, player.facing < 0)) {
     ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
   }
   ctx.restore();
@@ -2003,10 +2083,11 @@ function drawStageBanner() {
   const banner = Game.stageBanner;
   if (!banner) return;
   const compact = VIEW_W < 420;
-  const width = Math.min(compact ? VIEW_W - 24 : 330, VIEW_W - 24);
+  const lowHeight = wrap.clientHeight < 480;
+  const width = Math.min(compact ? VIEW_W - 24 : lowHeight ? 220 : 330, VIEW_W - 24);
   const x = 12;
-  const y = compact ? 142 : 154;
-  const height = compact ? 66 : 54;
+  const y = compact ? 142 : lowHeight ? 132 : 84;
+  const height = compact ? 66 : lowHeight ? 46 : 54;
   ctx.save();
   ctx.globalAlpha = clamp(banner.timer * 2, 0, 1);
   ctx.fillStyle = 'rgba(8,27,22,.72)'; ctx.strokeStyle = 'rgba(244,211,122,.48)'; ctx.lineWidth = 1;
@@ -2056,35 +2137,14 @@ function render() {
   for (const bullet of Game.bullets) drawBullet(bullet, bullet.color || '#ffe49a');
   for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
   drawPlayer();
-  // 前景遮挡草丛(魂斗罗纵深关键一招): 比玩家更快的半透明剪影掠过
-  if (!Game.foreGrass) {
-    Game.foreGrass = [];
-    for (let i = 0; i < 14; i++) {
-      Game.foreGrass.push({ x: Math.random() * VIEW_W * 2.4, h: 46 + Math.random() * 50, w: 70 + Math.random() * 80, sway: Math.random() * TAU });
-    }
-  }
-  {
-    const fgDt = clamp(Game.frameDt || .016, .008, .05);
-    ctx.save();
-    for (const g of Game.foreGrass) {
-      g.x -= fgDt * 640;   // 前景速度≈玩家速度1.5倍
-      if (g.x + g.w < Game.camera - 60) g.x += VIEW_W * 2.6;
-      const sx = g.x - Game.camera * 1.18;
-      if (sx > VIEW_W + 40 || sx + g.w < -40) continue;
-      const swayA = Math.sin(Game.time * 2.2 + g.sway) * 3;
-      ctx.fillStyle = 'rgba(6,20,13,.34)';
-      ctx.beginPath();
-      ctx.moveTo(sx, GROUND_Y + 26);
-      ctx.quadraticCurveTo(sx + g.w * .3 + swayA, GROUND_Y - g.h, sx + g.w * .55, GROUND_Y - g.h * .9);
-      ctx.quadraticCurveTo(sx + g.w * .8 - swayA, GROUND_Y - g.h * .4, sx + g.w, GROUND_Y + 26);
-      ctx.closePath(); ctx.fill();
-    }
-    ctx.restore();
-  }
   for (const particle of Game.particles) {
     ctx.globalAlpha = clamp(particle.life * 3, 0, 1);
     ctx.fillStyle = particle.color;
-    ctx.fillRect(particle.x - 2, particle.y - 2, 4, 4);
+    if (particle.kind === 'dust') {
+      ctx.beginPath(); ctx.ellipse(particle.x, particle.y, 5, 1.5, 0, 0, TAU); ctx.fill();
+    } else {
+      ctx.fillRect(particle.x - 1.5, particle.y - 1.5, 3, 3);
+    }
   }
   ctx.globalAlpha = 1;
   ctx.restore();
@@ -2253,6 +2313,15 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (Game.chunks.slice(0, 4).map((chunk) => chunk.tag).join(',') !== 'TEACH,TEST,RECOVERY,TEACH') throw new Error('curated mission order failed');
       const openingCapsule = Game.enemies.find((enemy) => enemy.type === 'capsule' && enemy.chunkIndex === 0);
       if (!openingCapsule || openingCapsule.dropType !== 'spread' || openingCapsule.x > 320) throw new Error('opening weapon lesson missing');
+      const openingBarrel = Game.enemies.find((enemy) => enemy.type === 'barrel' && enemy.chunkIndex === 0);
+      const openingTarget = Game.enemies.find((enemy) => enemy.type === 'beetle' && enemy.chunkIndex === 0);
+      if (!openingBarrel || !openingTarget || !Game.chunks[0].platforms.length) throw new Error('opening route or explosive choice missing');
+      const lockProbe = makeEnemy('barrel', 1000, -1);
+      Game.enemies.push(lockProbe);
+      if (chunkHasThreats({ index: -1 })) throw new Error('optional barrel blocked encounter gate');
+      lockProbe.dead = true;
+      detonateBarrel(openingBarrel);
+      if (!openingTarget.dead) throw new Error('barrel chain reaction failed');
       const startX = Game.player.x;
       input.right = true;
       for (let i = 0; i < 40; i++) update(1 / 60);

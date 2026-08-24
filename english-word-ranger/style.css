@@ -62,7 +62,25 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   gap: 12px; padding: 20px; overflow-y: auto; text-align: center;
   background: linear-gradient(135deg, rgba(14, 38, 31, .97), rgba(27, 52, 43, .92));
 }
-#menu > img { width: min(540px, 78vw); max-height: 150px; object-fit: contain; }
+#menu { gap: 9px; isolation: isolate; background: rgba(5, 19, 16, .88); }
+#menu::before {
+  content: ""; position: absolute; inset: -24px; z-index: -2;
+  background: linear-gradient(rgba(5,18,15,.62), rgba(5,18,15,.9)), url("assets/cover.png") center 45% / cover;
+  filter: blur(10px) saturate(.72); transform: scale(1.08); opacity: .78;
+}
+#menu::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle at 50% 24%, rgba(241,181,81,.13), transparent 36%), linear-gradient(180deg, transparent 48%, rgba(4,15,12,.58));
+}
+#menu > img {
+  width: min(690px, 78vw); height: min(225px, 32vh); max-height: none; object-fit: cover; object-position: center 52%;
+  border: 1px solid rgba(255,218,137,.56); border-radius: 18px;
+  box-shadow: 0 22px 70px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.18);
+}
+.menu-title { margin-top: -73px; margin-bottom: 11px; text-align: center; filter: drop-shadow(0 5px 12px rgba(0,0,0,.85)); }
+.menu-title span { color: #ffd98e; font: 900 10px/1.2 ui-monospace, monospace; letter-spacing: .24em; }
+.menu-title h1 { margin-top: 4px; color: #fff5d7; font-size: clamp(27px, 4vw, 42px); line-height: .98; letter-spacing: .12em; }
+.menu-title b { display: block; margin-top: 5px; color: #f3c96f; font: 800 11px/1 ui-monospace, monospace; letter-spacing: .52em; }
 .lead { color: #d4e1db; font-size: 14px; letter-spacing: .08em; }
 #difficulty { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .difficulty, .primary, .secondary {
@@ -152,7 +170,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   #hud-actions { top: calc(max(8px, env(safe-area-inset-top)) + 78px); right: 8px; }
   #hud-actions button { padding: 5px 7px; min-width: 44px; font-size: 11px; }
   .overlay { position: fixed; width: 100vw; height: 100dvh; justify-content: flex-start; padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
-  #menu > img { width: min(360px, 90vw); max-height: 118px; margin-top: auto; }
+  #menu > img { width: min(390px, 92vw); height: 150px; max-height: none; margin-top: auto; }
+  .menu-title { margin-top: -59px; margin-bottom: 8px; }
+  .menu-title h1 { font-size: 27px; }
+  .menu-title b { font-size: 9px; }
   #difficulty { display: grid; width: min(100%, 420px); grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
   .difficulty { min-width: 0; padding: 9px 5px; font-size: 13px; }
   .difficulty small { font-size: 9px; line-height: 1.35; }
@@ -160,10 +181,32 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   .hub-link { margin-bottom: auto; }
   .compact { justify-content: center; }
   #touch-controls { --control-size: 56px; }
+  .action-controls {
+    right: max(12px, env(safe-area-inset-right));
+    width: calc(var(--control-size) * 2 + 8px); height: calc(var(--control-size) * 2 + 8px);
+    display: grid; grid-template: repeat(2, var(--control-size)) / repeat(2, var(--control-size));
+  }
+  #jump-btn { grid-area: 1 / 1; transform: none; }
+  #jump-btn.active, #jump-btn:active { transform: scale(.94); }
+  #fire-btn { grid-area: 2 / 2; }
+  #auto-btn { grid-area: 1 / 2; align-self: center; justify-self: center; }
 }
 
 @media (max-width: 360px) and (orientation: portrait) {
   #touch-controls { --control-size: 50px; }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  #mission { top: 6px; width: 260px; min-width: 0; padding: 4px 9px; gap: 1px 7px; }
+  #word-meaning { font-size: 14px; }
+  #word-progress { font-size: 13px; }
+  #feedback { font-size: 9px; }
+  .eyebrow { font-size: 9px; }
+  #status { top: 6px; left: 6px; max-width: 185px; gap: 3px; }
+  #status span { padding: 4px 6px; font-size: 10px; }
+  #status .secondary-stat { display: none; }
+  #hud-actions { top: 6px; right: 6px; gap: 3px; }
+  #hud-actions button { min-width: 42px; padding: 4px 6px; font-size: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
