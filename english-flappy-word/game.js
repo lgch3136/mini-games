@@ -94,9 +94,11 @@ function loadSprite(src, cb) {
   img.src = src;
 }
 loadSprite('assets/bird.png', (i) => { Assets.bird = i; });
-loadSprite('assets/pipe.png', (i) => { Assets.pipe = i; });
+// 旧pipe.png素材是米色楼房风格, 与原版绿色管道不符——已禁用, 改用矢量绘制
+// loadSprite('assets/pipe.png', (i) => { Assets.pipe = i; });
 (function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet.png'; })();
-(function () { const i = new Image(); i.onload = () => { Assets.bg = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bg.png'; })();
+// bg.png绘本风背景与原版观感不符——已禁用, 用矢量纯青蓝天+城市剪影
+// (function () { const i = new Image(); i.onload = () => { Assets.bg = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bg.png'; })();
 
 /* ---------------- 音效 ---------------- */
 const SFX = {
@@ -431,9 +433,8 @@ function drawBackground() {
     ctx.drawImage(Assets.bg, -off, 0, bw, H);
     ctx.drawImage(Assets.bg, -off + bw, 0, bw, H);
   } else {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#7ec8f7'); g.addColorStop(0.7, '#b7e3fb'); g.addColorStop(1, '#e8f7ff');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // 原版纯青蓝天空(无渐变)
+    ctx.fillStyle = '#70c5ce'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
     for (let i = 0; i < 6; i++) {
       const cx = ((i * 137 + 40) - Game.dist * 0.12) % (W + 200) - 100;
@@ -506,6 +507,34 @@ function drawGround() {
   ctx.fillRect(0, GROUND_Y + 22, W, GROUND_H - 22);
 }
 
+/* 原版Flappy Bird式管道: 亮绿柱体+左高光条+右暗面+管口法兰 */
+function drawPipeBody(x, y, w, h, capAtBottom) {
+  if (h <= 0) return;
+  // 原版四段式硬边色带: 左高光/主色/右阴影/暗边 + 深描边
+  const band = (bx, bw, c) => { ctx.fillStyle = c; ctx.fillRect(bx, y, bw, h); };
+  // 纵向色带: 左亮高光条(18%) / 主绿 / 右暗部(24%) —— 原版圆柱明暗
+  band(x, w * .10, '#417c1b');           // 左暗边
+  band(x + w * .10, w * .22, '#b8f0a0'); // 高光亮带(1/5宽, 偏左1/3)
+  band(x + w * .32, w * .30, '#7ed32e'); // 主绿
+  band(x + w * .62, w * .24, '#58a824'); // 过渡
+  band(x + w * .86, w * .14, '#2f5a12'); // 右深边
+  ctx.strokeStyle = '#1f3010';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x + 1.5, y - (capAtBottom ? 0 : 1.5), w - 3, h + 1.5);
+  // 管口法兰(加粗段): 靠缺口端
+  const capH = Math.min(28, h);
+  const capY = capAtBottom ? y + h - capH : y;
+  const cx0 = x - 3.5, cw = w + 7;
+  const cband = (bx, bw, c) => { ctx.fillStyle = c; ctx.fillRect(bx, capY, bw, capH); };
+  cband(cx0, cw * .18, '#b2ef75');
+  cband(cx0 + cw * .18, cw * .32, '#86d836');
+  cband(cx0 + cw * .50, cw * .28, '#5fae27');
+  cband(cx0 + cw * .78, cw * .22, '#457d1d');
+  ctx.strokeStyle = '#223314';
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(cx0 + 1, capY + 1, cw - 2, capH - 2);
+}
+
 function drawPipes() {
   for (const p of Game.pipes) {
     const sx = p.x - Game.dist;
@@ -519,14 +548,9 @@ function drawPipes() {
       ctx.restore();
       ctx.drawImage(Assets.pipe, sx, p.gapY + p.gapH / 2, p.w, botH);
     } else {
-      ctx.fillStyle = '#4fae4f'; ctx.fillRect(sx, 0, p.w, topH);
-      ctx.fillStyle = '#3f9445'; ctx.fillRect(sx - 4, topH - 26, p.w + 8, 26);
-      ctx.fillStyle = '#4fae4f'; ctx.fillRect(sx, p.gapY + p.gapH / 2, p.w, botH);
-      ctx.fillStyle = '#3f9445'; ctx.fillRect(sx - 4, p.gapY + p.gapH / 2, p.w + 8, 26);
+      drawPipeBody(sx, 0, p.w, topH, true);
+      drawPipeBody(sx, p.gapY + p.gapH / 2, p.w, botH, false);
     }
-    ctx.strokeStyle = 'rgba(20,60,25,0.65)'; ctx.lineWidth = 3;
-    ctx.strokeRect(sx + 1.5, 0, p.w - 3, topH);
-    ctx.strokeRect(sx + 1.5, p.gapY + p.gapH / 2, p.w - 3, botH);
   }
 }
 
