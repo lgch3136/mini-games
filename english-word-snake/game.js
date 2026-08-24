@@ -541,9 +541,11 @@ function setFeedback(text, ok, dur) {
 
 /* ---------------- 主循环 tick ---------------- */
 function currentInterval() {
-  let iv = DIFF_CONF[Game.difficulty].tick - (Game.level - 1) * 0.012;
+  // 原版阶梯加速: 每2级快一档, 有明显的"提速了!"感觉
+  const stepDown = Math.floor((Game.level - 1) / 2) * 0.016;
+  let iv = DIFF_CONF[Game.difficulty].tick - stepDown;
   if (Game.slowTimer > 0) iv += 0.05;
-  return Math.max(0.085, iv);
+  return Math.max(0.075, iv);
 }
 
 function tick() {

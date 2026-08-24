@@ -527,8 +527,21 @@ function updateEnemies(dt) {
     const cy = OY + e.row * CELL + CELL / 2;
     const atCenter = Math.abs(e.px - cx) < 2.5 && Math.abs(e.py - cy) < 2.5;
     if (atCenter) {
-      // 选方向: 追踪型偏向玩家, 其余随机
-      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => !cellBlocked(e.col + dc, e.row + dr, false, e.kind === 'ghost'));
+      // 选方向: blob=原版Balloom式"直行到底撞墙才转向"(可预判);
+      // ghost/runner=偏向玩家追踪
+      let dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => !cellBlocked(e.col + dc, e.row + dr, false, e.kind === 'ghost'));
+      if (e.kind === 'blob' && dirs.length > 1 && !e.lastDir) {
+        // 初始方向
+        e.lastDir = dirs[Math.floor(Math.random() * dirs.length)];
+      }
+      if (e.kind === 'blob') {
+        // 直行偏好: 当前方向仍可行就继续(80%), 否则从可行方向随机(不掉头)
+        const cur = e.dir;
+        const straight = cur && dirs.find(([dc, dr]) => dc === cur[0] && dr === cur[1]);
+        dirs = (straight && Math.random() < .8) ? [straight]
+             : dirs.filter(([dc, dr]) => !(cur && dc === -cur[0] && dr === -cur[1]));
+        if (!dirs.length) dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => !cellBlocked(e.col + dc, e.row + dr, false));
+      }
       if (dirs.length) {
         let pick = null;
         if (e.kind !== 'blob' && Math.random() < (e.kind === 'runner' ? .55 : .35)) {

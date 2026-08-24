@@ -690,6 +690,7 @@ function updateFx(dt) {
   for (let i = Game.particles.length - 1; i >= 0; i--) {
     const pt = Game.particles[i];
     pt.t += dt;
+    if (pt.t < 0) continue;   // 延迟引爆中
     if (pt.t >= pt.life) { Game.particles.splice(i, 1); continue; }
     pt.x += pt.vx * dt;
     pt.y += pt.vy * dt;
@@ -1173,9 +1174,24 @@ function drawPowerups() {
 }
 
 function drawParticles() {
+  // 旋转残骸碎片(雷电式)
+  for (const d of (Game.debris || [])) {
+    const a = 1 - d.t / d.life;
+    ctx.save();
+    ctx.translate(d.x, d.y); ctx.rotate(d.rot);
+    ctx.globalAlpha = Math.max(0, a);
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.moveTo(-d.size, -d.size * .6);
+    ctx.lineTo(d.size, -d.size * .3);
+    ctx.lineTo(d.size * .2, d.size);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
   for (const pt of Game.particles) {
     const a = 1 - pt.t / pt.life;
-    ctx.globalAlpha = Math.max(0, a);
+    if (a <= 0) continue;   // t为负(延迟引爆)时不画
     ctx.fillStyle = pt.color;
     ctx.beginPath();
     ctx.arc(pt.x, pt.y, Math.max(0.4, pt.r * a), 0, Math.PI * 2);
