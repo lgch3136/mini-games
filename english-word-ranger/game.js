@@ -443,8 +443,11 @@ function generateChunk() {
   }
 }
 
-function ensureWorld(targetX) {
-  while (Game.generatedTo < targetX) generateChunk();
+let worldGenBudget = 0;   // 运行时每帧限2个chunk防尖峰; 初始化/自检传Infinity
+function ensureWorld(targetX, budget) {
+  const cap = budget == null ? worldGenBudget : budget;
+  let used = 0;
+  while (Game.generatedTo < targetX && used < cap) { generateChunk(); used++; }
 }
 
 function findSafeSpot(candidate) {
@@ -513,7 +516,7 @@ function startGame(mode = Game.mode) {
   for (const list of [Game.chunks, Game.pickups, Game.powerups, Game.enemies, Game.bullets, Game.enemyBullets, Game.particles]) list.length = 0;
   resetInput();
   resetPlayer(70);
-  ensureWorld(VIEW_W * 3);
+  ensureWorld(VIEW_W * 3, Infinity);
   nextWord(true);
   $('menu').classList.add('hidden');
   $('over').classList.add('hidden');
@@ -1405,6 +1408,7 @@ function cullWorld() {
 }
 
 function update(dt) {
+  worldGenBudget = 2;
   if (Game.hitStop > 0) {
     Game.hitStop = Math.max(0, Game.hitStop - dt);
     Game.shake = Math.max(0, Game.shake - dt);
@@ -2194,7 +2198,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       startGame('mission');
       if (Game.mode !== 'mission' || FIXED_STEP !== 1 / 60) throw new Error('mission or fixed-step setup failed');
       if (Game.generatedTo < VIEW_W * 3) throw new Error('world did not generate ahead');
-      ensureWorld(CHUNK_W * 4); // 自检与设备宽度无关，固定覆盖前四个编排节拍。
+      ensureWorld(CHUNK_W * 4, Infinity);
       if (Game.chunks.slice(0, 4).map((chunk) => chunk.tag).join(',') !== 'TEACH,TEST,RECOVERY,TEACH') throw new Error('curated mission order failed');
       const startX = Game.player.x;
       input.right = true;
@@ -2241,7 +2245,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.pickups.slice().sort((a, b) => a.index - b.index).forEach(collectLetter);
       if (Game.wordsDone !== 1 || Game.currentWord === firstWord) throw new Error('word loop did not continue');
       if (!Game.wordEcho || !Game.wordEcho.complete || Game.wordEcho.en !== firstWord.en) throw new Error('word memory echo failed');
-      ensureWorld(CHUNK_W * 10);
+      ensureWorld(CHUNK_W * 10, Infinity);
       const gateChunk = Game.chunks.find((chunk) => chunk.wordGate);
       if (!gateChunk || !openWordGate(gateChunk) || Game.state !== 'word-gate') throw new Error('active recall gate failed to open');
       answerWordGate(Game.wordGate.word.en);
@@ -2266,7 +2270,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       for (let order = 0; order < 3; order++) hitBossNode(Game.bossNodes.find((node) => node.order === order), boss);
       if (!Game.bossGateDone || boss.bossPhase !== 3 || Game.player.overdrive < 6) throw new Error('boss phase transition failed');
       startGame('arcade');
-      ensureWorld(CHUNK_W * 13);
+      ensureWorld(CHUNK_W * 13, Infinity);
       if (new Set(Game.chunks.map((chunk) => chunk.biome)).size !== 4) throw new Error('biome rotation missing');
       if (new Set(Game.chunks.map((chunk) => chunk.encounter)).size < 5) throw new Error('encounter rotation missing');
       const hazardTypes = new Set(Game.chunks.flatMap((chunk) => chunk.hazards.map((hazard) => hazard.type)));

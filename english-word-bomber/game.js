@@ -710,20 +710,34 @@ function drawGrid() {
         ctx.fillStyle = 'rgba(0,0,0,.4)';
         ctx.fillRect(x + 4, y + CELL - 11, CELL - 8, 7);
       } else if (g === 2) {
-        // 可炸砖: 高饱和橙棕+裂纹高光, 一眼识别
-        ctx.fillStyle = '#c2410c';
-        ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
-        ctx.fillStyle = '#ea580c';
-        ctx.fillRect(x + 2, y + 2, CELL - 4, 9);
-        ctx.fillStyle = 'rgba(255,220,160,.35)';
-        ctx.fillRect(x + 6, y + 6, CELL - 12, 3);
-        ctx.strokeStyle = 'rgba(60,20,0,.55)'; ctx.lineWidth = 2;
+        // 可炸砖: 三面立体感(顶亮/前面中/底暗), 对齐封面渲染质感
+        const bx = x + 2, by = y + 4, bw = CELL - 4, bh = CELL - 10;
+        // 投影
+        ctx.fillStyle = 'rgba(0,0,0,.22)';
+        ctx.fillRect(bx + 3, by + bh - 2, bw, 7);
+        // 正面(主色渐变)
+        const fg = ctx.createLinearGradient(bx, by, bx, by + bh);
+        fg.addColorStop(0, '#f97316'); fg.addColorStop(.55, '#c2410c'); fg.addColorStop(1, '#9a3412');
+        ctx.fillStyle = fg;
+        ctx.fillRect(bx, by, bw, bh);
+        // 顶面斜切高光
+        ctx.fillStyle = '#fb923c';
         ctx.beginPath();
-        ctx.moveTo(x + 2, y + CELL / 2); ctx.lineTo(x + CELL - 2, y + CELL / 2);
-        ctx.moveTo(x + CELL / 2, y + 11); ctx.lineTo(x + CELL / 2, y + CELL / 2);
-        ctx.moveTo(x + CELL / 4, y + CELL / 2); ctx.lineTo(x + CELL / 4, y + CELL - 2);
-        ctx.moveTo(x + CELL * .75, y + CELL / 2); ctx.lineTo(x + CELL * .75, y + CELL - 2);
+        ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw - 5, by + 7); ctx.lineTo(bx + 5, by + 7);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,230,180,.5)';
+        ctx.fillRect(bx + 5, by + 8, bw - 10, 2.5);
+        // 砖缝十字纹
+        ctx.strokeStyle = 'rgba(70,20,0,.5)'; ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(bx, by + (bh) / 2 + 4); ctx.lineTo(bx + bw, by + bh / 2 + 4);
+        ctx.moveTo(bx + bw / 2, by + 9); ctx.lineTo(bx + bw / 2, by + bh / 2 + 4);
+        ctx.moveTo(bx + bw / 4, by + bh / 2 + 4); ctx.lineTo(bx + bw / 4, by + bh);
+        ctx.moveTo(bx + bw * .75, by + bh / 2 + 4); ctx.lineTo(bx + bw * .75, by + bh);
         ctx.stroke();
+        // 边缘暗线
+        ctx.strokeStyle = 'rgba(50,12,0,.65)'; ctx.lineWidth = 1.5;
+        ctx.strokeRect(bx + .5, by + .5, bw - 1, bh - 1);
       } else {
         // 空地: FC经典亮蓝灰棋盘(高明度, 与所有元素拉开)
         ctx.fillStyle = (r + c) % 2 === 0 ? '#cbd5e1' : '#b6c2d2';

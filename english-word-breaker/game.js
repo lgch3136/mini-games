@@ -520,13 +520,29 @@ function render() {
     ctx.strokeStyle = 'rgba(59,130,246,.8)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 7); ctx.stroke();
 
-    // 球
+    // 球 + 拖尾
+    if (!Game.trails) Game.trails = [];
+    for (const b of Game.balls) {
+      Game.trails.push({ x: b.x, y: b.y, life: 1 });
+    }
+    for (let i = Game.trails.length - 1; i >= 0; i--) {
+      const tr = Game.trails[i];
+      tr.life -= .045;
+      if (tr.life <= 0) { Game.trails.splice(i, 1); continue; }
+      ctx.globalAlpha = tr.life * .3;
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath(); ctx.arc(tr.x, tr.y, 6 * tr.life, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
     for (const b of Game.balls) {
       ctx.save();
       ctx.shadowColor = 'rgba(255,240,180,.9)';
       ctx.shadowBlur = 12;
       ctx.fillStyle = '#fffbeb';
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
+      // 高光点
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.beginPath(); ctx.arc(b.x - 2.2, b.y - 2.4, 2.2, 0, TAU); ctx.fill();
       ctx.restore();
     }
 

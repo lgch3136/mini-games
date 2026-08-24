@@ -24,7 +24,13 @@ const TAU = Math.PI * 2;
 const HIT_Y = 520;
 const NOTE_SPEED_BASE = 300;
 
-const JUDGE = { perfect: .05, great: .09, good: .14 };
+// 劲乐团式判定: 窗口较宽, 高滚速自动补偿(速度越快窗口越松)
+const JUDGE = { perfect: .06, great: .11, good: .16 };
+function judgeWindows() {
+  const m = Game.scrollMul || 1;
+  const comp = m >= 1.3 ? 1.28 : m >= 1.15 ? 1.15 : m <= .85 ? .92 : 1;
+  return { perfect: JUDGE.perfect * comp, great: JUDGE.great * comp, good: JUDGE.good * comp };
+}
 const DIFFS = {
   easy:   { speedMul: .8, density: .72, label: '初级' },
   medium: { speedMul: 1.0, density: 1.0, label: '中级' },
@@ -64,6 +70,7 @@ const Game = {
   difficulty: 'medium',
   keyMode: 4, scrollMul: 1.0,
   score: 0, lives: 100,
+  shields: 1,            // 续演护盾: MISS时消耗, 保连击不断
   combo: 0, maxCombo: 0,
   counts: { perfect: 0, great: 0, good: 0, miss: 0 },
   level: 1, wordsDone: 1,
@@ -240,9 +247,20 @@ function buildChart(retryWord, seamless) {
     // 密度随关卡: 高关卡段落间隔更短
     if (Game.level < 3) cursor += 2;
   }
+  // 无缝模式: 谱面尾部再补一段填充, 直到songEnd前1拍 —— 杜绝空白
+  if (seamless) {
+    let tailCursor = Math.ceil(t / step) + 1;
+    const tailEnd = Math.floor((t + beat * 1.5) / step);
+    while (tailCursor < tailEnd) {
+      Game.notes.push({ lane: (tailCursor * 7) % L, hitAt: tailCursor * step,
+        letter: null, judged: false, isLetter: false });
+      tailCursor += 2;
+    }
+  }
 
+  // 尾奏只留3拍; 无缝换词时间隙被填充铺满, 音乐不断
   Game.notes.sort((a, b) => a.hitAt - b.hitAt);
-  Game.songEndAt = totalSteps * step + beat * 2;
+  Game.songEndAt = seamless ? (t + beat * 1.5) : (totalSteps * step + beat * 3);
 
   updateHud();
   showFeedback(`第${Game.level}谱 · BPM ${bpm} · ${safe(Game.word.en)} (${safe(Game.word.zh)})`);
@@ -253,6 +271,7 @@ function startGame() {
   LANES = Game.keyMode || 4;
   Game.scrollMul = Game.scrollMul || 1.0;
   Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0;
+  Game.shields = 1;
   Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   Game.level = 1; Game.wordsDone = 0; Game.time = 0;
   Game.state = 'playing';
@@ -271,6 +290,11 @@ function nextChart() {
   const bonus = 500 + Game.maxCombo * 10;
   Game.score += bonus;
   Game.lives = Math.min(100, Game.lives + 12);
+  if (Game.wordsDone % 2 === 0 && Game.shields < 3) {
+    Game.shields++;
+    floatText('🛡 +1 续演护盾', W / 2, H * .24, '#67e8f9');
+  }
+  updateHud();
   // 无缝续谱: 不重置时钟/节拍器, 新词音符直接从当前位置+2.5拍流入
   buildChart(false, true);
   floatText('+' + bonus + ' 连续!', W / 2, H * .3, '#fde68a');
@@ -283,6 +307,7 @@ function judgeHit(lane) {
   if (Game.state !== 'playing' || lane == null || lane < 0 || lane >= LANES) return;
   Game.flashLane[lane] = 1;
   const t = now();
+  const JW = judgeWindows();
   let best = null, bestD = Infinity;
   for (const n of Game.notes) {
     if (n.judged || n.lane !== lane) continue;
@@ -290,11 +315,11 @@ function judgeHit(lane) {
     if (d < bestD) { bestD = d; best = n; }
     if (n.hitAt > t + .3) break;
   }
-  if (!best || bestD > JUDGE.good) { tapSound(false, lane); return; }
+  if (!best || bestD > JW.good) { tapSound(false, lane); return; }
   best.judged = true;
   let verdict, pts;
-  if (bestD <= JUDGE.perfect) { verdict = 'PERFECT'; pts = 300; Game.counts.perfect++; }
-  else if (bestD <= JUDGE.great) { verdict = 'GREAT'; pts = 200; Game.counts.great++; }
+  if (bestD <= JW.perfect) { verdict = 'PERFECT'; pts = 300; Game.counts.perfect++; }
+  else if (bestD <= JW.great) { verdict = 'GREAT'; pts = 200; Game.counts.great++; }
   else { verdict = 'GOOD'; pts = 100; Game.counts.good++; }
   Game.combo++;
   Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
@@ -321,11 +346,19 @@ function judgeHit(lane) {
 
 function scanMisses() {
   const t = now();
+  const JW = judgeWindows();
   for (const n of Game.notes) {
     if (n.judged) continue;
-    if (n.hitAt < t - JUDGE.good) {
+    if (n.hitAt < t - JW.good) {
       n.judged = true; n.missed = true;
       Game.counts.miss++;
+      if (Game.shields > 0) {
+        // 护盾抵消: 连击保留, 不扣血 —— "不中断胶囊"
+        Game.shields--;
+        n.shielded = true;
+        floatText('🛡 续演!', laneX(n.lane), HIT_Y - 70, '#67e8f9');
+        continue;
+      }
       Game.combo = 0;
       Game.lives -= n.isLetter ? 8 : 4;
       missSound();
@@ -415,6 +448,8 @@ function updateHud() {
   $id('score').textContent = safe(Game.score, 0);
   $id('level').textContent = safe(Game.level, 1);
   $id('bpm').textContent = safe(Game.bpm, 104);
+  const sh = $id('shields');
+  if (sh) sh.textContent = '🛡'.repeat(Game.shields) || '—';
   $id('life-bar').style.width = clamp(Game.lives, 0, 100) + '%';
   const w = Game.word;
   if (w && w.en) {

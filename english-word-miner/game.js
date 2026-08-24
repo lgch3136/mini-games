@@ -57,30 +57,111 @@ function newHook() {
 }
 
 /* ---------------- 物品生成 ---------------- */
+// 可达性: 从轴心(hx,hy)到目标是否有一条无遮挡直线
+function reachableFrom(hx, hy, target, items, ignoreIdx) {
+  const dx = target.x - hx, dy = target.y - hy;
+  const dist = Math.hypot(dx, dy);
+  for (let i = 0; i < items.length; i++) {
+    if (i === ignoreIdx) continue;
+    const it = items[i];
+    // 其他字母不算遮挡(玩家可按任意顺序先抓路径上的字母, 抓错只是放回)
+    if (it.kind === 'letter') continue;
+    if (it.reachableCheck === false) continue;
+    // 点到线段距离
+    const t = clamp(((it.x - hx) * dx + (it.y - hy) * dy) / (dist * dist), 0, 1);
+    const px = hx + dx * t, py = hy + dy * t;
+    if (Math.hypot(it.x - px, it.y - py) < it.r + target.r * .6 && t > .05 && t < .97) return false;
+  }
+  return true;
+}
+
 function spawnItems() {
   Game.items = [];
   const w = Game.word;
-  // 字母块: 按词序分布在5个深度带
+  // 字母块: 按词序分布深度带, 且必须可达(最多重试12次找无遮挡位置)
   const letters = [...w.en.toUpperCase()];
   const bands = letters.length;
   for (let i = 0; i < bands; i++) {
     const bandTop = 150 + (330 / bands) * i;
-    Game.items.push({
-      kind: 'letter', letter: letters[i], index: i,
-      x: rand(50, W - 50), y: rand(bandTop, bandTop + 300 / bands - 30),
-      r: 19, weight: 1, value: 120 + i * 20,
-      wobble: Math.random() * TAU,
-    });
+    let placed = null;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const cand = {
+        kind: 'letter', letter: letters[i], index: i,
+        x: rand(80, W - 80), y: rand(bandTop + 10, bandTop + 300 / bands - 40),
+        r: 19, weight: 1, value: 120 + i * 20,
+        wobble: Math.random() * TAU,
+      };
+      if (attempt >= 11 || reachableFrom(W / 2, 96, cand, Game.items, -1)) { placed = cand; break; }
+    }
+    if (placed) Game.items.push(placed);
   }
   // 干扰物: 石头(重但给分少)、炸弹(扣分+眩晕)、钻石(高分)
   const rocks = 4 + Math.min(4, Game.level);
   for (let i = 0; i < rocks; i++) {
-    Game.items.push({
-      kind: Math.random() < .16 ? 'bomb' : 'rock',
-      x: rand(40, W - 40), y: rand(160, H - 40),
-      r: rand(15, 24), weight: rand(1.8, 3.2), value: -50,
-      wobble: Math.random() * TAU,
-    });
+    let placed = null;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const cand = {
+        kind: Math.random() < .16 ? 'bomb' : 'rock',
+        x: rand(60, W - 60), y: rand(170, H - 45),
+        r: rand(14, 21), weight: rand(1.8, 3.2), value: -50,
+        wobble: Math.random() * TAU,
+      };
+      // 不与已有物品重叠太多
+      if (Game.items.some((it) => Math.hypot(it.x - cand.x, it.y - cand.y) < it.r + cand.r + 14)) continue;
+      placed = cand; break;
+    }
+    if (placed) Game.items.push(placed);
+  }
+  // 最终校验: 字母必须可达 —— 找到第一个遮挡物直接删掉(字母可达优先级最高)
+  for (let pass = 0; pass < 3; pass++) {
+    let blockedFound = false;
+    for (const it of Game.items) {
+      if (it.kind !== 'letter') continue;
+      const idx = Game.items.indexOf(it);
+      // 找出这条路径上的遮挡者
+      const dx = it.x - W / 2, dy = it.y - 96;
+      const dist = Math.hypot(dx, dy);
+      let blocker = null;
+      for (let i = 0; i < Game.items.length; i++) {
+        const ob = Game.items[i];
+        if (i === idx || ob.kind === 'letter') continue;   // 字母互不遮挡
+        const tt = clamp(((ob.x - W / 2) * dx + (ob.y - 96) * dy) / (dist * dist), 0, 1);
+        const px = W / 2 + dx * tt, py = 96 + dy * tt;
+        if (Math.hypot(ob.x - px, ob.y - py) < ob.r + it.r * .6 && tt > .05 && tt < .97) { blocker = ob; break; }
+      }
+      if (blocker && blocker.kind !== 'diamond') {
+        Game.items.splice(Game.items.indexOf(blocker), 1);   // 删遮挡岩石/炸弹
+        blockedFound = true;
+      } else if (blocker) {
+        // 钻石挡路: 挪钻石
+        blocker.x += (blocker.x > W / 2 ? -60 : 60);
+        blockedFound = true;
+      }
+    }
+    if (!blockedFound) break;
+  }
+  // 兜底: 仍有不可达字母 => 挪到中轴无遮挡带
+  for (const it of Game.items) {
+    if (it.kind !== 'letter') continue;
+    let tries = 0;
+    while (!reachableFrom(W / 2, 96, it, Game.items, Game.items.indexOf(it)) && tries < 15) {
+      it.x = W / 2 + Math.sin(it.index * 2.1) * 30;
+      it.y = clamp(it.y + (tries % 2 === 0 ? 24 : -14), 150, H - 60);
+      tries++;
+      if (tries >= 10) {
+        // 强制清出一条路
+        const dx = it.x - W / 2, dy = it.y - 96;
+        const dist = Math.hypot(dx, dy);
+        for (let i = Game.items.length - 1; i >= 0; i--) {
+          const ob = Game.items[i];
+          if (ob.kind === 'letter') continue;
+          const tt = clamp(((ob.x - W / 2) * dx + (ob.y - 96) * dy) / (dist * dist), 0, 1);
+          const px = W / 2 + dx * tt, py = 96 + dy * tt;
+          if (Math.hypot(ob.x - px, ob.y - py) < ob.r + it.r * .6 && tt > .05 && tt < .97) Game.items.splice(i, 1);
+        }
+        break;
+      }
+    }
   }
   if (Game.level >= 2) {
     Game.items.push({ kind: 'diamond', x: rand(60, W - 60), y: rand(H - 130, H - 45),
@@ -330,11 +411,32 @@ function updateHud() {
 function render() {
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   const bg = ctx.createLinearGradient(0, 90, 0, H);
-  bg.addColorStop(0, '#2b1d0e');
-  bg.addColorStop(.4, '#1c1309');
-  bg.addColorStop(1, '#120c06');
+  // 四层地层色: 表土→黏土→岩层→深矿
+  bg.addColorStop(0, '#3d2a12');
+  bg.addColorStop(.28, '#2e1f0e');
+  bg.addColorStop(.62, '#241808');
+  bg.addColorStop(1, '#150d04');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+  // 岩层纹理: 横向暗带+随机石纹点(缓存到离屏避免每帧重算)
+  if (!Game._rockPattern) {
+    const pc = document.createElement('canvas');
+    pc.width = W; pc.height = H;
+    const px = pc.getContext('2d');
+    for (let band = 0; band < 7; band++) {
+      const y = 120 + band * (H - 120) / 7;
+      px.fillStyle = `rgba(0,0,0,${.08 + (band % 2) * .05})`;
+      px.fillRect(0, y, W, 10 + band * 2);
+    }
+    for (let i = 0; i < 260; i++) {
+      const x = Math.random() * W, y = 110 + Math.random() * (H - 110);
+      const s = rand(1.5, 4.5);
+      px.fillStyle = Math.random() < .5 ? 'rgba(255,220,150,.06)' : 'rgba(0,0,0,.18)';
+      px.fillRect(x, y, s, s);
+    }
+    Game._rockPattern = pc;
+  }
+  ctx.drawImage(Game._rockPattern, 0, 0);
   drawMineBackdrop();
   // 地表
   ctx.fillStyle = '#3d2c17';
@@ -413,8 +515,23 @@ function drawMiner() {
   ctx.beginPath(); ctx.arc(-3, -9, 1.4, 0, TAU); ctx.arc(3, -9, 1.4, 0, TAU); ctx.fill();
   ctx.fillStyle = '#dc2626';                        // 工装
   ctx.beginPath(); ctx.roundRect(-9, -2, 18, 18, 5); ctx.fill();
+  ctx.fillStyle = '#7f1d1d';                        // 腰带
+  ctx.fillRect(-9, 10, 18, 3.5);
+  ctx.fillStyle = '#fbbf24';                        // 带扣
+  ctx.fillRect(-2.5, 10.4, 5, 2.8);
   ctx.fillStyle = '#1e3a8a';
-  ctx.fillRect(-7, 16, 5, 10); ctx.fillRect(2, 16, 5, 10);
+  ctx.fillRect(-7, 13.5, 5, 11); ctx.fillRect(2, 13.5, 5, 11);
+  ctx.strokeStyle = '#57534e'; ctx.lineWidth = 1.6; // 胡子
+  ctx.beginPath(); ctx.moveTo(-4, -5.5); ctx.quadraticCurveTo(0, -3.6, 4, -5.5); ctx.stroke();
+  // 头灯光锥: 照亮前方地层
+  const cone = ctx.createLinearGradient(0, -14, 46, -14 + 40);
+  cone.addColorStop(0, 'rgba(255,238,170,.30)');
+  cone.addColorStop(1, 'rgba(255,238,170,0)');
+  ctx.fillStyle = cone;
+  ctx.beginPath();
+  ctx.moveTo(8, -14);
+  ctx.lineTo(52, -2); ctx.lineTo(52, 22); ctx.lineTo(8, -6);
+  ctx.closePath(); ctx.fill();
   ctx.restore();
 }
 
@@ -458,6 +575,18 @@ function drawItem(it) {
     ctx.font = '900 17px ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(it.letter, 0, 1);
+    // 十字星闪(周期性)
+    const tw = (Math.sin(Game.time * 2.4 + it.wobble * 3) + 1) / 2;
+    if (tw > .72) {
+      const sa = (tw - .72) / .28;
+      ctx.strokeStyle = `rgba(255,255,240,${sa * .85})`;
+      ctx.lineWidth = 2;
+      const L = 9 + sa * 7;
+      ctx.beginPath();
+      ctx.moveTo(-it.r * .55 - L, -it.r * .55); ctx.lineTo(-it.r * .55 + L, -it.r * .55);
+      ctx.moveTo(-it.r * .55, -it.r * .55 - L); ctx.lineTo(-it.r * .55, -it.r * .55 + L);
+      ctx.stroke();
+    }
   } else if (it.kind === 'rock') {
     ctx.fillStyle = '#57534e';
     ctx.beginPath();

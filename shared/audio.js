@@ -55,6 +55,9 @@
     stopBgm() { music.pause(); },
     play(name, volume, rate) {
       if (muted || !files[name]) return;
+      // 高频音效走WebAudio合成(零主线程开销); 低频事件走HTMLAudio池
+      if (name === 'laser') { synthLaser(volume, rate); return; }
+      if (name === 'click') { synthClick(volume, rate); return; }
       const pool = soundPool(name);
       const audio = pool.find((item) => item.paused || item.ended) || pool[0];
       audio.currentTime = 0;
@@ -63,6 +66,44 @@
       audio.play().catch(() => {});
     },
   };
+
+  /* ---- WebAudio 合成音效: 高频调用零卡顿 ---- */
+  let actx = null;
+  function ctx() {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    if (actx && actx.state === 'suspended') actx.resume().catch(() => {});
+    return actx;
+  }
+  function synthLaser(volume, rate) {
+    const a = ctx(); if (!a) return;
+    const t = a.currentTime;
+    const vol = volume == null ? 0.32 : volume;
+    const r = Math.max(.5, Math.min(2, rate == null ? 1 : rate));
+    const osc = a.createOscillator(), g = a.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(880 * r, t);
+    osc.frequency.exponentialRampToValueAtTime(220 * r, t + .09);
+    g.gain.setValueAtTime(vol * .5, t);
+    g.gain.exponentialRampToValueAtTime(.001, t + .1);
+    osc.connect(g); g.connect(a.destination);
+    osc.start(t); osc.stop(t + .11);
+  }
+  function synthClick(volume, rate) {
+    const a = ctx(); if (!a) return;
+    const t = a.currentTime;
+    const vol = volume == null ? 0.18 : volume;
+    const r = Math.max(.5, Math.min(2, rate == null ? 1 : rate));
+    const osc = a.createOscillator(), g = a.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1200 * r, t);
+    g.gain.setValueAtTime(vol * .6, t);
+    g.gain.exponentialRampToValueAtTime(.001, t + .05);
+    osc.connect(g); g.connect(a.destination);
+    osc.start(t); osc.stop(t + .06);
+  }
 
   window.ArcadeAudio = api;
   const unlock = () => api.start();
