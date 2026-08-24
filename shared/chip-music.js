@@ -196,6 +196,54 @@
     return { tempo: 122, patterns: P, order: ['t1', 't1', 't2', 't1', 't2', 't1', 't2', 't1', 't2', 't1', 't2', 't1', 't2', 't1', 't2'] };  // ~58s
   })();
 
+  /* ---------- 炸弹人·火线迷宫 ---------- */
+  SONGS['bomber-loop'] = {
+    tempo: 124,
+    patterns: { b: {
+      lead: ['C5', null, 'G4', 'C5', 'D#5', null, 'D5', null, 'C5', 'G4', 'G#4', null, 'G4', null, 'D#4', null,
+             'C5', null, 'G4', 'C5', 'F5', 'D#5', 'D5', null, 'G#4', 'C5', 'D5', 'G4', 'C5', null, null, null],
+      harmony: ['G4', null, 'D#4', 'G4', 'C5', null, 'A#4', null, 'G4', 'D#4', 'F4', null, 'D#4', null, 'C4', null,
+                'G4', null, 'D#4', 'G4', 'C5', 'A#4', 'G4', null, 'F4', 'G#4', 'A#4', 'D#4', 'G4', null, null, null],
+      bass: ['C2', null, 'C3', null, 'G1', null, 'G2', null, 'G#1', null, 'G#2', null, 'G1', null, 'G2', null,
+             'C2', null, 'C3', null, 'F1', null, 'F2', null, 'G1', null, 'G2', null, 'C2', 'G2', 'C3', null],
+      drums: ['K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', '.', 'h', 'K', 'S', '.', 'h', '.',
+              'K', '.', 'h', '.', 'S', '.', 'h', 'h', 'K', '.', 'S', '.', 'S', '.', 'h', 'o'],
+    } },
+    order: ['b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'],
+  };
+
+  /* ---------- 黄金矿工·地底摇摆 ---------- */
+  SONGS['miner-loop'] = {
+    tempo: 96,
+    patterns: { m: {
+      lead: ['E4', null, 'G4', 'B4', null, 'G4', 'E4', null, 'D4', null, 'F#4', 'A4', null, 'F#4', 'D4', null,
+             'E4', 'G4', 'B4', 'D5', 'B4', 'G4', 'E4', null, 'A4', null, 'G4', 'F#4', 'E4', null, null, null],
+      harmony: ['B3', null, 'E4', 'G4', null, 'E4', 'B3', null, 'A3', null, 'D4', 'F#4', null, 'D4', 'A3', null,
+                'B3', 'E4', 'G4', 'B4', 'G4', 'E4', 'B3', null, 'F#4', null, 'E4', 'D4', 'B3', null, null, null],
+      bass: ['E2', null, 'B2', null, 'E2', null, 'B2', null, 'D2', null, 'A2', null, 'D2', null, 'A2', null,
+             'C2', null, 'G2', null, 'C2', null, 'G2', null, 'B1', null, 'F#2', null, 'E2', 'B2', 'E3', null],
+      drums: ['K', '.', '.', 'h', 'S', '.', '.', 'h', 'K', '.', '.', 'h', 'S', '.', 'h', '.',
+              'K', '.', '.', 'h', 'S', '.', '.', 'h', 'K', '.', 'h', '.', 'S', '.', '.', 'o'],
+    } },
+    order: ['m', 'm', 'm', 'm', 'm', 'm', 'm', 'm', 'm', 'm'],
+  };
+
+  /* ---------- 打砖块·星钟竞技场 ---------- */
+  SONGS['breaker-loop'] = {
+    tempo: 132,
+    patterns: { k: {
+      lead: ['D5', 'A4', 'D5', 'F5', 'A5', 'F5', 'D5', 'A4', 'C5', 'G4', 'C5', 'E5', 'G5', 'E5', 'C5', 'G4',
+             'A#4', 'F4', 'A#4', 'D5', 'F5', 'D5', 'A#4', 'F4', 'A4', 'E4', 'A4', 'C#5', 'E5', 'C#5', 'A4', null],
+      harmony: ['F4', 'D4', 'F4', 'A4', 'D5', 'A4', 'F4', 'D4', 'E4', 'C4', 'E4', 'G4', 'C5', 'G4', 'E4', 'C4',
+                'D4', 'A#3', 'D4', 'F4', 'A#4', 'F4', 'D4', 'A#3', 'C#4', 'A3', 'C#4', 'E4', 'A4', 'E4', 'C#4', null],
+      bass: ['D2', null, 'D3', null, 'A1', null, 'A2', null, 'C2', null, 'C3', null, 'G1', null, 'G2', null,
+             'A#1', null, 'A#2', null, 'F1', null, 'F2', null, 'A1', null, 'A2', null, 'D2', 'A2', 'D3', null],
+      drums: ['K', '.', 'h', '.', 'S', '.', 'h', '.', 'K', 'h', '.', 'K', 'S', '.', 'h', '.',
+              'K', '.', 'h', 'h', 'S', '.', 'h', '.', 'K', '.', 'S', '.', 'S', '.', 'h', 'o'],
+    } },
+    order: ['k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k', 'k'],
+  };
+
   /* ---------- 通用胜利调 (短, 不循环) ---------- */
   SONGS['victory'] = {
     tempo: 150, noLoop: true,

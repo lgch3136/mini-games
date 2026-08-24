@@ -139,6 +139,7 @@ const Game = {
   state: 'menu',            // menu | playing | paused | over
   difficulty: 'easy',
   score: 0, combo: 0, maxCombo: 0,
+  graze: 0,
   hp: 100, shield: 0, bombs: 1,
   level: 1,
   time: 0,
@@ -360,7 +361,8 @@ function spawnQuestionWave() {
   Game.question.options.forEach((opt, i) => {
     const enemy = {
       x: clamp(W * (i + 1) / (n + 1) + rand(-jitter, jitter), edge, W - edge),
-      y: -50 - i * rand(80, 120),
+      // 两排编队直接在题栏下方展开，玩家无需空等入场动画。
+      y: Math.min(H * .3, hudClearanceY() + 26 + (i % 2) * 54),
       r: 22, hp: 1, maxHp: 1,
       vy: speedBase + rand(-12, 18),
       t: rand(0, 6), phase: rand(0, Math.PI * 2),
@@ -371,7 +373,9 @@ function spawnQuestionWave() {
       nextShot: rand(0.8, 2.5),
       shotInterval: conf.fire * rand(0.75, 1.35),
       hitFlash: 0, dead: false,
+      homeX: 0, route: Game.questionIndex % 3,
     };
+    enemy.homeX = enemy.x;
     if (i === eliteIdx) {
       enemy.elite = true;
       enemy.r = 26; enemy.hp = enemy.maxHp = 3;
@@ -819,7 +823,11 @@ function updateEnemies(dt) {
     }
 
     e.y += e.vy * dt;
-    e.x += Math.sin(e.t * e.wf + e.phase) * e.amp * 0.5 * dt;
+    const routeAmp = e.route === 1 ? e.amp * 1.25 : e.route === 2 ? e.amp * .72 : e.amp;
+    const routeWave = e.route === 2
+      ? Math.sin(e.t * e.wf + e.phase) + Math.sin(e.t * 2.7 + e.phase) * .32
+      : Math.sin(e.t * e.wf + e.phase);
+    e.x = e.homeX + routeWave * routeAmp;
     e.x = clamp(e.x, e.option && W < 600 ? Math.max(62, W * 0.17) : 30, W - (e.option && W < 600 ? Math.max(62, W * 0.17) : 30));
 
     const canFire = Game.level >= (Game.difficulty === 'easy' ? 2 : 1);
@@ -850,10 +858,16 @@ function updateEnemyBullets(dt) {
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     if (b.y > H + 30 || b.y < -30 || b.x < -30 || b.x > W + 30) { Game.enemyBullets.splice(i, 1); continue; }
-    if (Math.hypot(b.x - p.x, b.y - p.y) < b.r + p.r) {
+    const distance = Math.hypot(b.x - p.x, b.y - p.y);
+    if (distance < b.r + p.r) {
       Game.enemyBullets.splice(i, 1);
       damagePlayer(8);
       explode(b.x, b.y, '#ff7b54', 8, 0.6);
+    } else if (!b.grazed && distance < b.r + p.r + 16) {
+      b.grazed = true;
+      Game.graze++;
+      Game.score += 5;
+      if (Game.graze % 5 === 0) toast('擦弹 ×' + Game.graze, '#67e8f9', p.x, p.y - 36, 14);
     }
   }
 }
@@ -1288,7 +1302,7 @@ function startGame() {
   Game.state = 'playing';
   releaseTouchControls();
   if (window.ChipMusic) ChipMusic.play('thunder-stage');
-  Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0;
+  Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0; Game.graze = 0;
   Game.hp = 100; Game.shield = 0; Game.bombs = 1;
   Game.level = 1;
   Game.time = 0;
@@ -1357,6 +1371,7 @@ function gameOver() {
   els.overStats.innerHTML =
     '<div class="stat-row"><span>最终得分</span><b>' + Game.score + (isNew ? ' 🏆新纪录' : '') + '</b></div>' +
     '<div class="stat-row"><span>最高连击</span><b>x' + Game.maxCombo + '</b></div>' +
+    '<div class="stat-row"><span>极限擦弹</span><b>' + Game.graze + ' 次</b></div>' +
     '<div class="stat-row"><span>答对题目</span><b>' + Game.stats.correct + ' 题</b></div>' +
     '<div class="stat-row"><span>答对率</span><b>' + accPct + '%</b></div>' +
     '<div class="stat-row"><span>掌握单词</span><b>' + Game.stats.vocab + ' 个</b></div>' +
@@ -1430,6 +1445,12 @@ if (/[?&]selftest/.test(location.search)) {
   try {
     Game.difficulty = 'easy';
     startGame();
+    if (Math.max(...Game.enemies.map((e) => e.y)) - Math.min(...Game.enemies.map((e) => e.y)) > 60) throw new Error('wave enters too slowly');
+    Game.player.invuln = 0;
+    const beforeGraze = Game.score;
+    Game.enemyBullets.push({ x: Game.player.x + 28, y: Game.player.y, vx: 0, vy: 0, r: 4 });
+    updateEnemyBullets(0);
+    if (Game.graze !== 1 || Game.score !== beforeGraze + 5) throw new Error('graze failed');
     for (let i = 0; i < 30; i++) { update(1 / 60); updateFx(1 / 60); }
     const correct = Game.enemies.find((e) => e.option && e.option.correct);
     if (correct) killEnemy(correct, false);

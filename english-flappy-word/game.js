@@ -97,8 +97,7 @@ loadSprite('assets/bird.png', (i) => { Assets.bird = i; });
 // 旧pipe.png素材是米色楼房风格, 与原版绿色管道不符——已禁用, 改用矢量绘制
 // loadSprite('assets/pipe.png', (i) => { Assets.pipe = i; });
 (function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet-v2.png'; })();
-// bg.png绘本风背景与原版观感不符——已禁用, 用矢量纯青蓝天+城市剪影
-// (function () { const i = new Image(); i.onload = () => { Assets.bg = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bg.png'; })();
+(function () { const i = new Image(); i.onload = () => { Assets.bg = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bg-v3.webp'; })();
 
 /* ---------------- 音效 ---------------- */
 const SFX = {
@@ -303,8 +302,10 @@ function spawnWall(x) {
 }
 
 function spawnBubble(x) {
-  // 拼单词模式的所有气泡都是当前需要的下一个字母（无干扰项）
-  Game.bubbles.push({ x, y: rand(140, GROUND_Y - 90), r: 24, correct: true, taken: false, phase: rand(0, TAU) });
+  // 与管道重叠时把字母放在缺口中心，保证“正确字母”一定有安全航线。
+  const pipe = Game.pipes.find((item) => Math.abs(item.x + item.w / 2 - x) < item.w * .8);
+  const y = pipe ? pipe.gapY : rand(140, GROUND_Y - 90);
+  Game.bubbles.push({ x, y, r: 24, correct: true, taken: false, phase: rand(0, TAU) });
 }
 
 function spawnAhead() {
@@ -345,7 +346,17 @@ function checkCollisions() {
   for (const p of Game.pipes) {
     const sx = p.x - Game.dist;
     if (sx > W + 60 || sx + p.w < -60) continue;
-    if (!p.passed && p.x + p.w < b.x + Game.dist) { p.passed = true; Game.score += 1; SFX.pass(); updateHUD(); }
+    if (!p.passed && p.x + p.w < b.x + Game.dist) {
+      p.passed = true;
+      Game.score += 1;
+      if (Math.abs(b.y - p.gapY) < p.gapH * .18) {
+        bumpCombo();
+        Game.score += 3;
+        burst(BIRD_X, b.y, '#67e8f9', 7);
+        if (Game.combo % 5 === 0) banner('完美穿越 ×' + Game.combo, '#67e8f9');
+      }
+      SFX.pass(); updateHUD();
+    }
     if (b.inv > 0) continue;
     const topH = p.gapY - p.gapH / 2;
     if (circleRect(b.x, b.y, BIRD_R - 2, sx, 0, p.w, topH) ||
@@ -445,8 +456,8 @@ function drawBackground() {
     ctx.fillStyle = '#ffd93b';
     ctx.beginPath(); ctx.arc(W - 70, 64, 30, 0, TAU); ctx.fill();
   }
-  // 城市剪影层(Flappy Bird标志性中层背景)
-  drawCitySilhouette();
+  // 仅矢量降级背景需要城市剪影；成品背景已有完整中景。
+  if (!Assets.bg) drawCitySilhouette();
 }
 
 function drawCitySilhouette() {
@@ -988,7 +999,17 @@ if (/[?&]selftest/.test(location.search)) {
     answerWall(wall2, bad);
     chk('step4b', Game.lives === MAX_LIVES - 1 && Game.wordsDone === 2);
 
-    // 5. 碰撞伤害链路
+    // 5. 字母不会生成在管道实体里；居中穿越会奖励连击。
+    Game.mode = 'spell'; startGame(); Game.state = 'playing';
+    Game.pipes = [{ x: 500, gapY: 300, gapH: 200, w: 76, passed: false }];
+    Game.bubbles = []; spawnBubble(538);
+    chk('step5a', Game.bubbles[0] && Game.bubbles[0].y === 300);
+    Game.bird.y = 300;
+    Game.pipes = [{ x: Game.dist + BIRD_X - 80, gapY: 300, gapH: 200, w: 60, passed: false }];
+    const comboBeforePass = Game.combo; checkCollisions();
+    chk('step5b', Game.combo === comboBeforePass + 1);
+
+    // 6. 碰撞伤害链路
     Game.lives = MAX_LIVES;
     Game.bird.inv = 0;
     Game.bird.y = 0 + BIRD_R + 5;
@@ -998,7 +1019,7 @@ if (/[?&]selftest/.test(location.search)) {
     const dbg = ' dbg[y=' + Math.round(Game.bird.y) + ',inv=' + Game.bird.inv.toFixed(2) + ',st=' + Game.state +
       ',np=' + Game.pipes.length + ',p0x=' + (Game.pipes.length ? Math.round(Game.pipes[0].x - Game.dist) : -1) +
       ',dist=' + Game.dist.toFixed(1) + ',vy=' + Game.bird.vy.toFixed(0) + ']';
-    chk('step5', Game.lives === MAX_LIVES - 1);
+    chk('step6', Game.lives === MAX_LIVES - 1);
 
     document.title = ok ? 'SELFTEST-OK'
       : 'SELFTEST-FAIL@' + why + ' W=' + Game.wordsDone + ' S=' + Game.score + ' L=' + Game.lives + ' LV=' + Game.level + dbg;

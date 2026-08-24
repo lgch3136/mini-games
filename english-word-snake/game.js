@@ -103,9 +103,9 @@ const SFX = {
 
 /* ---------------- 难度配置 ---------------- */
 const DIFF_CONF = {
-  easy:   { label: '初级', tick: 0.19 },
-  medium: { label: '中级', tick: 0.165 },
-  hard:   { label: '高级', tick: 0.145 },
+  easy:   { label: '初级', tick: 0.145 },
+  medium: { label: '中级', tick: 0.12 },
+  hard:   { label: '高级', tick: 0.10 },
 };
 
 const POWERUP_KINDS = {
@@ -442,8 +442,8 @@ function completeWord() {
   const len = Game.word.mode === 'spell' ? Game.word.letters.length : 1;
   const bonus = (Game.word.mode === 'spell' ? 50 + len * 10 : 120) + Game.combo * 10;
   Game.score += bonus;
-  Game.freezeUntil = Game.time + 1.0;
-  Game.nextWordTimer = 1.7;
+  Game.freezeUntil = Game.time + .55;
+  Game.nextWordTimer = 1.0;
   floatText('✅ +' + bonus, '#ffd166', W / 2, H * 0.42, 24);
   const ans = Game.word.mode === 'spell' ? (Game.word.en + ' = ' + Game.word.zh) : Game.word.answer;
   setFeedback('✅ ' + ans, true, 1.7);
@@ -545,7 +545,7 @@ function currentInterval() {
   const stepDown = Math.floor((Game.level - 1) / 2) * 0.016;
   let iv = DIFF_CONF[Game.difficulty].tick - stepDown;
   if (Game.slowTimer > 0) iv += 0.05;
-  return Math.max(0.075, iv);
+  return Math.max(0.065, iv);
 }
 
 function tick() {
@@ -900,16 +900,15 @@ function drawSnake() {
     const t = s.length > 1 ? i / (s.length - 1) : 0;
     const cx = p.x, cy = p.y;
     const size = CELL - 4 - t * 6;
-    const grad = ctx.createLinearGradient(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
     if (i === 0) {
+      const grad = ctx.createLinearGradient(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
       grad.addColorStop(0, '#f6ff9e');
       grad.addColorStop(1, '#3fd94e');
+      ctx.fillStyle = grad;
     } else {
       const k = 1 - t;
-      grad.addColorStop(0, 'rgb(' + cc(120 + 110 * k) + ',' + cc(255) + ',' + cc(80 + 105 * k) + ')');
-      grad.addColorStop(1, 'rgb(' + cc(46 + 60 * k) + ',' + cc(165 + 90 * k) + ',' + cc(36 + 58 * k) + ')');
+      ctx.fillStyle = 'rgb(' + cc(54 + 64 * k) + ',' + cc(172 + 76 * k) + ',' + cc(42 + 54 * k) + ')';
     }
-    ctx.fillStyle = grad;
     if (i === 0) {
       ctx.shadowColor = '#86efac';
       ctx.shadowBlur = 14;
@@ -1191,6 +1190,7 @@ if (/[?&]selftest/.test(location.search)) {
     Game.mode = 'spell';
     Game.difficulty = 'easy';
     startGame();
+    ok = ok && currentInterval() <= .145;
     const startHeadX = Game.snake[0].x;
     tick();
     ok = ok && Array.isArray(Game.prevSnake) && Game.prevSnake[0].x === startHeadX && Game.snake[0].x === startHeadX + 1;

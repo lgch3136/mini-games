@@ -632,7 +632,7 @@ function advanceLevel() {
   ensureWorld(VIEW_W * 3);
   nextWord(false);
   Game.state = 'playing';
-  Game.stageBanner = { tag: 'TEST', name: MISSION_LEVELS[nextLv].name, hint: '分数延续 · 士气如虹', timer: 3 };
+  Game.stageBanner = { tag: 'TEST', name: MISSION_LEVELS[nextLv].name, hint: '分数延续 · 士气如虹', timer: 1.8 };
   if (window.ChipMusic) ChipMusic.play(MISSION_LEVELS[nextLv].music);
   updateHud();
 }
@@ -1112,7 +1112,7 @@ function startBossShield(boss) {
   boss.bossPhase = 2;
   boss.vx = 0;
   setEnemyState(boss, 'shield', Infinity);
-  Game.stageBanner = { tag: 'WORD_GATE', name: '护盾口令：' + word.zh, hint: '按英文顺序击破三个正确节点', timer: 3.2 };
+  Game.stageBanner = { tag: 'WORD_GATE', name: '护盾口令：' + word.zh, hint: '按英文顺序击破三个正确节点', timer: 2.2 };
 }
 
 function hitBossNode(node, boss) {
@@ -1450,7 +1450,7 @@ function update(dt) {
   const entered = chunkAt(Game.player.x + Game.player.w / 2);
   if (entered && entered.index !== Game.enteredChunk) {
     Game.enteredChunk = entered.index;
-    Game.stageBanner = { tag: entered.tag || 'TEST', name: entered.encounter, hint: entered.hint || '', timer: 2.4 };
+    Game.stageBanner = { tag: entered.tag || 'TEST', name: entered.encounter, hint: entered.hint || '', timer: 1.75 };
     if (entered.checkpoint) Game.checkpoint = entered.start + 110;
     if (entered.wordGate && !entered.gateUsed) {
       entered.gateUsed = openWordGate(entered);
@@ -1477,62 +1477,6 @@ function drawBiomeLayer(index, alpha, progress) {
   ctx.globalAlpha = alpha;
   ctx.drawImage(ASSETS.biomes, sourceX, sourceH * index, sourceW, sourceH, 0, 0, VIEW_W, VIEW_H);
   ctx.globalAlpha = 1;
-}
-
-/* 魂斗罗式远景层: 雪峰剪影+瀑布(慢视差, 画在全景图之上) */
-function drawFarLayer(index) {
-  // 远山只画在上半部(晨雾区), 低透明度=透过雾气隐现的冷色锚点
-  const parallax = (Game.camera * .22) % (VIEW_W + 520);
-  const palette = [
-    { far: 'rgba(178,182,225,.78)', near: 'rgba(74,74,120,.9)', snow: '#f4f7ff' },
-    { far: 'rgba(228,200,156,.74)', near: 'rgba(124,94,60,.9)', snow: '#fff8e2' },
-    { far: 'rgba(156,196,204,.76)', near: 'rgba(62,102,112,.9)', snow: '#e8fbff' },
-    { far: 'rgba(164,176,226,.78)', near: 'rgba(70,78,134,.9)', snow: '#eff4ff' },
-  ][index] || { far: 'rgba(178,182,225,.78)', near: 'rgba(74,74,120,.9)', snow: '#f4f7ff' };
-  ctx.save();
-  // 远层山(淡蓝紫, 慢视差)
-  const parallaxFar = (Game.camera * .14) % (VIEW_W + 520);
-  for (let i = -1; i <= 1; i++) {
-    const bx = i * 520 - (parallaxFar % 520);
-    ctx.fillStyle = palette.far;
-    ctx.beginPath();
-    ctx.moveTo(bx, 152);
-    ctx.lineTo(bx + 180, 152 - 165);
-    ctx.lineTo(bx + 360, 152);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = palette.snow;
-    ctx.beginPath();
-    ctx.moveTo(bx + 148, 152 - 122);
-    ctx.lineTo(bx + 180, 152 - 165);
-    ctx.lineTo(bx + 213, 152 - 118);
-    ctx.closePath(); ctx.fill();
-  }
-  // 层间雾带: 切开远山与近山(形成"山—雾—山—雾"节奏)
-  const midFog = ctx.createLinearGradient(0, 108, 0, 152);
-  midFog.addColorStop(0, 'rgba(233,230,186,0)');
-  midFog.addColorStop(.6, 'rgba(233,230,186,.5)');
-  midFog.addColorStop(1, 'rgba(233,230,186,.88)');
-  ctx.fillStyle = midFog;
-  ctx.fillRect(0, 108, VIEW_W, 44);
-  // 近层山(深偏紫, 快视差) —— 两层递进
-  for (let i = -1; i <= 1; i++) {
-    const bx = i * 440 - (parallax % 440);
-    ctx.fillStyle = palette.near;
-    ctx.beginPath();
-    ctx.moveTo(bx + 60, 156);
-    ctx.lineTo(bx + 200, 156 - 105);
-    ctx.lineTo(bx + 340, 156);
-    ctx.closePath(); ctx.fill();
-  }
-  // 山脚雾带(水平渐隐, 融入晨雾)
-  const fogBand = ctx.createLinearGradient(0, 88, 0, 168);
-  fogBand.addColorStop(0, 'rgba(235,230,182,0)');
-  fogBand.addColorStop(.45, 'rgba(235,230,182,.42)');
-  fogBand.addColorStop(.78, 'rgba(235,230,182,.78)');
-  fogBand.addColorStop(1, 'rgba(235,230,182,.95)');
-  ctx.fillStyle = fogBand;
-  ctx.fillRect(0, 88, VIEW_W, 80);
-  ctx.restore();
 }
 
 function drawWeather(index) {
@@ -1565,7 +1509,6 @@ function drawBackground() {
   const index = Game.mode === 'mission' ? (MISSION_LEVELS[Game.missionLevel] || MISSION_LEVELS[0]).biome : group % BIOMES.length;
   const local = (Game.camera % span) / span;
   drawBiomeLayer(index, 1, local);
-  drawFarLayer(index);   // 雪峰画在全景图之上: 半透明蓝紫剪影透过晨雾隐现
   if (Game.mode !== 'mission' && local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
   ctx.fillStyle = ['rgba(7,27,20,.22)', 'rgba(45,24,12,.18)', 'rgba(4,24,30,.3)', 'rgba(5,10,25,.34)'][index];
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -1639,22 +1582,24 @@ function drawPlatforms(chunk) {
 function drawBarrier(chunk) {
   if (!chunk.lock || chunk.cleared || !chunkHasThreats(chunk)) return;
   const x = chunk.start + CHUNK_W - 58;
-  // 危险语义强化：脉冲发光 + 扫描线动画，一眼读懂"此路不通"
+  // 两根细桩与三道能量带足以表达封锁，不再用整面光墙遮住战斗。
   const pulse = .55 + Math.sin(Game.time * 5) * .35;
   ctx.save();
   ctx.strokeStyle = 'rgba(239,104,72,' + clamp(.55 + pulse * .4, 0, 1) + ')';
-  ctx.fillStyle = 'rgba(239,104,72,' + (.14 + pulse * .1) + ')';
-  ctx.lineWidth = 4;
+  ctx.fillStyle = 'rgba(239,104,72,' + (.12 + pulse * .08) + ')';
+  ctx.lineWidth = 3;
   ctx.shadowColor = '#ef6848';
-  ctx.shadowBlur = 16 + pulse * 14;
-  ctx.fillRect(x - 8, 118, 16, GROUND_Y - 118);
-  ctx.strokeRect(x - 8, 118, 16, GROUND_Y - 118);
-  // 上下端盖：明确的"墙"读感
-  ctx.fillRect(x - 20, 112, 40, 9);
-  ctx.fillRect(x - 20, GROUND_Y - 10, 40, 9);
-  for (let y = 132; y < GROUND_Y; y += 38) {
-    ctx.beginPath(); ctx.moveTo(x - 18, y); ctx.lineTo(x + 18, y + 24); ctx.stroke();
+  ctx.shadowBlur = 10 + pulse * 9;
+  ctx.fillRect(x - 6, 160, 5, GROUND_Y - 160);
+  ctx.fillRect(x + 1, 160, 5, GROUND_Y - 160);
+  for (let y = 205; y < GROUND_Y - 22; y += 72) {
+    ctx.globalAlpha = .55 + pulse * .35;
+    ctx.fillRect(x - 23, y, 46, 5);
+    ctx.beginPath(); ctx.moveTo(x - 20, y + 12); ctx.lineTo(x + 20, y + 30); ctx.stroke();
   }
+  ctx.globalAlpha = 1;
+  ctx.fillRect(x - 15, 154, 30, 7);
+  ctx.fillRect(x - 15, GROUND_Y - 8, 30, 7);
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#ffd2b8'; ctx.font = '900 11px system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.fillText('封锁', x, 104);
@@ -2045,18 +1990,19 @@ function drawStageBanner() {
   const banner = Game.stageBanner;
   if (!banner) return;
   const compact = VIEW_W < 420;
-  const width = Math.min(430, VIEW_W - 28);
-  const x = (VIEW_W - width) / 2;
-  const y = 214;
+  const width = Math.min(compact ? VIEW_W - 24 : 330, VIEW_W - 24);
+  const x = 12;
+  const y = compact ? 142 : 154;
+  const height = compact ? 66 : 54;
   ctx.save();
   ctx.globalAlpha = clamp(banner.timer * 2, 0, 1);
-  ctx.fillStyle = 'rgba(8,27,22,.82)'; ctx.strokeStyle = 'rgba(244,211,122,.54)'; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.roundRect(x, y, width, compact ? 88 : 64, 13); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#f4d37a'; ctx.font = '900 10px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(BEAT_LABELS[banner.tag] || '战况', x + 15, y + 16);
-  ctx.fillStyle = '#f6f0dc'; ctx.font = '950 ' + (compact ? 18 : 20) + 'px system-ui, sans-serif'; ctx.fillText(banner.name, x + 15, y + 38);
-  ctx.fillStyle = '#bed2c8'; ctx.font = '600 ' + (compact ? 10 : 11) + 'px system-ui, sans-serif'; ctx.textAlign = compact ? 'left' : 'right';
-  ctx.fillText(banner.hint, compact ? x + 15 : x + width - 15, compact ? y + 65 : y + 48, width - 30);
+  ctx.fillStyle = 'rgba(8,27,22,.72)'; ctx.strokeStyle = 'rgba(244,211,122,.48)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(x, y, width, height, 11); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f4d37a'; ctx.font = '900 9px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(BEAT_LABELS[banner.tag] || '战况', x + 12, y + 13);
+  ctx.fillStyle = '#f6f0dc'; ctx.font = '900 ' + (compact ? 15 : 17) + 'px system-ui, sans-serif'; ctx.fillText(banner.name, x + 12, y + 31);
+  ctx.fillStyle = '#bed2c8'; ctx.font = '600 10px system-ui, sans-serif';
+  ctx.fillText(banner.hint, x + 12, y + height - 9, width - 24);
   ctx.restore();
 }
 

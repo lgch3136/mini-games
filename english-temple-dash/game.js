@@ -21,10 +21,10 @@ const DIFFICULTIES = {
 };
 
 const BIOMES = [
-  { name: '日升神庙', road: '#23352d', edge: '#d3a74d', gravity: 1260, laneRate: 14, jump: 545, jumpType: 'log', blockType: 'root' },
-  { name: '悬桥峡谷', road: '#5a3924', edge: '#e4b35c', gravity: 1320, laneRate: 13.5, jump: 560, jumpType: 'pit', blockType: 'pillar' },
-  { name: '暴雨古城', road: '#17343a', edge: '#8fc5c2', gravity: 1280, laneRate: 12.5, jump: 530, jumpType: 'arch', blockType: 'puddle' },
-  { name: '月晶遗迹', road: '#18243b', edge: '#d3ad55', gravity: 780, laneRate: 13, jump: 470, jumpType: 'beam', blockType: 'crystal' },
+  { name: '日升神庙', road: '#445149', edge: '#e4bd63', gravity: 1260, laneRate: 14, jump: 545, jumpType: 'log', blockType: 'root' },
+  { name: '悬桥峡谷', road: '#6a4932', edge: '#efc36f', gravity: 1320, laneRate: 13.5, jump: 560, jumpType: 'pit', blockType: 'pillar' },
+  { name: '暴雨古城', road: '#28505a', edge: '#a7d8d4', gravity: 1280, laneRate: 12.5, jump: 530, jumpType: 'arch', blockType: 'puddle' },
+  { name: '月晶遗迹', road: '#2b3b5c', edge: '#e1bd68', gravity: 780, laneRate: 13, jump: 470, jumpType: 'beam', blockType: 'crystal' },
 ];
 
 const ASSETS = {};
@@ -102,6 +102,9 @@ function startGame() {
   Game.particles.length = 0;
   resetPlayer();
   nextWord(true);
+  // 开局即给玩家一条可读的收集路线，避免前五秒只有空路面。
+  spawnRelicTrail(0, 52);
+  addObject('letter', 0, 84, { letter: Game.currentWord.en[0] });
   $('menu').classList.add('hidden');
   $('over').classList.add('hidden');
   $('paused').classList.add('hidden');
@@ -209,7 +212,7 @@ function spawnRelicTrail(lane, z) {
 
 function spawnPattern() {
   const biome = BIOMES[Game.biome];
-  const pattern = Game.pattern++ % 5;
+  const pattern = Game.pattern++ % 8;
   const lane = Math.floor(Math.random() * 3) - 1;
   const other = lane === -1 ? 1 : -1;
   let safeLane = other;
@@ -230,10 +233,25 @@ function spawnPattern() {
   } else if (pattern === 3) {
     spawnRelicTrail(lane, MAX_Z);
     safeLane = lane;
-  } else {
+  } else if (pattern === 4) {
     addObject(biome.jumpType, lane, MAX_Z);
     addObject('relic', 0, MAX_Z + 6);
     safeLane = lane === 0 ? 1 : 0;
+  } else if (pattern === 5) {
+    // 变道节奏：金币画出路线，而不是用文字告诉玩家。
+    for (let i = 0; i < 7; i++) addObject('relic', [-1, 0, 1, 0][i % 4], MAX_Z + i * 7);
+    safeLane = [-1, 0, 1, 0][6 % 4];
+  } else if (pattern === 6) {
+    // 连续动作：先跳，再在同泳道下滑；间距按最低速度也留足反应时间。
+    safeLane = lane;
+    addObject(biome.jumpType, lane, MAX_Z);
+    addObject(Game.biome === 3 ? 'beam' : 'arch', lane, MAX_Z + 31);
+    for (let i = 0; i < 4; i++) addObject('relic', lane, MAX_Z + 8 + i * 7);
+  } else {
+    // 蛇形穿门：每个截面只封一条泳道，可连续预判换道。
+    [-1, 0, 1].forEach((blocked, index) => addObject(biome.blockType, blocked, MAX_Z + index * 17));
+    [1, -1, 0].forEach((route, index) => addObject('relic', route, MAX_Z + index * 17 + 5));
+    safeLane = 0;
   }
 
   if (Game.pattern % 2 === 0 && Game.currentWord) {
@@ -514,21 +532,26 @@ function drawRoad() {
     const farEdge = project(0, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
     const yNear = nearEdge.y, yFar = farEdge.y;
     if (yNear - yFar < .6) continue;
+    const leftFar = project(-1.82, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
+    const rightFar = project(1.82, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
+    const leftNear = project(-1.82, Math.max(1, zz - SLAB_WORLD * .5));
+    const rightNear = project(1.82, Math.max(1, zz - SLAB_WORLD * .5));
     const depth = clamp((yFar - HORIZON_Y) / (VIEW_H - HORIZON_Y), 0, 1);
-    const cX = farCenter + (nearCenter - farCenter) * depth;
-    const halfW = lerp(42, VIEW_W * .48, depth * depth);
     // 交替石板: 极轻的暖色差(±3%), 远处几乎不可见 —— 有节奏但不刺眼
     const slabIdx = firstSlab + si;
     const alt = slabIdx % 2 === 0;
-    ctx.fillStyle = 'rgba(255,238,190,' + (alt ? .028 + depth * .03 : 0) + ')';
-    ctx.fillRect(cX - halfW, yFar, halfW * 2, yNear - yFar);
+    ctx.fillStyle = 'rgba(255,238,190,' + (alt ? .04 + depth * .045 : .012) + ')';
+    ctx.beginPath();
+    ctx.moveTo(leftFar.x, leftFar.y); ctx.lineTo(rightFar.x, rightFar.y);
+    ctx.lineTo(rightNear.x, rightNear.y); ctx.lineTo(leftNear.x, leftNear.y);
+    ctx.closePath(); ctx.fill();
     // 横缝: 近处清晰远处淡出(大气透视), 无高对比
     const seamAlpha = .10 + depth * .14;
     ctx.strokeStyle = 'rgba(8,14,11,' + seamAlpha + ')';
     ctx.lineWidth = 1 + depth * 1.6;
     ctx.beginPath();
-    ctx.moveTo(cX - halfW, yNear);
-    ctx.lineTo(cX + halfW, yNear);
+    ctx.moveTo(leftNear.x, leftNear.y);
+    ctx.lineTo(rightNear.x, rightNear.y);
     ctx.stroke();
   }
   // 中央引导虚线：透视收缩，滚动
@@ -589,8 +612,8 @@ function drawEdgeScenery() {
       const scale = point.scale;
       ctx.save(); ctx.translate(point.x, point.y);
       if (Game.biome === 0) {
-        ctx.fillStyle = '#142b20'; ctx.fillRect(-7 * scale, -52 * scale, 14 * scale, 52 * scale);
-        ctx.fillStyle = '#274633'; ctx.beginPath(); ctx.arc(0, -56 * scale, 26 * scale, 0, TAU); ctx.fill();
+        ctx.restore();
+        continue;
       } else if (Game.biome === 1) {
         ctx.fillStyle = '#6b4429'; ctx.fillRect(-14 * scale, -58 * scale, 28 * scale, 58 * scale);
         ctx.fillStyle = '#c18a52'; ctx.fillRect(-18 * scale, -61 * scale, 36 * scale, 7 * scale);

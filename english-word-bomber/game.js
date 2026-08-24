@@ -25,10 +25,25 @@ const DIFFS = {
   hard:   { enemySpeed: 92, enemyCount: 4, fuse: 1.5, label: '高级' },
 };
 
+const GameplayAtlas = new Image();
+GameplayAtlas.src = 'assets/gameplay-atlas-v3.webp';
+
 /* ---------------- 工具 ---------------- */
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+
+function drawAtlasCell(row, column, x, y, width, height, flipX = false) {
+  if (!GameplayAtlas.complete || !GameplayAtlas.naturalWidth) return false;
+  const sw = GameplayAtlas.naturalWidth / 4;
+  const sh = GameplayAtlas.naturalHeight / 4;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(flipX ? -1 : 1, 1);
+  ctx.drawImage(GameplayAtlas, column * sw, row * sh, sw, sh, -width / 2, -height / 2, width, height);
+  ctx.restore();
+  return true;
+}
 
 function wordBank() {
   const diff = Game.difficulty === 'hard' ? 'hard' : Game.difficulty === 'medium' ? 'medium' : 'easy';
@@ -215,7 +230,7 @@ function startGame() {
   $id('over').classList.add('hidden');
   $id('paused').classList.add('hidden');
   $id('word-bar').classList.remove('hidden');
-  if (window.ChipMusic) ChipMusic.play('snake-loop');   // 复用霓虹隧道曲, 俏皮契合
+  if (window.ChipMusic) ChipMusic.play('bomber-loop');
   if (window.ArcadeAudio) ArcadeAudio.start();
   startRound();
 }
@@ -322,6 +337,7 @@ function dropBomb() {
 }
 
 function explodeBomb(bomb) {
+  const aliveBefore = Game.enemies.filter((enemy) => !enemy.dead).length;
   const cells = [{ col: bomb.col, row: bomb.row, dir: 'c' }];
   const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   for (const [dc, dr] of dirs) {
@@ -352,6 +368,12 @@ function explodeBomb(bomb) {
       Game.portal.hidden = false;
     }
   }
+  const multiKill = aliveBefore - Game.enemies.filter((enemy) => !enemy.dead).length;
+  if (multiKill >= 2) {
+    const bonus = multiKill * 75;
+    Game.score += bonus;
+    floatText('连锁 ×' + multiKill + '  +' + bonus, OX + bomb.col * CELL + CELL / 2, OY + bomb.row * CELL, '#fde68a');
+  }
   Game.shake = Math.max(Game.shake, .3);
   Game.flash = Math.max(Game.flash, .12);
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .26, .62);
@@ -368,9 +390,10 @@ function breakBrick(c, r) {
     });
   }
   // 道具掉落(12%概率)
-  if (Math.random() < .12) {
+  if (Math.random() < .14) {
     const kinds = ['bomb+', 'fire+', 'speed'];
-    Game.pickups.push({ col: c, row: r, kind: kinds[Math.floor(Math.random() * (Game.player.bombMax >= 3 ? 1 : 3))], phase: Math.random() * TAU });
+    const pool = Game.player.bombMax >= 6 ? kinds.slice(1) : kinds;
+    Game.pickups.push({ col: c, row: r, kind: pool[Math.floor(Math.random() * pool.length)], phase: Math.random() * TAU });
   }
 }
 
@@ -706,7 +729,7 @@ function updateParticles(dt) {
 /* ---------------- 绘制 ---------------- */
 function drawGrid() {
   // 场地底色
-  ctx.fillStyle = '#94a3b8';
+  ctx.fillStyle = '#111827';
   ctx.fillRect(OX, OY, COLS * CELL, ROWS * CELL);
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
@@ -714,9 +737,9 @@ function drawGrid() {
       const g = Game.grid[r][c];
       if (g === 1) {
         // 硬墙: 深蓝黑石柱(FC经典不可摧毁柱), 与砖块形成色相差异
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = '#111827';
         ctx.fillRect(x, y, CELL, CELL);
-        ctx.fillStyle = '#334155';
+        ctx.fillStyle = '#2b3748';
         ctx.fillRect(x + 4, y + 4, CELL - 8, CELL - 8);
         ctx.fillStyle = 'rgba(255,255,255,.14)';
         ctx.fillRect(x + 4, y + 4, CELL - 8, 5);
@@ -752,9 +775,11 @@ function drawGrid() {
         ctx.strokeStyle = 'rgba(50,12,0,.65)'; ctx.lineWidth = 1.5;
         ctx.strokeRect(bx + .5, by + .5, bw - 1, bh - 1);
       } else {
-        // 空地: FC经典亮蓝灰棋盘(高明度, 与所有元素拉开)
-        ctx.fillStyle = (r + c) % 2 === 0 ? '#cbd5e1' : '#b6c2d2';
+        // 空地压暗成石板，让角色、火焰和青绿字母成为视觉焦点。
+        ctx.fillStyle = (r + c) % 2 === 0 ? '#374457' : '#303b4d';
         ctx.fillRect(x, y, CELL, CELL);
+        ctx.fillStyle = 'rgba(255,255,255,.025)';
+        ctx.fillRect(x + 3, y + 3, CELL - 6, 2);
       }
     }
   }
@@ -825,8 +850,10 @@ function drawLetters() {
 
 function drawPickups() {
   const icons = { 'bomb+': '💣', 'fire+': '🔥', 'speed': '👟' };
+  const columns = { 'bomb+': 0, 'fire+': 2, 'speed': 3 };
   for (const k of Game.pickups) {
     const x = OX + k.col * CELL + CELL / 2, y = OY + k.row * CELL + CELL / 2 + Math.sin(Game.time * 3 + k.phase) * 3;
+    if (drawAtlasCell(3, columns[k.kind], x, y, 38, 38)) continue;
     ctx.save();
     ctx.translate(x, y);
     ctx.fillStyle = 'rgba(30,22,8,.9)';
@@ -845,6 +872,7 @@ function drawBombs() {
     ctx.save();
     ctx.translate(x, y - 4);
     ctx.scale(pulse, 1 / pulse);
+    if (drawAtlasCell(3, 0, 0, 0, 44, 44)) { ctx.restore(); continue; }
     ctx.fillStyle = '#1c1917';
     ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill();
     ctx.strokeStyle = '#3f3f46'; ctx.lineWidth = 2; ctx.stroke();
@@ -931,6 +959,11 @@ function drawEnemies() {
     ctx.translate(x, y);
     if (inBrick) ctx.globalAlpha = .45;
     const wob = Math.sin(e.phase * 6) * 3;
+    const atlasColumn = { blob: 0, ghost: 1, runner: 2 }[e.kind];
+    if (atlasColumn != null && drawAtlasCell(2, atlasColumn, 0, wob * .35, 56, 56)) {
+      ctx.restore();
+      continue;
+    }
     if (e.kind === 'blob') {
       // 史莱姆: 圆润水滴
       ctx.fillStyle = '#7dd3fc';
@@ -968,6 +1001,12 @@ function drawPlayer() {
   ctx.save();
   if (p.inv > 0 && Math.floor(Game.time * 12) % 2 === 0 && Game.state === 'playing') ctx.globalAlpha = .38;
   ctx.translate(p.px, p.py - 4);
+  const frame = p.moving ? Math.floor(Game.time * 9) % 4 : 0;
+  const side = p.facing === 'left' || p.facing === 'right';
+  if (drawAtlasCell(side ? 1 : 0, frame, 0, -4, 64, 64, p.facing === 'right')) {
+    ctx.restore();
+    return;
+  }
   // 白色轮廓光
   ctx.shadowColor = 'rgba(255,220,140,.8)';
   ctx.shadowBlur = 10;
@@ -1140,6 +1179,11 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.bombs[0].fuse = 0.01;
       update(0.02);
       if (Game.flames.length < 3) throw new Error('explosion flames missing');
+      Game.grid[5][5] = Game.grid[5][6] = Game.grid[5][7] = 0;
+      Game.enemies = [{ col: 6, row: 5, dead: false }, { col: 7, row: 5, dead: false }];
+      const beforeChain = Game.score;
+      explodeBomb({ col: 5, row: 5, power: 2 });
+      if (Game.score < beforeChain + 350) throw new Error('multi-kill bonus failed');
       // 敌人更新不崩溃
       updateEnemies(0.016);
       if (Game.score <= 0) throw new Error('score not increasing');

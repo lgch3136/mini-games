@@ -18,6 +18,8 @@
 const $id = (x) => document.getElementById(x);
 const canvas = $id('game');
 const ctx = canvas.getContext('2d');
+const StageBackground = new Image();
+StageBackground.src = 'assets/stage-bg-v3.webp';
 
 let W = 560, H = 640;
 const TAU = Math.PI * 2;
@@ -156,6 +158,16 @@ function playBackingStep(when, step) {
   gain.gain.exponentialRampToValueAtTime(.001, when + (strongBeat ? .1 : .035));
   osc.connect(gain); gain.connect(Game.actx.destination);
   osc.start(when); osc.stop(when + .11);
+  if (accent) {
+    const roots = [130.81, 146.83, 164.81, 196];
+    const bass = Game.actx.createOscillator(), bassGain = Game.actx.createGain();
+    bass.type = 'triangle';
+    bass.frequency.setValueAtTime(roots[(Game.level - 1) % roots.length], when);
+    bassGain.gain.setValueAtTime(.055, when);
+    bassGain.gain.exponentialRampToValueAtTime(.001, when + .42);
+    bass.connect(bassGain); bassGain.connect(Game.actx.destination);
+    bass.start(when); bass.stop(when + .44);
+  }
 }
 
 /* ============================================================
@@ -201,6 +213,7 @@ function buildChart(retryWord, seamless) {
   const beat = 60 / bpm;
   const step = beat / 2;
   const conf = DIFFS[Game.difficulty];
+  const densityGap = conf.density < .9 ? 2 : conf.density > 1.15 ? -1 : 0;
   const L = LANES;
 
   // 1) 字母音符: 落在强拍(每拍头), 保证可读
@@ -243,7 +256,7 @@ function buildChart(retryWord, seamless) {
         Game.notes.push({ lane: l2, hitAt: nt, letter: null, judged: false, isLetter: false });
       }
     }
-    cursor += pat.steps[pat.steps.length - 1] + 2;
+    cursor += Math.max(2, pat.steps[pat.steps.length - 1] + 2 + densityGap);
     // 密度随关卡: 高关卡段落间隔更短
     if (Game.level < 3) cursor += 2;
   }
@@ -280,7 +293,7 @@ function startGame() {
   $id('paused').classList.add('hidden');
   $id('word-bar').classList.remove('hidden');
   buildChart();
-  Game.audioStart = Game.actx.currentTime + 1.2;
+  Game.audioStart = Game.actx.currentTime + .45;
   Game.backingStep = 0;
 }
 
@@ -467,11 +480,19 @@ function scrollSpeed() { return NOTE_SPEED_BASE * DIFFS[Game.difficulty].speedMu
 
 function render() {
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
-  // 背景: 随combo律动的深紫渐变
+  if (StageBackground.complete && StageBackground.naturalWidth) {
+    const sw = StageBackground.naturalHeight * W / H;
+    ctx.drawImage(StageBackground, (StageBackground.naturalWidth - sw) / 2, 0, sw, StageBackground.naturalHeight, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#080314';
+    ctx.fillRect(0, 0, W, H);
+  }
+  // 舞台随连击呼吸，但保留足够暗度让音符不被背景吞掉。
   const glow = Game.bgPulse;
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, `rgb(${18 + glow * 26},${8 + glow * 10},${30 + glow * 40})`);
-  bg.addColorStop(1, `rgb(${6 + glow * 10},${3 + glow * 5},${16 + glow * 18})`);
+  bg.addColorStop(0, `rgba(10,3,24,${.52 - glow * .12})`);
+  bg.addColorStop(.55, `rgba(6,2,18,${.62 - glow * .14})`);
+  bg.addColorStop(1, `rgba(4,1,14,${.48 - glow * .12})`);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
   Game.bgPulse = Math.max(0, Game.bgPulse - .012);
@@ -489,7 +510,7 @@ function render() {
     // 纵向流光: 轨道中央微弱光带(下落方向感)
     const streamG = ctx.createLinearGradient(0, 44, 0, H);
     streamG.addColorStop(0, 'rgba(168,85,247,.02)');
-    streamG.addColorStop(.5, `rgba(168,85,247,.05 + ${.03 * Math.sin(Game.time * 1.8 + l)})`);
+    streamG.addColorStop(.5, `rgba(168,85,247,${.05 + .03 * Math.sin(Game.time * 1.8 + l)})`);
     streamG.addColorStop(1, 'rgba(168,85,247,.09)');
     ctx.fillStyle = streamG;
     ctx.fillRect(x + laneW() * .3, 44, laneW() * .4, H - 44);
@@ -591,8 +612,20 @@ function render() {
     ctx.restore();
   }
 
+  const chartTime = now();
+  const firstPending = Game.notes.find((note) => !note.judged);
+  if (firstPending) {
+    const entryAt = firstPending.hitAt - (HIT_Y - 44) / scrollSpeed();
+    if (chartTime < entryAt) {
+      ctx.globalAlpha = .55 + Math.sin(Game.time * 5) * .2;
+      ctx.fillStyle = '#f5d0fe'; ctx.font = '900 18px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('READY · 跟住强拍', W / 2, H * .43);
+      ctx.globalAlpha = 1;
+    }
+  }
+
   // 音符
-  const t = now();
+  const t = chartTime;
   for (const n of Game.notes) {
     if (n.judged && !n.missed) continue;
     const dt = n.hitAt - t;
@@ -753,6 +786,10 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       }
       Game.word.progress = 2; buildChart(true);
       if (Game.notes.filter((n) => n.isLetter).some((n) => n.index < 2)) throw new Error('retry repeated collected letters');
+      Game.word = { en: 'PLANET', zh: '行星', progress: 0 }; Game.level = 6;
+      Game.difficulty = 'easy'; buildChart(true); const easyNotes = Game.notes.length;
+      Game.word.progress = 0; Game.difficulty = 'hard'; buildChart(true);
+      if (Game.notes.length <= easyNotes) throw new Error('difficulty density ignored');
       floatText('PERFECT', 10, 10, '#fff');
       if (!Game.floaters.at(-1).color) throw new Error('floater color missing');
       document.title = 'SELFTEST-OK';

@@ -10,6 +10,8 @@
 const $id = (x) => document.getElementById(x);
 const canvas = $id('game');
 const ctx = canvas.getContext('2d');
+const ArenaBackground = new Image();
+ArenaBackground.src = 'assets/arena-bg-v3.webp';
 
 let W = 720, H = 560;                 // 逻辑尺寸, 手机按视口重算
 const TAU = Math.PI * 2;
@@ -40,6 +42,7 @@ const Game = {
   word: null, lastWord: '',
   paddle: null,
   feedback: '', feedbackUntil: 0,
+  fireTimer: 0,
 };
 
 function newPaddle() {
@@ -160,13 +163,13 @@ function buildLevel() {
 function startGame() {
   Game.score = 0; Game.lives = 3; Game.level = 1;
   Game.wordsDone = 0; Game.bestCombo = 0;
-  Game.time = 0; Game.shake = 0;
+  Game.time = 0; Game.shake = 0; Game.fireTimer = 0;
   Game.state = 'playing';
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
   $id('paused').classList.add('hidden');
   $id('word-bar').classList.remove('hidden');
-  if (window.ChipMusic) ChipMusic.play('flappy-loop');
+  if (window.ChipMusic) ChipMusic.play('breaker-loop');
   if (window.ArcadeAudio) ArcadeAudio.start();
   buildLevel();
 }
@@ -231,6 +234,7 @@ function update(dt) {
   if (!Game.comboTimer) Game.comboCount = 0;
   Game.shake = Math.max(0, Game.shake - dt * 2);
   Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
+  Game.fireTimer = Math.max(0, Game.fireTimer - dt);
   if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
 
   // 挡板
@@ -334,9 +338,17 @@ function wallHit() { if (window.ArcadeAudio) ArcadeAudio.play('click', .06, 1.4)
 
 Game.comboCount = 0; Game.comboTimer = 0;
 function hitBrick(k, idx) {
+  // 球路可以规划，字母顺序不能靠运气：未轮到的字母砖保持锁定。
+  if (k.letter && k.index !== Game.word.progress) {
+    k.lockUntil = Game.time + .24;
+    floatText('先击 ' + Game.word.en[Game.word.progress], k.x + k.w / 2, k.y, '#93c5fd');
+    if (window.ArcadeAudio) ArcadeAudio.play('click', .06, .55);
+    return;
+  }
   // 空中连击: 球触板前每碎一块砖连击+1
   Game.comboCount++; Game.comboTimer = 3;
   Game.score += 10 * Math.min(5, Game.comboCount);
+  if (Game.fireTimer > 0) k.hp = 1;
   k.hp--;
   if (k.hp > 0) {
     if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .8);
@@ -346,10 +358,10 @@ function hitBrick(k, idx) {
   Game.score += 20;
   burst(k.x + k.w / 2, k.y + k.h / 2, `hsl(${k.hue},70%,62%)`, 8);
   if (k.letter) collectLetter(k);
-  // 道具掉落 9%
-  if (Math.random() < .09) {
-    const kinds = ['multi', 'wide', 'slow'];
-    Game.powerups.push({ x: k.x + k.w / 2, y: k.y, kind: kinds[Math.floor(Math.random() * 3)], phase: Math.random() * TAU });
+  // 道具掉落
+  if (Math.random() < .13) {
+    const kinds = ['multi', 'wide', 'slow', 'fire'];
+    Game.powerups.push({ x: k.x + k.w / 2, y: k.y, kind: kinds[Math.floor(Math.random() * kinds.length)], phase: Math.random() * TAU });
   }
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .1, 1.3);
   // 清版判定: 只剩无字母的普通砖也算过? 不——字母砖全收集即胜利(经典单词玩法)
@@ -402,9 +414,12 @@ function applyPowerup(kind) {
     Game.paddle.w = Math.min(190, Game.paddle.w + 34);
     setTimeout(() => { if (Game.paddle) Game.paddle.w = Math.max(110, Game.paddle.w - 34); }, 12000);
     showFeedback('📏 挡板加长!');
-  } else {
+  } else if (kind === 'slow') {
     for (const b of Game.balls) { b.vx *= .72; b.vy *= .72; }
     showFeedback('🐢 球减速!');
+  } else {
+    Game.fireTimer = 10;
+    showFeedback('🔥 10 秒熔穿装甲砖!');
   }
   Game.score += 60;
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .18, 1.15);
@@ -461,10 +476,18 @@ function updateHud() {
 /* ---------------- 渲染 ---------------- */
 function render() {
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
-  // 背景
+  // 宣传图同级的竞技场环境；中央压暗保证砖块、球和字母始终可读。
+  if (ArenaBackground.complete && ArenaBackground.naturalWidth) {
+    const sw = ArenaBackground.naturalHeight * W / H;
+    ctx.drawImage(ArenaBackground, (ArenaBackground.naturalWidth - sw) / 2, 0, sw, ArenaBackground.naturalHeight, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#0a1220';
+    ctx.fillRect(0, 0, W, H);
+  }
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#101a2e');
-  bg.addColorStop(1, '#0a1220');
+  bg.addColorStop(0, 'rgba(3,8,18,.38)');
+  bg.addColorStop(.72, 'rgba(3,8,18,.64)');
+  bg.addColorStop(1, 'rgba(3,8,18,.25)');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
   // 顶部HUD条背景
@@ -493,13 +516,15 @@ function render() {
       }
       if (k.letter) {
         // 字母砖: 冷青绿描边+发光(与普通砖区分)
-        ctx.shadowColor = k.index === Game.word.progress ? 'rgba(110,231,183,1)' : 'rgba(52,211,153,.55)';
-        ctx.shadowBlur = k.index === Game.word.progress ? 14 : 6;
-        ctx.strokeStyle = k.index === Game.word.progress ? '#a7f3d0' : '#34d399';
+        const unlocked = k.index === Game.word.progress;
+        const lockFlash = (k.lockUntil || 0) > Game.time;
+        ctx.shadowColor = unlocked ? 'rgba(110,231,183,1)' : lockFlash ? 'rgba(147,197,253,.9)' : 'rgba(71,85,105,.4)';
+        ctx.shadowBlur = unlocked ? 14 : lockFlash ? 10 : 3;
+        ctx.strokeStyle = unlocked ? '#a7f3d0' : lockFlash ? '#93c5fd' : '#64748b';
         ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.roundRect(k.x + 1, k.y + 1, k.w - 2, k.h - 2, 4); ctx.stroke();
         ctx.shadowBlur = 0;
-        ctx.fillStyle = '#052e1f';
+        ctx.fillStyle = unlocked ? '#052e1f' : '#dbeafe';
         ctx.font = '900 13px ui-monospace, monospace';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(k.letter, k.x + k.w / 2, k.y + k.h / 2 + 1);
@@ -507,7 +532,7 @@ function render() {
     }
 
     // 道具
-    const icons = { multi: '⚡', wide: '📏', slow: '🐢' };
+    const icons = { multi: '⚡', wide: '📏', slow: '🐢', fire: '🔥' };
     for (const u of Game.powerups) {
       ctx.save();
       ctx.translate(u.x, u.y);
@@ -539,15 +564,15 @@ function render() {
       tr.life -= .045;
       if (tr.life <= 0) { Game.trails.splice(i, 1); continue; }
       ctx.globalAlpha = tr.life * .3;
-      ctx.fillStyle = '#fde68a';
+      ctx.fillStyle = Game.fireTimer > 0 ? '#fb923c' : '#fde68a';
       ctx.beginPath(); ctx.arc(tr.x, tr.y, 6 * tr.life, 0, TAU); ctx.fill();
     }
     ctx.globalAlpha = 1;
     for (const b of Game.balls) {
       ctx.save();
-      ctx.shadowColor = 'rgba(255,240,180,.9)';
+      ctx.shadowColor = Game.fireTimer > 0 ? 'rgba(249,115,22,.95)' : 'rgba(255,240,180,.9)';
       ctx.shadowBlur = 12;
-      ctx.fillStyle = '#fffbeb';
+      ctx.fillStyle = Game.fireTimer > 0 ? '#fff7ed' : '#fffbeb';
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
       // 高光点
       ctx.fillStyle = 'rgba(255,255,255,.9)';
@@ -645,6 +670,12 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       // 字母数=单词长度
       const letterCount = Game.bricks.filter((b) => b.letter).length;
       if (letterCount !== Game.word.en.length) throw new Error('letter count mismatch');
+      const lockedIdx = Game.bricks.findIndex((b) => b.letter && b.index === 1);
+      if (lockedIdx >= 0) {
+        const locked = Game.bricks[lockedIdx], hpBefore = locked.hp;
+        hitBrick(locked, lockedIdx);
+        if (!Game.bricks.includes(locked) || locked.hp !== hpBefore || Game.word.progress !== 0) throw new Error('letter lock failed');
+      }
       // 模拟按序命中字母砖(wordComplete会换关重建, 所以每次重新找index=progress的砖)
       const startLevel = Game.level;
       for (let hits = 0; hits < 40; hits++) {

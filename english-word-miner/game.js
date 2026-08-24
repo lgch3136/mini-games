@@ -21,8 +21,19 @@ const DIFFS = {
   hard:   { time: 50, retractMul: .88, label: '高级' },
 };
 
+const GameplayAtlas = new Image();
+GameplayAtlas.src = 'assets/gameplay-atlas-v3.webp';
+
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
+
+function drawAtlasCell(row, column, x, y, width, height) {
+  if (!GameplayAtlas.complete || !GameplayAtlas.naturalWidth) return false;
+  const sw = GameplayAtlas.naturalWidth / 4;
+  const sh = GameplayAtlas.naturalHeight / 4;
+  ctx.drawImage(GameplayAtlas, column * sw, row * sh, sw, sh, x - width / 2, y - height / 2, width, height);
+  return true;
+}
 
 function wordBank() {
   const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
@@ -38,6 +49,7 @@ const Game = {
   timeLeft: 0, time: 0, shake: 0,
   items: [], particles: [], floaters: [],
   word: null, lastWord: '',
+  quota: 0, levelScoreStart: 0, contracts: 0,
   hook: null,
   feedback: '', feedbackUntil: 0,
 };
@@ -190,6 +202,9 @@ function buildLevel(initial) {
   Game.lastWord = item.en;
   if (!initial) Game.score += 200;
   Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
+  Game.levelScoreStart = Game.score;
+  Game.quota = 700 + Game.level * 140 + Game.word.en.length * 70;
+  dynamiteCount = Math.min(3, 1 + Math.floor((Game.level - 1) / 3));
   spawnItems();
   Game.hook = newHook();
   if (initial) Game.timeLeft = DIFFS[Game.difficulty].time;
@@ -199,14 +214,14 @@ function buildLevel(initial) {
 }
 
 function startGame() {
-  Game.score = 0; Game.lives = 3; Game.level = 1;
+  Game.score = 0; Game.lives = 3; Game.level = 1; Game.contracts = 0;
   Game.wordsDone = 0; Game.time = 0; Game.shake = 0;
   Game.state = 'playing';
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
   $id('paused').classList.add('hidden');
   $id('word-bar').classList.remove('hidden');
-  if (window.ChipMusic) ChipMusic.play('snake-loop');
+  if (window.ChipMusic) ChipMusic.play('miner-loop');
   if (window.ArcadeAudio) ArcadeAudio.start();
   buildLevel(true);
 }
@@ -216,12 +231,13 @@ function startGame() {
 let dynamiteCount = 1;   // 每关送一根
 function useDynamite() {
   const h = Game.hook;
-  if (!h || h.state !== 'retract' || !h.grabbed) return;
+  if (!h || h.state !== 'retract' || !h.grabbed || dynamiteCount <= 0) return;
   const it = h.grabbed;
   if (it.kind === 'letter') {
     floatText('字母不能炸!', W / 2, 150, '#fca5a5');
     return;
   }
+  dynamiteCount--;
   Game.items = Game.items.filter((x) => x !== it);
   h.grabbed = null;
   h.state = 'retract';   // 空钩快速回收
@@ -229,6 +245,7 @@ function useDynamite() {
   floatText('💥 放弃', it.x, it.y, '#fb923c');
   Game.shake = Math.max(Game.shake, .25);
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .22, .5);
+  updateDynamiteButton();
 }
 
 function shootHook() {
@@ -291,6 +308,7 @@ function updateHook(dt) {
         it.grabbed = true;
         h.grabbed = it;
         h.state = 'retract';
+        updateDynamiteButton();
         if (window.ArcadeAudio) ArcadeAudio.play('click', .12, 1.2);
         break;
       }
@@ -308,6 +326,7 @@ function updateHook(dt) {
       if (h.grabbed) deliverItem(h.grabbed);
       h.grabbed = null;
       h.state = 'swing';
+      updateDynamiteButton();
     }
   }
 }
@@ -340,73 +359,37 @@ function deliverItem(it) {
     floatText('-100', x, y, '#f97316');
     if (window.ArcadeAudio) ArcadeAudio.play('laser', .22, .5);
   } else if (it.kind === 'gold') {
-    // 原版式金块: 梯形堆+高光面+闪光粒子
-    const w2 = it.r * 1.5, hgt = it.r * 1.05;
-    ctx.shadowColor = 'rgba(253,224,71,.6)';
-    ctx.shadowBlur = 12;
-    const gg = ctx.createLinearGradient(-w2/2, -hgt/2, w2/2, hgt/2);
-    gg.addColorStop(0, '#fef08a');
-    gg.addColorStop(.4, '#facc15');
-    gg.addColorStop(1, '#b45309');
-    ctx.fillStyle = gg;
-    // 两块叠放的金锭
-    ctx.beginPath();
-    ctx.moveTo(-w2*.55, hgt*.15); ctx.lineTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.lineTo(w2*.3, hgt*.15);
-    ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-w2*.18, hgt*.15); ctx.lineTo(w2*.02, -hgt*.28); ctx.lineTo(w2*.55, -hgt*.28); ctx.lineTo(w2*.72, hgt*.15);
-    ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-w2*.62, hgt*.15); ctx.lineTo(w2*.78, hgt*.15); ctx.lineTo(w2*.6, hgt*.55); ctx.lineTo(-w2*.44, hgt*.55);
-    ctx.closePath(); ctx.fill();
-    ctx.shadowBlur = 0;
-    // 高光棱线
-    ctx.strokeStyle = 'rgba(255,255,230,.85)';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.stroke();
-    if (it.r < 20) {
-      // 小金块棱面转折线(与大金块同款立体)
-      ctx.strokeStyle = 'rgba(120,70,10,.55)';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(-w2*.18, hgt*.15); ctx.lineTo(-w2*.05, -hgt*.28);
-      ctx.moveTo(w2*.02, -hgt*.28); ctx.lineTo(w2*.16, hgt*.15);
-      ctx.stroke();
-    }
-    // 周期星光
-    const tw2 = (Math.sin(Game.time * 3 + it.wobble * 4) + 1) / 2;
-    if (tw2 > .8) {
-      ctx.strokeStyle = `rgba(255,255,235,${(tw2-.8)/.2})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(w2*.3, -hgt*.42); ctx.lineTo(w2*.3 + 8, -hgt*.42);
-      ctx.moveTo(w2*.3 + 4, -hgt*.42 - 4); ctx.lineTo(w2*.3 + 4, -hgt*.42 + 4);
-      ctx.stroke();
-    }
+    Game.score += it.value;
+    floatText('💰 +' + it.value, x, y, '#fde047');
+    burst(x, y, '#fde047', 16);
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .24, 1.35);
   } else if (it.kind === 'diamond') {
     Game.score += it.value;
     floatText('💎 +' + it.value, x, y, '#67e8f9');
     burst(x, y, '#67e8f9', 20);
     if (window.ArcadeAudio) ArcadeAudio.play('confirm', .26, 1.4);
-  } else if (it.kind === 'gold') {
-    Game.score += it.value;
-    floatText('💰 +' + it.value, x, y, '#fde047');
-    burst(x, y, '#fde047', 16);
-    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .24, 1.35);
   } else {
     Game.score += Math.round(30 / it.weight * 10);
     floatText('+石头', x, y, '#a8a29e');
     if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .7);
   }
+  updateHud();
 }
 
 function wordComplete() {
   Game.wordsDone++;
   const bonus = 250 + Game.word.en.length * 35;
   Game.score += bonus;
+  const contractWon = Game.score - Game.levelScoreStart >= Game.quota;
+  if (contractWon) {
+    Game.contracts++;
+    Game.score += 300;
+    Game.timeLeft += 8;
+    floatText('金牌合约 +300 · +8秒', W / 2, H / 2 + 2, '#fef08a');
+  }
   Game.level++;
   floatText('🎉 过关 +' + bonus, W / 2, H / 2 - 30, '#fde68a');
-  showFeedback('拼写完成! 时间奖励 +25秒');
+  showFeedback(contractWon ? '拼写完成 · 金牌合约达成！' : '拼写完成 · 下一关可挑战金牌目标');
   Game.shake = .3;
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .32, 1.3);
   buildLevel(false);
@@ -429,6 +412,7 @@ function gameOver() {
     `<div><span>本局得分</span><b>${Game.score}</b></div>` +
     `<div><span>最高纪录</span><b>${high}</b></div>` +
     `<div><span>完成单词</span><b>${Game.wordsDone}</b></div>`;
+  $id('over-stats').innerHTML += `<div><span>金牌合约</span><b>${Game.contracts}</b></div>`;
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .3, .45);
 }
 
@@ -444,6 +428,7 @@ window.addEventListener('keydown', (ev) => {
 canvas.addEventListener('pointerdown', () => {
   if (Game.state === 'playing') shootHook();
 });
+$id('dynamite-btn').addEventListener('pointerdown', (event) => { event.preventDefault(); event.stopPropagation(); useDynamite(); });
 
 function togglePause() {
   if (Game.state === 'playing') { Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
@@ -481,6 +466,9 @@ function updateHudTimer() {
 function updateHud() {
   $id('score').textContent = Game.score;
   $id('level').textContent = Game.level;
+  const earned = Math.max(0, Game.score - Game.levelScoreStart);
+  $id('quota').textContent = Math.min(Game.quota, earned) + '/' + Game.quota;
+  updateDynamiteButton();
   const w = Game.word;
   if (w) {
     $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
@@ -488,6 +476,15 @@ function updateHud() {
     ).join('');
     $id('wb-zh').textContent = w.zh;
   }
+}
+
+function updateDynamiteButton() {
+  const button = $id('dynamite-btn');
+  if (!button) return;
+  $id('dynamites').textContent = dynamiteCount;
+  const usable = dynamiteCount > 0 && Game.hook && Game.hook.state === 'retract' && Game.hook.grabbed && Game.hook.grabbed.kind !== 'letter';
+  button.classList.toggle('ready', Boolean(usable));
+  button.setAttribute('aria-disabled', usable ? 'false' : 'true');
 }
 
 /* ---------------- 渲染 ---------------- */
@@ -641,6 +638,9 @@ function drawMiner() {
   const x = W / 2, y = 78;
   ctx.save();
   ctx.translate(x, y);
+  const h = Game.hook;
+  const pose = h && h.state === 'retract' ? (h.grabbed ? 1 : 2) : 0;
+  if (drawAtlasCell(0, pose, 0, -5, 84, 78)) { ctx.restore(); return; }
   ctx.fillStyle = '#fbbf24';                       // 安全帽
   ctx.beginPath(); ctx.arc(0, -14, 11, Math.PI, 0); ctx.fill();
   ctx.fillStyle = '#fde68a';
@@ -675,6 +675,7 @@ function drawClaw(x, y, angle, gripping) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle - Math.PI / 2);
+  if (drawAtlasCell(1, gripping ? 1 : 0, 0, 9, 48, 48)) { ctx.restore(); return; }
   ctx.strokeStyle = '#e8c56e';
   ctx.lineWidth = 4;
   const open = gripping ? 4 : 10;
@@ -688,6 +689,15 @@ function drawClaw(x, y, angle, gripping) {
 function drawItem(it) {
   ctx.save();
   ctx.translate(it.x, it.y + Math.sin(Game.time * 1.6 + it.wobble) * 2.5);
+  const atlasCell = it.kind === 'rock' ? [2, 3]
+    : it.kind === 'bomb' ? [3, 0]
+    : it.kind === 'gold' ? [2, it.r >= 20 ? 1 : 0]
+    : it.kind === 'diamond' ? [2, 2]
+    : null;
+  if (atlasCell) {
+    const size = it.kind === 'gold' ? it.r * 3.15 : it.kind === 'diamond' ? 52 : it.r * 3;
+    if (drawAtlasCell(atlasCell[0], atlasCell[1], 0, 0, size, size)) { ctx.restore(); return; }
+  }
   if (it.kind === 'letter') {
     const isNext = it.index === Game.word.progress;
     // 冷青绿宝珠(与炸弹人一致的色彩语义)
@@ -847,6 +857,15 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (Game.state !== 'playing') throw new Error('start failed');
       const letterItems = Game.items.filter((i2) => i2.kind === 'letter');
       if (letterItems.length !== Game.word.en.length) throw new Error('letter count mismatch');
+      const gold = Game.items.find((item) => item.kind === 'gold');
+      if (!gold) throw new Error('gold missing');
+      const scoreBeforeGold = Game.score;
+      deliverItem(gold);
+      if (Game.score !== scoreBeforeGold + gold.value) throw new Error('gold score mismatch');
+      Game.hook.state = 'retract'; Game.hook.grabbed = { kind: 'rock', x: 200, y: 200 };
+      const dynamiteBefore = dynamiteCount;
+      useDynamite();
+      if (dynamiteCount !== dynamiteBefore - 1 || Game.hook.grabbed) throw new Error('dynamite failed');
       // 模拟按序送达字母
       for (let i = 0; i < Game.word.en.length; i++) {
         const target = Game.items.find((it) => it.kind === 'letter' && it.index === Game.word.progress);
