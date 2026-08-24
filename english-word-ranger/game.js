@@ -1479,6 +1479,62 @@ function drawBiomeLayer(index, alpha, progress) {
   ctx.globalAlpha = 1;
 }
 
+/* 魂斗罗式远景层: 雪峰剪影+瀑布(慢视差, 画在全景图之上) */
+function drawFarLayer(index) {
+  // 远山只画在上半部(晨雾区), 低透明度=透过雾气隐现的冷色锚点
+  const parallax = (Game.camera * .22) % (VIEW_W + 520);
+  const palette = [
+    { far: 'rgba(178,182,225,.78)', near: 'rgba(74,74,120,.9)', snow: '#f4f7ff' },
+    { far: 'rgba(228,200,156,.74)', near: 'rgba(124,94,60,.9)', snow: '#fff8e2' },
+    { far: 'rgba(156,196,204,.76)', near: 'rgba(62,102,112,.9)', snow: '#e8fbff' },
+    { far: 'rgba(164,176,226,.78)', near: 'rgba(70,78,134,.9)', snow: '#eff4ff' },
+  ][index] || { far: 'rgba(178,182,225,.78)', near: 'rgba(74,74,120,.9)', snow: '#f4f7ff' };
+  ctx.save();
+  // 远层山(淡蓝紫, 慢视差)
+  const parallaxFar = (Game.camera * .14) % (VIEW_W + 520);
+  for (let i = -1; i <= 1; i++) {
+    const bx = i * 520 - (parallaxFar % 520);
+    ctx.fillStyle = palette.far;
+    ctx.beginPath();
+    ctx.moveTo(bx, 152);
+    ctx.lineTo(bx + 180, 152 - 165);
+    ctx.lineTo(bx + 360, 152);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = palette.snow;
+    ctx.beginPath();
+    ctx.moveTo(bx + 148, 152 - 122);
+    ctx.lineTo(bx + 180, 152 - 165);
+    ctx.lineTo(bx + 213, 152 - 118);
+    ctx.closePath(); ctx.fill();
+  }
+  // 层间雾带: 切开远山与近山(形成"山—雾—山—雾"节奏)
+  const midFog = ctx.createLinearGradient(0, 108, 0, 152);
+  midFog.addColorStop(0, 'rgba(233,230,186,0)');
+  midFog.addColorStop(.6, 'rgba(233,230,186,.5)');
+  midFog.addColorStop(1, 'rgba(233,230,186,.88)');
+  ctx.fillStyle = midFog;
+  ctx.fillRect(0, 108, VIEW_W, 44);
+  // 近层山(深偏紫, 快视差) —— 两层递进
+  for (let i = -1; i <= 1; i++) {
+    const bx = i * 440 - (parallax % 440);
+    ctx.fillStyle = palette.near;
+    ctx.beginPath();
+    ctx.moveTo(bx + 60, 156);
+    ctx.lineTo(bx + 200, 156 - 105);
+    ctx.lineTo(bx + 340, 156);
+    ctx.closePath(); ctx.fill();
+  }
+  // 山脚雾带(水平渐隐, 融入晨雾)
+  const fogBand = ctx.createLinearGradient(0, 88, 0, 168);
+  fogBand.addColorStop(0, 'rgba(235,230,182,0)');
+  fogBand.addColorStop(.45, 'rgba(235,230,182,.42)');
+  fogBand.addColorStop(.78, 'rgba(235,230,182,.78)');
+  fogBand.addColorStop(1, 'rgba(235,230,182,.95)');
+  ctx.fillStyle = fogBand;
+  ctx.fillRect(0, 88, VIEW_W, 80);
+  ctx.restore();
+}
+
 function drawWeather(index) {
   const type = BIOMES[index].weather;
   ctx.save();
@@ -1509,6 +1565,7 @@ function drawBackground() {
   const index = Game.mode === 'mission' ? (MISSION_LEVELS[Game.missionLevel] || MISSION_LEVELS[0]).biome : group % BIOMES.length;
   const local = (Game.camera % span) / span;
   drawBiomeLayer(index, 1, local);
+  drawFarLayer(index);   // 雪峰画在全景图之上: 半透明蓝紫剪影透过晨雾隐现
   if (Game.mode !== 'mission' && local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
   ctx.fillStyle = ['rgba(7,27,20,.22)', 'rgba(45,24,12,.18)', 'rgba(4,24,30,.3)', 'rgba(5,10,25,.34)'][index];
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
