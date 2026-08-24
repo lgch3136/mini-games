@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>英语挖金子 · WORD MINER</title>
-<link rel="stylesheet" href="style.css?v=20260824a">
+<link rel="stylesheet" href="style.css?v=20260824f">
 </head>
 <body>
 <div id="game-wrap">
@@ -14,7 +14,6 @@
     <div id="stats">
       <div class="chips">
         <span class="chip">⭐ <b id="score">0</b></span>
-        <span class="chip">🧡 <b id="lives">3</b></span>
         <span class="chip">⛏️ 第<b id="level">1</b>关</span>
         <span class="chip">⏱ <b id="timer">60</b></span>
         <span class="chip">🎯 <b id="quota">0/0</b></span>
@@ -37,7 +36,7 @@
       <img class="menu-cover" src="assets/cover.png" alt="">
 
       <h1>英语挖金子<small>WORD MINER</small></h1>
-      <p class="sub">摆动抓钩，掐准时机发射！<br>按顺序抓回当前单词的字母块，躲开石头和炸弹，钻石值500分。</p>
+      <p class="sub">摆动抓钩，掐准时机发射！<br>限时内拼完单词并赚够目标金额；过关后可购买雷管、力量和幸运升级。</p>
       <div class="keys">
         <span>空格 发射 · X 引爆放弃</span><span>P 暂停</span><span>M 静音</span><span>📱 触屏点按</span>
       </div>
@@ -71,11 +70,24 @@
       </div>
     </div>
   </div>
+
+  <div class="overlay hidden" id="shop">
+    <div class="panel shop-panel">
+      <p class="shop-kicker">合约完成 · 矿工商店</p>
+      <h1>带什么下矿？<small id="shop-summary"></small></h1>
+      <div class="shop-grid">
+        <button class="shop-buy" data-item="dynamite"><b>💥 雷管 +1</b><span>拉到废石时立即炸掉</span><em>250</em></button>
+        <button class="shop-buy" data-item="strength"><b>💪 力量药水</b><span>永久加快重物回收 20%</span><em>400</em></button>
+        <button class="shop-buy" data-item="luck"><b>💎 幸运草</b><span>永久增加深层钻石</span><em>500</em></button>
+      </div>
+      <button class="btn-main" id="next-level-btn">进入下一关</button>
+    </div>
+  </div>
 </div>
 
 <script src="../shared/vocabulary.js"></script>
 <script src="../shared/audio.js?v=20260819a"></script>
 <script src="../shared/chip-music.js?v=4"></script>
-<script src="game.js?v=20260824e"></script>
+<script src="game.js?v=20260824f"></script>
 </body>
 </html>

@@ -99,6 +99,21 @@ button.difficulty.selected { background: linear-gradient(135deg,#f59e0b,#d97706)
 #over-stats > div { background: rgba(43,30,9,.62); border: 1px solid rgba(232,197,110,.32); border-radius: 11px; padding: 8px 6px; }
 #over-stats span { display: block; font-size: 10.5px; color: #c9b183; }
 #over-stats b { font-size: 19px; color: #ffdf8f; }
+.shop-panel { max-width: min(600px, 94%); }
+.shop-kicker { color: #fbbf24; letter-spacing: 4px; font-size: 12px; margin-bottom: 7px; }
+.shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0 4px; }
+.shop-buy {
+  pointer-events: auto; cursor: pointer; min-height: 126px; padding: 14px 10px;
+  color: #fff2cc; background: linear-gradient(180deg,rgba(82,55,18,.92),rgba(32,20,6,.96));
+  border: 1px solid rgba(253,230,138,.46); border-radius: 14px; font-family: inherit;
+  transition: transform .14s, border-color .14s, box-shadow .14s, opacity .14s;
+}
+.shop-buy:hover:not(:disabled) { transform: translateY(-3px); border-color: #fde68a; box-shadow: 0 10px 26px rgba(245,158,11,.24); }
+.shop-buy:disabled { opacity: .42; cursor: not-allowed; }
+.shop-buy b,.shop-buy span,.shop-buy em { display: block; }
+.shop-buy b { font-size: 15px; }
+.shop-buy span { min-height: 34px; margin: 9px 0; color: #d6bf91; font-size: 11px; line-height: 1.45; }
+.shop-buy em { color: #fde047; font: 900 17px/1 ui-monospace,monospace; font-style: normal; }
 .btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
 .btn-sub {
   pointer-events: auto; cursor: pointer;
@@ -108,6 +123,12 @@ button.difficulty.selected { background: linear-gradient(135deg,#f59e0b,#d97706)
 .btn-sub:hover { border-color: #fbbf24; }
 button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
 @media (max-width: 600px) {
+  #game-wrap { width: 100vw; height: 100dvh; aspect-ratio: auto; border: 0; border-radius: 0; }
+  #stats { top: max(6px,env(safe-area-inset-top)); left: 7px; right: 7px; flex-direction: column; gap: 4px; }
+  #stats .chips { justify-content: center; flex-wrap: wrap; gap: 4px; }
+  #stats .chip { padding: 3px 7px; font-size: 11px; }
+  #word-bar { bottom: max(68px,calc(env(safe-area-inset-bottom) + 62px)); max-width: calc(100% - 18px); }
+  #dynamite-btn { bottom: max(12px,env(safe-area-inset-bottom)); }
   .overlay { align-items: flex-start; overflow-y: auto; overscroll-behavior: contain; }
   .panel { padding: 7px 12px; }
   .panel h1 { font-size: 24px; line-height: 1.05; }
@@ -118,6 +139,11 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
   .diff-row { margin-top: 8px; }
   button.difficulty { padding: 4px 15px; font-size: 12px; }
   .btn-main { margin-top: 6px; padding: 9px 36px; font-size: 15px; }
+  .shop-grid { gap: 6px; margin: 10px 0 5px; }
+  .shop-buy { min-height: 105px; padding: 9px 5px; }
+  .shop-buy b { font-size: 12px; }
+  .shop-buy span { min-height: 31px; margin: 6px 0; font-size: 9.5px; }
+  .shop-buy em { font-size: 14px; }
 }
 
 /* 封面横幅 */

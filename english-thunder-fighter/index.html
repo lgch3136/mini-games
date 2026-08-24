@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#05070f">
 <title>雷霆战机 · 英语风暴 v20260819a</title>
-<link rel="stylesheet" href="style.css?v=20260815f">
+<link rel="stylesheet" href="style.css?v=20260824g">
 </head>
 <body>
 <div id="game-wrap">
@@ -27,6 +27,8 @@
       <div class="left">
         <div class="stat-chip">⭐ <span id="score">0</span></div>
         <div class="stat-chip hidden" id="combo-box">🔥 连击 x<span id="combo">0</span></div>
+        <div class="stat-chip weapon-chip">🔫 <span id="weapon">散射 I</span></div>
+        <div class="stat-chip medal-chip">🏅 x<span id="medal-chain">0</span></div>
         <div class="stat-chip">关卡 <span id="level">1</span></div>
       </div>
       <div class="right">
@@ -45,7 +47,7 @@
     <img id="logo-img" class="menu-cover" src="assets/cover.png" alt="雷霆战机">
     <h1>雷霆战机</h1>
     <h2>英语风暴</h2>
-    <p class="sub">边打飞机 · 边记单词 · 边练语法</p>
+    <p class="sub">彩色武器叠级 · 快速击杀倍率 · 勋章连锁</p>
     <div id="diff-select">
       <button class="diff-btn selected" data-diff="easy">🟢 初级<br><small>小学词汇 · 基础语法</small></button>
       <button class="diff-btn" data-diff="medium">🟡 中级<br><small>初中词汇 · 核心语法</small></button>
@@ -54,6 +56,7 @@
     <button class="btn" id="start-btn">🚀 开始战斗</button>
     <div id="howto">
       <p>🎯 敌机身上挂着题目选项，击毁<b style="color:#7dffa8;">正确答案</b>得分；击毁<b style="color:#ff8f8f;">错误答案</b>会扣血，放走敌机也会扣血。</p>
+      <p>🔴 散射 / 🔵 雷光 / 🟣 追踪：同色晶体可升至 III 级；快速击毁正确答案、连续接住勋章可提高得分。</p>
       <p>⬆⬇⬅➡ / WASD 移动 · 🔫 按住空格 / J 开火（手动射击）· 💣 B 键炸弹</p>
       <p>📱 触屏：左侧拖动移动 · 右下按住「开火」射击 · 点 💣 按钮放炸弹 · P 暂停 · M 静音</p>
     </div>
@@ -86,6 +89,6 @@
 <script src="data.js?v=20260814c"></script>
 <script src="../shared/vocabulary.js?v=20260820a"></script>
 <script src="../shared/fx-layer.js?v=2"></script>
-<script src="game.js?v=20260824f"></script>
+<script src="game.js?v=20260824g"></script>
 </body>
 </html>

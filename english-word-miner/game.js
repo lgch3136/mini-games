@@ -11,6 +11,7 @@
 const $id = (x) => document.getElementById(x);
 const canvas = $id('game');
 const ctx = canvas.getContext('2d');
+const wrap = $id('game-wrap');
 
 let W = 720, H = 560;
 const TAU = Math.PI * 2;
@@ -42,7 +43,7 @@ function wordBank() {
 
 /* ---------------- 状态 ---------------- */
 const Game = {
-  state: 'menu',            // menu | playing | paused | over | levelclear
+  state: 'menu',            // menu | playing | paused | shop | over
   difficulty: 'easy',
   score: 0, lives: 3, level: 1,
   wordsDone: 0,
@@ -50,6 +51,7 @@ const Game = {
   items: [], particles: [], floaters: [],
   word: null, lastWord: '',
   quota: 0, levelScoreStart: 0, contracts: 0,
+  strength: 0, luck: 0,
   hook: null,
   feedback: '', feedbackUntil: 0,
 };
@@ -61,7 +63,7 @@ function newHook() {
     dir: 1,
     swingSpeed: 1.15 + Math.min(.35, Game.level * .05),
     len: 46,                         // 当前绳长
-    maxLen: 470,
+    maxLen: Math.hypot(W / 2, H - 96) + 24,
     state: 'swing',                  // swing | shoot | retract
     grabbed: null,
     speed: 420,
@@ -93,13 +95,14 @@ function spawnItems() {
   // 字母块: 按词序分布深度带, 且必须可达(最多重试12次找无遮挡位置)
   const letters = [...w.en.toUpperCase()];
   const bands = letters.length;
+  const bandHeight = Math.max(40, (H - 205) / bands);
   for (let i = 0; i < bands; i++) {
-    const bandTop = 150 + (330 / bands) * i;
+    const bandTop = 140 + bandHeight * i;
     let placed = null;
     for (let attempt = 0; attempt < 12; attempt++) {
       const cand = {
         kind: 'letter', letter: letters[i], index: i,
-        x: rand(80, W - 80), y: rand(bandTop + 10, bandTop + 300 / bands - 40),
+        x: rand(55, W - 55), y: rand(bandTop + 10, bandTop + bandHeight - 18),
         r: 19, weight: 1, value: 120 + i * 20,
         wobble: Math.random() * TAU,
       };
@@ -175,9 +178,10 @@ function spawnItems() {
       }
     }
   }
-  if (Game.level >= 2) {
-    Game.items.push({ kind: 'diamond', x: rand(60, W - 60), y: rand(H - 130, H - 45),
-      r: 14, weight: 1.2, value: 500, wobble: Math.random() * TAU });
+  const diamonds = (Game.level >= 2 ? 1 : 0) + Game.luck;
+  for (let i = 0; i < diamonds; i++) {
+    Game.items.push({ kind: 'diamond', x: rand(60, W - 60), y: rand(H - 150, H - 45),
+      r: 14, weight: 1.2, value: 500 + Game.luck * 100, wobble: Math.random() * TAU });
   }
   // 原版标志物: 大小金块(大金块=高分重物)
   const golds = 2 + (Game.level > 3 ? 1 : 0);
@@ -203,8 +207,7 @@ function buildLevel(initial) {
   if (!initial) Game.score += 200;
   Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   Game.levelScoreStart = Game.score;
-  Game.quota = 700 + Game.level * 140 + Game.word.en.length * 70;
-  dynamiteCount = Math.min(3, 1 + Math.floor((Game.level - 1) / 3));
+  Game.quota = 520 + Game.level * 100 + Game.word.en.length * 55;
   spawnItems();
   Game.hook = newHook();
   if (initial) Game.timeLeft = DIFFS[Game.difficulty].time;
@@ -214,9 +217,11 @@ function buildLevel(initial) {
 }
 
 function startGame() {
-  Game.score = 0; Game.lives = 3; Game.level = 1; Game.contracts = 0;
+  Game.score = 0; Game.lives = 1; Game.level = 1; Game.contracts = 0;
+  Game.strength = 0; Game.luck = 0; dynamiteCount = 1;
   Game.wordsDone = 0; Game.time = 0; Game.shake = 0;
   Game.state = 'playing';
+  $id('shop').classList.add('hidden');
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
   $id('paused').classList.add('hidden');
@@ -266,14 +271,9 @@ function update(dt) {
     Game.timeLeft -= dt;
     updateHudTimer();
     if (Game.timeLeft <= 0) {
-      Game.lives--;
-      updateHud();
-      if (Game.lives <= 0) { gameOver(); return; }
-      showFeedback('超时! 剩余 ' + Game.lives + ' 次机会');
-      Game.timeLeft = 20;   // 宽限时间
-      Game.hook = newHook();
-      Game.word.progress = Math.max(0, Game.word.progress - 1);   // 温柔惩罚
-      updateHud();
+      if (levelReady()) openShop();
+      else { Game.lives = 0; gameOver(); }
+      return;
     }
     updateHook(dt);
   }
@@ -315,7 +315,7 @@ function updateHook(dt) {
     }
     if (h.len >= h.maxLen || tipX < 8 || tipX > W - 8 || tipY > H - 6) h.state = 'retract';
   } else if (h.state === 'retract') {
-    const mul = h.grabbed ? (1 / h.grabbed.weight) * DIFFS[Game.difficulty].retractMul : 1.6;
+    const mul = h.grabbed ? (1 / h.grabbed.weight) * DIFFS[Game.difficulty].retractMul * (1 + Game.strength * .2) : 1.6;
     h.len -= h.speed * mul * dt;
     if (h.grabbed) {
       h.grabbed.x = h.x + Math.cos(h.angle) * h.len;
@@ -374,24 +374,68 @@ function deliverItem(it) {
     if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .7);
   }
   updateHud();
+  if (Game.state === 'playing' && levelReady()) openShop();
 }
 
 function wordComplete() {
   Game.wordsDone++;
   const bonus = 250 + Game.word.en.length * 35;
   Game.score += bonus;
-  const contractWon = Game.score - Game.levelScoreStart >= Game.quota;
-  if (contractWon) {
-    Game.contracts++;
-    Game.score += 300;
-    Game.timeLeft += 8;
-    floatText('金牌合约 +300 · +8秒', W / 2, H / 2 + 2, '#fef08a');
-  }
-  Game.level++;
-  floatText('🎉 过关 +' + bonus, W / 2, H / 2 - 30, '#fde68a');
-  showFeedback(contractWon ? '拼写完成 · 金牌合约达成！' : '拼写完成 · 下一关可挑战金牌目标');
+  floatText('拼写完成 +' + bonus, W / 2, H / 2 - 30, '#fde68a');
+  showFeedback(levelReady() ? '拼写与金额目标均完成！' : `拼写完成 · 还差 ${Math.max(0, Game.quota - (Game.score - Game.levelScoreStart))} 金币`);
   Game.shake = .3;
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .32, 1.3);
+  updateHud();
+  if (levelReady()) openShop();
+}
+
+function levelReady() {
+  return Game.word && Game.word.progress >= Game.word.en.length && Game.score - Game.levelScoreStart >= Game.quota;
+}
+
+function openShop() {
+  if (Game.state !== 'playing' || !levelReady()) return;
+  Game.state = 'shop';
+  Game.contracts++;
+  Game.score += 300;
+  Game.hook = newHook();
+  $id('word-bar').classList.add('hidden');
+  $id('shop').classList.remove('hidden');
+  $id('shop-summary').textContent = `第 ${Game.level} 关完成 · 余额 ${Game.score}`;
+  updateHud();
+  renderShop();
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .38, 1.45);
+}
+
+function renderShop() {
+  const prices = { dynamite: 250, strength: 400, luck: 500 };
+  document.querySelectorAll('.shop-buy').forEach((button) => {
+    const item = button.dataset.item;
+    const capped = (item === 'dynamite' && dynamiteCount >= 5) || (item === 'strength' && Game.strength >= 3) || (item === 'luck' && Game.luck >= 2);
+    button.disabled = capped || Game.score < prices[item];
+  });
+  $id('shop-summary').textContent = `第 ${Game.level} 关完成 · 余额 ${Game.score} · 雷管 ${dynamiteCount}/5 · 力量 ${Game.strength}/3 · 幸运 ${Game.luck}/2`;
+}
+
+function buyUpgrade(item) {
+  if (Game.state !== 'shop') return false;
+  const price = item === 'dynamite' ? 250 : item === 'strength' ? 400 : item === 'luck' ? 500 : Infinity;
+  if (Game.score < price || (item === 'dynamite' && dynamiteCount >= 5) || (item === 'strength' && Game.strength >= 3) || (item === 'luck' && Game.luck >= 2)) return false;
+  Game.score -= price;
+  if (item === 'dynamite') dynamiteCount++;
+  if (item === 'strength') Game.strength++;
+  if (item === 'luck') Game.luck++;
+  updateHud(); renderShop();
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1.25);
+  return true;
+}
+
+function continueFromShop() {
+  if (Game.state !== 'shop') return;
+  Game.level++;
+  Game.state = 'playing';
+  $id('shop').classList.add('hidden');
+  $id('word-bar').classList.remove('hidden');
   buildLevel(false);
 }
 
@@ -429,6 +473,8 @@ canvas.addEventListener('pointerdown', () => {
   if (Game.state === 'playing') shootHook();
 });
 $id('dynamite-btn').addEventListener('pointerdown', (event) => { event.preventDefault(); event.stopPropagation(); useDynamite(); });
+document.querySelectorAll('.shop-buy').forEach((button) => button.addEventListener('click', () => buyUpgrade(button.dataset.item)));
+$id('next-level-btn').addEventListener('click', continueFromShop);
 
 function togglePause() {
   if (Game.state === 'playing') { Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
@@ -439,6 +485,7 @@ function backToMenu() {
   if (window.ChipMusic) ChipMusic.stop();
   $id('paused').classList.add('hidden');
   $id('over').classList.add('hidden');
+  $id('shop').classList.add('hidden');
   $id('word-bar').classList.add('hidden');
   $id('menu').classList.remove('hidden');
 }
@@ -508,7 +555,7 @@ function render() {
       [120, 180, 'rgba(80,58,26,.20)'],
       [300, 190, 'rgba(40,28,12,.24)'],
       [490, 170, 'rgba(22,14,5,.30)'],
-      [660, H - 660, 'rgba(10,6,2,.42)'],
+      [H * .78, H * .22, 'rgba(10,6,2,.42)'],
     ];
     for (const [by, bh2, bc] of bands) {
       px.fillStyle = bc;
@@ -839,10 +886,35 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
 
+let lastW = 0, lastH = 0, lastDpr = 0;
+function resize() {
+  const cssW = Math.max(1, wrap.clientWidth), cssH = Math.max(1, wrap.clientHeight);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+  const nextW = portrait ? cssW : 720, nextH = portrait ? cssH : 560;
+  if (nextW !== W || nextH !== H) {
+    const sx = nextW / W, sy = nextH / H;
+    for (const item of [...Game.items, ...Game.particles, ...Game.floaters]) { item.x *= sx; item.y *= sy; }
+    if (Game.hook) {
+      Game.hook.x *= sx; Game.hook.y *= sy;
+      Game.hook.len *= Math.min(sx, sy);
+      Game.hook.maxLen = Math.hypot(nextW / 2, nextH - 96) + 24;
+    }
+    W = nextW; H = nextH; Game._rockPattern = null;
+  }
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  lastW = cssW; lastH = cssH; lastDpr = dpr;
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 160));
+resize();
+
 let lastTime = performance.now();
 function frame(now) {
   const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
   lastTime = now;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (wrap.clientWidth !== lastW || wrap.clientHeight !== lastH || dpr !== lastDpr) resize();
   if (Game.state === 'playing') update(dt);
   render();
   requestAnimationFrame(frame);
@@ -866,6 +938,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const dynamiteBefore = dynamiteCount;
       useDynamite();
       if (dynamiteCount !== dynamiteBefore - 1 || Game.hook.grabbed) throw new Error('dynamite failed');
+      Game.score = Game.levelScoreStart + Game.quota;
       // 模拟按序送达字母
       for (let i = 0; i < Game.word.en.length; i++) {
         const target = Game.items.find((it) => it.kind === 'letter' && it.index === Game.word.progress);
@@ -875,7 +948,11 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
           // 错序会放回——但我们按序投递不应发生
         }
       }
-      if (Game.level <= 1) throw new Error('did not advance level');
+      if (Game.state !== 'shop') throw new Error('shop did not open');
+      const strengthBefore = Game.strength;
+      if (!buyUpgrade('strength') || Game.strength !== strengthBefore + 1) throw new Error('shop purchase failed');
+      continueFromShop();
+      if (Game.level <= 1 || Game.state !== 'playing') throw new Error('did not advance level');
       // 摆动状态机
       Game.hook.state = 'shoot';
       for (let i = 0; i < 400 && Game.hook.state === 'shoot'; i++) update(0.016);

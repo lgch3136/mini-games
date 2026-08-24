@@ -41,19 +41,22 @@ const DIFFS = {
 const SCROLL_STEPS = [.7, .85, 1.0, 1.15, 1.3, 1.5];
 
 let LANES = 4;
+const KEY_COLORS = {
+  KeyS: '#ff5b69', KeyD: '#ff8a45', KeyF: '#ffd84d', Space: '#63dc78',
+  KeyJ: '#27d3bd', KeyK: '#3d9cff', KeyL: '#8b7cff',
+};
 const LANE_MODES = {
   4: { keys: ['KeyD','KeyF','KeyJ','KeyK'], labels: ['D','F','J','K'],
-       colors: ['#f472b6','#fbbf24','#4ade80','#38bdf8'], notes: [523.25, 587.33, 659.25, 783.99] },
+       notes: [523.25, 587.33, 659.25, 783.99] },
   5: { keys: ['KeyD','KeyF','Space','KeyJ','KeyK'], labels: ['D','F','␣','J','K'],
-       colors: ['#f472b6','#fbbf24','#e879f9','#4ade80','#38bdf8'], notes: [523.25, 587.33, 698.46, 659.25, 783.99] },
+       notes: [523.25, 587.33, 698.46, 659.25, 783.99] },
   7: { keys: ['KeyS','KeyD','KeyF','Space','KeyJ','KeyK','KeyL'], labels: ['S','D','F','␣','J','K','L'],
-       colors: ['#fb7185','#f472b6','#fbbf24','#e879f9','#4ade80','#38bdf8','#818cf8'],
        notes: [493.88, 554.37, 622.25, 698.46, 783.99, 880, 987.77] },
 };
 const laneCfg = () => LANE_MODES[LANES];
 const LANE_KEYS = () => laneCfg().keys;
 const LANE_LABEL = () => laneCfg().labels;
-const LANE_COLORS = () => laneCfg().colors;
+const LANE_COLORS = () => laneCfg().keys.map((key) => KEY_COLORS[key]);
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -317,8 +320,9 @@ function nextChart() {
 function now() { return Game.actx ? Game.actx.currentTime - Game.audioStart : 0; }
 
 function judgeHit(lane) {
-  if (Game.state !== 'playing' || lane == null || lane < 0 || lane >= LANES) return;
+  if (lane == null || lane < 0 || lane >= LANES) return;
   Game.flashLane[lane] = 1;
+  if (Game.state !== 'playing') return;
   const t = now();
   const JW = judgeWindows();
   let best = null, bestD = Infinity;
@@ -340,7 +344,7 @@ function judgeHit(lane) {
   Game.score += Math.round(pts * comboMul);
   Game.lives = Math.min(100, Game.lives + (verdict === 'PERFECT' ? 2 : verdict === 'GREAT' ? 1 : 0));
   Game.bgPulse = Math.min(1, Game.bgPulse + .18);
-  Game.pulses.push({ lane, t: Game.time, color: verdict === 'PERFECT' ? '#fde68a' : verdict === 'GREAT' ? '#86efac' : '#93c5fd' });
+  Game.pulses.push({ lane, t: Game.time, color: LANE_COLORS()[lane] });
   floatText(verdict, laneX(lane) + laneW() / 2, HIT_Y - 46,
     verdict === 'PERFECT' ? '#fde68a' : verdict === 'GREAT' ? '#86efac' : '#93c5fd');
   burst(laneX(lane) + laneW() / 2, HIT_Y, LANE_COLORS()[lane], verdict === 'PERFECT' ? 10 : 6);
@@ -502,10 +506,10 @@ function render() {
   ctx.save();
   ctx.translate(Game.shakeX, 0);
 
-  // 轨道: 奇偶明暗交替(O2Jam式)
+  // 每个物理按键终身绑定一种颜色，键数切换也不改变色义。
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
-    ctx.fillStyle = (l % 2 === 0) ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.01)';
+    ctx.fillStyle = hexA(LANE_COLORS()[l], .045);
     ctx.fillRect(x + 2, 44, laneW() - 4, H - 44);
     // 纵向流光: 轨道中央微弱光带(下落方向感)
     const streamG = ctx.createLinearGradient(0, 44, 0, H);
@@ -520,7 +524,7 @@ function render() {
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
     const g = ctx.createLinearGradient(0, HIT_Y - 130, 0, HIT_Y);
-    const a = Game.flashLane[l] * .35;
+    const a = .08 + Game.flashLane[l] * .72;
     g.addColorStop(0, 'rgba(0,0,0,0)');
     g.addColorStop(1, hexA(LANE_COLORS()[l], a));
     ctx.fillStyle = g;
@@ -580,19 +584,31 @@ function render() {
     ctx.lineWidth = 3 * (1 - age / .35) + 1;
     ctx.beginPath(); ctx.ellipse(laneX(p.lane) + laneW() / 2, HIT_Y + 22, r * .8, r * .34, 0, 0, TAU); ctx.stroke();
   }
-  // 判定按键座
+  // 判定按键座：固定彩色键帽 + 明显的按下行程，不再只是透明度闪一下。
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
-    ctx.fillStyle = LANE_COLORS()[l];
-    ctx.globalAlpha = .22 + Game.flashLane[l] * .6;
-    ctx.beginPath(); ctx.roundRect(x + 6, HIT_Y + 6, laneW() - 12, 34, 8); ctx.fill();
-    ctx.globalAlpha = 1;
+    const press = Game.flashLane[l];
+    const color = LANE_COLORS()[l];
+    const capY = HIT_Y + 6 + press * 5;
+    const capH = 34 - press * 3;
+    ctx.fillStyle = 'rgba(2,4,12,.88)';
+    ctx.beginPath(); ctx.roundRect(x + 5, HIT_Y + 5, laneW() - 10, 41, 9); ctx.fill();
+    ctx.save();
+    ctx.shadowColor = color; ctx.shadowBlur = 8 + press * 24;
+    const keyGradient = ctx.createLinearGradient(0, capY, 0, capY + capH);
+    keyGradient.addColorStop(0, hexA(color, .98));
+    keyGradient.addColorStop(1, shade(color, .34));
+    ctx.fillStyle = keyGradient;
+    ctx.beginPath(); ctx.roundRect(x + 8, capY, laneW() - 16, capH, 7); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.fillRect(x + 12, capY + 3, laneW() - 24, 2);
     ctx.font = '900 17px ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,5,20,.85)';
-    ctx.strokeText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
+    ctx.strokeText(LANE_LABEL()[l], x + laneW() / 2, capY + capH / 2 + 1);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(LANE_LABEL()[l], x + laneW() / 2, HIT_Y + 24);
+    ctx.fillText(LANE_LABEL()[l], x + laneW() / 2, capY + capH / 2 + 1);
   }
 
   // 连击大字
@@ -638,18 +654,19 @@ function render() {
     if (isNextLetter) {
       const nx = x + 3, nw = laneW() - 6, nh = 34, ny = y - nh;
       ctx.save();
-      ctx.shadowColor = 'rgba(110,231,183,.95)';
+      const laneColor = LANE_COLORS()[n.lane];
+      ctx.shadowColor = laneColor;
       ctx.shadowBlur = 16;
       const lg = ctx.createLinearGradient(0, ny, 0, ny + nh);
       lg.addColorStop(0, '#ffffff');
-      lg.addColorStop(.3, '#6ee7b7');
-      lg.addColorStop(1, '#059669');
+      lg.addColorStop(.3, laneColor);
+      lg.addColorStop(1, shade(laneColor, .38));
       ctx.fillStyle = lg;
       ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.fill();
       ctx.restore();
-      ctx.strokeStyle = '#d1fae5'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#fff4b8'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.stroke();
-      ctx.fillStyle = '#053b2c';
+      ctx.fillStyle = '#07111f';
       ctx.font = '900 19px ui-monospace, monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(n.letter || '?', x + laneW() / 2, y - 2);
@@ -784,6 +801,10 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         if (letters.length !== Game.word.en.length) throw new Error(lanes + 'K letter count mismatch');
         if (Game.notes.some((n) => !Number.isFinite(n.hitAt) || n.lane < 0 || n.lane >= lanes)) throw new Error(lanes + 'K invalid note');
       }
+      LANES = 4;
+      if (LANE_COLORS()[0] !== KEY_COLORS.KeyD || LANE_COLORS()[3] !== KEY_COLORS.KeyK) throw new Error('fixed key colors failed');
+      judgeHit(0);
+      if (Game.flashLane[0] !== 1) throw new Error('key press feedback failed');
       Game.word.progress = 2; buildChart(true);
       if (Game.notes.filter((n) => n.isLetter).some((n) => n.index < 2)) throw new Error('retry repeated collected letters');
       Game.word = { en: 'PLANET', zh: '行星', progress: 0 }; Game.level = 6;

@@ -4,11 +4,14 @@
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; display: flex; gap: 12px; background: #d9dde5; overflow: auto; }
-  iframe { flex: 0 0 393px; width: 393px; height: 700px; border: 0; background: #fff; }
+  iframe { flex: 0 0 390px; width: 390px; height: 844px; border: 0; background: #fff; }
 </style>
-<iframe title="snake" src="../english-word-snake/index.html?mobile-layout-test"></iframe>
-<iframe title="thunder" src="../english-thunder-fighter/index.html?mobile-layout-test"></iframe>
 <iframe title="flappy" src="../english-flappy-word/index.html?mobile-layout-test"></iframe>
+<iframe title="beat" src="../english-word-beat/index.html?mobile-layout-test"></iframe>
+<iframe title="miner" src="../english-word-miner/index.html?mobile-layout-test"></iframe>
+<iframe title="thunder" src="../english-thunder-fighter/index.html?mobile-layout-test"></iframe>
+<iframe title="temple" src="../english-temple-dash/index.html?mobile-layout-test"></iframe>
+<iframe title="ranger" src="../english-word-ranger/index.html?mobile-layout-test"></iframe>
 <script>
   const frames = [...document.querySelectorAll('iframe')];
   const within = (inner, outer) =>
@@ -16,16 +19,17 @@
     inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1;
 
   function verify(attempt = 0) {
-    const ready = frames.every((frame) => frame.contentDocument?.querySelector('#menu'));
+    const ready = frames.every((frame) => frame.contentDocument?.readyState === 'complete' && frame.contentDocument.querySelector('#menu'));
     if (!ready && attempt < 100) { setTimeout(() => verify(attempt + 1), 50); return; }
     const menusFit = frames.every((frame) => {
       const view = frame.contentWindow;
+      const wrap = frame.contentDocument.querySelector('#game-wrap');
       const menu = frame.contentDocument.querySelector('#menu');
-      if (!menu) return false;
-      const rect = menu.getBoundingClientRect();
-      return Math.abs(rect.width - view.innerWidth) < 2 &&
-        Math.abs(rect.height - view.innerHeight) < 2 &&
-        view.getComputedStyle(menu).transform === 'none';
+      if (!menu || !wrap) return false;
+      const rect = menu.getBoundingClientRect(), wrapRect = wrap.getBoundingClientRect();
+      return within(wrapRect, { left: 0, top: 0, right: view.innerWidth, bottom: view.innerHeight }) &&
+        Math.abs(rect.width - wrapRect.width) <= 2.1 && Math.abs(rect.height - wrapRect.height) <= 2.1 &&
+        frame.contentDocument.documentElement.scrollWidth <= view.innerWidth + 1;
     });
     if (!menusFit && attempt < 100) { setTimeout(() => verify(attempt + 1), 50); return; }
     if (!menusFit) { document.title = 'MOBILE-GAME-LAYOUT-FAIL:menu'; return; }
@@ -37,13 +41,14 @@
         const doc = frame.contentDocument;
         const wrap = doc.querySelector('#game-wrap');
         const hud = doc.querySelector('#hud');
+        const menu = doc.querySelector('#menu');
         const wrapRect = wrap.getBoundingClientRect();
+        const touch = doc.querySelector('#touch-controls');
         const controls = [...hud.children].filter((el) => view.getComputedStyle(el).display !== 'none');
-        return Math.abs(wrapRect.width - view.innerWidth) < 2 &&
-          Math.abs(wrapRect.height - view.innerHeight) < 2 &&
-          view.getComputedStyle(wrap).aspectRatio === 'auto' &&
-          hud.scrollWidth <= hud.clientWidth + 1 &&
-          controls.every((el) => within(el.getBoundingClientRect(), wrapRect));
+        if (touch && view.getComputedStyle(touch).display !== 'none') controls.push(touch);
+        return view.getComputedStyle(menu).display === 'none' && view.getComputedStyle(hud).display !== 'none' &&
+          within(wrapRect, { left: 0, top: 0, right: view.innerWidth, bottom: view.innerHeight }) &&
+          hud.scrollWidth <= hud.clientWidth + 1 && controls.every((el) => within(el.getBoundingClientRect(), wrapRect));
       });
       document.title = gamesFit ? 'MOBILE-GAME-LAYOUT-OK' : 'MOBILE-GAME-LAYOUT-FAIL:game';
     }, 150);

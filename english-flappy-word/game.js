@@ -18,7 +18,7 @@ let H = 660;
 const GROUND_H = 88;
 let GROUND_Y = H - GROUND_H;
 let BIRD_X = 132;
-const BIRD_R = 19;
+const BIRD_R = 17;
 const GRAVITY = 1400;      // 原版参考值
 const FLAP_V = -390;       // 原版冲量: 干脆但不夸张
 const MAX_FALL = 620;      // 原版俯冲终端速度
@@ -96,7 +96,7 @@ function loadSprite(src, cb) {
 loadSprite('assets/bird.png', (i) => { Assets.bird = i; });
 // 旧pipe.png素材是米色楼房风格, 与原版绿色管道不符——已禁用, 改用矢量绘制
 // loadSprite('assets/pipe.png', (i) => { Assets.pipe = i; });
-(function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet-v2.png'; })();
+(function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet-v3.webp'; })();
 (function () { const i = new Image(); i.onload = () => { Assets.bg = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bg-v3.webp'; })();
 
 /* ---------------- 音效 ---------------- */
@@ -650,21 +650,20 @@ function drawBubbles() {
 
 function drawBird() {
   const b = Game.bird;
-  const s = (BIRD_R + 8) * 2;
+  const s = 70;
   ctx.save();
   ctx.translate(b.x, b.y);
   ctx.rotate(b.rot);
   if (b.inv > 0 && Math.floor(Game.time * 12) % 2 === 0) ctx.globalAlpha = 0.35;
   // 主体白色轮廓光，让小鸟从任何背景中跳出来（经典Flappy的可读性纪律）
-  ctx.shadowColor = 'rgba(255,255,255,.85)';
-  ctx.shadowBlur = 7;
+  ctx.shadowColor = 'rgba(255,255,255,.72)';
+  ctx.shadowBlur = 5;
   if (Assets.birdSheet && Assets.birdSheet.width) {
-    // 3帧扇翅动画：上升快扇、下落滑翔
-    const flapRate = b.vy < 0 ? 22 : 9;
-    const frame = Math.floor(Game.time * flapRate) % 3;
-    const sw = Assets.birdSheet.width / 3;
-    const sq = 1 + Math.sin(Game.time * 18) * 0.045;
-    ctx.scale(sq, 2 - sq);
+    // 四帧保持身体注册点不动，只改变翅膀；不再用缩放挤压整只鸟。
+    const flapRate = b.vy < 0 ? 15 : 8;
+    const cycle = [0, 1, 2, 3, 2, 1];
+    const frame = cycle[Math.floor(Game.time * flapRate) % cycle.length];
+    const sw = Assets.birdSheet.width / 4;
     ctx.drawImage(Assets.birdSheet, frame * sw, 0, sw, Assets.birdSheet.height, -s / 2, -s / 2, s, s);
   } else if (Assets.bird && Assets.bird.width && Assets.bird.height) {
     const sq = 1 + Math.sin(Game.time * 18) * 0.045;

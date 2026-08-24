@@ -55,8 +55,8 @@ const STAGES = [
 const MISSION_LEVELS = [
   { name: '第一关 · 曙光森林', biome: 0, bossName: '林地核心', music: 'ranger-stage',
     beats: [
-      { tag: 'TEACH', name: '巡逻线', hint: '橙光亮起后，巡逻兽会直线冲锋', foes: [['beetle', 420]], lock: true },
-      { tag: 'TEST', name: '壕沟试跳', hint: '先越过壕沟，再处理冲锋', gaps: [[330, 105]], foes: [['beetle', 555]], lock: true },
+      { tag: 'TEACH', name: '空投接敌', hint: '先击落 S 补给舱，再用散射压制巡逻兽', foes: [['capsule', 230], ['beetle', 470]], lock: true, drop: 'spread' },
+      { tag: 'TEST', name: '壕沟空袭', hint: '越过壕沟，同时处理地面冲锋和空中俯冲', gaps: [[330, 105]], foes: [['beetle', 300], ['drone', 560]], lock: true },
       { tag: 'RECOVERY', name: '林间补给', hint: '短暂喘息，击落补给舱', foes: [['capsule', 470]], checkpoint: true, drop: 'spread' },
       { tag: 'TEACH', name: '跃击预警', hint: '压低蓄力时后撤，从落点下方穿过', foes: [['leaper', 430]], lock: true },
       { tag: 'TEST', name: '高台炮线', hint: '瞄准线锁定后立刻改变高度', platforms: [[405, 96, 150]], foes: [['turret', 485, 96]], lock: true },
@@ -179,7 +179,7 @@ const Game = {
     crouching: false, aimX: 1, aimY: 0,
     landingTimer: 0, skidTimer: 0, hurtTimer: 0,
     runCycle: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
-    weapon: 'normal', weaponTimer: 0, shield: 0,
+    weapon: 'normal', weaponLevel: 0, weaponTimer: 0, shield: 0,
     overdrive: 0, combo: 0, comboTimer: 0,
   },
 };
@@ -280,7 +280,8 @@ function groundAt(x) {
 }
 
 function chunkHasThreats(chunk) {
-  return Game.enemies.some((enemy) => !enemy.dead && enemy.type !== 'capsule' && enemy.chunkIndex === chunk.index);
+  const openingLesson = Game.mode === 'mission' && Game.missionLevel === 0 && chunk.index === 0;
+  return Game.enemies.some((enemy) => !enemy.dead && (enemy.type !== 'capsule' || openingLesson) && enemy.chunkIndex === chunk.index);
 }
 
 function platformTop(platform) {
@@ -493,7 +494,7 @@ function resetPlayer(x) {
     facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
     runCycle: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
-    weapon: 'normal', weaponTimer: 0, shield: 0, overdrive: 0, combo: 0, comboTimer: 0,
+    weapon: 'normal', weaponLevel: 0, weaponTimer: 0, shield: 0, overdrive: 0, combo: 0, comboTimer: 0,
   });
 }
 
@@ -612,7 +613,7 @@ function missionComplete() { finishRun(true); }
 function advanceLevel() {
   Game.missionLevel = Math.min(MISSION_LEVELS.length - 1, Game.missionLevel + 1);
   MISSION_BEATS = MISSION_LEVELS[Game.missionLevel].beats;
-  const keepScore = Game.score, keepWords = Game.wordsDone,
+  const keepScore = Game.score, keepWords = Game.wordsDone, keepWeapon = Game.player.weapon, keepWeaponLevel = Game.player.weaponLevel,
         keepCompleted = Game.completedWords.slice(), keepMastery = Game.recallResults.slice(),
         nextLv = Game.missionLevel;
   Object.assign(Game, {
@@ -629,6 +630,7 @@ function advanceLevel() {
   Game.completedWords = keepCompleted; Game.recallResults = keepMastery;
   resetInput();
   resetPlayer(70);
+  Game.player.weapon = keepWeapon; Game.player.weaponLevel = keepWeaponLevel;
   ensureWorld(VIEW_W * 3);
   nextWord(false);
   Game.state = 'playing';
@@ -651,7 +653,8 @@ function shoot() {
   const centerY = player.y + player.h * (player.crouching ? .38 : .43);
   const muzzleX = centerX + aim.x * 28;
   const muzzleY = centerY + aim.y * 28;
-  player.fireCooldown = player.overdrive > 0 ? .065 : player.weapon === 'rapid' ? .085 : .14;
+  const level = Math.max(1, player.weaponLevel || 1);
+  player.fireCooldown = player.overdrive > 0 ? .055 : player.weapon === 'rapid' ? [.085, .065, .05][level - 1] : .14;
   player.aimX = aim.x;
   player.aimY = aim.y;
   player.recoil = .09;
@@ -659,12 +662,16 @@ function shoot() {
   player.muzzleX = muzzleX;
   player.muzzleY = muzzleY;
   const baseAngle = Math.atan2(aim.y, aim.x);
-  const offsets = player.weapon === 'spread' ? [-.18, 0, .18] : [0];
+  const offsets = player.weapon === 'spread'
+    ? (level === 1 ? [-.18, 0, .18] : [-.3, -.15, 0, .15, .3])
+    : player.weapon === 'rapid' && level >= 3 ? [-.025, .025] : [0];
   for (const offset of offsets) {
     const angle = baseAngle + offset;
     Game.bullets.push({
       x: muzzleX - 4, y: muzzleY - 4, w: 8, h: 8,
       vx: Math.cos(angle) * BULLET_SPEED, vy: Math.sin(angle) * BULLET_SPEED,
+      damage: player.weapon === 'spread' && level >= 3 ? 2 : 1,
+      color: player.weapon === 'spread' ? '#ff8a64' : player.weapon === 'rapid' ? '#63e6d0' : '#ffe49a',
     });
   }
   burst(muzzleX, muzzleY, '#f4d37a', 3);
@@ -685,14 +692,21 @@ function collectPowerup(powerup) {
   if (powerup.type === 'shield') {
     player.shield = 1;
   } else {
-    player.weapon = powerup.type;
-    player.weaponTimer = 16;
+    grantWeapon(powerup.type);
   }
   Game.score += 240;
   burst(powerup.x + 17, powerup.y + 17, '#f4d37a', 18);
-  showFeedback('获得' + POWERUP_LABELS[powerup.type] + (powerup.type === 'shield' ? '，可抵挡一次攻击' : '，持续 16 秒'));
+  showFeedback(powerup.type === 'shield' ? '获得护盾，可抵挡一次攻击' : '火力升级：' + POWERUP_LABELS[player.weapon] + ' ' + 'I'.repeat(player.weaponLevel));
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .28);
   updateHud();
+}
+
+function grantWeapon(type) {
+  const player = Game.player;
+  player.weaponLevel = player.weapon === type ? Math.min(3, player.weaponLevel + 1) : 1;
+  player.weapon = type;
+  player.weaponTimer = 0;
+  return player.weaponLevel;
 }
 
 function defeatEnemy(enemy, source) {
@@ -782,7 +796,7 @@ function hurt(fell = false) {
     setCrouching(false);
     Object.assign(player, {
       vx: -player.facing * 180, vy: -260, onGround: false, inv: 1.15, hurtTimer: .32,
-      weapon: 'normal', weaponTimer: 0, overdrive: 0, combo: 0, comboTimer: 0,
+      weapon: 'normal', weaponLevel: 0, weaponTimer: 0, overdrive: 0, combo: 0, comboTimer: 0,
     });
   }
   updateHud();
@@ -842,7 +856,7 @@ function saveRecallResult(word, correct, responseMs) {
 function grantRecallReward() {
   const reward = ['spread', 'rapid', 'shield'][Math.min(2, Game.recallResults.length - 1)];
   if (reward === 'shield') Game.player.shield = 1;
-  else { Game.player.weapon = reward; Game.player.weaponTimer = 18; }
+  else grantWeapon(reward);
   Game.player.overdrive = Math.max(Game.player.overdrive, 3);
   Game.score += 500;
   return POWERUP_LABELS[reward];
@@ -910,6 +924,7 @@ function updateHud() {
   $('score').textContent = Game.score;
   $('words').textContent = Game.wordsDone;
   $('lives').textContent = Game.hp;
+  $('weapon').textContent = Game.player.weapon === 'normal' ? '标准' : POWERUP_LABELS[Game.player.weapon] + ' ' + 'I'.repeat(Game.player.weaponLevel);
   $('distance').textContent = Game.distance + 'm';
   const chunk = chunkAt(Game.player.x + Game.player.w / 2);
   $('biome').textContent = Game.mode === 'mission' && chunk
@@ -938,10 +953,8 @@ function updatePlayer(dt) {
   player.hurtTimer = Math.max(0, player.hurtTimer - dt);
   player.recoil = Math.max(0, player.recoil - dt);
   player.muzzleFlash = Math.max(0, player.muzzleFlash - dt);
-  player.weaponTimer = Math.max(0, player.weaponTimer - dt);
   player.overdrive = Math.max(0, player.overdrive - dt);
   player.comboTimer = Math.max(0, player.comboTimer - dt);
-  if (!player.weaponTimer) player.weapon = 'normal';
   if (!player.comboTimer) player.combo = 0;
   player.coyote = player.onGround ? .11 : Math.max(0, player.coyote - dt);
 
@@ -1323,7 +1336,7 @@ function damageEnemy(enemy, bullet) {
     if (window.ArcadeAudio) ArcadeAudio.play('click', .12, 1.5);
     return;
   }
-  enemy.hp--;
+  enemy.hp -= bullet.damage || 1;
   enemy.hit = .12;
   enemy.stun = .055;
   enemy.knockback = Math.sign(bullet.vx || 1) * (enemy.type === 'boss' ? 28 : 95);
@@ -1945,7 +1958,7 @@ function drawPlayer() {
   }
   const status = player.overdrive > 0
     ? '火力爆发 ' + Math.ceil(player.overdrive)
-    : player.weapon !== 'normal' ? POWERUP_LABELS[player.weapon] + ' ' + Math.ceil(player.weaponTimer) : '';
+    : player.weapon !== 'normal' ? POWERUP_LABELS[player.weapon] + ' ' + 'I'.repeat(player.weaponLevel) : '';
   const label = [status, player.combo > 1 ? '连击 ×' + player.combo : ''].filter(Boolean).join(' · ');
   if (label) {
     ctx.font = '800 13px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
@@ -2040,7 +2053,7 @@ function render() {
   drawPowerups();
   for (const enemy of Game.enemies) drawEnemy(enemy);
   drawBossNodes();
-  for (const bullet of Game.bullets) drawBullet(bullet, '#ffe49a');
+  for (const bullet of Game.bullets) drawBullet(bullet, bullet.color || '#ffe49a');
   for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
   drawPlayer();
   // 前景遮挡草丛(魂斗罗纵深关键一招): 比玩家更快的半透明剪影掠过
@@ -2238,6 +2251,8 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (Game.generatedTo < VIEW_W * 3) throw new Error('world did not generate ahead');
       ensureWorld(CHUNK_W * 4, Infinity);
       if (Game.chunks.slice(0, 4).map((chunk) => chunk.tag).join(',') !== 'TEACH,TEST,RECOVERY,TEACH') throw new Error('curated mission order failed');
+      const openingCapsule = Game.enemies.find((enemy) => enemy.type === 'capsule' && enemy.chunkIndex === 0);
+      if (!openingCapsule || openingCapsule.dropType !== 'spread' || openingCapsule.x > 320) throw new Error('opening weapon lesson missing');
       const startX = Game.player.x;
       input.right = true;
       for (let i = 0; i < 40; i++) update(1 / 60);
@@ -2265,6 +2280,9 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.player.fireCooldown = 0;
       shoot();
       if (Game.bullets.length !== 3 || Game.bullets.some((bullet) => Math.abs(Math.hypot(bullet.vx, bullet.vy) - BULLET_SPEED) > .01)) throw new Error('spread weapon failed');
+      collectPowerup({ x: Game.player.x, y: Game.player.y, w: 34, h: 34, type: 'spread', taken: false });
+      Game.bullets.length = 0; Game.player.fireCooldown = 0; shoot();
+      if (Game.player.weaponLevel !== 2 || Game.bullets.length !== 5) throw new Error('weapon stacking failed');
       Game.bullets.length = 0;
       Object.assign(Game.player, { x: 1300, y: GROUND_Y - PLAYER_H, inv: 0, onGround: true });
       Game.camera = 1000;

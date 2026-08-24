@@ -19,6 +19,7 @@ const els = {
   hud: $id('hud'),
   qKind: $id('q-kind'), qPrompt: $id('q-prompt'), qHint: $id('q-hint'), qFeedback: $id('q-feedback'),
   score: $id('score'), comboBox: $id('combo-box'), combo: $id('combo'),
+  weapon: $id('weapon'), medalChain: $id('medal-chain'),
   level: $id('level'), bombs: $id('bombs'),
   hpBar: $id('hp-bar'), hpText: $id('hp-text'),
   menu: $id('menu'), over: $id('over'), paused: $id('paused'),
@@ -128,7 +129,6 @@ const DIFF_CONF = {
 };
 
 const POWERUPS = [
-  { kind: 'double', icon: '🔥', color: '#ff9f43', name: '双倍火力' },
   { kind: 'shield', icon: '🛡️', color: '#54a0ff', name: '护盾' },
   { kind: 'heal',   icon: '❤️', color: '#ff6b81', name: '回复生命' },
   { kind: 'bomb',   icon: '💣', color: '#ffd166', name: '炸弹 +1' },
@@ -140,6 +140,7 @@ const Game = {
   difficulty: 'easy',
   score: 0, combo: 0, maxCombo: 0,
   graze: 0,
+  medalChain: 0,
   hp: 100, shield: 0, bombs: 1,
   level: 1,
   time: 0,
@@ -153,6 +154,7 @@ const Game = {
   player: {
     x: W / 2, y: H - 90, r: 15,
     fireTimer: 0, fireInterval: 0.15,
+    weapon: 'spread', weaponLevel: 1,
     double: 0, invuln: 0, spawnRing: 0,
     px: W / 2, py: H - 90,  // 指针目标
     pointer: false,
@@ -373,6 +375,7 @@ function spawnQuestionWave() {
       nextShot: rand(0.8, 2.5),
       shotInterval: conf.fire * rand(0.75, 1.35),
       hitFlash: 0, dead: false,
+      spawnAt: Game.time,
       homeX: 0, route: Game.questionIndex % 3,
     };
     enemy.homeX = enemy.x;
@@ -483,14 +486,17 @@ function killEnemy(e, byCrash) {
   if (e.option.correct) {
     Game.combo++;
     Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
-    const gain = 100 + Game.combo * 10 + (e.elite ? 50 : 0);
+    const quick = clamp(5 - Math.floor((Game.time - (e.spawnAt || Game.time)) / 1.1), 1, 5);
+    const gain = (100 + Game.combo * 10 + (e.elite ? 50 : 0)) * quick;
     Game.score += gain;
     Game.stats.correct++;
     if (Game.question.isGrammar) Game.stats.grammar++; else Game.stats.vocab++;
-    toast('+ ' + gain, '#7dffa8', e.x, e.y - 20, 18);
+    toast('QUICK ×' + quick + '  +' + gain, '#7dffa8', e.x, e.y - 20, 18);
     showAnswerFeedback(true);
     SFX.correct();
     dropPowerup(e.x, e.y, e.elite ? 0.6 : 0.24);
+    dropWeaponCrystal(e.x - 24, e.y, Game.questionIndex <= 3 ? 1 : .42);
+    dropMedal(e.x + 24, e.y);
     endWave(true);
   } else {
     Game.combo = 0;
@@ -575,9 +581,30 @@ function dropPowerup(x, y, chance) {
   Game.powerups.push({ x: clamp(x, 30, W - 30), y, vy: 95, t: 0, kind: u.kind, icon: u.icon, color: u.color, name: u.name });
 }
 
+function dropWeaponCrystal(x, y, chance) {
+  if (Math.random() > chance) return;
+  const modes = [
+    { mode: 'spread', icon: 'S', color: '#ff5b69', name: '红色散射' },
+    { mode: 'laser', icon: 'L', color: '#3d9cff', name: '蓝色雷光' },
+    { mode: 'homing', icon: 'H', color: '#8b7cff', name: '紫色追踪' },
+  ];
+  const u = modes[(Game.questionIndex - 1 + modes.length) % modes.length];
+  Game.powerups.push({ ...u, kind: 'weapon', x: clamp(x, 30, W - 30), y, vy: 78, t: 0 });
+}
+
+function dropMedal(x, y) {
+  Game.powerups.push({ kind: 'medal', icon: '★', color: '#ffe066', name: '连锁勋章', x: clamp(x, 30, W - 30), y, vy: 88, t: 0 });
+}
+
 function applyPowerup(u) {
-  if (u.kind === 'double') Game.player.double = 10;
-  else if (u.kind === 'shield') {
+  if (u.kind === 'weapon') {
+    const p = Game.player;
+    p.weaponLevel = p.weapon === u.mode ? Math.min(3, p.weaponLevel + 1) : 1;
+    p.weapon = u.mode;
+  } else if (u.kind === 'medal') {
+    Game.medalChain = Math.min(10, Game.medalChain + 1);
+    Game.score += 50 * Game.medalChain;
+  } else if (u.kind === 'shield') {
     if (Game.shield > 0) Game.hp = Math.min(100, Game.hp + 15);
     else Game.shield = 1;
   } else if (u.kind === 'heal') Game.hp = Math.min(100, Game.hp + 25);
@@ -585,6 +612,20 @@ function applyPowerup(u) {
   toast(u.name + '！', u.color, u.x, u.y - 14, 16);
   SFX.power();
   updateHud();
+}
+
+function firePlayerWeapon() {
+  const p = Game.player, level = p.weaponLevel;
+  if (p.weapon === 'laser') {
+    const offsets = level === 1 ? [0] : level === 2 ? [-7, 7] : [-12, 0, 12];
+    for (const x of offsets) Game.bullets.push({ x: p.x + x, y: p.y - 24, vx: 0, vy: -720, r: 4, damage: level >= 3 ? 2 : 1, pierce: level, color: '#5caeff', kind: 'laser' });
+  } else if (p.weapon === 'homing') {
+    const offsets = level === 1 ? [0] : level === 2 ? [-9, 9] : [-14, 0, 14];
+    for (const x of offsets) Game.bullets.push({ x: p.x + x, y: p.y - 22, vx: x * 5, vy: -520, r: 5, homing: true, color: '#a78bfa', kind: 'homing' });
+  } else {
+    const angles = level === 1 ? [0] : level === 2 ? [-.12, .12] : [-.19, 0, .19];
+    for (const angle of angles) Game.bullets.push({ x: p.x, y: p.y - 22, vx: Math.sin(angle) * 590, vy: -Math.cos(angle) * 590, r: 4, color: '#ff6b72', kind: 'spread' });
+  }
 }
 
 /* ---------------- 射击 ---------------- */
@@ -754,9 +795,8 @@ function update(dt) {
   // 手动开火：按住空格/J 或按住触屏/鼠标才射击
   p.fireTimer = Math.max(0, p.fireTimer - dt);
   if (Game.fireHeld && p.fireTimer <= 0) {
-    p.fireTimer = p.fireInterval;
-    const offs = p.double > 0 ? [-9, 9] : [0];
-    for (const o of offs) Game.bullets.push({ x: p.x + o, y: p.y - 22, vy: -560, r: 4 });
+    p.fireTimer = p.fireInterval * (p.weapon === 'laser' ? .82 : 1);
+    firePlayerWeapon();
     SFX.shoot();
   }
 
@@ -774,16 +814,27 @@ function update(dt) {
 function updateBullets(dt) {
   for (let i = Game.bullets.length - 1; i >= 0; i--) {
     const b = Game.bullets[i];
+    if (b.homing && Game.enemies.length) {
+      let target = Game.enemies[0], best = Infinity;
+      for (const e of Game.enemies) { const d = Math.hypot(e.x - b.x, e.y - b.y); if (d < best) { best = d; target = e; } }
+      const desired = Math.atan2(target.y - b.y, target.x - b.x);
+      b.vx += Math.cos(desired) * 900 * dt;
+      b.vy += Math.sin(desired) * 900 * dt;
+      const speed = Math.hypot(b.vx, b.vy) || 1;
+      b.vx *= 560 / speed; b.vy *= 560 / speed;
+    }
+    b.x += (b.vx || 0) * dt;
     b.y += b.vy * dt;
-    if (b.y < -30) { Game.bullets.splice(i, 1); continue; }
+    if (b.y < -30 || b.x < -40 || b.x > W + 40) { Game.bullets.splice(i, 1); continue; }
     let killed = false;
     for (let j = Game.enemies.length - 1; j >= 0; j--) {
       const e = Game.enemies[j];
       if (!e) continue;
       if (Math.hypot(b.x - e.x, b.y - e.y) < e.r + b.r + 4) {
-        e.hp--;
+        e.hp -= b.damage || 1;
         e.hitFlash = 0.08;
-        Game.bullets.splice(i, 1);
+        if (b.pierce > 0) b.pierce--;
+        else Game.bullets.splice(i, 1);
         if (e.hp <= 0) killEnemy(e, false);
         killed = true;
         break;
@@ -879,7 +930,10 @@ function updatePowerups(dt) {
     u.y += u.vy * dt;
     u.x += Math.sin(u.t * 3) * 30 * dt;
     u.t += dt;
-    if (u.y > H + 30) { Game.powerups.splice(i, 1); continue; }
+    if (u.y > H + 30) {
+      if (u.kind === 'medal') Game.medalChain = 0;
+      Game.powerups.splice(i, 1); updateHud(); continue;
+    }
     if (Math.hypot(u.x - p.x, u.y - p.y) < 26 + p.r) {
       applyPowerup(u);
       Game.powerups.splice(i, 1);
@@ -1146,16 +1200,18 @@ function drawEnemies() {
 }
 
 function drawBullets() {
-  ctx.save();
-  ctx.shadowColor = '#5ce1ff';
-  ctx.shadowBlur = 8;
-  ctx.fillStyle = '#9ff3ff';
   for (const b of Game.bullets) {
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(Math.atan2(b.vy, b.vx || 0) + Math.PI / 2);
+    ctx.shadowColor = b.color || '#5ce1ff';
+    ctx.shadowBlur = b.kind === 'laser' ? 14 : 8;
+    ctx.fillStyle = b.color || '#9ff3ff';
     ctx.beginPath();
-    ctx.ellipse(b.x, b.y, 2.6, 7, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, b.kind === 'laser' ? 3.5 : 2.8, b.kind === 'laser' ? 13 : 7, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
   }
-  ctx.restore();
 }
 
 function drawEnemyBullets() {
@@ -1188,11 +1244,15 @@ function drawPowerups() {
     ctx.translate(u.x, u.y);
     const pulse = 1 + Math.sin(Game.time * 6 + u.t * 4) * 0.12;
     ctx.scale(pulse, pulse);
-    ctx.fillStyle = u.color + '33';
-    ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = u.color;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = u.color + '33'; ctx.strokeStyle = u.color; ctx.lineWidth = 2;
+    if (u.kind === 'weapon') {
+      ctx.rotate(Math.PI / 4);
+      ctx.beginPath(); ctx.roundRect(-13, -13, 26, 26, 5); ctx.fill(); ctx.stroke();
+      ctx.rotate(-Math.PI / 4);
+      ctx.strokeStyle = 'rgba(255,255,255,.72)'; ctx.beginPath(); ctx.moveTo(-7, -7); ctx.lineTo(0, -12); ctx.lineTo(7, -7); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
     ctx.font = '16px system-ui';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -1273,6 +1333,9 @@ function updateHud() {
   els.level.textContent = Game.level;
   els.bombs.textContent = Game.bombs;
   els.bombTouch.textContent = Game.bombs;
+  const weaponNames = { spread: '散射', laser: '雷光', homing: '追踪' };
+  els.weapon.textContent = weaponNames[Game.player.weapon] + ' ' + 'I'.repeat(Game.player.weaponLevel);
+  els.medalChain.textContent = Game.medalChain;
   els.hpBar.style.width = Game.hp + '%';
   els.hpText.textContent = Math.round(Game.hp);
   els.hpBar.style.background = Game.hp > 50 ? 'linear-gradient(90deg,#3dff8a,#a8ff3d)'
@@ -1302,7 +1365,7 @@ function startGame() {
   Game.state = 'playing';
   releaseTouchControls();
   if (window.ChipMusic) ChipMusic.play('thunder-stage');
-  Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0; Game.graze = 0;
+  Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0; Game.graze = 0; Game.medalChain = 0;
   Game.hp = 100; Game.shield = 0; Game.bombs = 1;
   Game.level = 1;
   Game.time = 0;
@@ -1318,6 +1381,7 @@ function startGame() {
   Game.particles.length = 0; Game.shockwaves.length = 0; Game.floaters.length = 0;
   const p = Game.player;
   p.x = p.px = W / 2; p.y = p.py = H - 90;
+  p.weapon = 'spread'; p.weaponLevel = 1;
   p.double = 0; p.invuln = 1.5; p.pointer = false; p.spawnRing = 3;
   els.menu.classList.add('hidden');
   els.over.classList.add('hidden');
@@ -1451,6 +1515,14 @@ if (/[?&]selftest/.test(location.search)) {
     Game.enemyBullets.push({ x: Game.player.x + 28, y: Game.player.y, vx: 0, vy: 0, r: 4 });
     updateEnemyBullets(0);
     if (Game.graze !== 1 || Game.score !== beforeGraze + 5) throw new Error('graze failed');
+    applyPowerup({ kind: 'weapon', mode: 'spread', name: '红色散射', color: '#ff5b69', x: 0, y: 0 });
+    if (Game.player.weaponLevel !== 2) throw new Error('weapon stacking failed');
+    const bulletsBefore = Game.bullets.length;
+    Game.fireHeld = true; Game.player.fireTimer = 0; update(1 / 60); Game.fireHeld = false;
+    if (Game.bullets.length < bulletsBefore + 2) throw new Error('weapon pattern failed');
+    const medalScore = Game.score;
+    applyPowerup({ kind: 'medal', name: '连锁勋章', color: '#ffe066', x: 0, y: 0 });
+    if (Game.medalChain !== 1 || Game.score !== medalScore + 50) throw new Error('medal chain failed');
     for (let i = 0; i < 30; i++) { update(1 / 60); updateFx(1 / 60); }
     const correct = Game.enemies.find((e) => e.option && e.option.correct);
     if (correct) killEnemy(correct, false);
@@ -1502,6 +1574,7 @@ if (/[?&]fuzz/.test(location.search)) {
   try {
     Game.difficulty = 'medium';
     startGame();
+    Game.fireHeld = true;
     let deaths = 0, bombs = 0, bosses = 0, levels = 0;
     for (let i = 0; i < 6000; i++) {
       if (Math.random() < 0.3) {
@@ -1510,19 +1583,25 @@ if (/[?&]fuzz/.test(location.search)) {
       } else {
         keys.clear();
       }
-      if (Math.random() < 0.015) { useBomb(); bombs++; }
-      if (Math.random() < 0.012 && Game.enemies.length) {
+      if (Math.random() < 0.005) { useBomb(); bombs++; }
+      if (Math.random() < 0.002 && Game.enemies.length) {
         const e = Game.enemies[0];
         Game.player.x = e.x; Game.player.y = e.y; // 故意撞机测试
       }
       const beforeLevel = Game.level;
       const beforeBoss = Game.enemies.some((e) => e.boss);
+      if (i % 90 === 0) {
+        const target = Game.phase === 'boss' ? Game.enemies.find((e) => e.boss) : Game.enemies.find((e) => e.option?.correct);
+        if (target) { target.hp = 1; killEnemy(target, false); }
+      }
+      if (i % 240 === 0 && Game.powerups[0]) { Game.powerups[0].x = Game.player.x; Game.powerups[0].y = Game.player.y; }
       update(1 / 60);
       updateFx(1 / 60);
       if (Game.level > beforeLevel) levels++;
       if (!beforeBoss && Game.enemies.some((e) => e.boss)) bosses++;
-      if (Game.state === 'over') { deaths++; startGame(); }
+      if (Game.state === 'over') { deaths++; startGame(); Game.fireHeld = true; }
     }
+    if (!bosses || !levels) throw new Error('progression was not exercised');
     document.title = 'FUZZ-OK deaths=' + deaths + ' bosses=' + bosses + ' levels=' + levels + ' score=' + Game.score;
   } catch (err) {
     document.title = 'FUZZ-ERR:' + err.message;

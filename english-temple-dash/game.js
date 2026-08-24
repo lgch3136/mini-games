@@ -60,10 +60,10 @@ const Game = {
   state: 'menu', difficulty: 'easy', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0, bestCombo: 0,
   time: 0, travel: 0, speed: 29, speedScale: 1, biome: 0, spawnTimer: 18, pattern: 0,
   feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null, objects: [], particles: [],
-  shake: 0, slowTimer: 0, flash: 0,
+  shake: 0, slowTimer: 0, flash: 0, chase: .48, turnCue: 0, turnCommit: 0, turnVisual: 0,
   player: {
     lane: 0, lanePos: 0, jumpY: 0, jumpV: 0, sliding: 0,
-    inv: 0, shield: 0, magnet: 0, combo: 0, comboTimer: 0, comboPulse: 0, runCycle: 0,
+    inv: 0, shield: 0, magnet: 0, boost: 0, combo: 0, comboTimer: 0, comboPulse: 0, runCycle: 0,
   },
 };
 
@@ -85,7 +85,7 @@ function nextWord(initial = false) {
 function resetPlayer() {
   Object.assign(Game.player, {
     lane: 0, lanePos: 0, jumpY: 0, jumpV: 0, sliding: 0,
-    inv: 1.1, shield: 0, magnet: 0, combo: 0, comboTimer: 0, comboPulse: 0, runCycle: 0,
+    inv: 1.1, shield: 0, magnet: 0, boost: 0, combo: 0, comboTimer: 0, comboPulse: 0, runCycle: 0,
   });
 }
 
@@ -96,7 +96,7 @@ function startGame() {
     state: 'playing', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0, bestCombo: 0,
     time: 0, travel: 0, speed: conf.speed * Game.speedScale, biome: 0,
     spawnTimer: 18, pattern: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null,
-    shake: 0, slowTimer: 0, flash: 0,
+    shake: 0, slowTimer: 0, flash: 0, chase: .48, turnCue: 0, turnCommit: 0, turnVisual: 0,
   });
   Game.objects.length = 0;
   Game.particles.length = 0;
@@ -104,7 +104,9 @@ function startGame() {
   nextWord(true);
   // 开局即给玩家一条可读的收集路线，避免前五秒只有空路面。
   spawnRelicTrail(0, 52);
+  addObject('boost', 0, 66);
   addObject('letter', 0, 84, { letter: Game.currentWord.en[0] });
+  addObject('turn', 0, 112, { direction: Math.random() < .5 ? -1 : 1 });
   $('menu').classList.add('hidden');
   $('over').classList.add('hidden');
   $('paused').classList.add('hidden');
@@ -169,6 +171,8 @@ function updateHud() {
   $('distance').textContent = Math.floor(Game.distance) + 'm';
   $('relics').textContent = Game.relics;
   $('lives').textContent = Game.hp;
+  $('chase').textContent = Math.round(Game.chase * 100) + '%';
+  $('chase').style.color = Game.chase > .72 ? '#ff8f78' : '#e8c56e';
   $('biome').textContent = BIOMES[Game.biome].name;
   const word = Game.currentWord;
   if (word) {
@@ -180,6 +184,12 @@ function updateHud() {
 
 function moveLane(direction) {
   if (Game.state !== 'playing') return;
+  if (Game.turnCue && direction === Game.turnCue) {
+    Game.turnCommit = direction;
+    showFeedback(direction < 0 ? '左转已锁定' : '右转已锁定');
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .15, 1.2);
+    return;
+  }
   Game.player.lane = clamp(Game.player.lane + direction, -1, 1);
   if (window.ArcadeAudio) ArcadeAudio.play('click', .12);
 }
@@ -257,7 +267,9 @@ function spawnPattern() {
   if (Game.pattern % 2 === 0 && Game.currentWord) {
     addObject('letter', safeLane, MAX_Z + 11, { letter: Game.currentWord.en[Game.currentWord.progress] });
   }
-  if (Game.pattern % 13 === 0) addObject(Game.pattern % 26 === 0 ? 'magnet' : 'shield', safeLane, MAX_Z + 18);
+  if (Game.pattern % 7 === 0) addObject('turn', 0, MAX_Z + 22, { direction: Game.pattern % 14 === 0 ? -1 : 1 });
+  if (Game.pattern % 10 === 0) addObject('boost', safeLane, MAX_Z + 14);
+  else if (Game.pattern % 13 === 0) addObject(Game.pattern % 26 === 0 ? 'magnet' : 'shield', safeLane, MAX_Z + 18);
 }
 
 function burst(x, y, color, count) {
@@ -292,6 +304,12 @@ function collectObject(object) {
     } else {
       showFeedback('下一个字母：' + word.en[word.progress]);
     }
+  } else if (object.type === 'boost') {
+    Game.player.boost = 3.6;
+    Game.chase = Math.max(.08, Game.chase - .22);
+    Game.score += 300;
+    showFeedback('疾风冲刺：3.6 秒破障加速');
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .25, 1.45);
   } else if (object.type === 'shield') {
     Game.player.shield = 1;
     Game.score += 220;
@@ -314,6 +332,7 @@ function hit() {
   player.combo = 0;
   player.comboTimer = 0;
   player.comboPulse = 0;
+  Game.chase = Math.min(1, Game.chase + .24);
   if (player.shield) {
     player.shield = 0;
     player.inv = .9;
@@ -339,6 +358,7 @@ function clearedObstacle() {
   player.comboPulse = .28;
   Game.bestCombo = Math.max(Game.bestCombo, player.combo);
   Game.score += 90 * player.combo;
+  Game.chase = Math.max(.08, Game.chase - .025);
   if (player.combo >= 2) showFeedback('连续闪避 ×' + player.combo);
   if (player.combo >= 3 && player.combo % 3 === 0) {
     const point = project(player.lanePos, 0);
@@ -371,11 +391,24 @@ function updateObjects(dt) {
   for (const object of Game.objects) {
     if (object.taken) continue;
     object.z -= Game.speed * dt;
+    if (object.type === 'turn' && !object.passed && object.z < 32) Game.turnCue = object.direction;
     if (player.magnet > 0 && (object.type === 'relic' || object.type === 'letter') && object.z < 24) object.lane += (player.lanePos - object.lane) * Math.min(1, dt * 8);
     if (object.passed || object.z > 7) continue;
     object.passed = true;
+    if (object.type === 'turn') {
+      object.taken = true;
+      if (Game.turnCommit === object.direction) {
+        Game.turnVisual = object.direction;
+        Game.score += 250;
+        Game.chase = Math.max(.08, Game.chase - .12);
+        showFeedback(object.direction < 0 ? '漂亮左转 +250' : '漂亮右转 +250');
+        clearedObstacle();
+      } else hit();
+      Game.turnCue = Game.turnCommit = 0;
+      continue;
+    }
     const sameLane = Math.abs(object.lane - player.lanePos) < .43;
-    if (['relic', 'letter', 'shield', 'magnet'].includes(object.type)) {
+    if (['relic', 'letter', 'shield', 'magnet', 'boost'].includes(object.type)) {
       if (sameLane) collectObject(object);
       continue;
     }
@@ -385,7 +418,7 @@ function updateObjects(dt) {
       Game.slowTimer = Math.max(Game.slowTimer, .75);
       player.combo = player.comboTimer = player.comboPulse = 0;
       showFeedback('踩入水洼：连击中断');
-    } else if (obstacleCleared(object)) {
+    } else if (player.boost > 0 || obstacleCleared(object)) {
       clearedObstacle();
     } else {
       hit();
@@ -401,6 +434,7 @@ function updatePlayer(dt) {
   player.inv = Math.max(0, player.inv - dt);
   player.sliding = Math.max(0, player.sliding - dt);
   player.magnet = Math.max(0, player.magnet - dt);
+  player.boost = Math.max(0, player.boost - dt);
   player.comboTimer = Math.max(0, player.comboTimer - dt);
   player.comboPulse = Math.max(0, player.comboPulse - dt);
   if (!player.comboTimer) player.combo = 0;
@@ -443,8 +477,11 @@ function update(dt) {
   Game.shake = Math.max(0, Game.shake - dt);
   Game.flash = Math.max(0, Game.flash - dt);
   Game.slowTimer = Math.max(0, Game.slowTimer - dt);
+  Game.turnVisual *= Math.exp(-2.1 * dt);
+  Game.chase = clamp(Game.chase + dt * .0015, 0, 1);
+  if (Game.chase >= .995) { gameOver(); return; }
   const conf = DIFFICULTIES[Game.difficulty];
-  const targetSpeed = (conf.speed + Math.min(18, Game.distance / 170)) * Game.speedScale - (Game.slowTimer > 0 ? 9 : 0);
+  const targetSpeed = (conf.speed + Math.min(18, Game.distance / 170)) * Game.speedScale - (Game.slowTimer > 0 ? 9 : 0) + (Game.player.boost > 0 ? 14 : 0);
   Game.speed += (targetSpeed - Game.speed) * (1 - Math.exp(-3.4 * dt));
   Game.travel += Game.speed * dt;
   Game.distance += Game.speed * dt * .78;
@@ -470,7 +507,7 @@ function roadCenter(z) {
   const curve = Game.biome === 1 ? Math.sin((Game.travel + z) * .018) * 58
     : Game.biome === 2 ? Math.sin((Game.travel + z) * .011) * 24
       : Game.biome === 3 ? Math.sin((Game.travel + z) * .014) * 34 : 0;
-  return VIEW_W / 2 + curve * near;
+  return VIEW_W / 2 + (curve + Game.turnVisual * 118) * near;
 }
 
 function project(lane, z) {
@@ -671,10 +708,16 @@ function drawObject(object) {
     ctx.translate(0, -35 * s); ctx.fillStyle = '#e8c56e'; ctx.strokeStyle = '#fff0b5'; ctx.lineWidth = Math.max(1, 2 * s);
     ctx.beginPath(); ctx.roundRect(-17 * s, -20 * s, 34 * s, 40 * s, 7 * s); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#183129'; ctx.font = '900 ' + Math.max(8, 21 * s) + 'px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(object.letter, 0, 1);
-  } else if (object.type === 'shield' || object.type === 'magnet') {
+  } else if (object.type === 'turn') {
+    ctx.translate(0, -55 * s);
+    ctx.fillStyle = 'rgba(10,27,22,.88)'; ctx.strokeStyle = '#f3d276'; ctx.lineWidth = Math.max(1.5, 3 * s);
+    ctx.beginPath(); ctx.roundRect(-62 * s, -31 * s, 124 * s, 62 * s, 12 * s); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff1b2'; ctx.font = '950 ' + Math.max(18, 42 * s) + 'px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(object.direction < 0 ? '←' : '→', 0, 0);
+  } else if (object.type === 'shield' || object.type === 'magnet' || object.type === 'boost') {
     ctx.translate(0, -36 * s); ctx.fillStyle = '#f2dfaa'; ctx.strokeStyle = '#d4a849'; ctx.lineWidth = Math.max(1, 3 * s);
     ctx.beginPath(); ctx.arc(0, 0, 18 * s, 0, TAU); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#183129'; ctx.font = '900 ' + Math.max(8, 16 * s) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(object.type === 'shield' ? '盾' : 'M', 0, 1);
+    ctx.fillStyle = '#183129'; ctx.font = '900 ' + Math.max(8, 16 * s) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(object.type === 'shield' ? '盾' : object.type === 'boost' ? '⚡' : 'M', 0, 1);
   } else if (OBSTACLES[object.type]) {
     const spec = OBSTACLES[object.type];
     const width = spec.w * s;
@@ -706,6 +749,10 @@ function drawPlayer() {
     ctx.strokeStyle = 'rgba(232,197,110,.82)'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.ellipse(point.x, groundY - player.jumpY - 56, 47, 58, 0, 0, TAU); ctx.stroke();
   }
+  if (player.boost > 0) {
+    ctx.strokeStyle = 'rgba(255,223,103,.72)'; ctx.lineWidth = 4;
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(point.x + i * 14, groundY - 28); ctx.lineTo(point.x + i * 22, groundY + 24); ctx.stroke(); }
+  }
   if (player.inv > 0 && Math.floor(Game.time * 14) % 2) return;
   const runFrame = Math.floor(player.runCycle) % 8;
   let image = ASSETS.runner, frame = runFrame, columns = 4, rows = 2, width = 102, height = 136;
@@ -721,6 +768,31 @@ function drawPlayer() {
   if (!drawAtlasFrame(image, row, column, point.x - width / 2, y, width, height, columns, rows)) {
     ctx.fillStyle = '#d29a43'; ctx.fillRect(point.x - 18, y + 35, 36, 62);
   }
+}
+
+function drawPursuer() {
+  const point = project(Game.player.lanePos, 0);
+  const closeness = clamp(Game.chase, 0, 1);
+  const y = VIEW_H + 34 - closeness * 92;
+  const s = .55 + closeness * .72;
+  ctx.save(); ctx.translate(point.x, y); ctx.scale(s, s);
+  ctx.fillStyle = 'rgba(5,12,10,.88)';
+  ctx.beginPath(); ctx.ellipse(0, 16, 46, 50, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, -18, 30, 0, TAU); ctx.fill();
+  ctx.fillStyle = closeness > .7 ? '#ff6b4f' : '#e8c56e';
+  ctx.beginPath(); ctx.arc(-10, -22, 3.5, 0, TAU); ctx.arc(10, -22, 3.5, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(8,16,13,.9)'; ctx.lineWidth = 12; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-28, 8); ctx.lineTo(-58, -8); ctx.moveTo(28, 8); ctx.lineTo(58, -8); ctx.stroke();
+  ctx.restore();
+}
+
+function drawTurnCue() {
+  if (!Game.turnCue) return;
+  ctx.save(); ctx.globalAlpha = .76 + Math.sin(Game.time * 8) * .18;
+  ctx.fillStyle = 'rgba(7,22,18,.82)'; ctx.strokeStyle = '#f3d276'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(VIEW_W / 2 - 86, 178, 172, 55, 14); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff0aa'; ctx.font = '950 24px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText((Game.turnCue < 0 ? '← 左转' : '右转 →'), VIEW_W / 2, 205); ctx.restore();
 }
 
 function drawCombo() {
@@ -810,6 +882,7 @@ function render() {
   ctx.save(); ctx.translate(shakeX, shakeY);
   drawBackground(); drawRoad(); drawEdgeScenery();
   [...Game.objects].sort((a, b) => b.z - a.z).forEach(drawObject);
+  drawPursuer();
   drawPlayer();
   for (const particle of Game.particles) {
     ctx.globalAlpha = clamp(particle.life * 2.5, 0, 1);
@@ -818,6 +891,7 @@ function render() {
   ctx.globalAlpha = 1; drawWeather(); ctx.restore();
   drawCombo();
   drawWordEcho();
+  drawTurnCue();
   if (Game.flash > 0) { ctx.fillStyle = 'rgba(239,118,81,' + (Game.flash * 1.7) + ')'; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
 }
 
@@ -946,8 +1020,16 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.objects = [{ type: 'puddle', lane: 0, z: 7, passed: false, taken: false, phase: 0 }];
       updateObjects(0);
       if (Game.hp !== hpBeforePuddle || Game.player.combo || Game.slowTimer <= 0) throw new Error('puddle combo break failed');
+      Game.turnCue = 1; Game.turnCommit = 0; moveLane(1);
+      if (Game.turnCommit !== 1) throw new Error('turn input failed');
+      Game.objects = [{ type: 'turn', direction: 1, lane: 0, z: 7, passed: false, taken: false, phase: 0 }];
+      updateObjects(0);
+      if (!Game.turnVisual || Game.turnCue || Game.turnCommit) throw new Error('turn resolution failed');
+      collectObject({ type: 'boost', lane: 0, z: 7, taken: false });
+      if (Game.player.boost <= 0) throw new Error('boost pickup failed');
       Game.objects.length = 0;
       Game.hp = 999;
+      Game.player.inv = 999; Game.chase = 0;
       let seed = 0x5eed1234;
       const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
       for (let i = 0; i < 12000; i++) {
@@ -958,7 +1040,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         if (Game.objects.length > 80 || Game.particles.length > 140) throw new Error('unbounded collections');
       }
       if (![Game.distance, Game.speed, Game.player.lanePos, Game.player.jumpY].every(Number.isFinite)) throw new Error('non-finite state');
-      if (Game.biome === 0 || Game.distance < 1000) throw new Error('biome progression failed');
+      if (Game.distance < 1000 || Game.biome !== Math.floor(Game.distance / 420) % BIOMES.length) throw new Error('biome progression failed');
       Game.state = 'paused';
       document.title = 'SELFTEST PASS · TEMPLE DASH';
       document.documentElement.dataset.selftest = 'pass';
