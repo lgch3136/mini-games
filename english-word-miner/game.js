@@ -47,7 +47,7 @@ function newHook() {
     x: W / 2, y: 96,                 // 轴心
     angle: Math.PI / 2,              // 垂直向下
     dir: 1,
-    swingSpeed: 1.5 + Game.level * .12,
+    swingSpeed: 1.15 + Math.min(.35, Game.level * .05),
     len: 46,                         // 当前绳长
     maxLen: 470,
     state: 'swing',                  // swing | shoot | retract

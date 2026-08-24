@@ -721,9 +721,13 @@ function update(dt) {
   } else {
     const ax = (keys.has('left') ? -1 : 0) + (keys.has('right') ? 1 : 0);
     const ay = (keys.has('up') ? -1 : 0) + (keys.has('down') ? 1 : 0);
-    const sp = 380;
-    if (ax && ay) { p.x += ax * sp * 0.707 * dt; p.y += ay * sp * 0.707 * dt; }
-    else { p.x += ax * sp * dt; p.y += ay * sp * dt; }
+    // 雷电式惯性: 目标速度380, 加速响应14/s(≈70ms到位), 松键滑行减速8/s
+    if (!p.kvx) p.kvx = 0;
+    if (!p.kvy) p.kvy = 0;
+    p.kvx += (ax * 380 - p.kvx) * Math.min(1, dt * (ax ? 14 : 8));
+    p.kvy += (ay * 380 - p.kvy) * Math.min(1, dt * (ay ? 14 : 8));
+    if (ax && ay) { p.kvx *= .72; p.kvy *= .72; }
+    p.x += p.kvx * dt; p.y += p.kvy * dt;
   }
   p.x = clamp(p.x, 30, W - 30);
   if (Game.time > Game._nextLayoutCheck) {

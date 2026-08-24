@@ -19,9 +19,10 @@ const GROUND_H = 88;
 let GROUND_Y = H - GROUND_H;
 let BIRD_X = 132;
 const BIRD_R = 19;
-const GRAVITY = 1450;
-const FLAP_V = -420;
-const MAX_FALL = 780;
+const GRAVITY = 1400;      // 原版参考值
+const FLAP_V = -390;       // 原版冲量: 干脆但不夸张
+const MAX_FALL = 620;      // 原版俯冲终端速度
+// MAX_FALL moved to top constants
 const MAX_LIVES = 3;
 
 const DIFFS = {
@@ -407,7 +408,9 @@ function step(dt) {
   const b = Game.bird;
   b.vy = Math.min(b.vy + GRAVITY * dt, MAX_FALL);
   b.y += b.vy * dt;
-  b.rot = clamp(b.vy / 520, -1, 1) * 0.45;
+  // 原版式非对称旋转: 上冲立即抬头25°, 下坠缓慢俯冲至80°
+  const targetRot = b.vy < 0 ? -0.44 : clamp((b.vy - 200) / 500, 0, 1) * 1.4;
+  b.rot += (targetRot - b.rot) * Math.min(1, dt * (b.vy < 0 ? 14 : 6));   // 抬头快/低头慢
   b.inv = Math.max(0, b.inv - dt);
   Game.flash = Math.max(0, Game.flash - dt * 2.2);
   Game.shake = Math.max(0, Game.shake - dt);

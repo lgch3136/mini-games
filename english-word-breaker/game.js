@@ -245,6 +245,15 @@ function update(dt) {
   for (let bi = Game.balls.length - 1; bi >= 0; bi--) {
     const b = Game.balls[bi];
     if (b.stuck) { b.x = p.x + p.w / 2; b.y = p.y - b.r - 2; continue; }
+    // Arkanoid速度守恒: 球速缓慢回归基准(减速道具效果渐退)
+    {
+      const base = DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12;
+      const sp = Math.hypot(b.vx, b.vy);
+      if (sp < base && sp > 0) {
+        const k = 1 + Math.min(.4, .12 * dt);
+        b.vx *= k; b.vy *= k;
+      }
+    }
     b.x += b.vx * dt; b.y += b.vy * dt;
 
     // 墙壁

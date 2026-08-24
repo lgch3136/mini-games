@@ -21,10 +21,10 @@ const DIFFICULTIES = {
 };
 
 const BIOMES = [
-  { name: '日升神庙', road: '#23352d', edge: '#d3a74d', gravity: 1260, laneRate: 11, jump: 520, jumpType: 'log', blockType: 'root' },
-  { name: '悬桥峡谷', road: '#5a3924', edge: '#e4b35c', gravity: 1320, laneRate: 10, jump: 535, jumpType: 'pit', blockType: 'pillar' },
-  { name: '暴雨古城', road: '#17343a', edge: '#8fc5c2', gravity: 1280, laneRate: 6.4, jump: 515, jumpType: 'arch', blockType: 'puddle' },
-  { name: '月晶遗迹', road: '#18243b', edge: '#d3ad55', gravity: 780, laneRate: 8.5, jump: 440, jumpType: 'beam', blockType: 'crystal' },
+  { name: '日升神庙', road: '#23352d', edge: '#d3a74d', gravity: 1260, laneRate: 14, jump: 545, jumpType: 'log', blockType: 'root' },
+  { name: '悬桥峡谷', road: '#5a3924', edge: '#e4b35c', gravity: 1320, laneRate: 13.5, jump: 560, jumpType: 'pit', blockType: 'pillar' },
+  { name: '暴雨古城', road: '#17343a', edge: '#8fc5c2', gravity: 1280, laneRate: 12.5, jump: 530, jumpType: 'arch', blockType: 'puddle' },
+  { name: '月晶遗迹', road: '#18243b', edge: '#d3ad55', gravity: 780, laneRate: 13, jump: 470, jumpType: 'beam', blockType: 'crystal' },
 ];
 
 const ASSETS = {};
