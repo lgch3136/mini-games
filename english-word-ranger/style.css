@@ -188,3 +188,6 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 }
 .level-btn.selected small { color: #5c420e; }
 @media (max-width: 520px) { #level-select { grid-template-columns: repeat(2, 1fr); } }
+
+/* 封面横幅 */
+.menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }

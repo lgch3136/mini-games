@@ -150,3 +150,6 @@ button.difficulty.selected { background: linear-gradient(135deg,#a855f7,#6d28d9)
   .seg-btn, .spd-btn { padding: 4px 8px; font-size: 11px; }
   .opt-label { width: auto; }
 }
+
+/* 封面横幅 */
+.menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }

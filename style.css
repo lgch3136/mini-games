@@ -63,10 +63,16 @@ header h1 {
 .card.hidden { display: none; }
 
 .art {
-  height: 128px; position: relative;
+  height: 150px; position: relative;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
+.art-cover { background: #0a0f1e; }
+.art-cover img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform .35s ease, filter .35s ease;
+}
+.card:hover .art-cover img { transform: scale(1.05); filter: brightness(1.08); }
 .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
 .art-temple img { object-position: center 12%; }
 .art .emoji {
@@ -104,7 +110,7 @@ header h1 {
 .info { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; flex: 1; }
 .info h2 { font-size: 19px; letter-spacing: 1px; color: #fff; line-height: 1.25; }
 .en { font-size: 11px; letter-spacing: 3px; color: #6d87ad; margin-top: -3px; }
-.desc { font-size: 13px; color: #b7c6e2; line-height: 1.66; flex: 1; }
+.desc { font-size: 13px; color: #c9d6ea; line-height: 1.66; flex: 1; }
 .meta { display: flex; gap: 12px; flex-wrap: wrap; }
 .meta span { font-size: 11.5px; color: #8fa6c8; }
 

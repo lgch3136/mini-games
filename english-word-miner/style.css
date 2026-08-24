@@ -111,3 +111,6 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
   button.difficulty { padding: 4px 15px; font-size: 12px; }
   .btn-main { margin-top: 6px; padding: 9px 36px; font-size: 15px; }
 }
+
+/* 封面横幅 */
+.menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }

@@ -164,8 +164,17 @@ const RHYTHM_PATTERNS = [
   { name: '回旋', steps: [0, 2, 1, 2], lane: (i, L) => (i % 2 === 0) ? (i / 2) % L : L - 1 - ((i - 1) / 2) % L, minLv: 5 },
 ];
 
-function buildChart(retryWord) {
-  if (!retryWord || !Game.word) {
+function buildChart(retryWord, seamless) {
+  if (!retryWord && !seamless) {
+    const bank = wordBank();
+    let item;
+    do { item = bank[Math.floor(Math.random() * bank.length)]; }
+    while (item && item.en === Game.lastWord && bank.length > 1);
+    item = item || bank[0];
+    Game.lastWord = item.en;
+    Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
+  } else if (seamless) {
+    // 无缝换词: 直接换新词从progress=0开始
     const bank = wordBank();
     let item;
     do { item = bank[Math.floor(Math.random() * bank.length)]; }
@@ -174,11 +183,13 @@ function buildChart(retryWord) {
     Game.lastWord = item.en;
     Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   }
-  Game.notes = [];
-  Game.pulses = [];
+  if (!seamless) {
+    Game.notes = [];
+    Game.pulses = [];
+  }
 
-  // BPM与密度随关卡爬升: 104 → 168
-  Game.bpm = Math.min(168, 104 + (Game.level - 1) * 8);
+  // BPM爬升: 无缝时平滑+2不过跳, 过场/开局按关卡
+  Game.bpm = seamless ? Math.min(168, Game.bpm + 2) : Math.min(168, 104 + (Game.level - 1) * 8);
   const bpm = Game.bpm;
   const beat = 60 / bpm;
   const step = beat / 2;
@@ -186,9 +197,11 @@ function buildChart(retryWord) {
   const L = LANES;
 
   // 1) 字母音符: 落在强拍(每拍头), 保证可读
+  // 无缝模式: 从"现在+2拍"起排(留预读距离), 音乐节拍完全不断
   const letterStart = Game.word.progress;
   const letters = [...Game.word.en].slice(letterStart);
-  let t = beat * 4;
+  const leadIn = seamless ? (now() + beat * 2.5) : beat * 4;
+  let t = leadIn;
   const letterSlots = [];
   letters.forEach((ch, offset) => {
     const idx = letterStart + offset;
@@ -198,9 +211,11 @@ function buildChart(retryWord) {
   });
 
   // 2) 节奏型段落: 在字母间隙和字母后铺节奏
+  // 无缝: cursor从leadIn对应步起
+  const startStep = seamless ? Math.ceil(leadIn / step) : 0;
   const totalSteps = Math.round((t + beat * 8) / step);
   let patternIdx = 0;
-  let cursor = Math.ceil(beat / step);          // 第2拍开始铺
+  let cursor = seamless ? startStep : Math.ceil(beat / step);
   let li = 0;                                    // letterSlots游标
   const availPatterns = RHYTHM_PATTERNS.filter((p) => p.minLv <= Math.min(6, Game.level));
   while (cursor < totalSteps - 2) {
@@ -256,10 +271,9 @@ function nextChart() {
   const bonus = 500 + Game.maxCombo * 10;
   Game.score += bonus;
   Game.lives = Math.min(100, Game.lives + 12);
-  buildChart();
-  Game.audioStart = Game.actx.currentTime + 1.0;
-  Game.backingStep = 0;
-  showFeedback(`谱面完成! +${bonus}`);
+  // 无缝续谱: 不重置时钟/节拍器, 新词音符直接从当前位置+2.5拍流入
+  buildChart(false, true);
+  floatText('+' + bonus + ' 连续!', W / 2, H * .3, '#fde68a');
 }
 
 /* ---------------- 判定 ---------------- */
@@ -298,7 +312,9 @@ function judgeHit(lane) {
     Game.score += 80;
     updateHud();
     if (Game.word.progress >= Game.word.en.length) {
-      setTimeout(() => { if (Game.state === 'playing') nextChart(); }, 500);
+      // 词完成奖励立即结算, 下一词无缝流入(不中断节奏流)
+      Game.score += 200;
+      setTimeout(() => { if (Game.state === 'playing') nextChart(); }, 250);
     }
   }
 }
@@ -322,10 +338,8 @@ function scanMisses() {
   const remaining = Game.notes.some((n) => !n.judged);
   if (!remaining && t > Game.songEndAt) {
     if (Game.word.progress < Game.word.en.length) {
-      buildChart(true);
-      Game.audioStart = Game.actx.currentTime + .8;
-      Game.backingStep = 0;
-      showFeedback(`还差 ${Game.word.en.length - Game.word.progress} 个字母 · 再听一次`);
+      buildChart(true, true);
+      showFeedback(`还差 ${Game.word.en.length - Game.word.progress} 个字母 · 继续!`);
     } else nextChart();
   }
 }
