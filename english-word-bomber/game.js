@@ -624,8 +624,8 @@ function updateLetters(dt) {
       burst(x, y, '#86efac', 10);
       if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1 + w.progress * .06);
       updateHud();
-      if (w.progress >= w.en.length) {
-        // 拼完: 传送门开启
+      if (w.progress >= w.en.length || Game.enemies.every((e) => e.dead)) {
+        // 原版双开门条件: 拼完单词 或 敌人全灭(任一达成)
         if (Game.portal) {
           Game.portal.open = true;
           Game.portal.hidden = false;

@@ -181,10 +181,17 @@ function moveLane(direction) {
   if (window.ArcadeAudio) ArcadeAudio.play('click', .12);
 }
 
+let jumpBuffer = 0;   // 跳跃预输入: 落地前0.12s按下, 落地瞬间自动起跳(原版跑酷标配)
 function jump() {
-  if (Game.state !== 'playing' || Game.player.jumpY > 1 || Game.player.sliding > 0) return;
-  Game.player.jumpV = BIOMES[Game.biome].jump;
-  if (window.ArcadeAudio) ArcadeAudio.play('jump', .2);
+  if (Game.state !== 'playing') return;
+  const p = Game.player;
+  if (p.jumpY <= 1 && p.sliding <= 0) {
+    jumpBuffer = 0;
+    p.jumpV = BIOMES[Game.biome].jump;
+    if (window.ArcadeAudio) ArcadeAudio.play('jump', .2);
+  } else {
+    jumpBuffer = .12;   // 空中按下: 缓冲
+  }
 }
 
 function slide() {
@@ -382,8 +389,17 @@ function updatePlayer(dt) {
   if (player.jumpY > 0 || player.jumpV > 0) {
     player.jumpY += player.jumpV * dt;
     player.jumpV -= biome.gravity * dt;
-    if (player.jumpY <= 0) { player.jumpY = 0; player.jumpV = 0; }
+    if (player.jumpY <= 0) {
+      player.jumpY = 0; player.jumpV = 0;
+      // 落地瞬间消费跳跃缓冲
+      if (jumpBuffer > 0) {
+        jumpBuffer = 0;
+        player.jumpV = biome.jump;
+        if (window.ArcadeAudio) ArcadeAudio.play('jump', .16);
+      }
+    }
   }
+  jumpBuffer = Math.max(0, jumpBuffer - dt);
   player.runCycle = (player.runCycle + Game.speed * dt * .42) % 8;
 }
 

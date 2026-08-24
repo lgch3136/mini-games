@@ -198,6 +198,26 @@ function startGame() {
   buildLevel(true);
 }
 
+/* 雷管: 收回途中放弃当前抓住的物品(Gold Miner原版标志性机制)
+ * 石头/炸弹勾到后悔了? 按X炸掉它, 空钩快速回来 */
+let dynamiteCount = 1;   // 每关送一根
+function useDynamite() {
+  const h = Game.hook;
+  if (!h || h.state !== 'retract' || !h.grabbed) return;
+  const it = h.grabbed;
+  if (it.kind === 'letter') {
+    floatText('字母不能炸!', W / 2, 150, '#fca5a5');
+    return;
+  }
+  Game.items = Game.items.filter((x) => x !== it);
+  h.grabbed = null;
+  h.state = 'retract';   // 空钩快速回收
+  burst(it.x, it.y, '#f97316', 18);
+  floatText('💥 放弃', it.x, it.y, '#fb923c');
+  Game.shake = Math.max(Game.shake, .25);
+  if (window.ArcadeAudio) ArcadeAudio.play('laser', .22, .5);
+}
+
 function shootHook() {
   const h = Game.hook;
   if (h.state !== 'swing') return;
@@ -354,6 +374,7 @@ function gameOver() {
 window.addEventListener('keydown', (ev) => {
   if (ev.code === 'Space') ev.preventDefault();
   if ((ev.code === 'Space' || ev.code === 'KeyJ') && !ev.repeat && Game.state === 'playing') shootHook();
+  if (ev.code === 'KeyX' && !ev.repeat && Game.state === 'playing') useDynamite();
   if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
   if (ev.code === 'KeyM') toggleMute();
   if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
