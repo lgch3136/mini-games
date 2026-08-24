@@ -364,7 +364,7 @@ function deliverItem(it) {
     ctx.strokeStyle = 'rgba(255,255,230,.85)';
     ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.stroke();
-    if (!big) {
+    if (it.r < 20) {
       // 小金块棱面转折线(与大金块同款立体)
       ctx.strokeStyle = 'rgba(120,70,10,.55)';
       ctx.lineWidth = 1.4;
@@ -765,7 +765,7 @@ function drawItem(it) {
     ctx.strokeStyle = 'rgba(255,255,230,.85)';
     ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.moveTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.stroke();
-    if (!big) {
+    if (it.r < 20) {
       // 小金块棱面转折线(与大金块同款立体)
       ctx.strokeStyle = 'rgba(120,70,10,.55)';
       ctx.lineWidth = 1.4;
