@@ -96,7 +96,7 @@ function loadSprite(src, cb) {
 loadSprite('assets/bird.png', (i) => { Assets.bird = i; });
 // 旧pipe.png素材是米色楼房风格, 与原版绿色管道不符——已禁用, 改用矢量绘制
 // loadSprite('assets/pipe.png', (i) => { Assets.pipe = i; });
-(function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet.png'; })();
+(function () { const i = new Image(); i.onload = () => { Assets.birdSheet = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bird-sheet-v2.png'; })();
 // bg.png绘本风背景与原版观感不符——已禁用, 用矢量纯青蓝天+城市剪影
 // (function () { const i = new Image(); i.onload = () => { Assets.bg = i; assetDone(); }; i.onerror = () => { assetDone(); }; i.src = 'assets/bg.png'; })();
 

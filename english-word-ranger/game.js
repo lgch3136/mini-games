@@ -2100,7 +2100,7 @@ function render() {
   // 前景遮挡草丛(魂斗罗纵深关键一招): 比玩家更快的半透明剪影掠过
   if (!Game.foreGrass) {
     Game.foreGrass = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 14; i++) {
       Game.foreGrass.push({ x: Math.random() * VIEW_W * 2.4, h: 46 + Math.random() * 50, w: 70 + Math.random() * 80, sway: Math.random() * TAU });
     }
   }
@@ -2113,7 +2113,7 @@ function render() {
       const sx = g.x - Game.camera * 1.18;
       if (sx > VIEW_W + 40 || sx + g.w < -40) continue;
       const swayA = Math.sin(Game.time * 2.2 + g.sway) * 3;
-      ctx.fillStyle = 'rgba(6,20,13,.4)';
+      ctx.fillStyle = 'rgba(6,20,13,.34)';
       ctx.beginPath();
       ctx.moveTo(sx, GROUND_Y + 26);
       ctx.quadraticCurveTo(sx + g.w * .3 + swayA, GROUND_Y - g.h, sx + g.w * .55, GROUND_Y - g.h * .9);

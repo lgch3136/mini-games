@@ -486,6 +486,13 @@ function render() {
     const x = laneX(l);
     ctx.fillStyle = (l % 2 === 0) ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.01)';
     ctx.fillRect(x + 2, 44, laneW() - 4, H - 44);
+    // 纵向流光: 轨道中央微弱光带(下落方向感)
+    const streamG = ctx.createLinearGradient(0, 44, 0, H);
+    streamG.addColorStop(0, 'rgba(168,85,247,.02)');
+    streamG.addColorStop(.5, `rgba(168,85,247,.05 + ${.03 * Math.sin(Game.time * 1.8 + l)})`);
+    streamG.addColorStop(1, 'rgba(168,85,247,.09)');
+    ctx.fillStyle = streamG;
+    ctx.fillRect(x + laneW() * .3, 44, laneW() * .4, H - 44);
     Game.flashLane[l] = Math.max(0, Game.flashLane[l] - .07);
   }
   // 侧边流光: 判定线亮光向上升起
@@ -529,12 +536,16 @@ function render() {
     const breathe = .06 + Math.sin(Game.time * 3.2) * .03 + Game.bgPulse * .1;
     ctx.fillStyle = `rgba(255,255,255,${breathe})`;
     ctx.fillRect(20, HIT_Y, W - 40, 46);
-    // O2Jam式判定线: 亮白横线+青色微光
+    // O2Jam式判定线: 加亮加强——白芯+青光晕双层
     ctx.save();
-    ctx.shadowColor = 'rgba(103,232,249,.9)';
-    ctx.shadowBlur = 9;
-    ctx.strokeStyle = 'rgba(240,253,255,.92)';
-    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(34,211,238,1)';
+    ctx.shadowBlur = 16;
+    ctx.strokeStyle = 'rgba(224,252,255,.98)';
+    ctx.lineWidth = 3.2;
+    ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,255,255,.95)';
+    ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
     ctx.restore();
   }

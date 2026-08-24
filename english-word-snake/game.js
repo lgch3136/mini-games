@@ -695,6 +695,13 @@ function drawNebula() {
 }
 
 function drawGrid() {
+  // 双色调棋盘格(Google Snake标准): 奇偶格明暗交替, 保持霓虹暗色主题
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      ctx.fillStyle = (x + y) % 2 === 0 ? 'rgba(110,231,183,.045)' : 'rgba(110,231,183,.012)';
+      ctx.fillRect(x * CELL, GRID_Y + y * CELL, CELL, CELL);
+    }
+  }
   ctx.strokeStyle = 'rgba(110,231,183,0.07)';
   ctx.lineWidth = 1;
   for (let x = 0; x <= COLS; x++) {

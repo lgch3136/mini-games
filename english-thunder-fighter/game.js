@@ -983,6 +983,9 @@ function drawPlayer() {
     ctx.globalAlpha = 0.55;
   } else {
     ctx.globalAlpha = blink ? 0.35 : 0.9;
+    // 雷电式侧倾: 水平速度映射到倾斜角(最大±22°)
+    const bank = clamp((p.kvx || 0) / 380, -1, 1) * 0.38;
+    ctx.rotate(bank);
   }
 
   // 引擎火焰（有贴图时从贴图尾部喷出）

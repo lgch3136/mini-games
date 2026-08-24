@@ -858,11 +858,15 @@ function drawBombs() {
 
 function drawFlames() {
   // 原版十字火焰三色层: 白心→黄→橙红
+  // FC原版: 橙红主调同色系闪烁(白心只是爆心一瞬)
   const FLAME_LAYERS = [
-    { k: .58, colors: ['#fffbe8', '#fef08a'] },
-    { k: .78, colors: ['#fde047', '#fb923c'] },
-    { k: .98, colors: ['#f97316', 'rgba(234,88,12,.0)'] },
+    { k: .58, colors: ['#fff7d6', '#ffd23e'] },
+    { k: .78, colors: ['#ffae2e', '#f97316'] },
+    { k: .98, colors: ['#ea580c', 'rgba(198,40,10,.0)'] },
   ];
+  // 同色系闪烁动画(F C感的关键)
+  const flicker = Math.floor(Game.time * 14) % 2;
+  if (flicker) FLAME_LAYERS[1].k = .74;
   for (const f of Game.flames) {
     const x = OX + f.col * CELL + CELL / 2, y = OY + f.row * CELL + CELL / 2;
     const a = f.life / f.max;
