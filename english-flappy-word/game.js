@@ -444,25 +444,66 @@ function drawBackground() {
     ctx.fillStyle = '#ffd93b';
     ctx.beginPath(); ctx.arc(W - 70, 64, 30, 0, TAU); ctx.fill();
   }
+  // 城市剪影层(Flappy Bird标志性中层背景)
+  drawCitySilhouette();
+}
+
+function drawCitySilhouette() {
+  const baseY = GROUND_Y - 6;
+  const off = (Game.dist * 0.3) % 320;
+  ctx.fillStyle = 'rgba(222,216,149,.85)';   // 原版淡卡其剪影色
+  for (let bx = -off; bx < W + 80; bx += 320) {
+    // 一组楼群: 高低错落
+    const buildings = [
+      [0, 46, 34], [38, 78, 26], [68, 34, 42], [114, 62, 30],
+      [148, 96, 24], [176, 52, 36], [216, 70, 30], [250, 40, 44],
+      [272, 84, 28],
+    ];
+    for (const [ox, bh, bw] of buildings) {
+      ctx.fillRect(bx + ox, baseY - bh, bw, bh);
+      // 屋顶小天线
+      if (bh > 60) {
+        ctx.fillRect(bx + ox + bw / 2 - 1, baseY - bh - 12, 2, 12);
+        ctx.beginPath(); ctx.arc(bx + ox + bw / 2, baseY - bh - 13, 2, 0, TAU); ctx.fill();
+      }
+      // 随机亮窗
+      ctx.fillStyle = 'rgba(255,255,255,.25)';
+      for (let wy = baseY - bh + 8; wy < baseY - 10; wy += 14) {
+        for (let wx = bx + ox + 5; wx < bx + ox + bw - 6; wx += 10) {
+          if ((wx * 7 + wy * 13) % 5 < 2) ctx.fillRect(wx, wy, 4, 6);
+        }
+      }
+      ctx.fillStyle = 'rgba(222,216,149,.85)';
+    }
+  }
 }
 
 function drawGround() {
-  const g = ctx.createLinearGradient(0, GROUND_Y, 0, H);
-  g.addColorStop(0, '#8fd460'); g.addColorStop(1, '#4f9c4a');
-  ctx.fillStyle = g; ctx.fillRect(0, GROUND_Y, W, GROUND_H);
-  ctx.fillStyle = '#5cae55';
-  const off = Game.dist % 48;
-  for (let x = -off; x < W; x += 48) ctx.fillRect(x, GROUND_Y + 14, 24, 12);
-  ctx.fillStyle = '#3d7a3f';
-  ctx.fillRect(0, GROUND_Y, W, 4);
-  ctx.fillStyle = 'rgba(255,255,255,0.35)';
-  ctx.fillRect(0, GROUND_Y + 4, W, 3);
-  ctx.fillStyle = '#c9e89a';
-  const off2 = (Game.dist * 1.2) % 56;
-  for (let x = -off2; x < W; x += 56) {
-    ctx.fillRect(x, GROUND_Y + 6, 2, 6);
-    ctx.fillRect(x + 10, GROUND_Y + 10, 2, 5);
+  // 原版三层地面: 斜纹草边→土黄底→深土层
+  ctx.fillStyle = '#ded895';                       // 土黄色底
+  ctx.fillRect(0, GROUND_Y, W, GROUND_H);
+  // 上层草皮条
+  ctx.fillStyle = '#73bf2e';
+  ctx.fillRect(0, GROUND_Y, W, 18);
+  // 滚动斜纹(草皮质感核心): 平行四边形明暗交替
+  const off = Game.dist % 24;
+  ctx.fillStyle = '#8ed63c';
+  for (let x = -off - 24; x < W + 24; x += 24) {
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND_Y + 18);
+    ctx.lineTo(x + 12, GROUND_Y);
+    ctx.lineTo(x + 24, GROUND_Y);
+    ctx.lineTo(x + 12, GROUND_Y + 18);
+    ctx.closePath(); ctx.fill();
   }
+  // 草边高光线+暗线
+  ctx.fillStyle = '#9ceb5f';
+  ctx.fillRect(0, GROUND_Y, W, 3);
+  ctx.fillStyle = '#558c22';
+  ctx.fillRect(0, GROUND_Y + 18, W, 4);
+  // 下层泥土
+  ctx.fillStyle = '#d3c98a';
+  ctx.fillRect(0, GROUND_Y + 22, W, GROUND_H - 22);
 }
 
 function drawPipes() {

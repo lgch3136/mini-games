@@ -10,7 +10,7 @@ const VIEW_H = 540;
 const GROUND_Y = 478;
 const CHUNK_W = 720;
 const TAU = Math.PI * 2;
-const PLAYER_H = 52;
+const PLAYER_H = 59.8;
 const CROUCH_H = 30;
 const BULLET_SPEED = 660;
 const FIXED_STEP = 1 / 60;
@@ -1408,6 +1408,7 @@ function cullWorld() {
 }
 
 function update(dt) {
+  Game.frameDt = dt;
   worldGenBudget = 2;
   if (Game.hitStop > 0) {
     Game.hitStop = Math.max(0, Game.hitStop - dt);
@@ -1914,6 +1915,15 @@ function drawPlayer() {
   const baselineOffset = atlas === ASSETS.hero && row === 1 ? [0, 4, 4, 0][column]
     : atlas === ASSETS.hero && row === 3 ? [0, 7, 7, 6][column] : 0;
   const drawY = player.y + player.h - 79 + baselineOffset + (atlas === ASSETS.actions ? (row === 1 ? 12 : 6) : 0);
+  // 剪影分离: 精灵背后一圈深色柔光, 从丛林背景里浮出(魂斗罗式可读性)
+  ctx.save();
+  ctx.shadowColor = 'rgba(8,20,14,.85)';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = 'rgba(8,20,14,.4)';
+  ctx.beginPath();
+  ctx.ellipse(player.x + player.w / 2, drawY + player.h * .52, player.w * .62, player.h * .55, 0, 0, TAU);
+  ctx.fill();
+  ctx.restore();
   const recoilRatio = clamp(player.recoil / .09, 0, 1);
   const poseX = player.x - player.aimX * recoilRatio * 7;
   const poseY = drawY - player.aimY * recoilRatio * 5;
@@ -2030,6 +2040,31 @@ function render() {
   for (const bullet of Game.bullets) drawBullet(bullet, '#ffe49a');
   for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
   drawPlayer();
+  // 前景遮挡草丛(魂斗罗纵深关键一招): 比玩家更快的半透明剪影掠过
+  if (!Game.foreGrass) {
+    Game.foreGrass = [];
+    for (let i = 0; i < 8; i++) {
+      Game.foreGrass.push({ x: Math.random() * VIEW_W * 2.4, h: 46 + Math.random() * 50, w: 70 + Math.random() * 80, sway: Math.random() * TAU });
+    }
+  }
+  {
+    const fgDt = clamp(Game.frameDt || .016, .008, .05);
+    ctx.save();
+    for (const g of Game.foreGrass) {
+      g.x -= fgDt * 640;   // 前景速度≈玩家速度1.5倍
+      if (g.x + g.w < Game.camera - 60) g.x += VIEW_W * 2.6;
+      const sx = g.x - Game.camera * 1.18;
+      if (sx > VIEW_W + 40 || sx + g.w < -40) continue;
+      const swayA = Math.sin(Game.time * 2.2 + g.sway) * 3;
+      ctx.fillStyle = 'rgba(6,20,13,.4)';
+      ctx.beginPath();
+      ctx.moveTo(sx, GROUND_Y + 26);
+      ctx.quadraticCurveTo(sx + g.w * .3 + swayA, GROUND_Y - g.h, sx + g.w * .55, GROUND_Y - g.h * .9);
+      ctx.quadraticCurveTo(sx + g.w * .8 - swayA, GROUND_Y - g.h * .4, sx + g.w, GROUND_Y + 26);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
   for (const particle of Game.particles) {
     ctx.globalAlpha = clamp(particle.life * 3, 0, 1);
     ctx.fillStyle = particle.color;

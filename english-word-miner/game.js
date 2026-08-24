@@ -167,6 +167,19 @@ function spawnItems() {
     Game.items.push({ kind: 'diamond', x: rand(60, W - 60), y: rand(H - 130, H - 45),
       r: 14, weight: 1.2, value: 500, wobble: Math.random() * TAU });
   }
+  // 原版标志物: 大小金块(大金块=高分重物)
+  const golds = 2 + (Game.level > 3 ? 1 : 0);
+  for (let i = 0; i < golds; i++) {
+    const big = i === 0;
+    let placed = null;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const cand = { kind: 'gold', x: rand(70, W - 70), y: rand(200, H - 50),
+        r: big ? 24 : 16, weight: big ? 2.6 : 1.4, value: big ? 350 : 150,
+        wobble: Math.random() * TAU };
+      if (!Game.items.some((it2) => Math.hypot(it2.x - cand.x, it2.y - cand.y) < it2.r + cand.r + 12)) { placed = cand; break; }
+    }
+    if (placed) Game.items.push(placed);
+  }
 }
 
 function buildLevel(initial) {
@@ -326,11 +339,51 @@ function deliverItem(it) {
     burst(x, y, '#f97316', 26);
     floatText('-100', x, y, '#f97316');
     if (window.ArcadeAudio) ArcadeAudio.play('laser', .22, .5);
+  } else if (it.kind === 'gold') {
+    // 原版式金块: 梯形堆+高光面+闪光粒子
+    const w2 = it.r * 1.5, hgt = it.r * 1.05;
+    ctx.shadowColor = 'rgba(253,224,71,.6)';
+    ctx.shadowBlur = 12;
+    const gg = ctx.createLinearGradient(-w2/2, -hgt/2, w2/2, hgt/2);
+    gg.addColorStop(0, '#fef08a');
+    gg.addColorStop(.4, '#facc15');
+    gg.addColorStop(1, '#b45309');
+    ctx.fillStyle = gg;
+    // 两块叠放的金锭
+    ctx.beginPath();
+    ctx.moveTo(-w2*.55, hgt*.15); ctx.lineTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.lineTo(w2*.3, hgt*.15);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-w2*.18, hgt*.15); ctx.lineTo(w2*.02, -hgt*.28); ctx.lineTo(w2*.55, -hgt*.28); ctx.lineTo(w2*.72, hgt*.15);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-w2*.62, hgt*.15); ctx.lineTo(w2*.78, hgt*.15); ctx.lineTo(w2*.6, hgt*.55); ctx.lineTo(-w2*.44, hgt*.55);
+    ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0;
+    // 高光棱线
+    ctx.strokeStyle = 'rgba(255,255,230,.85)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.stroke();
+    // 周期星光
+    const tw2 = (Math.sin(Game.time * 3 + it.wobble * 4) + 1) / 2;
+    if (tw2 > .8) {
+      ctx.strokeStyle = `rgba(255,255,235,${(tw2-.8)/.2})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(w2*.3, -hgt*.42); ctx.lineTo(w2*.3 + 8, -hgt*.42);
+      ctx.moveTo(w2*.3 + 4, -hgt*.42 - 4); ctx.lineTo(w2*.3 + 4, -hgt*.42 + 4);
+      ctx.stroke();
+    }
   } else if (it.kind === 'diamond') {
     Game.score += it.value;
     floatText('💎 +' + it.value, x, y, '#67e8f9');
     burst(x, y, '#67e8f9', 20);
     if (window.ArcadeAudio) ArcadeAudio.play('confirm', .26, 1.4);
+  } else if (it.kind === 'gold') {
+    Game.score += it.value;
+    floatText('💰 +' + it.value, x, y, '#fde047');
+    burst(x, y, '#fde047', 16);
+    if (window.ArcadeAudio) ArcadeAudio.play('confirm', .24, 1.35);
   } else {
     Game.score += Math.round(30 / it.weight * 10);
     floatText('+石头', x, y, '#a8a29e');
@@ -477,9 +530,21 @@ function render() {
   if (h) {
     const tipX = h.x + Math.cos(h.angle) * h.len;
     const tipY = h.y + Math.sin(h.angle) * h.len;
-    ctx.strokeStyle = '#c8a05a';
-    ctx.lineWidth = 2.5;
+    // 原版式分节链条: 沿绳每隔14px画椭圆链环
+    const dx = tipX - h.x, dy = tipY - h.y;
+    const len = Math.hypot(dx, dy);
+    const ux = dx / (len || 1), uy = dy / (len || 1);
+    ctx.strokeStyle = '#8a6d3b';
+    ctx.lineWidth = 5;
     ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(tipX, tipY); ctx.stroke();
+    for (let d = 8; d < len - 6; d += 13) {
+      const lx = h.x + ux * d, ly = h.y + uy * d;
+      ctx.strokeStyle = '#e8c56e';
+      ctx.lineWidth = 3.4;
+      ctx.beginPath();
+      ctx.ellipse(lx + uy * 1.2, ly - ux * 1.2, 3.4, 6, Math.atan2(dy, dx), 0, TAU);
+      ctx.stroke();
+    }
     drawClaw(tipX, tipY, h.angle, h.state === 'retract' && h.grabbed);
   }
 
@@ -625,6 +690,41 @@ function drawItem(it) {
     ctx.fillStyle = '#ef4444';
     ctx.font = '900 13px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('✕', 0, 1);
+  } else if (it.kind === 'gold') {
+    // 原版式金块: 梯形堆+高光面+闪光粒子
+    const w2 = it.r * 1.5, hgt = it.r * 1.05;
+    ctx.shadowColor = 'rgba(253,224,71,.6)';
+    ctx.shadowBlur = 12;
+    const gg = ctx.createLinearGradient(-w2/2, -hgt/2, w2/2, hgt/2);
+    gg.addColorStop(0, '#fef08a');
+    gg.addColorStop(.4, '#facc15');
+    gg.addColorStop(1, '#b45309');
+    ctx.fillStyle = gg;
+    // 两块叠放的金锭
+    ctx.beginPath();
+    ctx.moveTo(-w2*.55, hgt*.15); ctx.lineTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.lineTo(w2*.3, hgt*.15);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-w2*.18, hgt*.15); ctx.lineTo(w2*.02, -hgt*.28); ctx.lineTo(w2*.55, -hgt*.28); ctx.lineTo(w2*.72, hgt*.15);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-w2*.62, hgt*.15); ctx.lineTo(w2*.78, hgt*.15); ctx.lineTo(w2*.6, hgt*.55); ctx.lineTo(-w2*.44, hgt*.55);
+    ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0;
+    // 高光棱线
+    ctx.strokeStyle = 'rgba(255,255,230,.85)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-w2*.38, -hgt*.28); ctx.lineTo(w2*.12, -hgt*.28); ctx.stroke();
+    // 周期星光
+    const tw2 = (Math.sin(Game.time * 3 + it.wobble * 4) + 1) / 2;
+    if (tw2 > .8) {
+      ctx.strokeStyle = `rgba(255,255,235,${(tw2-.8)/.2})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(w2*.3, -hgt*.42); ctx.lineTo(w2*.3 + 8, -hgt*.42);
+      ctx.moveTo(w2*.3 + 4, -hgt*.42 - 4); ctx.lineTo(w2*.3 + 4, -hgt*.42 + 4);
+      ctx.stroke();
+    }
   } else if (it.kind === 'diamond') {
     const g = ctx.createLinearGradient(-it.r, -it.r, it.r, it.r);
     g.addColorStop(0, '#a5f3fc'); g.addColorStop(1, '#0891b2');

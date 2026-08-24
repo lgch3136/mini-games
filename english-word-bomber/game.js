@@ -857,19 +857,63 @@ function drawBombs() {
 }
 
 function drawFlames() {
+  // 原版十字火焰三色层: 白心→黄→橙红
+  const FLAME_LAYERS = [
+    { k: .58, colors: ['#fffbe8', '#fef08a'] },
+    { k: .78, colors: ['#fde047', '#fb923c'] },
+    { k: .98, colors: ['#f97316', 'rgba(234,88,12,.0)'] },
+  ];
   for (const f of Game.flames) {
     const x = OX + f.col * CELL + CELL / 2, y = OY + f.row * CELL + CELL / 2;
     const a = f.life / f.max;
+    const isCenter = !f.dir || f.dir === 'c';
     ctx.save();
     ctx.translate(x, y);
-    ctx.globalAlpha = a * .95;
-    const g = ctx.createRadialGradient(0, 0, 3, 0, 0, CELL * .52);
-    g.addColorStop(0, '#fffbe8');
-    g.addColorStop(.4, '#fbbf24');
-    g.addColorStop(.75, '#f97316');
-    g.addColorStop(1, 'rgba(220,60,10,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, CELL * .52, 0, TAU); ctx.fill();
+    ctx.globalAlpha = a * .96;
+    for (const layer of FLAME_LAYERS) {
+      const R = CELL * .5 * layer.k;
+      if (isCenter) {
+        // 爆心: 圆核
+        const rg = ctx.createRadialGradient(0, 0, 1, 0, 0, R);
+        rg.addColorStop(0, layer.colors[0]);
+        rg.addColorStop(1, layer.colors[1]);
+        ctx.fillStyle = rg;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+      } else {
+        // 四向臂: 沿方向的长条+端头圆(玩家靠形状读安全区)
+        const horiz = f.dir === 'h';
+        const armLen = R;
+        const armW = CELL * .34 * layer.k;
+        ctx.fillStyle = horiz
+          ? ctx.createLinearGradient(-armLen, 0, armLen, 0)
+          : ctx.createLinearGradient(0, -armLen, 0, armLen);
+        if (horiz) {
+          const gg = ctx.createLinearGradient(-armLen, 0, armLen, 0);
+          gg.addColorStop(0, layer.colors[1]); gg.addColorStop(.5, layer.colors[0]); gg.addColorStop(1, layer.colors[1]);
+          ctx.fillStyle = gg;
+          ctx.beginPath();
+          if (f.tip) {
+            ctx.moveTo(-armLen, -armW); ctx.lineTo(armLen * .55, -armW);
+            ctx.arc(armLen * .55, 0, armW, Math.PI * 1.5, Math.PI * .5);
+            ctx.lineTo(-armLen, armW); ctx.closePath(); ctx.fill();
+          } else {
+            ctx.rect(-armLen, -armW, armLen * 2, armW * 2); ctx.fill();
+          }
+        } else {
+          const gg = ctx.createLinearGradient(0, -armLen, 0, armLen);
+          gg.addColorStop(0, layer.colors[1]); gg.addColorStop(.5, layer.colors[0]); gg.addColorStop(1, layer.colors[1]);
+          ctx.fillStyle = gg;
+          ctx.beginPath();
+          if (f.tip) {
+            ctx.moveTo(-armW, -armLen); ctx.lineTo(-armW, armLen * .55);
+            ctx.arc(0, armLen * .55, armW, Math.PI, 0);
+            ctx.lineTo(armW, -armLen); ctx.closePath(); ctx.fill();
+          } else {
+            ctx.rect(-armW, -armLen, armW * 2, armLen * 2); ctx.fill();
+          }
+        }
+      }
+    }
     ctx.restore();
   }
 }
@@ -928,14 +972,18 @@ function drawPlayer() {
   ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill();
   ctx.shadowBlur = 0;
   ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2.5; ctx.stroke();
-  // 头盔蓝顶(炸弹人经典白蓝配色)
-  ctx.fillStyle = '#3b82f6';
-  ctx.beginPath(); ctx.arc(0, -2, 15, Math.PI, 0); ctx.fill();
-  // 天线球
-  ctx.strokeStyle = '#1d4ed8';
-  ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(0, -22); ctx.stroke();
-  ctx.fillStyle = '#fbbf24';
-  ctx.beginPath(); ctx.arc(0, -25, 4, 0, TAU); ctx.fill();
+  // 原版配色: 白色主体占绝对主导, 头盔仅一圈粉边
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(0, -1, 15, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = '#f9a8d4'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0, -1, 14.2, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  // 粉色天线球(原版White Bomber标志)
+  ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(0, -23); ctx.stroke();
+  ctx.fillStyle = '#f472b6';
+  ctx.shadowColor = 'rgba(244,114,182,.9)'; ctx.shadowBlur = 7;
+  ctx.beginPath(); ctx.arc(0, -26, 4.2, 0, TAU); ctx.fill();
+  ctx.shadowBlur = 0;
   // 眼睛朝向
   const off = { up: [0, -3], down: [0, 3], left: [-3, 0], right: [3, 0] }[p.facing];
   ctx.fillStyle = '#1c1917';
