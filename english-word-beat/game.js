@@ -481,10 +481,10 @@ function render() {
   ctx.save();
   ctx.translate(Game.shakeX, 0);
 
-  // 轨道 + 流光侧边
+  // 轨道: 奇偶明暗交替(O2Jam式)
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
-    ctx.fillStyle = Game.flashLane[l] > 0 ? `rgba(255,255,255,${.09 * Game.flashLane[l]})` : 'rgba(255,255,255,.02)';
+    ctx.fillStyle = (l % 2 === 0) ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.01)';
     ctx.fillRect(x + 2, 44, laneW() - 4, H - 44);
     Game.flashLane[l] = Math.max(0, Game.flashLane[l] - .07);
   }
@@ -498,6 +498,9 @@ function render() {
     ctx.fillStyle = g;
     ctx.fillRect(x + 2, HIT_Y - 130, laneW() - 4, 130);
   }
+  // playfield两侧收边(切掉死黑留白)
+  ctx.fillStyle = 'rgba(5,3,12,.55)';
+  ctx.fillRect(0, 44, 20, H - 44); ctx.fillRect(W - 20, 44, 20, H - 44);
   // 分隔线
   for (let l = 0; l <= LANES; l++) {
     ctx.strokeStyle = 'rgba(255,255,255,.09)';
@@ -526,9 +529,14 @@ function render() {
     const breathe = .06 + Math.sin(Game.time * 3.2) * .03 + Game.bgPulse * .1;
     ctx.fillStyle = `rgba(255,255,255,${breathe})`;
     ctx.fillRect(20, HIT_Y, W - 40, 46);
-    ctx.strokeStyle = 'rgba(255,255,255,.6)';
-    ctx.lineWidth = 2.5;
+    // O2Jam式判定线: 亮白横线+青色微光
+    ctx.save();
+    ctx.shadowColor = 'rgba(103,232,249,.9)';
+    ctx.shadowBlur = 9;
+    ctx.strokeStyle = 'rgba(240,253,255,.92)';
+    ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
+    ctx.restore();
   }
   // 命中冲击波
   for (let i = Game.pulses.length - 1; i >= 0; i--) {
@@ -584,27 +592,52 @@ function render() {
     const isNextLetter = n.isLetter && n.index === Game.word.progress;
     ctx.save();
     if (isNextLetter) {
+      const nx = x + 3, nw = laneW() - 6, nh = 34, ny = y - nh;
+      ctx.save();
       ctx.shadowColor = 'rgba(110,231,183,.95)';
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = '#10b981';
-      ctx.beginPath(); ctx.roundRect(x + 7, y - 15, laneW() - 14, 30, 8); ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = '#d1fae5'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.shadowBlur = 16;
+      const lg = ctx.createLinearGradient(0, ny, 0, ny + nh);
+      lg.addColorStop(0, '#ffffff');
+      lg.addColorStop(.3, '#6ee7b7');
+      lg.addColorStop(1, '#059669');
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = '#d1fae5'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.stroke();
       ctx.fillStyle = '#053b2c';
       ctx.font = '900 19px ui-monospace, monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(n.letter || '?', x + laneW() / 2, y);
+      ctx.fillText(n.letter || '?', x + laneW() / 2, y - 2);
     } else {
-      ctx.fillStyle = n.missed ? 'rgba(150,150,160,.3)' : LANE_COLORS()[n.lane];
-      ctx.beginPath(); ctx.roundRect(x + 7, y - 11, laneW() - 14, 22, 6); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.35)';
-      ctx.beginPath(); ctx.roundRect(x + 9, y - 9, laneW() - 18, 6, 3); ctx.fill();
+      // O2Jam式通轨矩形: 锐利边3px圆角+顶部高光带+渐变到暗色+深描边
+      const nx = x + 3, nw = laneW() - 6, nh = 26;
+      const ny = y - nh;   // 底边=y=判定对齐点
+      if (!n.missed) {
+        const ng = ctx.createLinearGradient(0, ny, 0, ny + nh);
+        ng.addColorStop(0, '#ffffff');
+        ng.addColorStop(.28, LANE_COLORS()[n.lane]);
+        ng.addColorStop(1, shade(LANE_COLORS()[n.lane], .45));
+        ctx.fillStyle = ng;
+        ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.fill();
+        ctx.strokeStyle = 'rgba(10,5,20,.55)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,.75)';
+        ctx.fillRect(nx + 2, ny + 2.5, nw - 4, 2);
+      } else {
+        ctx.fillStyle = 'rgba(150,150,160,.3)';
+        ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.fill();
+      }
     }
     ctx.restore();
   }
 
   drawParticles();
   ctx.restore();
+}
+function shade(hex, k) {
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  return `rgb(${Math.round(r*(1-k))},${Math.round(g*(1-k))},${Math.round(b*(1-k))})`;
 }
 function hexA(hex, a) {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);

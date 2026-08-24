@@ -751,21 +751,40 @@ function drawTiles() {
 
     const size = CELL - 6;
     if (t.type === 'letter') {
+      // 可读性第一: 当前目标字母全亮+序号角标; 其余降饱和后推
+      const isNext = Game.word && Game.word.mode === 'spell' && !Game.word.done &&
+                     t.letter === Game.word.letters[Game.word.index];
+      const sat = isNext ? 1 : .45;
+      if (sat < 1) ctx.filter = `saturate(${sat}) opacity(.75)`;
       const grad = ctx.createLinearGradient(0, -size / 2, 0, size / 2);
-      grad.addColorStop(0, '#ffe9a8');
-      grad.addColorStop(1, '#d19a2a');
+      grad.addColorStop(0, isNext ? '#fff3b8' : '#e8dcbb');
+      grad.addColorStop(1, isNext ? '#e5a91f' : '#a8946a');
       ctx.fillStyle = grad;
       roundRectPath(-size / 2, -size / 2, size, size, 7);
       ctx.fill();
-      ctx.strokeStyle = '#fff3c0';
+      if (isNext) {
+        // 目标字母: 金色脉冲环+序号
+        const pu = 1 + Math.sin(Game.time * 5) * .08;
+        ctx.strokeStyle = '#ffd166';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#ffd166'; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(0, 0, CELL * .58 * pu, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#1c1204';
+        ctx.font = '900 11px system-ui'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+        ctx.fillText(String(Game.word.index + 1), size / 2 - 3, -size / 2 + 3);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      }
+      ctx.strokeStyle = isNext ? '#fff8dc' : '#d8cba8';
       ctx.lineWidth = 1.5;
       roundRectPath(-size / 2, -size / 2, size, size, 7);
       ctx.stroke();
-      ctx.fillStyle = '#3a2400';
-      ctx.font = '700 20px "SF Mono", Menlo, Consolas, monospace';
+      ctx.fillStyle = isNext ? '#3a2400' : '#4a4136';
+      ctx.font = (isNext ? '900' : '600') + ' 20px "SF Mono", Menlo, Consolas, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(t.letter.toUpperCase(), 0, 1);
+      ctx.filter = 'none';
     } else if (t.type === 'option') {
       const grad = ctx.createLinearGradient(0, -size / 2, 0, size / 2);
       grad.addColorStop(0, '#8fc0ff');

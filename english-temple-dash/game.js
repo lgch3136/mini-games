@@ -606,10 +606,22 @@ function drawEdgeScenery() {
   }
 }
 
+// 危险物清单: 警示红描边标记"会撞死你的东西"
+const LETHAL_TYPES = new Set(['log', 'rock', 'pillar', 'root', 'arch', 'crystal', 'beam']);
 function drawObject(object) {
   if (object.z > MAX_Z + 30 || object.z < -8) return;
   const point = project(object.lane, Math.max(0, object.z));
   const s = point.scale;
+  // 雾中淡入: 远处物体被地平线雾色遮盖, 从黑暗中浮现(纵深+消除生成突兀)
+  const fogStartZ = MAX_Z * .55;
+  if (object.z > fogStartZ && !object.taken && !object.passed) {
+    const fogA = clamp((object.z - fogStartZ) / (MAX_Z + 20 - fogStartZ), 0, 1);
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(11,23,19,' + (fogA * .92) + ')';
+    ctx.fillRect(point.x - 60 * s - 8, HORIZON_Y, 120 * s + 16, VIEW_H - HORIZON_Y);
+    ctx.restore();
+  }
   // 统一接地软阴影：伪3D可信度的生命线（随高度略缩放）
   if (object.type !== 'beam' && object.type !== 'puddle') {
     ctx.save();
@@ -617,6 +629,14 @@ function drawObject(object) {
     ctx.beginPath();
     ctx.ellipse(point.x, point.y + 2, 26 * s, 6.5 * s, 0, 0, TAU);
     ctx.fill();
+    // 致死障碍警示: 熔岩红接地环(装饰与致死物的分界线)
+    if (LETHAL_TYPES.has(object.type) && !object.taken) {
+      ctx.strokeStyle = `rgba(255,90,40,${.55 - (object.z / MAX_Z) * .3})`;
+      ctx.lineWidth = Math.max(1.5, 2.6 * s);
+      ctx.beginPath();
+      ctx.ellipse(point.x, point.y + 2, 28 * s, 7.5 * s, 0, 0, TAU);
+      ctx.stroke();
+    }
     ctx.restore();
   }
   ctx.save(); ctx.translate(point.x, point.y);

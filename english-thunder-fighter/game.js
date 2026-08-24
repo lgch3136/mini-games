@@ -911,8 +911,8 @@ function render(dt) {
 function drawNebula() {
   const t = Game.time;
   const blobs = [
-    { x: W * 0.25 + Math.sin(t * 0.05) * 80, y: H * 0.3 + Math.cos(t * 0.07) * 60, r: 260, c: 'rgba(70,60,180,0.16)' },
-    { x: W * 0.8 + Math.cos(t * 0.06) * 90, y: H * 0.65 + Math.sin(t * 0.05) * 70, r: 300, c: 'rgba(180,40,120,0.12)' },
+    { x: W * 0.25 + Math.sin(t * 0.05) * 80, y: H * 0.3 + Math.cos(t * 0.07) * 60, r: 260, c: 'rgba(70,60,180,0.07)' },
+    { x: W * 0.8 + Math.cos(t * 0.06) * 90, y: H * 0.65 + Math.sin(t * 0.05) * 70, r: 300, c: 'rgba(180,40,120,0.055)' },
   ];
   for (const b of blobs) {
     const rg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
@@ -1142,14 +1142,25 @@ function drawBullets() {
 }
 
 function drawEnemyBullets() {
+  // 雷电标准: 弹幕必须是最显眼的元素 —— 白芯+亮色体+深描边
+  for (const b of Game.enemyBullets) {
+    // 深色描边(与任何背景分离)
+    ctx.fillStyle = 'rgba(40,10,30,.9)';
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 1.6, 0, Math.PI * 2); ctx.fill();
+    // 亮色弹体
+    ctx.fillStyle = '#ff5e8a';
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+    // 白色高光芯
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r * .45, 0, Math.PI * 2); ctx.fill();
+  }
+  // 微光层(批量画, 不逐个shadowBlur——性能)
   ctx.save();
   ctx.shadowColor = '#ff7b54';
-  ctx.shadowBlur = 8;
-  ctx.fillStyle = '#ff9f6b';
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = 'rgba(255,159,107,.35)';
   for (const b of Game.enemyBullets) {
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r + .8, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
 }
