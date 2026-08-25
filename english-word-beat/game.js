@@ -7,8 +7,8 @@
  * 音符密度低没难度、无成长曲线、undefined。
  *
  * v3设计:
- * - 七轨固定 C-D-E-F-G-A-B 音高与蓝白金键色
- * - 公版古典主题的确定性谱面、和弦伴奏、长按音符
+ * - 七轨只负责输入；每颗音符携带独立键音，蓝白金键色固定
+ * - 公版 MIDI 逐事件谱面、自动伴奏轨、和弦键音与长按音符
  * - 滚速只改变读谱距离，歌曲时钟与判定窗保持独立
  * - AudioContext 统一承担谱面时钟、键音与伴奏调度
  * - 防御: 所有HUD渲染走safeText, NaN/undefined不可能上屏
@@ -42,12 +42,14 @@ const SCROLL_STEPS = [.5, .75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 3];
 const CAPSULE_COMBO = 15;
 const CAPSULE_MAX = 5;
 
-const SCALE_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-const SCALE_FREQS = [261.63, 293.66, 329.63, 349.23, 392, 440, 493.88];
-function degreeFrequency(degree, octave = 0) {
+const CHROMATIC_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const SCALE_SEMITONES = [0, 2, 4, 5, 7, 9, 11];
+function degreeMidi(degree, base = 60) {
   const normalized = ((degree % 7) + 7) % 7;
-  return SCALE_FREQS[normalized] * 2 ** (Math.floor(degree / 7) + octave);
+  return base + SCALE_SEMITONES[normalized] + Math.floor(degree / 7) * 12;
 }
+const midiFrequency = (midi) => 440 * 2 ** ((midi - 69) / 12);
+const midiName = (midi) => Number.isFinite(midi) ? `${CHROMATIC_NAMES[((midi % 12) + 12) % 12]}${Math.floor(midi / 12) - 1}` : 'KS';
 
 let LANES = 7;
 const O2_BLUE = '#43a6ff';
@@ -69,7 +71,7 @@ const laneCfg = () => LANE_MODES[LANES];
 const LANE_KEYS = () => laneCfg().keys;
 const LANE_LABEL = () => laneCfg().labels;
 const LANE_COLORS = () => laneCfg().keys.map((key) => KEY_COLORS[key]);
-const LANE_NOTES = () => laneCfg().degrees.map((degree) => SCALE_NAMES[degree]);
+const LANE_NOTES = () => laneCfg().degrees.map(() => 'KS');
 function degreeToLane(degree) {
   const degrees = laneCfg().degrees;
   let best = 0;
@@ -86,7 +88,7 @@ const JOY_THEME = [
   [1,1],[1,1],[2,1],[0,1],[1,1],[2,.5],[3,.5],[2,1],[0,1],[1,1],[2,.5],[3,.5],[2,1],[1,1],[0,1],[1,1],[4,2],
   [2,1],[2,1],[3,1],[4,1],[4,1],[3,1],[2,1],[1,1],[0,1],[0,1],[1,1],[2,1],[1,1.5],[0,.5],[0,2],
 ];
-// Mutopia Canon in D (CC BY 3.0), transposed to C and preserved at source-note resolution.
+// Legacy fallback used only when the external exact-score data cannot load.
 const CANON_FULL = [
   [0,2],[6,2],[5,2],[4,2],[3,2],[2,2],[3,2],[5,2],[2,2],[4,2],[0,2],[2,2],
   [5,2],[0,2],[5,2],[6,2],[2,2],[1,2],[0,2],[6,2],[5,2],[4,2],[5,2],[6,1],
@@ -138,10 +140,35 @@ function varyPhrase(notes, texture) {
 }
 const tagSection = (name, texture, notes) => notes.map(([degree, beats]) => [degree, beats, { name, texture }]);
 const scoreSection = (name, texture, notes) => tagSection(name, texture, varyPhrase(notes, texture));
+const EXACT_TEMPOS = {
+  joy: [[0, 100]],
+  canon: [[0, 60]],
+  twinkle: [[0, 60], [72, 68], [124, 72]],
+};
+function scoreSecondsAt(song, scoreBeat) {
+  const tempos = EXACT_TEMPOS[song.exact] || [[0, song.bpm]];
+  let seconds = 0;
+  for (let i = 0; i < tempos.length; i++) {
+    const [start, bpm] = tempos[i], end = tempos[i + 1]?.[0] ?? scoreBeat;
+    if (scoreBeat <= start) break;
+    seconds += (Math.min(scoreBeat, end) - start) * 60 / bpm;
+    if (scoreBeat <= end) break;
+  }
+  return seconds;
+}
+function scoreBpmAt(song, scoreBeat) {
+  let bpm = song.bpm;
+  for (const [at, nextBpm] of EXACT_TEMPOS[song.exact] || []) {
+    if (scoreBeat < at) break;
+    bpm = nextBpm;
+  }
+  return Math.round(bpm);
+}
 
 const SONGS = [
   {
     id: 'joy', title: '欢乐颂', composer: '贝多芬', bpm: 100, key: 'C Major',
+    exact: 'joy',
     chords: [0, 4, 0, 4, 3, 0, 4, 0], source: 'Mutopia · Public Domain',
     sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=528',
     melody: [
@@ -151,7 +178,8 @@ const SONGS = [
     ],
   },
   {
-    id: 'canon', title: '卡农进行曲', composer: '帕赫贝尔', bpm: 60, key: 'C Major',
+    id: 'canon', title: '卡农进行曲', composer: '帕赫贝尔', bpm: 60, key: 'D Major',
+    exact: 'canon',
     chords: CANON_ROOTS, source: 'Mutopia · CC BY 3.0',
     sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1700',
     melody: [
@@ -163,7 +191,8 @@ const SONGS = [
     ],
   },
   {
-    id: 'twinkle', title: '小星星变奏', composer: '莫扎特主题', bpm: 120, key: 'C Major',
+    id: 'twinkle', title: '小星星变奏', composer: '莫扎特主题', bpm: 60, key: 'C Major',
+    exact: 'twinkle',
     chords: [0,3,0,4,3,0,4,0,0,3,4,0], source: 'Mutopia · Public Domain',
     sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=2236',
     melody: [
@@ -195,8 +224,9 @@ const SONGS = [
   },
 ];
 for (const song of SONGS) {
-  song.beats = song.melody.reduce((sum, [, beats]) => sum + beats, 0);
-  song.duration = Math.round((song.beats + 4) * 60 / song.bpm);
+  const exact = song.exact && window.WORD_BEAT_SCORES?.[song.exact];
+  song.beats = exact ? exact.beats * (exact.repeat || 1) : song.melody.reduce((sum, [, beats]) => sum + beats, 0);
+  song.duration = Math.round(COUNT_IN_BEATS * 60 / song.bpm + (exact ? scoreSecondsAt(song, song.beats) : song.beats * 60 / song.bpm));
 }
 function formatDuration(seconds) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -227,6 +257,8 @@ const Game = {
   time: 0, shakeX: 0,
   word: null, lastWord: '',
   notes: [], activeHolds: [null, null, null, null, null, null, null],
+  autoEvents: [], autoIndex: 0,
+  pianoReady: false,
   actx: null, master: null, audioStart: 0, phraseStartAt: 0, songEndAt: Infinity,
   backingStep: 0,
   feedback: '', feedbackUntil: 0,
@@ -253,6 +285,7 @@ function ensureAudioClock() {
     limiter.connect(Game.actx.destination);
   }
   if (Game.actx.state === 'suspended') Game.actx.resume().catch(() => {});
+  loadPianoSamples();
   return Game.actx;
 }
 let sfxCtx = null, noiseBuf = null;
@@ -270,22 +303,63 @@ function playTone(freq, when, duration, volume, type = 'sine') {
   osc.start(when); osc.stop(when + duration + .02);
 }
 
-/* O2Jam 式键音：一个谱面音符可同时触发旋律与和弦音色。 */
+const PIANO_SAMPLE_SOURCES = [
+  [48, 'https://tonejs.github.io/audio/salamander/C3.mp3'],
+  [60, 'https://tonejs.github.io/audio/salamander/C4.mp3'],
+  [72, 'https://tonejs.github.io/audio/salamander/C5.mp3'],
+];
+let pianoBuffers = [], pianoLoading = null;
+function loadPianoSamples() {
+  if (!Game.actx || pianoLoading) return pianoLoading;
+  pianoLoading = Promise.all(PIANO_SAMPLE_SOURCES.map(async ([midi, url]) => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('piano sample ' + response.status);
+    return { midi, buffer: await Game.actx.decodeAudioData(await response.arrayBuffer()) };
+  })).then((buffers) => { pianoBuffers = buffers; Game.pianoReady = true; return buffers; }).catch((error) => {
+    console.warn('Piano samples unavailable; using synth fallback.', error);
+    return [];
+  });
+  return pianoLoading;
+}
+function playPianoMidi(midi, when, duration, volume) {
+  const end = when + clamp(duration, .11, 3.2);
+  if (pianoBuffers.length) {
+    const sample = pianoBuffers.reduce((best, item) => Math.abs(item.midi - midi) < Math.abs(best.midi - midi) ? item : best);
+    const source = Game.actx.createBufferSource(), gain = Game.actx.createGain();
+    source.buffer = sample.buffer;
+    source.playbackRate.setValueAtTime(2 ** ((midi - sample.midi) / 12), when);
+    gain.gain.setValueAtTime(.0001, when);
+    gain.gain.linearRampToValueAtTime(volume, when + .008);
+    gain.gain.exponentialRampToValueAtTime(Math.max(.0002, volume * .38), Math.min(end - .02, when + .34));
+    gain.gain.exponentialRampToValueAtTime(.0001, end);
+    source.connect(gain); gain.connect(Game.master); source.start(when); source.stop(end + .08);
+    return;
+  }
+  const freq = midiFrequency(midi);
+  playTone(freq, when, duration, volume, 'triangle');
+  playTone(freq * 2, when, Math.min(duration, .32), volume * .18, 'sine');
+  playTone(freq * 3, when, Math.min(duration, .2), volume * .06, 'sine');
+}
+function playPianoChord(pitches, when, duration, volume) {
+  const unique = [...new Set(pitches)].slice(0, 6);
+  const perVoice = volume / Math.sqrt(Math.max(1, unique.length));
+  unique.forEach((midi) => playPianoMidi(midi, when, duration, perVoice));
+}
+
+/* O2Jam 式键音：轨道只负责输入，每颗音符携带独立音高或和弦。 */
 function tapSound(strong, lane, duration = .34, note = null) {
   if (!sfxCtx || Game.muted) return;
   const t = sfxCtx.currentTime;
   const cfg = laneCfg();
   const degree = note?.degree ?? cfg.degrees[lane != null ? lane : 0] ?? 0;
-  const base = degreeFrequency(degree);
   const length = clamp(duration, .18, 1.45);
-  playTone(base, t, length, strong ? .15 : .09, 'triangle');
-  playTone(base * 2, t, Math.min(.26, length), strong ? .035 : .022, 'sine');
-  for (const voice of note?.voicing || []) {
-    playTone(degreeFrequency(voice, -1), t, Math.min(1.1, length * 1.1), strong ? .028 : .018, 'sine');
-  }
+  const pitches = note?.pitches?.length ? [...note.pitches] : [degreeMidi(degree)];
+  for (const voice of note?.voicing || []) pitches.push(degreeMidi(voice, 48));
+  playPianoChord(pitches, t, length, strong ? .16 : .1);
 }
 function noteSoundDuration(note) {
   if (note.endAt) return note.endAt - note.hitAt + .08;
+  if (note.soundDuration) return clamp(note.soundDuration * .72, .09, .42);
   return clamp((note.beatLength || .75) * 60 / Game.bpm * .72, .09, .42);
 }
 
@@ -313,57 +387,25 @@ function missSound() {
 /* 与谱面共用 AudioContext 时钟，避免视觉音符和节拍漂移。 */
 function scheduleBackingBeat() {
   if (!Game.actx || Game.state !== 'playing') return;
-  const stepDuration = 30 / Game.bpm;
   const audioNow = Game.actx.currentTime;
   const horizon = audioNow + .12;
-  while (Game.audioStart + Game.backingStep * stepDuration < horizon) {
-    const when = Game.audioStart + Game.backingStep * stepDuration;
-    if (!Game.muted && when >= audioNow - .01) playBackingStep(when, Game.backingStep);
+  const beat = 60 / Game.bpm;
+  while (Game.backingStep < COUNT_IN_BEATS && Game.audioStart + Game.backingStep * beat < horizon) {
+    const when = Game.audioStart + Game.backingStep * beat;
+    if (!Game.muted && when >= audioNow - .01) playTone(Game.backingStep === COUNT_IN_BEATS - 1 ? 1046.5 : 783.99, when, .055, .035, 'sine');
     Game.backingStep++;
+  }
+  while (Game.autoIndex < Game.autoEvents.length) {
+    const event = Game.autoEvents[Game.autoIndex];
+    const when = Game.audioStart + event.hitAt;
+    if (when >= horizon) break;
+    if (!Game.muted && when >= audioNow - .01) playPianoChord(event.pitches, when, event.duration, event.volume || .075);
+    Game.autoIndex++;
   }
 }
 function scoreChordRoot(song, beat) {
-  return song.chords[Math.floor(beat / 4) % song.chords.length];
-}
-function backingScoreStep(step) {
-  return step - Math.round(Game.phraseStartAt * Game.bpm / 30);
-}
-function backingRootAtStep(song, step) {
-  const scoreStep = backingScoreStep(step);
-  return scoreStep >= 0 && scoreStep % 8 === 0 ? scoreChordRoot(song, scoreStep / 2) : null;
-}
-function playBackingStep(when, step) {
-  const song = currentSong();
-  const scoreStep = backingScoreStep(step);
-  const position = ((scoreStep % 8) + 8) % 8;
-  if (position === 0 || position === 4) {
-    const osc = Game.actx.createOscillator(), gain = Game.actx.createGain();
-    osc.type = 'sine'; osc.frequency.setValueAtTime(position === 0 ? 130 : 105, when);
-    osc.frequency.exponentialRampToValueAtTime(48, when + .1);
-    gain.gain.setValueAtTime(position === 0 ? .11 : .072, when);
-    gain.gain.exponentialRampToValueAtTime(.0001, when + .11);
-    osc.connect(gain); gain.connect(Game.master); osc.start(when); osc.stop(when + .12);
-  }
-  if (position === 2 || position === 6) {
-    const src = Game.actx.createBufferSource(), filter = Game.actx.createBiquadFilter(), gain = Game.actx.createGain();
-    src.buffer = getNoiseBuffer(); filter.type = 'bandpass'; filter.frequency.value = 1800;
-    gain.gain.setValueAtTime(.033, when); gain.gain.exponentialRampToValueAtTime(.0001, when + .075);
-    src.connect(filter); filter.connect(gain); gain.connect(Game.master); src.start(when); src.stop(when + .08);
-  } else if (position % 2 === 1) {
-    const src = Game.actx.createBufferSource(), filter = Game.actx.createBiquadFilter(), gain = Game.actx.createGain();
-    src.buffer = getNoiseBuffer(); filter.type = 'highpass'; filter.frequency.value = 5200;
-    gain.gain.setValueAtTime(.009, when); gain.gain.exponentialRampToValueAtTime(.0001, when + .035);
-    src.connect(filter); filter.connect(gain); gain.connect(Game.master); src.start(when); src.stop(when + .04);
-  }
-  if (position === 0) {
-    const root = backingRootAtStep(song, step);
-    if (root != null) {
-      playTone(degreeFrequency(root, -1), when, .7, .055, 'triangle');
-      for (const interval of [0, 2, 4]) {
-        playTone(degreeFrequency(root + interval, -1), when, 1.15, .014, 'sine');
-      }
-    }
-  }
+  const chordBeats = song.chordBeats || 4;
+  return song.chords[Math.floor(beat / chordBeats) % song.chords.length];
 }
 
 /* ============================================================
@@ -388,8 +430,11 @@ function buildChart(retryWord, seamless) {
   } else {
     Game.notes = Game.notes.filter((note) => !note.judged || note.holding);
   }
+  Game.autoEvents = [];
+  Game.autoIndex = 0;
 
   const song = currentSong();
+  const exact = song.exact && window.WORD_BEAT_SCORES?.[song.exact];
   Game.bpm = song.bpm;
   const beat = 60 / song.bpm;
   const conf = DIFFS[Game.difficulty];
@@ -399,35 +444,100 @@ function buildChart(retryWord, seamless) {
   const phraseNotes = [];
   const melodyNotes = [];
   const addNote = (degree, hitAt, extra = {}) => {
-    const lane = degreeToLane(degree);
+    const lane = extra.lane ?? degreeToLane(degree);
     if (phraseNotes.some((note) => note.lane === lane && Math.abs(note.hitAt - hitAt) < .001)) return null;
     const note = { lane, degree, hitAt, letter: null, judged: false, isLetter: false, ...extra };
     phraseNotes.push(note);
     return note;
   };
 
-  let cursorBeats = 0;
-  song.melody.forEach(([degree, beats, part], index) => {
-    if (degree == null) { cursorBeats += beats; return; }
-    const hitAt = phraseStart + cursorBeats * beat;
-    const holdBeats = beats >= 1.75 ? beats - .25 : 0;
-    const root = scoreChordRoot(song, cursorBeats);
-    const chordEvery = part?.texture === 'theme' ? 8 : (part?.texture === 'drive' || part?.texture === 'finale' ? 2 : 4);
-    const voicing = Math.abs(cursorBeats % chordEvery) < .001 ? [root, root + 2, root + 4] : null;
-    const main = addNote(degree, hitAt, {
-      endAt: holdBeats ? hitAt + holdBeats * beat : null,
-      beatLength: beats,
-      section: part?.name || '主题', texture: part?.texture || 'theme', voicing,
-    });
-    if (main) melodyNotes.push(main);
-    const barStart = Math.abs(cursorBeats % 4) < .001;
-    if (conf.harmony >= 1 && barStart) addNote(root, hitAt, { harmony: true, section: part?.name, texture: part?.texture });
-    if (conf.harmony >= 2 && barStart) addNote((root + 4) % 7, hitAt, { harmony: true, section: part?.name, texture: part?.texture });
-    if (conf.harmony >= 2 && beats >= 1) {
-      addNote((root + 2 + index % 2 * 2) % 7, hitAt + beat * .5, { harmony: true, section: part?.name, texture: part?.texture });
+  let cursorBeats = 0, cursorDuration = 0;
+  if (exact) {
+    const repeats = exact.repeat || 1;
+    let previousPitch = null, previousLane = Math.min(1, LANES - 1), sweep = 1;
+    const keysoundLane = (pitch) => {
+      if (previousPitch == null) { previousPitch = pitch; return previousLane; }
+      let step = pitch === previousPitch ? sweep : clamp(Math.round((pitch - previousPitch) / 2), -2, 2);
+      if (!step) step = pitch > previousPitch ? 1 : -1;
+      let lane = previousLane + step;
+      if (lane < 0 || lane >= LANES) {
+        sweep = lane < 0 ? 1 : -1;
+        lane = previousLane + sweep;
+      } else if (pitch === previousPitch) {
+        sweep *= -1;
+      }
+      previousPitch = pitch;
+      previousLane = clamp(lane, 0, LANES - 1);
+      return previousLane;
+    };
+    const sectionAt = (songBeat) => {
+      let section = exact.sections?.[0]?.[1] || '原谱';
+      for (const [at, name] of exact.sections || []) {
+        if (songBeat < at) break;
+        section = name;
+      }
+      return section;
+    };
+    for (let repeat = 0; repeat < repeats; repeat++) {
+      const baseBeat = repeat * exact.beats;
+      exact.key.forEach(([at, duration, pitches], index) => {
+        const songBeat = baseBeat + at;
+        const hitAt = phraseStart + scoreSecondsAt(song, songBeat);
+        const primary = Math.max(...pitches);
+        const lane = keysoundLane(primary);
+        const holdBeats = duration >= 1.75 ? duration - .25 : 0;
+        const note = addNote(primary, hitAt, {
+          lane, pitches, sampleId: `${song.id}:${repeat}:${index}`,
+          endAt: holdBeats ? phraseStart + scoreSecondsAt(song, songBeat + holdBeats) : null,
+          soundDuration: scoreSecondsAt(song, songBeat + duration) - scoreSecondsAt(song, songBeat),
+          beatLength: duration, sourceBeat: songBeat, bpm: scoreBpmAt(song, songBeat), section: sectionAt(songBeat), texture: 'keysound',
+        });
+        if (note) melodyNotes.push(note);
+      });
+      exact.auto.forEach(([at, duration, pitches]) => {
+        const songBeat = baseBeat + at;
+        const eventDuration = scoreSecondsAt(song, songBeat + duration) - scoreSecondsAt(song, songBeat);
+        Game.autoEvents.push({
+          hitAt: phraseStart + scoreSecondsAt(song, songBeat),
+          duration: clamp(eventDuration * .88, .1, 3.2), pitches,
+          volume: .09,
+        });
+      });
     }
-    cursorBeats += beats;
-  });
+    cursorBeats = exact.beats * repeats;
+    cursorDuration = scoreSecondsAt(song, cursorBeats);
+  } else {
+    song.melody.forEach(([degree, beats, part], index) => {
+      if (degree == null) { cursorBeats += beats; return; }
+      const hitAt = phraseStart + cursorBeats * beat;
+      const holdBeats = beats >= 1.75 ? beats - .25 : 0;
+      const root = scoreChordRoot(song, cursorBeats);
+      const chordEvery = part?.texture === 'theme' ? 8 : (part?.texture === 'drive' || part?.texture === 'finale' ? 2 : 4);
+      const voicing = Math.abs(cursorBeats % chordEvery) < .001 ? [root, root + 2, root + 4] : null;
+      const main = addNote(degree, hitAt, {
+        pitches: [degreeMidi(degree)],
+        endAt: holdBeats ? hitAt + holdBeats * beat : null,
+        beatLength: beats,
+        section: part?.name || '主题', texture: part?.texture || 'theme', voicing,
+      });
+      if (main) melodyNotes.push(main);
+      const barStart = Math.abs(cursorBeats % 4) < .001;
+      if (conf.harmony >= 1 && barStart) addNote(root, hitAt, { pitches: [degreeMidi(root, 48)], harmony: true, section: part?.name, texture: part?.texture });
+      if (conf.harmony >= 2 && barStart) addNote((root + 4) % 7, hitAt, { pitches: [degreeMidi(root + 4, 48)], harmony: true, section: part?.name, texture: part?.texture });
+      if (conf.harmony >= 2 && beats >= 1) {
+        const harmony = (root + 2 + index % 2 * 2) % 7;
+        addNote(harmony, hitAt + beat * .5, { pitches: [degreeMidi(harmony, 48)], harmony: true, section: part?.name, texture: part?.texture });
+      }
+      cursorBeats += beats;
+    });
+    cursorDuration = cursorBeats * beat;
+    for (let at = 0; at < cursorBeats; at += 1) {
+      const root = scoreChordRoot(song, at), position = Math.floor(at) % 4;
+      const arpeggio = [root, root + 4, root + 2, root + 4][position];
+      const pitches = position === 0 ? [degreeMidi(root, 36), degreeMidi(root, 48)] : [degreeMidi(arpeggio, 48)];
+      Game.autoEvents.push({ hitAt: phraseStart + at * beat, duration: beat * .74, pitches, volume: .065 });
+    }
+  }
 
   const letterStart = Game.word.progress;
   const letters = [...Game.word.en].slice(letterStart);
@@ -443,7 +553,8 @@ function buildChart(retryWord, seamless) {
 
   Game.notes.push(...phraseNotes);
   Game.notes.sort((a, b) => a.hitAt - b.hitAt);
-  Game.songEndAt = phraseStart + cursorBeats * beat + beat * .5;
+  Game.autoEvents.sort((a, b) => a.hitAt - b.hitAt);
+  Game.songEndAt = phraseStart + cursorDuration + beat * .5;
   Game.currentSection = melodyNotes[0]?.section || '主题';
 
   updateHud();
@@ -468,6 +579,7 @@ function startGame() {
   buildChart();
   Game.audioStart = Game.actx.currentTime + .45;
   Game.backingStep = 0;
+  Game.autoIndex = 0;
 }
 
 function nextChart() {
@@ -722,9 +834,13 @@ function showFeedback(text) {
 }
 function updateSection() {
   const next = Game.notes.find((note) => !note.judged && note.section);
-  if (!next || next.section === Game.currentSection) return;
+  if (!next) return;
+  const sectionChanged = next.section !== Game.currentSection;
+  const bpmChanged = next.bpm && next.bpm !== Game.bpm;
+  if (!sectionChanged && !bpmChanged) return;
   Game.currentSection = next.section;
-  showFeedback(`${currentSong().title} · ${Game.currentSection}`);
+  if (bpmChanged) Game.bpm = next.bpm;
+  if (sectionChanged) showFeedback(`${currentSong().title} · ${Game.currentSection}`);
   updateHud();
 }
 function updateHud() {
@@ -1007,7 +1123,8 @@ function render() {
         if (!n.harmony && laneW() > 44) {
           ctx.fillStyle = color === O2_WHITE ? '#17233b' : '#f8fbff';
           ctx.font = '800 9px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(SCALE_NAMES[n.degree], x + laneW() / 2, ny + nh / 2 + 2);
+          const pitch = n.pitches?.at(-1);
+          ctx.fillText(n.pitches?.length > 1 ? 'CH' : midiName(pitch ?? degreeMidi(n.degree)), x + laneW() / 2, ny + nh / 2 + 2);
         }
       } else {
         ctx.fillStyle = 'rgba(150,150,160,.3)';
@@ -1017,7 +1134,7 @@ function render() {
     if (n.voicing?.length && !n.missed) {
       ctx.fillStyle = '#67e8f9';
       ctx.font = '900 9px ui-monospace, monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText('Ⅲ', nx + nw - 5, y - (isNextLetter ? 26 : 18));
+      ctx.fillText('CH', nx + nw - 4, y - (isNextLetter ? 26 : 18));
     }
     ctx.restore();
   }
@@ -1160,35 +1277,54 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (canvas.width < wrap.clientWidth * expectedDpr - 1 || canvas.height < wrap.clientHeight * expectedDpr - 1) throw new Error('retina canvas resolution failed');
       if (SCROLL_STEPS.length !== 10 || SCROLL_STEPS[0] !== .5 || SCROLL_STEPS.at(-1) !== 3) throw new Error('scroll speed range failed');
       if (SONGS.length !== 7) throw new Error('song expansion failed');
+      const exactSongs = SONGS.filter((song) => song.exact);
+      if (exactSongs.length !== 3) throw new Error('exact score catalog missing');
       for (const song of SONGS) {
-        if (!song.id || !song.title || !song.melody.length || !song.chords.length || song.bpm < 40) throw new Error('invalid song ' + song.id);
+        if (!song.id || !song.title || song.bpm < 40 || !song.source) throw new Error('invalid song ' + song.id);
         if (song.duration < 75 || song.duration > 200 || !song.source) throw new Error('incomplete arrangement ' + song.id);
-        if (new Set(song.melody.map((event) => event[2]?.name).filter(Boolean)).size < 3) throw new Error('missing sections ' + song.id);
-        if (song.id !== 'canon') {
-          let sectionBeat = 0, sectionName = song.melody[0][2].name;
-          for (const [, beats, part] of song.melody) {
-            if (part.name !== sectionName && sectionBeat % (song.chords.length * 4) !== 0) throw new Error('section harmony cycle mismatch ' + song.id);
-            sectionName = part.name; sectionBeat += beats;
+        const exact = song.exact && window.WORD_BEAT_SCORES?.[song.exact];
+        if (exact) {
+          const validEvent = ([at, duration, pitches]) => at >= 0 && duration > 0 && pitches?.length && pitches.every(Number.isFinite);
+          if (!exact.key?.length || !exact.auto?.length || exact.key.some((event) => !validEvent(event)) || exact.auto.some((event) => !validEvent(event))) throw new Error('invalid exact score ' + song.id);
+          if (!exact.sections?.length || exact.sections.length < 3) throw new Error('missing exact sections ' + song.id);
+          const expectedKey = [], expectedAuto = [];
+          for (let repeat = 0; repeat < (exact.repeat || 1); repeat++) {
+            const base = repeat * exact.beats;
+            exact.key.forEach(([at, duration, pitches]) => expectedKey.push([base + at, duration, pitches]));
+            exact.auto.forEach(([at, duration, pitches]) => expectedAuto.push([base + at, duration, pitches]));
           }
-        }
-        if (song.melody.some(([degree, beats]) => (degree != null && (degree < 0 || degree > 6)) || beats <= 0)) throw new Error('invalid melody ' + song.id);
-        Game.songId = song.id; LANES = 7; buildChart();
-        const chartMelody = Game.notes.filter((note) => !note.harmony);
-        const melody = chartMelody.slice(0, 8).map((note) => note.degree);
-        if (Game.bpm !== song.bpm || melody.join(',') !== song.melody.slice(0, 8).map((event) => event[0]).join(',')) throw new Error('song chart mismatch ' + song.id);
-        let scoreBeat = 0;
-        const expectedOnsets = [];
-        for (const [degree, beats] of song.melody) {
-          if (degree != null) expectedOnsets.push(scoreBeat * 60 / song.bpm);
-          scoreBeat += beats;
-        }
-        if (chartMelody.length !== expectedOnsets.length || chartMelody.some((note, i) => Math.abs(note.hitAt - Game.phraseStartAt - expectedOnsets[i]) > 1e-7)) throw new Error('score timing mismatch ' + song.id);
-        if (!Game.notes.some((note) => note.voicing?.length === 3)) throw new Error('chord keysound missing ' + song.id);
-        Game.phraseStartAt = 4 * 60 / song.bpm;
-        for (let bar = 0; bar < song.chords.length; bar++) {
-          if (backingRootAtStep(song, 8 + bar * 8) !== scoreChordRoot(song, bar * 4)) throw new Error('backing count-in offset ' + song.id);
+          Game.songId = song.id; LANES = 7; buildChart();
+          const chartKey = Game.notes.filter((note) => note.sampleId);
+          if (Game.bpm !== song.bpm || chartKey.length !== expectedKey.length || Game.autoEvents.length !== expectedAuto.length) throw new Error('exact event count mismatch ' + song.id);
+          if (chartKey.some((note, i) => Math.abs(note.hitAt - Game.phraseStartAt - scoreSecondsAt(song, expectedKey[i][0])) > 1e-7 || note.pitches.join(',') !== expectedKey[i][2].join(','))) throw new Error('keysound score mismatch ' + song.id);
+          if (Game.autoEvents.some((event, i) => Math.abs(event.hitAt - Game.phraseStartAt - scoreSecondsAt(song, expectedAuto[i][0])) > 1e-7 || event.pitches.join(',') !== expectedAuto[i][2].join(','))) throw new Error('autoplay score mismatch ' + song.id);
+          const lanePitches = Array.from({ length: LANES }, () => new Set());
+          chartKey.forEach((note) => lanePitches[note.lane].add(note.pitches.at(-1)));
+          if (!lanePitches.some((pitches) => pitches.size > 1)) throw new Error('lane was incorrectly fixed to one pitch ' + song.id);
+          if (song.id === 'joy' && lanePitches.some((pitches) => !pitches.size)) throw new Error('seven-key chart distribution failed');
+        } else {
+          if (!song.melody?.length || !song.chords?.length || song.melody.some(([degree, beats]) => (degree != null && (degree < 0 || degree > 6)) || beats <= 0)) throw new Error('invalid fallback melody ' + song.id);
+          if (new Set(song.melody.map((event) => event[2]?.name).filter(Boolean)).size < 3) throw new Error('missing sections ' + song.id);
+          Game.songId = song.id; LANES = 7; buildChart();
+          const chartMelody = Game.notes.filter((note) => !note.harmony);
+          let scoreBeat = 0;
+          const expectedOnsets = [];
+          for (const [degree, beats] of song.melody) {
+            if (degree != null) expectedOnsets.push(scoreBeat * 60 / song.bpm);
+            scoreBeat += beats;
+          }
+          if (chartMelody.length !== expectedOnsets.length || chartMelody.some((note, i) => Math.abs(note.hitAt - Game.phraseStartAt - expectedOnsets[i]) > 1e-7)) throw new Error('fallback score timing mismatch ' + song.id);
+          if (!Game.notes.some((note) => note.voicing?.length === 3) || !Game.autoEvents.length) throw new Error('fallback arrangement missing ' + song.id);
         }
       }
+      const joyScore = window.WORD_BEAT_SCORES.joy, canonScore = window.WORD_BEAT_SCORES.canon, twinkleScore = window.WORD_BEAT_SCORES.twinkle;
+      if (joyScore.key.length !== 67 || joyScore.auto.length !== 62 || joyScore.key.filter((event) => event[2].length > 1).length < 50) throw new Error('Joy source score was altered');
+      const canonPitches = canonScore.key.flatMap((event) => event[2]);
+      if (canonScore.key.length !== 138 || Math.max(...canonPitches) - Math.min(...canonPitches) < 24) throw new Error('Canon source range was folded');
+      if (twinkleScore.key.length !== 362 || twinkleScore.auto.length !== 140) throw new Error('Twinkle source score was altered');
+      const twinkleSong = SONGS.find((song) => song.id === 'twinkle');
+      if (scoreBpmAt(twinkleSong, 0) !== 60 || scoreBpmAt(twinkleSong, 72) !== 68 || scoreBpmAt(twinkleSong, 124) !== 72) throw new Error('Twinkle tempo map missing');
+      if (PIANO_SAMPLE_SOURCES.length !== 3 || !PIANO_SAMPLE_SOURCES.every(([, url]) => url.includes('/salamander/'))) throw new Error('piano samples missing');
       Game.songId = 'joy';
       for (const lanes of [4, 5, 7]) {
         LANES = lanes; buildChart();
@@ -1198,10 +1334,8 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       }
       LANES = 7;
       if (LANE_COLORS().join(',') !== [O2_WHITE, O2_BLUE, O2_WHITE, O2_GOLD, O2_WHITE, O2_BLUE, O2_WHITE].join(',')) throw new Error('O2Jam key pattern failed');
-      if (LANE_NOTES().join('') !== 'CDEFGAB') throw new Error('seven-key scale mapping failed');
+      if (!LANE_NOTES().every((label) => label === 'KS')) throw new Error('keysound lane labels failed');
       Game.difficulty = 'easy'; buildChart();
-      const melody = Game.notes.filter((note) => !note.harmony).slice(0, 8).map((note) => note.degree);
-      if (melody.join(',') !== currentSong().melody.slice(0, 8).map((event) => event[0]).join(',')) throw new Error('song melody was not preserved');
       if (!Game.notes.some((note) => note.endAt > note.hitAt)) throw new Error('hold notes missing');
       const savedActx = Game.actx, savedAudioStart = Game.audioStart, savedState = Game.state;
       const holdProbe = { lane: 0, endAt: 2, holding: true };
@@ -1215,7 +1349,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (Game.flashLane[0] !== 1) throw new Error('key press feedback failed');
       Game.word.progress = 2; buildChart(true);
       if (Game.notes.filter((n) => n.isLetter).some((n) => n.index < 2)) throw new Error('retry repeated collected letters');
-      Game.word = { en: 'PLANET', zh: '行星', progress: 0 }; Game.level = 6;
+      Game.songId = 'mary'; Game.word = { en: 'PLANET', zh: '行星', progress: 0 }; Game.level = 6;
       Game.difficulty = 'easy'; buildChart(true); const easyNotes = Game.notes.length;
       Game.word.progress = 0; Game.difficulty = 'hard'; buildChart(true);
       if (Game.notes.length <= easyNotes) throw new Error('difficulty density ignored');

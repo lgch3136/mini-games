@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>英语节奏大师 · WORD BEAT</title>
-<meta name="description" content="七键古典旋律音游：完整多段编曲、谱面伴奏同步、单键和弦键音与英语拼词。">
-<link rel="stylesheet" href="style.css?v=20260825g">
+<meta name="description" content="七键古典旋律音游：公开 MIDI 逐事件谱面、独立键音与自动伴奏轨。">
+<link rel="stylesheet" href="style.css?v=20260825i">
 </head>
 <body>
 <div id="game-wrap">
@@ -37,15 +37,15 @@
       <img class="menu-cover" src="assets/cover.png" alt="七轨霓虹音乐舞台">
 
       <h1>英语节奏大师<small>WORD BEAT</small></h1>
-      <p class="sub">七首完整多段编曲，《欢乐颂》《卡农》恢复公开谱速度。D/K 固定蓝键，S/F/J/L 固定白键；Ⅲ 单键触发完整三和弦。</p>
-      <div class="scale-map" aria-label="七键音阶映射">
-        <span class="white"><b>S</b><small>C</small></span><span class="blue"><b>D</b><small>D</small></span>
-        <span class="white"><b>F</b><small>E</small></span><span class="gold"><b>空格</b><small>F</small></span>
-        <span class="white"><b>J</b><small>G</small></span><span class="blue"><b>K</b><small>A</small></span>
-        <span class="white"><b>L</b><small>B</small></span>
+      <p class="sub">公开 MIDI 逐事件制谱：7 键只负责输入，每颗音符触发原谱音高或和弦，自动轨补全伴奏。D/K 固定蓝键，S/F/J/L 固定白键。</p>
+      <div class="scale-map" aria-label="七条键音输入轨">
+        <span class="white"><b>S</b><small>KS</small></span><span class="blue"><b>D</b><small>KS</small></span>
+        <span class="white"><b>F</b><small>KS</small></span><span class="gold"><b>空格</b><small>KS</small></span>
+        <span class="white"><b>J</b><small>KS</small></span><span class="blue"><b>K</b><small>KS</small></span>
+        <span class="white"><b>L</b><small>KS</small></span>
       </div>
       <div class="keys">
-        <span>键盘 / 多点触控</span><span>15 连击 +1 💊（上限 5）</span><span>P 暂停</span><span>M 静音</span>
+        <span>命中触发主旋律 · MISS 会漏音</span><span>15 连击 +1 💊（上限 5）</span><span>P 暂停</span><span>M 静音</span>
       </div>
       <div class="judge-guide">
         <span class="j p">PERFECT ±45ms</span>
@@ -65,13 +65,14 @@
         </select>
         <span id="song-detail">贝多芬 · 100 BPM · 1:58</span>
         <a id="score-source" href="https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=528" target="_blank" rel="noopener">Mutopia · Public Domain ↗</a>
+        <a class="instrument-source" href="https://sfzinstruments.github.io/pianos/salamander/" target="_blank" rel="noopener">Salamander Piano · CC BY 3.0 ↗</a>
       </div>
       <div class="opt-row">
         <span class="opt-label">键数</span>
         <div class="seg">
           <button class="seg-btn" data-keys="4">4K</button>
           <button class="seg-btn" data-keys="5">5K</button>
-          <button class="seg-btn selected" data-keys="7">7K 完整音阶</button>
+          <button class="seg-btn selected" data-keys="7">7K 完整谱面</button>
         </div>
       </div>
       <div class="opt-row">
@@ -84,9 +85,9 @@
         <span class="opt-hint">只改变读谱距离，不改变歌曲或判定</span>
       </div>
       <div class="diff-row">
-        <button class="difficulty" data-difficulty="easy">初级 · 主旋律</button>
-        <button class="difficulty selected" data-difficulty="medium">中级 · 和弦</button>
-        <button class="difficulty" data-difficulty="hard">高级 · 对旋</button>
+        <button class="difficulty" data-difficulty="easy">初级 · 宽判定</button>
+        <button class="difficulty selected" data-difficulty="medium">中级 · 标准</button>
+        <button class="difficulty" data-difficulty="hard">高级 · 严判定</button>
       </div>
       <button class="btn-main" id="start-btn">开始演奏</button>
     </div>
@@ -117,6 +118,7 @@
 </div>
 
 <script src="../shared/vocabulary.js"></script>
-<script src="game.js?v=20260825g"></script>
+<script src="score-data.js?v=20260825i"></script>
+<script src="game.js?v=20260825i"></script>
 </body>
 </html>
