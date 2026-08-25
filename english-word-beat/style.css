@@ -144,7 +144,9 @@ select {
 }
 select:focus-visible { outline: 3px solid #86c8ff; outline-offset: 2px; }
 .song-row { flex-wrap: wrap; }
-#song-detail, .opt-hint { color: #8ea5c2; font-size: 10px; }
+#song-detail, .opt-hint, #score-source { color: #8ea5c2; font-size: 10px; }
+#score-source { color: #79c9ff; text-decoration: none; border-bottom: 1px solid rgba(121,201,255,.35); }
+#score-source:hover { color: #d8f1ff; border-color: currentColor; }
 .scale-map {
   width: min(460px, 100%); margin: 7px auto 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
 }
@@ -174,7 +176,7 @@ select:focus-visible { outline: 3px solid #86c8ff; outline-offset: 2px; }
   .opt-label { width: auto; }
   .scale-map { gap: 3px; }
   .scale-map b { font-size: 11px; }
-  #song-detail, .opt-hint { flex-basis: 100%; }
+  #song-detail, .opt-hint, #score-source { flex-basis: 100%; }
 }
 
 @media (max-width: 600px) and (orientation: portrait) {
@@ -203,6 +205,7 @@ select:focus-visible { outline: 3px solid #86c8ff; outline-offset: 2px; }
 }
 
 @media (max-height: 480px) and (orientation: landscape) {
+  #game-wrap { width: min(96vw, calc(92dvh * 1.45)); height: 92dvh; aspect-ratio: auto; }
   #menu .menu-cover, #menu h1, #menu .sub, #menu .keys { display: none; }
   #menu .panel { padding: 8px 10px 10px; }
   #menu .panel::before {
@@ -214,6 +217,7 @@ select:focus-visible { outline: 3px solid #86c8ff; outline-offset: 2px; }
   #menu .opt-row { margin-top: 4px; min-height: 27px; }
   #menu .diff-row { margin-top: 4px; }
   #menu .btn-main { margin-top: 4px; padding: 8px 34px; font-size: 14px; }
+  #menu #score-source { display: none; }
   .top { top: 4px; left: 5px; right: 5px; gap: 3px; }
   .chips { gap: 2px; font-size: 9px; }
   .chip { padding: 2px 5px; white-space: nowrap; }

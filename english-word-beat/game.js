@@ -79,71 +79,127 @@ function degreeToLane(degree) {
 }
 
 const CANON_ROOTS = [0, 4, 5, 2, 3, 0, 3, 4];
+const JOY_THEME = [
+  [2,1],[2,1],[3,1],[4,1],[4,1],[3,1],[2,1],[1,1],[0,1],[0,1],[1,1],[2,1],[2,1.5],[1,.5],[1,2],
+  [2,1],[2,1],[3,1],[4,1],[4,1],[3,1],[2,1],[1,1],[0,1],[0,1],[1,1],[2,1],[1,1.5],[0,.5],[0,2],
+  [1,1],[1,1],[2,1],[0,1],[1,1],[2,.5],[3,.5],[2,1],[0,1],[1,1],[2,.5],[3,.5],[2,1],[1,1],[0,1],[1,1],[4,2],
+  [2,1],[2,1],[3,1],[4,1],[4,1],[3,1],[2,1],[1,1],[0,1],[0,1],[1,1],[2,1],[1,1.5],[0,.5],[0,2],
+];
+// Mutopia Canon in D (CC BY 3.0), transposed to C and preserved at source-note resolution.
+const CANON_FULL = [
+  [0,2],[6,2],[5,2],[4,2],[3,2],[2,2],[3,2],[5,2],[2,2],[4,2],[0,2],[2,2],
+  [5,2],[0,2],[5,2],[6,2],[2,2],[1,2],[0,2],[6,2],[5,2],[4,2],[5,2],[6,1],
+  [6,1],[0,.5],[6,.5],[0,.5],[0,.5],[6,.5],[4,.5],[1,.5],[2,.5],[0,.5],[0,.5],[6,.5],
+  [5,.5],[6,.5],[2,.5],[4,.5],[5,.5],[3,.5],[2,.5],[1,.5],[3,.5],[2,.5],[1,.5],[0,.5],
+  [6,.5],[5,.5],[4,.5],[3,.5],[2,.5],[1,.5],[3,.5],[2,.5],[1,.5],[0,1],[null,7],[6,2],
+  [5,2],[4,2],[3,2],[2,2],[3,2],[2,2],[4,2],[1,1],[1,1],[0,1],[0,1],[6,1],
+  [6,1],[5,1],[5,1],[4,1],[4,1],[3,1],[3,1],[4,1],[4,1],[5,1],[5,1],[1,2],
+  [0,2],[6,2],[5,2],[4,2],[3,2],[4,2],[2,2],[3,1.5],[3,.5],[3,.5],[4,.5],[3,.5],
+  [2,.5],[1,1.5],[1,.5],[1,.5],[2,.5],[1,.5],[0,.5],[6,1.5],[4,1.5],[3,2],[6,.5],[5,.5],
+  [4,1],[6,3],[5,3],[2,3],[6,1],[5,1],[4,1],[5,1],[1,2],[5,2],[4,1],[4,1],
+  [5,1],[2,1],[1,1],[3,1],[0,1],[2,1],[6,1],[1,1],[5,1],[0,1],[4,1],[6,1],
+  [3,1],[5,1],[6,1],[4,1],[5,1],[2,1],[3,4],
+];
+const TWINKLE_THEME = [
+  [0,1],[0,1],[4,1],[4,1],[5,1],[5,1],[4,2],[3,1],[3,1],[2,1],[2,1],[1,1],[1,1],[0,2],
+  [4,1],[4,1],[3,1],[3,1],[2,1],[2,1],[1,2],[4,1],[4,1],[3,1],[3,1],[2,1],[2,1],[1,2],
+  [0,.5],[2,.5],[4,1],[0,.5],[2,.5],[4,1],[5,.5],[4,.5],[3,.5],[2,.5],[1,1],[0,1],
+  [3,.5],[5,.5],[3,.5],[2,.5],[2,.5],[4,.5],[2,.5],[1,.5],[1,.5],[3,.5],[1,.5],[0,.5],[0,2],
+];
+const MARY_THEME = [
+  [2,1],[1,1],[0,1],[1,1],[2,1],[2,1],[2,2],[1,1],[1,1],[1,2],[2,1],[4,1],[4,2],
+  [2,1],[1,1],[0,1],[1,1],[2,1],[2,1],[2,1],[2,1],[1,1],[1,1],[2,1],[1,1],[0,4],
+];
+const FRERE_THEME = [
+  [0,1],[1,1],[2,1],[0,1],[0,1],[1,1],[2,1],[0,1],[2,1],[3,1],[4,2],[2,1],[3,1],[4,2],
+  [4,.5],[5,.5],[4,.5],[3,.5],[2,1],[0,1],[4,.5],[5,.5],[4,.5],[3,.5],[2,1],[0,1],[0,1],[4,1],[0,2],[0,1],[4,1],[0,2],
+];
+const JINGLE_THEME = [
+  [2,1],[2,1],[2,2],[2,1],[2,1],[2,2],[2,1],[4,1],[0,1],[1,1],[2,4],
+  [3,1],[3,1],[3,1],[3,1],[3,1],[2,1],[2,1],[2,1],[2,1],[1,1],[1,1],[2,1],[1,2],[4,2],
+];
+const LONDON_THEME = [
+  [4,1],[5,1],[4,1],[3,1],[2,1],[3,1],[4,2],[1,1],[2,1],[3,2],[2,1],[3,1],[4,2],
+  [4,1],[5,1],[4,1],[3,1],[2,1],[3,1],[4,2],[1,1],[4,1],[2,1],[0,1],[0,4],
+];
+
+function varyPhrase(notes, texture) {
+  return notes.flatMap(([degree, beats]) => {
+    if (degree == null) return [[null, beats]];
+    if (texture === 'turn' && beats >= 2) {
+      const neighbor = degree === 6 ? 5 : degree + 1;
+      return [[degree, beats * .25], [neighbor, beats * .25], [degree, beats * .5]];
+    }
+    if ((texture === 'drive' || texture === 'finale') && beats >= 1) return [[degree, beats * .5], [degree, beats * .5]];
+    if (texture === 'pulse' && beats >= 1.5) return [[degree, beats * .5], [degree, beats * .5]];
+    return [[degree, beats]];
+  });
+}
+const tagSection = (name, texture, notes) => notes.map(([degree, beats]) => [degree, beats, { name, texture }]);
+const scoreSection = (name, texture, notes) => tagSection(name, texture, varyPhrase(notes, texture));
+
 const SONGS = [
   {
     id: 'joy', title: '欢乐颂', composer: '贝多芬', bpm: 118, key: 'C Major',
-    chords: [0, 4, 0, 4, 3, 0, 4, 0],
+    chords: [0, 4, 0, 4, 3, 0, 4, 0], source: 'Mutopia · Public Domain',
+    sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=528',
     melody: [
-      [2,1],[2,1],[3,1],[4,1],[4,1],[3,1],[2,1],[1,1],[0,1],[0,1],[1,1],[2,1],[2,1.5],[1,.5],[1,2],
-      [2,1],[2,1],[3,1],[4,1],[4,1],[3,1],[2,1],[1,1],[0,1],[0,1],[1,1],[2,1],[1,1.5],[0,.5],[0,2],
-      [1,1],[1,1],[2,1],[0,1],[1,1],[2,.5],[3,.5],[2,1],[0,1],[1,1],[2,.5],[3,.5],[2,1],[1,1],[0,1],[1,1],[4,2],
-      [2,1],[2,1],[3,1],[4,1],[4,1],[3,1],[2,1],[1,1],[0,1],[0,1],[1,1],[2,1],[1,1.5],[0,.5],[0,2],
+      ...scoreSection('主题呈示', 'theme', JOY_THEME),
+      ...scoreSection('和声变奏', 'pulse', JOY_THEME),
+      ...scoreSection('终章再现', 'finale', JOY_THEME),
     ],
   },
   {
-    id: 'canon', title: '卡农进行曲', composer: '帕赫贝尔主题', bpm: 132, key: 'C Major',
-    chords: CANON_ROOTS,
-    melody: CANON_ROOTS.flatMap((root, bar) =>
-      [0,2,4,2,0,2,4,2].map((interval, step) => [
-        (root + interval + ((bar + step) % 7 === 0 ? 1 : 0)) % 7, .5,
-      ])),
+    id: 'canon', title: '卡农进行曲', composer: '帕赫贝尔', bpm: 132, key: 'C Major',
+    chords: CANON_ROOTS, source: 'Mutopia · CC BY 3.0',
+    sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1700',
+    melody: [
+      ...tagSection('主题呈示', 'theme', CANON_FULL.slice(0, 24)),
+      ...tagSection('八分音符变奏', 'pulse', CANON_FULL.slice(24, 59)),
+      ...tagSection('二声部推进', 'harmony', CANON_FULL.slice(59, 94)),
+      ...tagSection('快速模进', 'drive', CANON_FULL.slice(94, 118)),
+      ...tagSection('高潮与尾声', 'finale', CANON_FULL.slice(118)),
+    ],
   },
   {
-    id: 'twinkle', title: '小星星变奏', composer: '传统旋律', bpm: 126, key: 'C Major',
-    chords: [0,3,0,4,3,0,4,0],
+    id: 'twinkle', title: '小星星变奏', composer: '莫扎特主题', bpm: 126, key: 'C Major',
+    chords: [0,3,0,4,3,0,4,0], source: 'Mutopia · Public Domain',
+    sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=2236',
     melody: [
-      [0,1],[0,1],[4,1],[4,1],[5,1],[5,1],[4,2],
-      [3,1],[3,1],[2,1],[2,1],[1,1],[1,1],[0,2],
-      [4,1],[4,1],[3,1],[3,1],[2,1],[2,1],[1,2],
-      [4,1],[4,1],[3,1],[3,1],[2,1],[2,1],[1,2],
-      [0,.5],[2,.5],[4,1],[0,.5],[2,.5],[4,1],[5,.5],[4,.5],[3,.5],[2,.5],[1,1],[0,1],
-      [3,.5],[5,.5],[3,.5],[2,.5],[2,.5],[4,.5],[2,.5],[1,.5],[1,.5],[3,.5],[1,.5],[0,.5],[0,2],
+      ...scoreSection('原始主题', 'theme', TWINKLE_THEME),
+      ...scoreSection('分解和弦', 'pulse', TWINKLE_THEME),
+      ...scoreSection('装饰音变奏', 'turn', TWINKLE_THEME),
+      ...scoreSection('快速终章', 'finale', TWINKLE_THEME),
     ],
   },
   {
     id: 'mary', title: '玛丽有只小羊羔', composer: '传统童谣', bpm: 116, key: 'C Major',
-    chords: [0, 4, 0, 4, 0, 3, 4, 0],
-    melody: [
-      [2,1],[1,1],[0,1],[1,1],[2,1],[2,1],[2,2],[1,1],[1,1],[1,2],[2,1],[4,1],[4,2],
-      [2,1],[1,1],[0,1],[1,1],[2,1],[2,1],[2,1],[2,1],[1,1],[1,1],[2,1],[1,1],[0,4],
-    ],
+    chords: [0,4,0,4,0,3,4,0], source: '传统旋律 · Public Domain',
+    melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['原始主题','分解变奏','装饰变奏','节奏推进','终章再现'][i], texture, MARY_THEME)),
   },
   {
     id: 'frere', title: '两只老虎', composer: '法国传统旋律', bpm: 124, key: 'C Major',
-    chords: [0, 0, 4, 4, 0, 0, 4, 0],
-    melody: [
-      [0,1],[1,1],[2,1],[0,1],[0,1],[1,1],[2,1],[0,1],[2,1],[3,1],[4,2],[2,1],[3,1],[4,2],
-      [4,.5],[5,.5],[4,.5],[3,.5],[2,1],[0,1],[4,.5],[5,.5],[4,.5],[3,.5],[2,1],[0,1],
-      [0,1],[4,1],[0,2],[0,1],[4,1],[0,2],
-    ],
+    chords: [0,0,4,4,0,0,4,0], source: '传统旋律 · Public Domain',
+    melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['轮唱主题','分解变奏','装饰变奏','节奏推进','双声部终章'][i], texture, FRERE_THEME)),
   },
   {
     id: 'jingle', title: '铃儿响叮当', composer: '詹姆斯·皮尔庞特', bpm: 128, key: 'C Major',
-    chords: [0, 0, 0, 4, 3, 0, 4, 4],
-    melody: [
-      [2,1],[2,1],[2,2],[2,1],[2,1],[2,2],[2,1],[4,1],[0,1],[1,1],[2,4],
-      [3,1],[3,1],[3,1],[3,1],[3,1],[2,1],[2,1],[2,1],[2,1],[1,1],[1,1],[2,1],[1,2],[4,2],
-    ],
+    chords: [0,0,0,4,3,0,4,4], source: '1857 原作 · Public Domain',
+    melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['主题呈示','铃声变奏','装饰变奏','节奏推进','节日终章'][i], texture, JINGLE_THEME)),
   },
   {
     id: 'london', title: '伦敦桥', composer: '英国传统童谣', bpm: 122, key: 'C Major',
-    chords: [0, 3, 4, 0, 0, 3, 4, 0],
-    melody: [
-      [4,1],[5,1],[4,1],[3,1],[2,1],[3,1],[4,2],[1,1],[2,1],[3,2],[2,1],[3,1],[4,2],
-      [4,1],[5,1],[4,1],[3,1],[2,1],[3,1],[4,2],[1,1],[4,1],[2,1],[0,1],[0,4],
-    ],
+    chords: [0,3,4,0,0,3,4,0], source: '传统旋律 · Public Domain',
+    melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['主题呈示','分解变奏','装饰变奏','节奏推进','终章再现'][i], texture, LONDON_THEME)),
   },
 ];
+for (const song of SONGS) {
+  song.beats = song.melody.reduce((sum, [, beats]) => sum + beats, 0);
+  song.duration = Math.round((song.beats + 4) * 60 / song.bpm);
+}
+function formatDuration(seconds) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
 const currentSong = () => SONGS.find((song) => song.id === Game.songId) || SONGS[0];
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -161,7 +217,7 @@ function wordBank() {
 const Game = {
   state: 'menu',
   difficulty: 'medium',
-  keyMode: 7, scrollMul: 1.25, songId: 'joy', section: 0,
+  keyMode: 7, scrollMul: 1.25, songId: 'joy', section: 0, currentSection: '',
   score: 0, lives: 100,
   capsules: 0,           // 每 15 连击 +1；把一次 MISS 转成 GOOD
   combo: 0, maxCombo: 0,
@@ -213,16 +269,19 @@ function playTone(freq, when, duration, volume, type = 'sine') {
   osc.start(when); osc.stop(when + duration + .02);
 }
 
-/* 七轨就是 C-D-E-F-G-A-B；判定只改变力度，不再把音高弹歪。 */
-function tapSound(strong, lane, duration = .34) {
+/* O2Jam 式键音：一个谱面音符可同时触发旋律与和弦音色。 */
+function tapSound(strong, lane, duration = .34, note = null) {
   if (!sfxCtx || Game.muted) return;
   const t = sfxCtx.currentTime;
   const cfg = laneCfg();
-  const degree = cfg.degrees[lane != null ? lane : 0] ?? 0;
+  const degree = note?.degree ?? cfg.degrees[lane != null ? lane : 0] ?? 0;
   const base = degreeFrequency(degree);
   const length = clamp(duration, .18, 1.45);
   playTone(base, t, length, strong ? .15 : .09, 'triangle');
   playTone(base * 2, t, Math.min(.26, length), strong ? .035 : .022, 'sine');
+  for (const voice of note?.voicing || []) {
+    playTone(degreeFrequency(voice, -1), t, Math.min(1.1, length * 1.1), strong ? .028 : .018, 'sine');
+  }
 }
 
 function getNoiseBuffer() {
@@ -330,26 +389,34 @@ function buildChart(retryWord, seamless) {
   };
 
   let cursorBeats = 0;
-  song.melody.forEach(([degree, beats], index) => {
+  song.melody.forEach(([degree, beats, part], index) => {
+    if (degree == null) { cursorBeats += beats; return; }
     const hitAt = phraseStart + cursorBeats * beat;
     const holdBeats = beats >= 1.75 ? beats - .25 : 0;
-    const main = addNote(degree, hitAt, { endAt: holdBeats ? hitAt + holdBeats * beat : null });
-    if (main) melodyNotes.push(main);
     const root = song.chords[Math.floor(cursorBeats / 4) % song.chords.length];
+    const chordEvery = part?.texture === 'theme' ? 8 : (part?.texture === 'drive' || part?.texture === 'finale' ? 2 : 4);
+    const voicing = Math.abs(cursorBeats % chordEvery) < .001 ? [root, root + 2, root + 4] : null;
+    const main = addNote(degree, hitAt, {
+      endAt: holdBeats ? hitAt + holdBeats * beat : null,
+      section: part?.name || '主题', texture: part?.texture || 'theme', voicing,
+    });
+    if (main) melodyNotes.push(main);
     const barStart = Math.abs(cursorBeats % 4) < .001;
-    if (conf.harmony >= 1 && barStart) addNote(root, hitAt, { harmony: true });
-    if (conf.harmony >= 2 && barStart) addNote((root + 4) % 7, hitAt, { harmony: true });
+    if (conf.harmony >= 1 && barStart) addNote(root, hitAt, { harmony: true, section: part?.name, texture: part?.texture });
+    if (conf.harmony >= 2 && barStart) addNote((root + 4) % 7, hitAt, { harmony: true, section: part?.name, texture: part?.texture });
     if (conf.harmony >= 2 && beats >= 1) {
-      addNote((root + 2 + index % 2 * 2) % 7, hitAt + beat * .5, { harmony: true });
+      addNote((root + 2 + index % 2 * 2) % 7, hitAt + beat * .5, { harmony: true, section: part?.name, texture: part?.texture });
     }
     cursorBeats += beats;
   });
 
   const letterStart = Game.word.progress;
   const letters = [...Game.word.en].slice(letterStart);
+  const earlyMelody = melodyNotes.filter((note) => note.hitAt <= phraseStart + beat * 32);
+  const letterNotes = earlyMelody.length >= letters.length ? earlyMelody : melodyNotes;
   letters.forEach((letter, offset) => {
-    const slot = Math.min(melodyNotes.length - 1, Math.floor((offset + 1) * melodyNotes.length / (letters.length + 1)));
-    const note = melodyNotes[slot];
+    const slot = Math.min(letterNotes.length - 1, Math.floor((offset + 1) * letterNotes.length / (letters.length + 1)));
+    const note = letterNotes[slot];
     note.letter = letter;
     note.index = letterStart + offset;
     note.isLetter = true;
@@ -358,9 +425,10 @@ function buildChart(retryWord, seamless) {
   Game.notes.push(...phraseNotes);
   Game.notes.sort((a, b) => a.hitAt - b.hitAt);
   Game.songEndAt = phraseStart + cursorBeats * beat + beat * .5;
+  Game.currentSection = melodyNotes[0]?.section || '主题';
 
   updateHud();
-  showFeedback(`${song.title} · ${song.bpm} BPM · ${safe(Game.word.en)} (${safe(Game.word.zh)})`);
+  showFeedback(`${song.title} · ${formatDuration(song.duration)} · ${safe(Game.word.en)} (${safe(Game.word.zh)})`);
 }
 
 function startGame() {
@@ -370,7 +438,7 @@ function startGame() {
   Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0;
   Game.capsules = 0;
   Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
-  Game.level = 1; Game.wordsDone = 0; Game.time = 0; Game.section = 0;
+  Game.level = 1; Game.wordsDone = 0; Game.time = 0; Game.section = 0; Game.currentSection = '';
   Game.flashLane.fill(0); Game.heldLane.fill(0); Game.judgement = null;
   Game.activeHolds.fill(null);
   Game.state = 'playing';
@@ -455,7 +523,7 @@ function judgeHit(lane) {
     best.holding = true;
     Game.activeHolds[lane] = best;
   }
-  tapSound(verdict !== 'GOOD', lane, best.endAt ? best.endAt - best.hitAt + .1 : .34);
+  tapSound(verdict !== 'GOOD', lane, best.endAt ? best.endAt - best.hitAt + .1 : .34, best);
   if (best.isLetter && best.index === Game.word.progress) {
     Game.word.progress++;
     Game.score += 80;
@@ -525,10 +593,10 @@ function scanMisses() {
       Game.judgement = { text: 'MISS', color: '#ff6688', until: Game.time + .42 };
       missSound();
       if (Game.lives <= 0) { gameOver(); return; }
-    }
+    } else break;
   }
   if (changed) updateHud();
-  if (Game.notes.length > 240) {
+  if (changed && Game.notes.length > 240) {
     Game.notes = Game.notes.filter((n) => !n.judged || n.hitAt > t - 2);
   }
   const remaining = Game.notes.some((n) => !n.judged);
@@ -633,6 +701,13 @@ function showFeedback(text) {
   el.textContent = safe(text);
   el.classList.add('show');
 }
+function updateSection() {
+  const next = Game.notes.find((note) => !note.judged && note.section);
+  if (!next || next.section === Game.currentSection) return;
+  Game.currentSection = next.section;
+  showFeedback(`${currentSong().title} · ${Game.currentSection}`);
+  updateHud();
+}
 function updateHud() {
   const song = currentSong();
   $id('score').textContent = safe(Game.score, 0);
@@ -643,7 +718,7 @@ function updateHud() {
   $id('life-bar').style.width = clamp(Game.lives, 0, 100) + '%';
   const w = Game.word;
   if (w && w.en) {
-    $id('wb-kind').textContent = `${song.title} · ${song.composer}`;
+    $id('wb-kind').textContent = `${song.title} · ${Game.currentSection || song.composer}`;
     $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
       i < w.progress ? `<span class="got">${ch}</span>` : (i === w.progress ? `<span class="next">${ch}</span>` : '_')
     ).join('');
@@ -856,7 +931,7 @@ function render() {
     const dt = n.hitAt - t;
     if (dt < -.2 && !n.holding) continue;
     const y = n.holding ? HIT_Y : HIT_Y - dt * scrollSpeed();
-    if (y > H + 30) continue;
+    if (y < 15 || y > H + 30) continue;
     const x = laneX(n.lane);
     const isNextLetter = n.isLetter && n.index === Game.word.progress;
     const color = LANE_COLORS()[n.lane];
@@ -919,6 +994,11 @@ function render() {
         ctx.fillStyle = 'rgba(150,150,160,.3)';
         ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.fill();
       }
+    }
+    if (n.voicing?.length && !n.missed) {
+      ctx.fillStyle = '#67e8f9';
+      ctx.font = '900 9px ui-monospace, monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText('Ⅲ', nx + nw - 5, y - (isNextLetter ? 26 : 18));
     }
     ctx.restore();
   }
@@ -986,11 +1066,19 @@ document.querySelectorAll('.seg-btn[data-keys]').forEach((b) => b.addEventListen
   LANES = Game.keyMode;
 }));
 $id('speed-select').addEventListener('change', (event) => { Game.scrollMul = Number(event.target.value); });
+function updateSongMenu() {
+  const song = currentSong();
+  $id('song-detail').textContent = `${song.composer} · ${song.bpm} BPM · ${formatDuration(song.duration)}`;
+  const source = $id('score-source');
+  source.textContent = `${song.source}${song.sourceUrl ? ' ↗' : ''}`;
+  if (song.sourceUrl) source.href = song.sourceUrl;
+  else source.removeAttribute('href');
+}
 $id('song-select').addEventListener('change', (event) => {
   Game.songId = event.target.value;
-  const song = currentSong();
-  $id('song-detail').textContent = `${song.composer} · ${song.bpm} BPM · ${song.key}`;
+  updateSongMenu();
 });
+updateSongMenu();
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
@@ -1019,6 +1107,7 @@ function frame(nowMs) {
     scheduleBackingBeat();
     updateHolds();
     scanMisses();
+    updateSection();
     for (let lane = 0; lane < Game.flashLane.length; lane++) Game.flashLane[lane] = Math.max(0, Game.flashLane[lane] - dt * 7.5);
     Game.bgPulse = Math.max(0, Game.bgPulse - dt * .72);
     for (let i = Game.particles.length - 1; i >= 0; i--) {
@@ -1054,10 +1143,13 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (SONGS.length !== 7) throw new Error('song expansion failed');
       for (const song of SONGS) {
         if (!song.id || !song.title || !song.melody.length || !song.chords.length || song.bpm < 90) throw new Error('invalid song ' + song.id);
-        if (song.melody.some(([degree, beats]) => degree < 0 || degree > 6 || beats <= 0)) throw new Error('invalid melody ' + song.id);
+        if (song.duration < 75 || song.duration > 110 || !song.source) throw new Error('incomplete arrangement ' + song.id);
+        if (new Set(song.melody.map((event) => event[2]?.name).filter(Boolean)).size < 3) throw new Error('missing sections ' + song.id);
+        if (song.melody.some(([degree, beats]) => (degree != null && (degree < 0 || degree > 6)) || beats <= 0)) throw new Error('invalid melody ' + song.id);
         Game.songId = song.id; LANES = 7; buildChart();
         const melody = Game.notes.filter((note) => !note.harmony).slice(0, 8).map((note) => note.degree);
         if (Game.bpm !== song.bpm || melody.join(',') !== song.melody.slice(0, 8).map((event) => event[0]).join(',')) throw new Error('song chart mismatch ' + song.id);
+        if (!Game.notes.some((note) => note.voicing?.length === 3)) throw new Error('chord keysound missing ' + song.id);
       }
       Game.songId = 'joy';
       for (const lanes of [4, 5, 7]) {
