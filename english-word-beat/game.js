@@ -25,6 +25,7 @@ let W = 560, H = 640;
 const TAU = Math.PI * 2;
 const HIT_Y = 520;
 const NOTE_SPEED_BASE = 300;
+const COUNT_IN_BEATS = 4;
 
 // 判定只由难度决定；视觉滚速不能偷偷改变判定宽度。
 const JUDGE = { perfect: .045, great: .09, good: .14 };
@@ -140,7 +141,7 @@ const scoreSection = (name, texture, notes) => tagSection(name, texture, varyPhr
 
 const SONGS = [
   {
-    id: 'joy', title: '欢乐颂', composer: '贝多芬', bpm: 118, key: 'C Major',
+    id: 'joy', title: '欢乐颂', composer: '贝多芬', bpm: 100, key: 'C Major',
     chords: [0, 4, 0, 4, 3, 0, 4, 0], source: 'Mutopia · Public Domain',
     sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=528',
     melody: [
@@ -150,7 +151,7 @@ const SONGS = [
     ],
   },
   {
-    id: 'canon', title: '卡农进行曲', composer: '帕赫贝尔', bpm: 132, key: 'C Major',
+    id: 'canon', title: '卡农进行曲', composer: '帕赫贝尔', bpm: 60, key: 'C Major',
     chords: CANON_ROOTS, source: 'Mutopia · CC BY 3.0',
     sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=1700',
     melody: [
@@ -162,8 +163,8 @@ const SONGS = [
     ],
   },
   {
-    id: 'twinkle', title: '小星星变奏', composer: '莫扎特主题', bpm: 126, key: 'C Major',
-    chords: [0,3,0,4,3,0,4,0], source: 'Mutopia · Public Domain',
+    id: 'twinkle', title: '小星星变奏', composer: '莫扎特主题', bpm: 120, key: 'C Major',
+    chords: [0,3,0,4,3,0,4,0,0,3,4,0], source: 'Mutopia · Public Domain',
     sourceUrl: 'https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=2236',
     melody: [
       ...scoreSection('原始主题', 'theme', TWINKLE_THEME),
@@ -283,6 +284,10 @@ function tapSound(strong, lane, duration = .34, note = null) {
     playTone(degreeFrequency(voice, -1), t, Math.min(1.1, length * 1.1), strong ? .028 : .018, 'sine');
   }
 }
+function noteSoundDuration(note) {
+  if (note.endAt) return note.endAt - note.hitAt + .08;
+  return clamp((note.beatLength || .75) * 60 / Game.bpm * .72, .09, .42);
+}
 
 function getNoiseBuffer() {
   if (noiseBuf) return noiseBuf;
@@ -317,9 +322,20 @@ function scheduleBackingBeat() {
     Game.backingStep++;
   }
 }
+function scoreChordRoot(song, beat) {
+  return song.chords[Math.floor(beat / 4) % song.chords.length];
+}
+function backingScoreStep(step) {
+  return step - Math.round(Game.phraseStartAt * Game.bpm / 30);
+}
+function backingRootAtStep(song, step) {
+  const scoreStep = backingScoreStep(step);
+  return scoreStep >= 0 && scoreStep % 8 === 0 ? scoreChordRoot(song, scoreStep / 2) : null;
+}
 function playBackingStep(when, step) {
   const song = currentSong();
-  const position = step % 8;
+  const scoreStep = backingScoreStep(step);
+  const position = ((scoreStep % 8) + 8) % 8;
   if (position === 0 || position === 4) {
     const osc = Game.actx.createOscillator(), gain = Game.actx.createGain();
     osc.type = 'sine'; osc.frequency.setValueAtTime(position === 0 ? 130 : 105, when);
@@ -340,11 +356,12 @@ function playBackingStep(when, step) {
     src.connect(filter); filter.connect(gain); gain.connect(Game.master); src.start(when); src.stop(when + .04);
   }
   if (position === 0) {
-    const bar = Math.floor(step / 8);
-    const root = song.chords[bar % song.chords.length];
-    playTone(degreeFrequency(root, -1), when, .7, .055, 'triangle');
-    for (const interval of [0, 2, 4]) {
-      playTone(degreeFrequency(root + interval, -1), when, 1.15, .014, 'sine');
+    const root = backingRootAtStep(song, step);
+    if (root != null) {
+      playTone(degreeFrequency(root, -1), when, .7, .055, 'triangle');
+      for (const interval of [0, 2, 4]) {
+        playTone(degreeFrequency(root + interval, -1), when, 1.15, .014, 'sine');
+      }
     }
   }
 }
@@ -376,7 +393,8 @@ function buildChart(retryWord, seamless) {
   Game.bpm = song.bpm;
   const beat = 60 / song.bpm;
   const conf = DIFFS[Game.difficulty];
-  const phraseStart = seamless ? now() + beat * .75 : beat * 4;
+  const phraseStartBeat = seamless ? Math.ceil((now() / beat + .75) / 4) * 4 : COUNT_IN_BEATS;
+  const phraseStart = phraseStartBeat * beat;
   Game.phraseStartAt = phraseStart;
   const phraseNotes = [];
   const melodyNotes = [];
@@ -393,11 +411,12 @@ function buildChart(retryWord, seamless) {
     if (degree == null) { cursorBeats += beats; return; }
     const hitAt = phraseStart + cursorBeats * beat;
     const holdBeats = beats >= 1.75 ? beats - .25 : 0;
-    const root = song.chords[Math.floor(cursorBeats / 4) % song.chords.length];
+    const root = scoreChordRoot(song, cursorBeats);
     const chordEvery = part?.texture === 'theme' ? 8 : (part?.texture === 'drive' || part?.texture === 'finale' ? 2 : 4);
     const voicing = Math.abs(cursorBeats % chordEvery) < .001 ? [root, root + 2, root + 4] : null;
     const main = addNote(degree, hitAt, {
       endAt: holdBeats ? hitAt + holdBeats * beat : null,
+      beatLength: beats,
       section: part?.name || '主题', texture: part?.texture || 'theme', voicing,
     });
     if (main) melodyNotes.push(main);
@@ -523,7 +542,7 @@ function judgeHit(lane) {
     best.holding = true;
     Game.activeHolds[lane] = best;
   }
-  tapSound(verdict !== 'GOOD', lane, best.endAt ? best.endAt - best.hitAt + .1 : .34, best);
+  tapSound(verdict !== 'GOOD', lane, noteSoundDuration(best), best);
   if (best.isLetter && best.index === Game.word.progress) {
     Game.word.progress++;
     Game.score += 80;
@@ -1142,14 +1161,33 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (SCROLL_STEPS.length !== 10 || SCROLL_STEPS[0] !== .5 || SCROLL_STEPS.at(-1) !== 3) throw new Error('scroll speed range failed');
       if (SONGS.length !== 7) throw new Error('song expansion failed');
       for (const song of SONGS) {
-        if (!song.id || !song.title || !song.melody.length || !song.chords.length || song.bpm < 90) throw new Error('invalid song ' + song.id);
-        if (song.duration < 75 || song.duration > 110 || !song.source) throw new Error('incomplete arrangement ' + song.id);
+        if (!song.id || !song.title || !song.melody.length || !song.chords.length || song.bpm < 40) throw new Error('invalid song ' + song.id);
+        if (song.duration < 75 || song.duration > 200 || !song.source) throw new Error('incomplete arrangement ' + song.id);
         if (new Set(song.melody.map((event) => event[2]?.name).filter(Boolean)).size < 3) throw new Error('missing sections ' + song.id);
+        if (song.id !== 'canon') {
+          let sectionBeat = 0, sectionName = song.melody[0][2].name;
+          for (const [, beats, part] of song.melody) {
+            if (part.name !== sectionName && sectionBeat % (song.chords.length * 4) !== 0) throw new Error('section harmony cycle mismatch ' + song.id);
+            sectionName = part.name; sectionBeat += beats;
+          }
+        }
         if (song.melody.some(([degree, beats]) => (degree != null && (degree < 0 || degree > 6)) || beats <= 0)) throw new Error('invalid melody ' + song.id);
         Game.songId = song.id; LANES = 7; buildChart();
-        const melody = Game.notes.filter((note) => !note.harmony).slice(0, 8).map((note) => note.degree);
+        const chartMelody = Game.notes.filter((note) => !note.harmony);
+        const melody = chartMelody.slice(0, 8).map((note) => note.degree);
         if (Game.bpm !== song.bpm || melody.join(',') !== song.melody.slice(0, 8).map((event) => event[0]).join(',')) throw new Error('song chart mismatch ' + song.id);
+        let scoreBeat = 0;
+        const expectedOnsets = [];
+        for (const [degree, beats] of song.melody) {
+          if (degree != null) expectedOnsets.push(scoreBeat * 60 / song.bpm);
+          scoreBeat += beats;
+        }
+        if (chartMelody.length !== expectedOnsets.length || chartMelody.some((note, i) => Math.abs(note.hitAt - Game.phraseStartAt - expectedOnsets[i]) > 1e-7)) throw new Error('score timing mismatch ' + song.id);
         if (!Game.notes.some((note) => note.voicing?.length === 3)) throw new Error('chord keysound missing ' + song.id);
+        Game.phraseStartAt = 4 * 60 / song.bpm;
+        for (let bar = 0; bar < song.chords.length; bar++) {
+          if (backingRootAtStep(song, 8 + bar * 8) !== scoreChordRoot(song, bar * 4)) throw new Error('backing count-in offset ' + song.id);
+        }
       }
       Game.songId = 'joy';
       for (const lanes of [4, 5, 7]) {
@@ -1184,6 +1222,8 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.difficulty = 'medium'; Game.scrollMul = .5; const slowWindow = judgeWindows().good;
       Game.scrollMul = 3;
       if (judgeWindows().good !== slowWindow) throw new Error('scroll speed changed judgement window');
+      Game.bpm = 132;
+      if (noteSoundDuration({ hitAt: 0, endAt: null, beatLength: .5 }) >= .5 * 60 / Game.bpm * .9) throw new Error('short-note envelope blurred rhythm');
       Game.combo = 14; Game.capsules = 0; advanceCombo();
       if (Game.combo !== 15 || Game.capsules !== 1) throw new Error('capsule combo reward failed');
       Game.combo = 74; Game.capsules = CAPSULE_MAX; advanceCombo();
