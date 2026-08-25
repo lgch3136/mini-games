@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>英语节奏大师 · WORD BEAT</title>
-<link rel="stylesheet" href="style.css?v=20260824j">
+<meta name="description" content="七键古典旋律音游：C 到 B 固定音阶、经典主题编曲与英语拼词。">
+<link rel="stylesheet" href="style.css?v=20260825c">
 </head>
 <body>
 <div id="game-wrap">
@@ -16,7 +17,7 @@
         <span class="chip">⭐ <b id="score">0</b></span>
         <span class="chip">🏁 谱面 <b id="level">1</b></span>
         <span class="chip" id="shields">🛡</span>
-        <span class="chip">🎼 <b id="bpm">104</b> BPM</span>
+        <span class="chip">🎼 <b id="bpm">118</b> BPM</span>
       </div>
       <div class="life-wrap"><div id="life-bar"></div></div>
       <div class="chips">
@@ -33,41 +34,54 @@
 
   <div class="overlay" id="menu">
     <div class="panel">
-      <img class="menu-cover" src="assets/cover.png" alt="">
+      <img class="menu-cover" src="assets/cover.png" alt="七轨霓虹音乐舞台">
 
       <h1>英语节奏大师<small>WORD BEAT</small></h1>
-      <p class="sub">下落式音击 × 拼单词。采用劲乐团式固定键色：蓝—白—蓝—金—蓝—白—蓝。<br>切换 4/5/7 轨也不换色；在判定线击打，按顺序收集金边字母完成拼写。</p>
+      <p class="sub">七轨就是 C—D—E—F—G—A—B，每次击键都参与演奏。字母附着在真实旋律音符上，不再插入无关乱点。</p>
+      <div class="scale-map" aria-label="七键音阶映射">
+        <span class="blue"><b>S</b><small>C</small></span><span class="white"><b>D</b><small>D</small></span>
+        <span class="blue"><b>F</b><small>E</small></span><span class="gold"><b>空格</b><small>F</small></span>
+        <span class="blue"><b>J</b><small>G</small></span><span class="white"><b>K</b><small>A</small></span>
+        <span class="blue"><b>L</b><small>B</small></span>
+      </div>
       <div class="keys">
-        <span>D F J K 四轨击打</span><span>📱 点击轨道</span><span>P 暂停</span><span>M 静音</span>
+        <span>键盘 / 多点触控</span><span>P 暂停</span><span>M 静音</span>
       </div>
       <div class="judge-guide">
         <span class="j p">PERFECT ±45ms</span>
         <span class="j g">GREAT ±90ms</span>
         <span class="j o">GOOD ±140ms</span>
       </div>
+      <div class="opt-row song-row">
+        <label class="opt-label" for="song-select">曲目</label>
+        <select id="song-select">
+          <option value="joy">欢乐颂</option>
+          <option value="canon">卡农进行曲</option>
+          <option value="twinkle">小星星变奏</option>
+        </select>
+        <span id="song-detail">贝多芬 · 118 BPM · C Major</span>
+      </div>
       <div class="opt-row">
         <span class="opt-label">键数</span>
         <div class="seg">
-          <button class="seg-btn selected" data-keys="4">4K</button>
+          <button class="seg-btn" data-keys="4">4K</button>
           <button class="seg-btn" data-keys="5">5K</button>
-          <button class="seg-btn" data-keys="7">7K</button>
+          <button class="seg-btn selected" data-keys="7">7K 完整音阶</button>
         </div>
       </div>
       <div class="opt-row">
-        <span class="opt-label">滚速</span>
-        <div class="seg">
-          <button class="spd-btn" data-scroll="0.7">0.7×</button>
-          <button class="spd-btn" data-scroll="0.85">0.85×</button>
-          <button class="spd-btn selected" data-scroll="1">1×</button>
-          <button class="spd-btn" data-scroll="1.15">1.15×</button>
-          <button class="spd-btn" data-scroll="1.3">1.3×</button>
-          <button class="spd-btn" data-scroll="1.5">1.5×</button>
-        </div>
+        <label class="opt-label" for="speed-select">滚速</label>
+        <select id="speed-select">
+          <option value="0.5">0.50×</option><option value="0.75">0.75×</option><option value="1">1.00×</option>
+          <option value="1.25" selected>1.25×</option><option value="1.5">1.50×</option><option value="1.75">1.75×</option>
+          <option value="2">2.00×</option><option value="2.25">2.25×</option><option value="2.5">2.50×</option><option value="3">3.00×</option>
+        </select>
+        <span class="opt-hint">只改变读谱距离，不改变歌曲或判定</span>
       </div>
       <div class="diff-row">
-        <button class="difficulty" data-difficulty="easy">初级 · 慢速</button>
-        <button class="difficulty selected" data-difficulty="medium">中级 · 标准</button>
-        <button class="difficulty" data-difficulty="hard">高级 · 疾速</button>
+        <button class="difficulty" data-difficulty="easy">初级 · 主旋律</button>
+        <button class="difficulty selected" data-difficulty="medium">中级 · 和弦</button>
+        <button class="difficulty" data-difficulty="hard">高级 · 对旋</button>
       </div>
       <button class="btn-main" id="start-btn">开始演奏</button>
     </div>
@@ -98,6 +112,6 @@
 </div>
 
 <script src="../shared/vocabulary.js"></script>
-<script src="game.js?v=20260824j"></script>
+<script src="game.js?v=20260825c"></script>
 </body>
 </html>
