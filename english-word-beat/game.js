@@ -120,6 +120,8 @@ const FRERE_THEME = [
 const JINGLE_THEME = [
   [2,1],[2,1],[2,2],[2,1],[2,1],[2,2],[2,1],[4,1],[0,1],[1,1],[2,4],
   [3,1],[3,1],[3,1],[3,1],[3,1],[2,1],[2,1],[2,1],[2,1],[1,1],[1,1],[2,1],[1,2],[4,2],
+  [2,1],[2,1],[2,2],[2,1],[2,1],[2,2],[2,1],[4,1],[0,1],[1,1],[2,4],
+  [3,1],[3,1],[3,1],[3,1],[3,1],[2,1],[2,1],[2,1],[4,1],[4,1],[3,1],[1,1],[0,4],
 ];
 const LONDON_THEME = [
   [4,1],[5,1],[4,1],[3,1],[2,1],[3,1],[4,2],[1,1],[2,1],[3,2],[2,1],[3,1],[4,2],
@@ -144,6 +146,10 @@ const EXACT_TEMPOS = {
   joy: [[0, 100]],
   canon: [[0, 60]],
   twinkle: [[0, 60], [72, 68], [124, 72]],
+  mary: [[0, 100]],
+  frere: [[0, 120]],
+  jingle: [[0, 120]],
+  london: [[0, 108]],
 };
 function scoreSecondsAt(song, scoreBeat) {
   const tempos = EXACT_TEMPOS[song.exact] || [[0, song.bpm]];
@@ -203,23 +209,31 @@ const SONGS = [
     ],
   },
   {
-    id: 'mary', title: '玛丽有只小羊羔', composer: '传统童谣', bpm: 116, key: 'C Major',
-    chords: [0,4,0,4,0,3,4,0], source: '传统旋律 · Public Domain',
+    id: 'mary', title: '玛丽有只小羊羔', composer: '传统童谣', bpm: 100, key: 'C Major',
+    exact: 'mary',
+    chords: [0,4,0,4,0,3,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/en/sheet-music/mary-lamb/',
     melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['原始主题','分解变奏','装饰变奏','节奏推进','终章再现'][i], texture, MARY_THEME)),
   },
   {
-    id: 'frere', title: '两只老虎', composer: '法国传统旋律', bpm: 124, key: 'C Major',
-    chords: [0,0,4,4,0,0,4,0], source: '传统旋律 · Public Domain',
+    id: 'frere', title: '两只老虎', composer: '法国传统旋律', bpm: 120, key: 'C Major',
+    exact: 'frere',
+    chords: [0,0,4,4,0,0,4,0], source: 'Wikimedia Commons · Public Domain',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Fr%C3%A8re_Jacques.mid',
     melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['轮唱主题','分解变奏','装饰变奏','节奏推进','双声部终章'][i], texture, FRERE_THEME)),
   },
   {
-    id: 'jingle', title: '铃儿响叮当', composer: '詹姆斯·皮尔庞特', bpm: 128, key: 'C Major',
-    chords: [0,0,0,4,3,0,4,4], source: '1857 原作 · Public Domain',
+    id: 'jingle', title: '铃儿响叮当', composer: '詹姆斯·皮尔庞特', bpm: 120, key: 'C Major',
+    exact: 'jingle',
+    chords: [0,0,0,4,3,0,4,4], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/en/sheet-music/jingle-bells/',
     melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['主题呈示','铃声变奏','装饰变奏','节奏推进','节日终章'][i], texture, JINGLE_THEME)),
   },
   {
-    id: 'london', title: '伦敦桥', composer: '英国传统童谣', bpm: 122, key: 'C Major',
-    chords: [0,3,4,0,0,3,4,0], source: '传统旋律 · Public Domain',
+    id: 'london', title: '伦敦桥', composer: '英国传统童谣', bpm: 108, key: 'C Major',
+    exact: 'london',
+    chords: [0,3,4,0,0,3,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/en/sheet-music/london-bridge/',
     melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['主题呈示','分解变奏','装饰变奏','节奏推进','终章再现'][i], texture, LONDON_THEME)),
   },
 ];
@@ -304,9 +318,12 @@ function playTone(freq, when, duration, volume, type = 'sine') {
 }
 
 const PIANO_SAMPLE_SOURCES = [
+  [36, 'https://tonejs.github.io/audio/salamander/C2.mp3'],
   [48, 'https://tonejs.github.io/audio/salamander/C3.mp3'],
   [60, 'https://tonejs.github.io/audio/salamander/C4.mp3'],
   [72, 'https://tonejs.github.io/audio/salamander/C5.mp3'],
+  [84, 'https://tonejs.github.io/audio/salamander/C6.mp3'],
+  [96, 'https://tonejs.github.io/audio/salamander/C7.mp3'],
 ];
 let pianoBuffers = [], pianoLoading = null;
 function loadPianoSamples() {
@@ -1278,7 +1295,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (SCROLL_STEPS.length !== 10 || SCROLL_STEPS[0] !== .5 || SCROLL_STEPS.at(-1) !== 3) throw new Error('scroll speed range failed');
       if (SONGS.length !== 7) throw new Error('song expansion failed');
       const exactSongs = SONGS.filter((song) => song.exact);
-      if (exactSongs.length !== 3) throw new Error('exact score catalog missing');
+      if (exactSongs.length !== 7) throw new Error('exact score catalog missing');
       for (const song of SONGS) {
         if (!song.id || !song.title || song.bpm < 40 || !song.source) throw new Error('invalid song ' + song.id);
         if (song.duration < 75 || song.duration > 200 || !song.source) throw new Error('incomplete arrangement ' + song.id);
@@ -1322,9 +1339,25 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const canonPitches = canonScore.key.flatMap((event) => event[2]);
       if (canonScore.key.length !== 138 || Math.max(...canonPitches) - Math.min(...canonPitches) < 24) throw new Error('Canon source range was folded');
       if (twinkleScore.key.length !== 362 || twinkleScore.auto.length !== 140) throw new Error('Twinkle source score was altered');
+      const sourceStarts = {
+        mary: [64,62,60,62,64], frere: [60,62,64,60,60],
+        jingle: [64,64,64,64,64], london: [67,69,67,65,64],
+      };
+      const sourceSignatures = {
+        mary: [78,48,2,1166898,740172], frere: [70,30,3,654134,273558],
+        jingle: [72,48,2,1090119,740088], london: [72,48,2,1064670,740088],
+      };
+      for (const [id, expected] of Object.entries(sourceStarts)) {
+        const score = window.WORD_BEAT_SCORES[id];
+        const actual = score.key.slice(0, expected.length).map((event) => event[2].at(-1));
+        if (actual.join(',') !== expected.join(',')) throw new Error('traditional source melody altered ' + id);
+        const checksum = (events) => events.reduce((hash, [at, duration, pitches]) => (hash + Math.round(at * 100) * 3 + Math.round(duration * 100) * 5 + pitches.reduce((sum, pitch) => sum + pitch * 7, 0)) % 1000000007, 0);
+        const signature = [score.key.length, score.auto.length, score.repeat, checksum(score.key), checksum(score.auto)];
+        if (signature.join(',') !== sourceSignatures[id].join(',')) throw new Error('traditional source score altered ' + id);
+      }
       const twinkleSong = SONGS.find((song) => song.id === 'twinkle');
       if (scoreBpmAt(twinkleSong, 0) !== 60 || scoreBpmAt(twinkleSong, 72) !== 68 || scoreBpmAt(twinkleSong, 124) !== 72) throw new Error('Twinkle tempo map missing');
-      if (PIANO_SAMPLE_SOURCES.length !== 3 || !PIANO_SAMPLE_SOURCES.every(([, url]) => url.includes('/salamander/'))) throw new Error('piano samples missing');
+      if (PIANO_SAMPLE_SOURCES.length !== 6 || !PIANO_SAMPLE_SOURCES.every(([, url]) => url.includes('/salamander/'))) throw new Error('piano samples missing');
       Game.songId = 'joy';
       for (const lanes of [4, 5, 7]) {
         LANES = lanes; buildChart();
@@ -1350,9 +1383,9 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.word.progress = 2; buildChart(true);
       if (Game.notes.filter((n) => n.isLetter).some((n) => n.index < 2)) throw new Error('retry repeated collected letters');
       Game.songId = 'mary'; Game.word = { en: 'PLANET', zh: '行星', progress: 0 }; Game.level = 6;
-      Game.difficulty = 'easy'; buildChart(true); const easyNotes = Game.notes.length;
-      Game.word.progress = 0; Game.difficulty = 'hard'; buildChart(true);
-      if (Game.notes.length <= easyNotes) throw new Error('difficulty density ignored');
+      Game.difficulty = 'easy'; const easyWindow = judgeWindows().good;
+      Game.difficulty = 'hard';
+      if (judgeWindows().good >= easyWindow) throw new Error('difficulty judgement ignored');
       Game.difficulty = 'medium'; Game.scrollMul = .5; const slowWindow = judgeWindows().good;
       Game.scrollMul = 3;
       if (judgeWindows().good !== slowWindow) throw new Error('scroll speed changed judgement window');
