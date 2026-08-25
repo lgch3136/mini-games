@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>英语节奏大师 · WORD BEAT</title>
 <meta name="description" content="七键古典旋律音游：C 到 B 固定音阶、经典主题编曲与英语拼词。">
-<link rel="stylesheet" href="style.css?v=20260825c">
+<link rel="stylesheet" href="style.css?v=20260825d">
 </head>
 <body>
 <div id="game-wrap">
@@ -16,7 +16,7 @@
       <div class="chips">
         <span class="chip">⭐ <b id="score">0</b></span>
         <span class="chip">🏁 谱面 <b id="level">1</b></span>
-        <span class="chip" id="shields">🛡</span>
+        <span class="chip" id="capsules">💊 0/5</span>
         <span class="chip">🎼 <b id="bpm">118</b> BPM</span>
       </div>
       <div class="life-wrap"><div id="life-bar"></div></div>
@@ -37,15 +37,15 @@
       <img class="menu-cover" src="assets/cover.png" alt="七轨霓虹音乐舞台">
 
       <h1>英语节奏大师<small>WORD BEAT</small></h1>
-      <p class="sub">七轨就是 C—D—E—F—G—A—B，每次击键都参与演奏。字母附着在真实旋律音符上，不再插入无关乱点。</p>
+      <p class="sub">七轨就是 C—D—E—F—G—A—B。D/K 固定蓝键，S/F/J/L 固定白键；字母附着在真实旋律音符上。</p>
       <div class="scale-map" aria-label="七键音阶映射">
-        <span class="blue"><b>S</b><small>C</small></span><span class="white"><b>D</b><small>D</small></span>
-        <span class="blue"><b>F</b><small>E</small></span><span class="gold"><b>空格</b><small>F</small></span>
-        <span class="blue"><b>J</b><small>G</small></span><span class="white"><b>K</b><small>A</small></span>
-        <span class="blue"><b>L</b><small>B</small></span>
+        <span class="white"><b>S</b><small>C</small></span><span class="blue"><b>D</b><small>D</small></span>
+        <span class="white"><b>F</b><small>E</small></span><span class="gold"><b>空格</b><small>F</small></span>
+        <span class="white"><b>J</b><small>G</small></span><span class="blue"><b>K</b><small>A</small></span>
+        <span class="white"><b>L</b><small>B</small></span>
       </div>
       <div class="keys">
-        <span>键盘 / 多点触控</span><span>P 暂停</span><span>M 静音</span>
+        <span>键盘 / 多点触控</span><span>15 连击 +1 💊（上限 5）</span><span>P 暂停</span><span>M 静音</span>
       </div>
       <div class="judge-guide">
         <span class="j p">PERFECT ±45ms</span>
@@ -58,6 +58,10 @@
           <option value="joy">欢乐颂</option>
           <option value="canon">卡农进行曲</option>
           <option value="twinkle">小星星变奏</option>
+          <option value="mary">玛丽有只小羊羔</option>
+          <option value="frere">两只老虎</option>
+          <option value="jingle">铃儿响叮当</option>
+          <option value="london">伦敦桥</option>
         </select>
         <span id="song-detail">贝多芬 · 118 BPM · C Major</span>
       </div>
@@ -112,6 +116,6 @@
 </div>
 
 <script src="../shared/vocabulary.js"></script>
-<script src="game.js?v=20260825c"></script>
+<script src="game.js?v=20260825d"></script>
 </body>
 </html>

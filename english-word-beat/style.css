@@ -217,7 +217,7 @@ select:focus-visible { outline: 3px solid #86c8ff; outline-offset: 2px; }
   .top { top: 4px; left: 5px; right: 5px; gap: 3px; }
   .chips { gap: 2px; font-size: 9px; }
   .chip { padding: 2px 5px; white-space: nowrap; }
-  .top .chip:nth-child(2), #shields { display: none; }
+  .top .chip:nth-child(2), #capsules { display: none; }
   .life-wrap { max-width: 48px; height: 7px; }
   #pause-btn, #mute-btn { padding: 2px 5px; font-size: 9px; }
   #word-bar { top: 33px; max-width: 170px; padding: 3px 7px; }

@@ -38,6 +38,8 @@ const DIFFS = {
   hard:   { harmony: 2, judgeMul: .88, label: '高级' },
 };
 const SCROLL_STEPS = [.5, .75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 3];
+const CAPSULE_COMBO = 15;
+const CAPSULE_MAX = 5;
 
 const SCALE_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 const SCALE_FREQS = [261.63, 293.66, 329.63, 349.23, 392, 440, 493.88];
@@ -51,8 +53,8 @@ const O2_BLUE = '#43a6ff';
 const O2_WHITE = '#eef6ff';
 const O2_GOLD = '#ffc94d';
 const KEY_COLORS = {
-  KeyS: O2_BLUE, KeyD: O2_WHITE, KeyF: O2_BLUE, Space: O2_GOLD,
-  KeyJ: O2_BLUE, KeyK: O2_WHITE, KeyL: O2_BLUE,
+  KeyS: O2_WHITE, KeyD: O2_BLUE, KeyF: O2_WHITE, Space: O2_GOLD,
+  KeyJ: O2_WHITE, KeyK: O2_BLUE, KeyL: O2_WHITE,
 };
 const LANE_MODES = {
   4: { keys: ['KeyD','KeyF','KeyJ','KeyK'], labels: ['D','F','J','K'],
@@ -108,6 +110,39 @@ const SONGS = [
       [3,.5],[5,.5],[3,.5],[2,.5],[2,.5],[4,.5],[2,.5],[1,.5],[1,.5],[3,.5],[1,.5],[0,.5],[0,2],
     ],
   },
+  {
+    id: 'mary', title: '玛丽有只小羊羔', composer: '传统童谣', bpm: 116, key: 'C Major',
+    chords: [0, 4, 0, 4, 0, 3, 4, 0],
+    melody: [
+      [2,1],[1,1],[0,1],[1,1],[2,1],[2,1],[2,2],[1,1],[1,1],[1,2],[2,1],[4,1],[4,2],
+      [2,1],[1,1],[0,1],[1,1],[2,1],[2,1],[2,1],[2,1],[1,1],[1,1],[2,1],[1,1],[0,4],
+    ],
+  },
+  {
+    id: 'frere', title: '两只老虎', composer: '法国传统旋律', bpm: 124, key: 'C Major',
+    chords: [0, 0, 4, 4, 0, 0, 4, 0],
+    melody: [
+      [0,1],[1,1],[2,1],[0,1],[0,1],[1,1],[2,1],[0,1],[2,1],[3,1],[4,2],[2,1],[3,1],[4,2],
+      [4,.5],[5,.5],[4,.5],[3,.5],[2,1],[0,1],[4,.5],[5,.5],[4,.5],[3,.5],[2,1],[0,1],
+      [0,1],[4,1],[0,2],[0,1],[4,1],[0,2],
+    ],
+  },
+  {
+    id: 'jingle', title: '铃儿响叮当', composer: '詹姆斯·皮尔庞特', bpm: 128, key: 'C Major',
+    chords: [0, 0, 0, 4, 3, 0, 4, 4],
+    melody: [
+      [2,1],[2,1],[2,2],[2,1],[2,1],[2,2],[2,1],[4,1],[0,1],[1,1],[2,4],
+      [3,1],[3,1],[3,1],[3,1],[3,1],[2,1],[2,1],[2,1],[2,1],[1,1],[1,1],[2,1],[1,2],[4,2],
+    ],
+  },
+  {
+    id: 'london', title: '伦敦桥', composer: '英国传统童谣', bpm: 122, key: 'C Major',
+    chords: [0, 3, 4, 0, 0, 3, 4, 0],
+    melody: [
+      [4,1],[5,1],[4,1],[3,1],[2,1],[3,1],[4,2],[1,1],[2,1],[3,2],[2,1],[3,1],[4,2],
+      [4,1],[5,1],[4,1],[3,1],[2,1],[3,1],[4,2],[1,1],[4,1],[2,1],[0,1],[0,4],
+    ],
+  },
 ];
 const currentSong = () => SONGS.find((song) => song.id === Game.songId) || SONGS[0];
 
@@ -128,7 +163,7 @@ const Game = {
   difficulty: 'medium',
   keyMode: 7, scrollMul: 1.25, songId: 'joy', section: 0,
   score: 0, lives: 100,
-  shields: 1,            // 续演护盾: MISS时消耗, 保连击不断
+  capsules: 0,           // 每 15 连击 +1；把一次 MISS 转成 GOOD
   combo: 0, maxCombo: 0,
   counts: { perfect: 0, great: 0, good: 0, miss: 0 },
   level: 1, wordsDone: 0,
@@ -333,7 +368,7 @@ function startGame() {
   LANES = Game.keyMode || 7;
   Game.scrollMul = Game.scrollMul || 1.25;
   Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0;
-  Game.shields = 1;
+  Game.capsules = 0;
   Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   Game.level = 1; Game.wordsDone = 0; Game.time = 0; Game.section = 0;
   Game.flashLane.fill(0); Game.heldLane.fill(0); Game.judgement = null;
@@ -354,10 +389,6 @@ function nextChart() {
   const bonus = 500 + Game.maxCombo * 10;
   Game.score += bonus;
   Game.lives = Math.min(100, Game.lives + 12);
-  if (Game.wordsDone % 2 === 0 && Game.shields < 3) {
-    Game.shields++;
-    floatText('🛡 +1 续演护盾', W / 2, H * .24, '#67e8f9');
-  }
   updateHud();
   // 旋律小节完整收束后再续谱，避免单词完成时把当前乐句截断。
   buildChart(false, true);
@@ -366,6 +397,24 @@ function nextChart() {
 
 /* ---------------- 判定 ---------------- */
 function now() { return Game.actx ? Game.actx.currentTime - Game.audioStart : 0; }
+
+function capsuleSound(earned) {
+  if (!sfxCtx || Game.muted) return;
+  const t = sfxCtx.currentTime;
+  playTone(earned ? 783.99 : 523.25, t, .18, .05, 'sine');
+  playTone(earned ? 1046.5 : 659.25, t + .04, .22, .035, 'triangle');
+}
+
+function advanceCombo() {
+  Game.combo++;
+  Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
+  if (Game.combo % CAPSULE_COMBO === 0 && Game.capsules < CAPSULE_MAX) {
+    Game.capsules++;
+    capsuleSound(true);
+    floatText('💊 CAPSULE +1', W / 2, H * .24, '#67e8f9');
+    showFeedback(`${Game.combo} 连击 · 容错胶囊 +1`);
+  }
+}
 
 function judgeHit(lane) {
   if (lane == null || lane < 0 || lane >= LANES) return;
@@ -393,8 +442,7 @@ function judgeHit(lane) {
     timing: Math.abs(offsetMs) <= 2 ? 'JUST 0ms' : `${offsetMs < 0 ? 'EARLY' : 'LATE'} ${offsetMs > 0 ? '+' : ''}${offsetMs}ms`,
     until: Game.time + .48,
   };
-  Game.combo++;
-  Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
+  advanceCombo();
   const comboMul = 1 + Math.min(1, Game.combo / 50);
   Game.score += Math.round(pts * comboMul);
   Game.lives = Math.min(100, Game.lives + (verdict === 'PERFECT' ? 2 : verdict === 'GREAT' ? 1 : 0));
@@ -458,16 +506,20 @@ function scanMisses() {
   for (const n of Game.notes) {
     if (n.judged) continue;
     if (n.hitAt < t - JW.good) {
-      n.judged = true; n.missed = true;
-      Game.counts.miss++;
+      n.judged = true;
       changed = true;
-      if (Game.shields > 0) {
-        // 护盾抵消: 连击保留, 不扣血 —— "不中断胶囊"
-        Game.shields--;
-        n.shielded = true;
-        floatText('🛡 续演!', laneX(n.lane), HIT_Y - 70, '#67e8f9');
+      if (Game.capsules > 0) {
+        Game.capsules--;
+        Game.counts.good++;
+        advanceCombo();
+        Game.score += Math.round(100 * (1 + Math.min(1, Game.combo / 50)));
+        Game.judgement = { text: 'CAPSULE SAVE', timing: 'MISS → GOOD', color: '#67e8f9', until: Game.time + .52 };
+        capsuleSound(false);
+        floatText('💊 MISS → GOOD', laneX(n.lane) + laneW() / 2, HIT_Y - 58, '#67e8f9');
         continue;
       }
+      n.missed = true;
+      Game.counts.miss++;
       Game.combo = 0;
       Game.lives -= n.isLetter ? 8 : 4;
       Game.judgement = { text: 'MISS', color: '#ff6688', until: Game.time + .42 };
@@ -586,8 +638,8 @@ function updateHud() {
   $id('score').textContent = safe(Game.score, 0);
   $id('level').textContent = safe(Game.level, 1);
   $id('bpm').textContent = safe(Game.bpm, 104);
-  const sh = $id('shields');
-  if (sh) sh.textContent = '🛡'.repeat(Game.shields) || '—';
+  const capsules = $id('capsules');
+  if (capsules) capsules.textContent = `💊 ${Game.capsules}/${CAPSULE_MAX}`;
   $id('life-bar').style.width = clamp(Game.lives, 0, 100) + '%';
   const w = Game.word;
   if (w && w.en) {
@@ -999,6 +1051,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const expectedDpr = Math.min(window.devicePixelRatio || 1, 2);
       if (canvas.width < wrap.clientWidth * expectedDpr - 1 || canvas.height < wrap.clientHeight * expectedDpr - 1) throw new Error('retina canvas resolution failed');
       if (SCROLL_STEPS.length !== 10 || SCROLL_STEPS[0] !== .5 || SCROLL_STEPS.at(-1) !== 3) throw new Error('scroll speed range failed');
+      if (SONGS.length !== 7) throw new Error('song expansion failed');
       for (const song of SONGS) {
         if (!song.id || !song.title || !song.melody.length || !song.chords.length || song.bpm < 90) throw new Error('invalid song ' + song.id);
         if (song.melody.some(([degree, beats]) => degree < 0 || degree > 6 || beats <= 0)) throw new Error('invalid melody ' + song.id);
@@ -1014,7 +1067,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         if (Game.notes.some((n) => !Number.isFinite(n.hitAt) || n.lane < 0 || n.lane >= lanes)) throw new Error(lanes + 'K invalid note');
       }
       LANES = 7;
-      if (LANE_COLORS().join(',') !== [O2_BLUE, O2_WHITE, O2_BLUE, O2_GOLD, O2_BLUE, O2_WHITE, O2_BLUE].join(',')) throw new Error('O2Jam key pattern failed');
+      if (LANE_COLORS().join(',') !== [O2_WHITE, O2_BLUE, O2_WHITE, O2_GOLD, O2_WHITE, O2_BLUE, O2_WHITE].join(',')) throw new Error('O2Jam key pattern failed');
       if (LANE_NOTES().join('') !== 'CDEFGAB') throw new Error('seven-key scale mapping failed');
       Game.difficulty = 'easy'; buildChart();
       const melody = Game.notes.filter((note) => !note.harmony).slice(0, 8).map((note) => note.degree);
@@ -1027,7 +1080,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (!holdProbe.holdComplete || Game.activeHolds[0]) throw new Error('hold completion failed');
       Game.actx = savedActx; Game.audioStart = savedAudioStart; Game.state = savedState; Game.heldLane[0] = 0;
       LANES = 4;
-      if (LANE_COLORS().join(',') !== [O2_WHITE, O2_BLUE, O2_BLUE, O2_WHITE].join(',')) throw new Error('4K fixed key colors failed');
+      if (LANE_COLORS().join(',') !== [O2_BLUE, O2_WHITE, O2_WHITE, O2_BLUE].join(',')) throw new Error('4K fixed key colors failed');
       judgeHit(0);
       if (Game.flashLane[0] !== 1) throw new Error('key press feedback failed');
       Game.word.progress = 2; buildChart(true);
@@ -1039,6 +1092,17 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.difficulty = 'medium'; Game.scrollMul = .5; const slowWindow = judgeWindows().good;
       Game.scrollMul = 3;
       if (judgeWindows().good !== slowWindow) throw new Error('scroll speed changed judgement window');
+      Game.combo = 14; Game.capsules = 0; advanceCombo();
+      if (Game.combo !== 15 || Game.capsules !== 1) throw new Error('capsule combo reward failed');
+      Game.combo = 74; Game.capsules = CAPSULE_MAX; advanceCombo();
+      if (Game.capsules !== CAPSULE_MAX) throw new Error('capsule maximum failed');
+      const clockBefore = Game.actx, audioBefore = Game.audioStart, stateBefore = Game.state;
+      Game.actx = { currentTime: 10 }; Game.audioStart = 0; Game.state = 'playing';
+      Game.combo = 20; Game.capsules = 1; Game.lives = 100; Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
+      Game.notes = [{ lane: 0, hitAt: 0, judged: false, isLetter: false }, { lane: 1, hitAt: 20, judged: false, isLetter: false }];
+      Game.songEndAt = 30; scanMisses();
+      if (Game.capsules !== 0 || Game.combo !== 21 || Game.counts.good !== 1 || Game.counts.miss !== 0 || Game.lives !== 100) throw new Error('capsule save failed');
+      Game.actx = clockBefore; Game.audioStart = audioBefore; Game.state = stateBefore;
       floatText('PERFECT', 10, 10, '#fff');
       if (!Game.floaters.at(-1).color) throw new Error('floater color missing');
       document.title = 'SELFTEST-OK';
