@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>英语节奏大师 · WORD BEAT</title>
 <meta name="description" content="七键古典旋律音游：公开 MIDI 逐事件谱面、独立键音与自动伴奏轨。">
-<link rel="stylesheet" href="style.css?v=20260825k">
+<link rel="stylesheet" href="style.css?v=20260826a">
 </head>
 <body>
 <div id="game-wrap">
@@ -55,13 +55,20 @@
       <div class="opt-row song-row">
         <label class="opt-label" for="song-select">曲目</label>
         <select id="song-select">
-          <option value="joy">欢乐颂</option>
-          <option value="canon">卡农进行曲</option>
-          <option value="twinkle">小星星变奏</option>
-          <option value="mary">玛丽有只小羊羔</option>
-          <option value="frere">两只老虎</option>
-          <option value="jingle">铃儿响叮当</option>
-          <option value="london">伦敦桥</option>
+          <optgroup label="经典曲目">
+            <option value="joy">欢乐颂</option>
+            <option value="canon">卡农进行曲</option>
+            <option value="twinkle">小星星变奏</option>
+            <option value="mary">玛丽有只小羊羔</option>
+            <option value="frere">两只老虎</option>
+            <option value="jingle">铃儿响叮当</option>
+            <option value="london">伦敦桥</option>
+          </optgroup>
+          <optgroup label="⚡ 高速挑战">
+            <option value="mazurka160">马祖卡 Op.7 No.2 · 160 BPM</option>
+            <option value="etude160">练习曲 Op.25 No.4 · 160 BPM</option>
+            <option value="presto180">急板马祖卡 Op.7 No.5 · 180 BPM</option>
+          </optgroup>
         </select>
         <span id="song-detail">贝多芬 · 100 BPM · 1:58</span>
         <a id="score-source" href="https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=528" target="_blank" rel="noopener">Mutopia · Public Domain ↗</a>
@@ -118,8 +125,9 @@
 </div>
 
 <script src="../shared/vocabulary.js"></script>
-<script src="score-data.js?v=20260825k"></script>
-<script src="source-scores.js?v=20260825k"></script>
-<script src="game.js?v=20260825k"></script>
+<script src="score-data.js?v=20260826a"></script>
+<script src="source-scores.js?v=20260826a"></script>
+<script src="fast-scores.js?v=20260826a"></script>
+<script src="game.js?v=20260826a"></script>
 </body>
 </html>

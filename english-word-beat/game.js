@@ -150,6 +150,9 @@ const EXACT_TEMPOS = {
   frere: [[0, 120]],
   jingle: [[0, 120]],
   london: [[0, 108]],
+  mazurka160: [[0, 160]],
+  etude160: [[0, 160]],
+  presto180: [[0, 180]],
 };
 function scoreSecondsAt(song, scoreBeat) {
   const tempos = EXACT_TEMPOS[song.exact] || [[0, song.bpm]];
@@ -235,6 +238,21 @@ const SONGS = [
     chords: [0,3,4,0,0,3,4,0], source: 'BeatNote · Public Domain',
     sourceUrl: 'https://beatnoteplay.com/en/sheet-music/london-bridge/',
     melody: ['theme','pulse','turn','drive','finale'].flatMap((texture, i) => scoreSection(['主题呈示','分解变奏','装饰变奏','节奏推进','终章再现'][i], texture, LONDON_THEME)),
+  },
+  {
+    id: 'mazurka160', title: '马祖卡 Op.7 No.2', composer: '肖邦', bpm: 160, key: 'A Minor',
+    exact: 'mazurka160', chords: [5,0,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/chopin-mazurka-op07-no2/', melody: LONDON_THEME,
+  },
+  {
+    id: 'etude160', title: '练习曲 Op.25 No.4', composer: '肖邦', bpm: 160, key: 'A Minor',
+    exact: 'etude160', chords: [5,0,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/chopin-etude-25-4/', melody: JINGLE_THEME,
+  },
+  {
+    id: 'presto180', title: '急板马祖卡 Op.7 No.5', composer: '肖邦', bpm: 180, key: 'C Major',
+    exact: 'presto180', chords: [0,4,0,4], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/chopin-mazurka-op07-no5/', melody: FRERE_THEME,
   },
 ];
 for (const song of SONGS) {
@@ -1293,9 +1311,9 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const expectedDpr = Math.min(window.devicePixelRatio || 1, 2);
       if (canvas.width < wrap.clientWidth * expectedDpr - 1 || canvas.height < wrap.clientHeight * expectedDpr - 1) throw new Error('retina canvas resolution failed');
       if (SCROLL_STEPS.length !== 10 || SCROLL_STEPS[0] !== .5 || SCROLL_STEPS.at(-1) !== 3) throw new Error('scroll speed range failed');
-      if (SONGS.length !== 7) throw new Error('song expansion failed');
+      if (SONGS.length !== 10) throw new Error('song expansion failed');
       const exactSongs = SONGS.filter((song) => song.exact);
-      if (exactSongs.length !== 7) throw new Error('exact score catalog missing');
+      if (exactSongs.length !== 10) throw new Error('exact score catalog missing');
       for (const song of SONGS) {
         if (!song.id || !song.title || song.bpm < 40 || !song.source) throw new Error('invalid song ' + song.id);
         if (song.duration < 75 || song.duration > 200 || !song.source) throw new Error('incomplete arrangement ' + song.id);
@@ -1355,6 +1373,18 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         const signature = [score.key.length, score.auto.length, score.repeat, checksum(score.key), checksum(score.auto)];
         if (signature.join(',') !== sourceSignatures[id].join(',')) throw new Error('traditional source score altered ' + id);
       }
+      const fastSignatures = {
+        mazurka160: [255,158,2,7723504,5169736],
+        etude160: [407,501,1,16911675,19134685],
+        presto180: [92,60,4,1056472,623342],
+      };
+      for (const [id, expected] of Object.entries(fastSignatures)) {
+        const score = window.WORD_BEAT_SCORES[id];
+        const checksum = (events) => events.reduce((hash, [at, duration, pitches]) => (hash + Math.round(at * 100) * 3 + Math.round(duration * 100) * 5 + pitches.reduce((sum, pitch) => sum + pitch * 7, 0)) % 1000000007, 0);
+        const signature = [score.key.length, score.auto.length, score.repeat, checksum(score.key), checksum(score.auto)];
+        if (signature.join(',') !== expected.join(',')) throw new Error('high-BPM source score altered ' + id);
+      }
+      if (SONGS.filter((song) => song.bpm >= 150).map((song) => song.bpm).join(',') !== '160,160,180') throw new Error('high-BPM catalog missing');
       const twinkleSong = SONGS.find((song) => song.id === 'twinkle');
       if (scoreBpmAt(twinkleSong, 0) !== 60 || scoreBpmAt(twinkleSong, 72) !== 68 || scoreBpmAt(twinkleSong, 124) !== 72) throw new Error('Twinkle tempo map missing');
       if (PIANO_SAMPLE_SOURCES.length !== 6 || !PIANO_SAMPLE_SOURCES.every(([, url]) => url.includes('/salamander/'))) throw new Error('piano samples missing');
