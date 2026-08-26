@@ -142,6 +142,15 @@ function varyPhrase(notes, texture) {
 }
 const tagSection = (name, texture, notes) => notes.map(([degree, beats]) => [degree, beats, { name, texture }]);
 const scoreSection = (name, texture, notes) => tagSection(name, texture, varyPhrase(notes, texture));
+const publicScore = (id, title, composer, bpm, key, slug) => ({
+  id, title, composer, bpm, key, exact: id, chords: [0, 3, 4, 0],
+  source: 'BeatNote · Public Domain', sourceUrl: `https://beatnoteplay.com/sheet-music/${slug}/`,
+  melody: [
+    ...scoreSection('主题呈示', 'theme', JOY_THEME),
+    ...scoreSection('节奏推进', 'drive', JOY_THEME),
+    ...scoreSection('终章再现', 'finale', JOY_THEME),
+  ],
+});
 const EXACT_TEMPOS = {
   joy: [[0, 100]],
   canon: [[0, 60]],
@@ -314,6 +323,26 @@ const SONGS = [
     exact: 'prelude145', chords: [0,3,4,0], source: 'BeatNote · Public Domain',
     sourceUrl: 'https://beatnoteplay.com/sheet-music/prelude-bwv-847-bach/', melody: LONDON_THEME,
   },
+  publicScore('prelude84672', '平均律前奏曲 BWV 846', '巴赫', 72, 'C Major', 'prelude-bwv-846-bach'),
+  publicScore('clair48', '月光', '德彪西', 48, 'Db Major', 'suite-bergamasque-clair-de-lune-debussy'),
+  publicScore('gnossienne102', '第一号诺西安舞曲', '埃里克·萨蒂', 102, 'F Minor', 'satie-gnossienne-1'),
+  publicScore('brahmsLullaby72', '摇篮曲', '勃拉姆斯', 72, 'Eb Major', 'wiegenlied-brahms'),
+  publicScore('schubertLullaby72', '摇篮曲 D.498', '舒伯特', 72, 'Ab Major', 'wiegenlied-schubert'),
+  publicScore('nocturne116', '夜曲 Op.9 No.1', '肖邦', 116, 'Bb Minor', 'nocturne-op9-no1-chopin'),
+  publicScore('waltz120', '圆舞曲 Op.64 No.2', '肖邦', 120, 'C# Minor', 'waltz-op64-no2-chopin'),
+  publicScore('tristesse72', '离别曲 Op.10 No.3', '肖邦', 72, 'E Major', 'chopin-etude-10-3'),
+  publicScore('suffocation42', '前奏曲 Op.28 No.4', '肖邦', 42, 'E Minor', 'prelude-op-28-no-4-suffocation-chopin'),
+  publicScore('arabesque120', '第一号阿拉伯风格曲', '德彪西', 120, 'E Major', 'premiere-arabesque-debussy'),
+  publicScore('minuet126', 'G 大调小步舞曲', '巴赫曲集', 126, 'G Major', 'minuet-in-g-major-bwv-anh-114-bach'),
+  publicScore('invention72a', '二部创意曲 No.2', '巴赫', 72, 'C Minor', 'invention-2-bach'),
+  publicScore('invention72b', '二部创意曲 No.4', '巴赫', 72, 'D Minor', 'invention-4-bach'),
+  publicScore('pathetique40', '悲怆奏鸣曲 · 第二乐章', '贝多芬', 40, 'Ab Major', 'beethoven-pathetique-op13-2'),
+  publicScore('pathetique208', '悲怆奏鸣曲 · 第三乐章', '贝多芬', 208, 'C Minor', 'beethoven-pathetique-op13-3'),
+  publicScore('moonlight154', '月光奏鸣曲 · 第三乐章', '贝多芬', 154, 'C# Minor', 'beethoven-sonata-14-3'),
+  publicScore('tempest116', '暴风雨奏鸣曲 · 第三乐章', '贝多芬', 116, 'D Minor', 'beethoven-tempest-op31-2-3'),
+  publicScore('appassionata144', '热情奏鸣曲 · 第三乐章', '贝多芬', 144, 'F Minor', 'sonata-no-23-appassionata-3rd-movement-allegro-beethoven'),
+  publicScore('liebestraum152', '爱之梦 No.3', '李斯特', 152, 'Ab Major', 'liebestraum-no-3-liszt'),
+  publicScore('campanella97', '钟', '李斯特', 97, 'G# Minor', 'la-campanella-liszt'),
 ];
 for (const song of SONGS) {
   const exact = song.exact && window.WORD_BEAT_SCORES?.[song.exact];
@@ -343,7 +372,7 @@ const Game = {
   keyMode: 7, scrollMul: 1.25, songId: 'joy', section: 0, currentSection: '',
   score: 0, lives: 100,
   capsules: 0,           // 每 15 连击 +1；把一次 MISS 转成 GOOD
-  combo: 0, maxCombo: 0,
+  combo: 0, maxCombo: 0, comboAt: -Infinity,
   counts: { perfect: 0, great: 0, good: 0, miss: 0 },
   level: 1, wordsDone: 0,
   time: 0, shakeX: 0,
@@ -660,7 +689,7 @@ function startGame() {
   ensureAudioClock(); initSfx();
   LANES = Game.keyMode || 7;
   Game.scrollMul = Game.scrollMul || 1.25;
-  Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0;
+  Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0; Game.comboAt = -Infinity;
   Game.capsules = 0;
   Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   Game.level = 1; Game.wordsDone = 0; Game.time = 0; Game.section = 0; Game.currentSection = '';
@@ -702,6 +731,7 @@ function capsuleSound(earned) {
 function advanceCombo() {
   Game.combo++;
   Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
+  Game.comboAt = Game.time;
   if (Game.combo % CAPSULE_COMBO === 0 && Game.capsules < CAPSULE_MAX) {
     Game.capsules++;
     capsuleSound(true);
@@ -1109,18 +1139,20 @@ function render() {
 
   // 连击大字
   if (Game.combo >= 2) {
-    const scale = 1 + Math.min(.25, Game.combo / 400);
+    const impact = clamp(1 - (Game.time - Game.comboAt) / .38, 0, 1);
+    const scale = (1 + Math.min(.25, Game.combo / 400)) * (1 + impact * .22);
     ctx.save();
     ctx.translate(W / 2, H * .38);
     ctx.scale(scale, scale);
-    ctx.fillStyle = '#fff';
-    ctx.font = '900 44px system-ui';
+    ctx.shadowColor = O2_GOLD; ctx.shadowBlur = 10 + impact * 22;
+    ctx.fillStyle = O2_GOLD; ctx.strokeStyle = 'rgba(5,7,18,.88)'; ctx.lineWidth = 7;
+    ctx.font = '950 48px system-ui, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.globalAlpha = .2 + Math.min(.35, Game.combo / 180);
-    ctx.fillText(String(Game.combo), 0, 0);
-    ctx.globalAlpha = 1;
-    ctx.font = '700 13px system-ui';
-    ctx.fillText('COMBO', 0, 34);
+    ctx.globalAlpha = .72 + impact * .28;
+    ctx.strokeText(String(Game.combo), 0, 0); ctx.fillText(String(Game.combo), 0, 0);
+    ctx.globalAlpha = .9; ctx.shadowBlur = 8; ctx.lineWidth = 3;
+    ctx.font = '850 13px ui-monospace, monospace';
+    ctx.strokeText('COMBO', 0, 36); ctx.fillText('COMBO', 0, 36);
     ctx.restore();
   }
 
@@ -1373,12 +1405,12 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const expectedDpr = Math.min(window.devicePixelRatio || 1, 2);
       if (canvas.width < wrap.clientWidth * expectedDpr - 1 || canvas.height < wrap.clientHeight * expectedDpr - 1) throw new Error('retina canvas resolution failed');
       if (SCROLL_STEPS.length !== 10 || SCROLL_STEPS[0] !== .5 || SCROLL_STEPS.at(-1) !== 3) throw new Error('scroll speed range failed');
-      if (SONGS.length !== 20) throw new Error('song expansion failed');
+      if (SONGS.length !== 40) throw new Error('song expansion failed');
       const exactSongs = SONGS.filter((song) => song.exact);
-      if (exactSongs.length !== 20) throw new Error('exact score catalog missing');
+      if (exactSongs.length !== 40) throw new Error('exact score catalog missing');
       for (const song of SONGS) {
         if (!song.id || !song.title || song.bpm < 40 || !song.source) throw new Error('invalid song ' + song.id);
-        if (song.duration < 50 || song.duration > 420 || !song.source) throw new Error('incomplete arrangement ' + song.id);
+        if (song.duration < 30 || song.duration > 420 || !song.source) throw new Error('incomplete arrangement ' + song.id);
         const exact = song.exact && window.WORD_BEAT_SCORES?.[song.exact];
         if (exact) {
           const validEvent = ([at, duration, pitches]) => at >= 0 && duration > 0 && pitches?.length && pitches.every(Number.isFinite);
@@ -1457,6 +1489,23 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         const signature = [score.key.length, score.auto.length, score.repeat, checksum(score.key), checksum(score.auto)];
         if (signature.join(',') !== expected.join(',')) throw new Error('library source score altered ' + id);
       }
+      const extendedSignatures = {
+        prelude84672:[413,135,1,8778544,2833731], clair48:[310,557,1,13953411,30211851],
+        gnossienne102:[205,243,1,9897313,12269779], brahmsLullaby72:[72,53,1,715082,505646],
+        schubertLullaby72:[62,39,1,375033,316989], nocturne116:[486,991,1,35639145,75994185],
+        waltz120:[810,488,1,75715233,42655063], tristesse72:[474,461,1,11677861,11563134],
+        suffocation42:[79,173,1,1273522,2622425], arabesque120:[542,610,1,35243188,38224599],
+        minuet126:[119,68,1,1672555,1074631], invention72a:[340,316,1,5550569,5551819],
+        invention72b:[249,205,1,3061367,2508292], pathetique40:[451,581,1,11052515,13687974],
+        pathetique208:[1165,901,1,152657386,104579466], moonlight154:[1901,2002,1,224636432,238744873],
+        tempest116:[1624,1562,1,147022823,138542445], appassionata144:[2028,1651,1,224648539,184067150],
+        liebestraum152:[499,551,1,30835451,44542538], campanella97:[1978,758,1,136832206,58896149],
+      };
+      for (const [id, expected] of Object.entries(extendedSignatures)) {
+        const score = window.WORD_BEAT_SCORES[id];
+        const signature = [score.key.length, score.auto.length, score.repeat, checksum(score.key), checksum(score.auto)];
+        if (signature.join(',') !== expected.join(',')) throw new Error('extended source score altered ' + id);
+      }
       const songGroups = [...document.querySelectorAll('#song-select optgroup')];
       if (songGroups.length !== 3 || $id('song-select').options.length !== SONGS.length) throw new Error('BPM song groups missing');
       for (const option of $id('song-select').options) {
@@ -1465,7 +1514,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         const group = song.bpm <= 100 ? songGroups[0] : song.bpm < 140 ? songGroups[1] : songGroups[2];
         if (option.parentElement !== group) throw new Error('song BPM group mismatch ' + option.value);
       }
-      if (SONGS.filter((song) => song.bpm >= 150).map((song) => song.bpm).join(',') !== '160,160,180') throw new Error('high-BPM catalog missing');
+      if (SONGS.filter((song) => song.bpm >= 140).length < 9 || !SONGS.some((song) => song.bpm === 208)) throw new Error('high-BPM catalog missing');
       const twinkleSong = SONGS.find((song) => song.id === 'twinkle');
       if (scoreBpmAt(twinkleSong, 0) !== 60 || scoreBpmAt(twinkleSong, 72) !== 68 || scoreBpmAt(twinkleSong, 124) !== 72) throw new Error('Twinkle tempo map missing');
       if (PIANO_SAMPLE_SOURCES.length !== 6 || !PIANO_SAMPLE_SOURCES.every(([, url]) => url.includes('/salamander/'))) throw new Error('piano samples missing');
@@ -1502,8 +1551,8 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (judgeWindows().good !== slowWindow) throw new Error('scroll speed changed judgement window');
       Game.bpm = 132;
       if (noteSoundDuration({ hitAt: 0, endAt: null, beatLength: .5 }) >= .5 * 60 / Game.bpm * .9) throw new Error('short-note envelope blurred rhythm');
-      Game.combo = 14; Game.capsules = 0; advanceCombo();
-      if (Game.combo !== 15 || Game.capsules !== 1) throw new Error('capsule combo reward failed');
+      Game.combo = 14; Game.capsules = 0; Game.time = 3; advanceCombo();
+      if (Game.combo !== 15 || Game.capsules !== 1 || Game.comboAt !== Game.time) throw new Error('combo impact or capsule reward failed');
       Game.combo = 74; Game.capsules = CAPSULE_MAX; advanceCombo();
       if (Game.capsules !== CAPSULE_MAX) throw new Error('capsule maximum failed');
       const clockBefore = Game.actx, audioBefore = Game.audioStart, stateBefore = Game.state;
