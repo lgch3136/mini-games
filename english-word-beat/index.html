@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>英语节奏大师 · WORD BEAT</title>
 <meta name="description" content="七键古典旋律音游：公开 MIDI 逐事件谱面、独立键音与自动伴奏轨。">
-<link rel="stylesheet" href="style.css?v=20260826a">
+<link rel="stylesheet" href="style.css?v=20260826b">
 </head>
 <body>
 <div id="game-wrap">
@@ -21,6 +21,7 @@
       </div>
       <div class="life-wrap"><div id="life-bar"></div></div>
       <div class="chips">
+        <button id="exit-btn">选曲</button>
         <button id="mute-btn">声音</button>
         <button id="pause-btn">暂停</button>
       </div>
@@ -55,19 +56,31 @@
       <div class="opt-row song-row">
         <label class="opt-label" for="song-select">曲目</label>
         <select id="song-select">
-          <optgroup label="经典曲目">
-            <option value="joy">欢乐颂</option>
-            <option value="canon">卡农进行曲</option>
-            <option value="twinkle">小星星变奏</option>
-            <option value="mary">玛丽有只小羊羔</option>
-            <option value="frere">两只老虎</option>
-            <option value="jingle">铃儿响叮当</option>
-            <option value="london">伦敦桥</option>
+          <optgroup label="简单 · ≤100 BPM">
+            <option value="moonlight44">月光奏鸣曲 第一乐章 · 44</option>
+            <option value="canon">卡农进行曲 · 60</option>
+            <option value="twinkle">小星星变奏 · 60</option>
+            <option value="gymnopedie60">第一号吉诺佩蒂 · 60</option>
+            <option value="nocturne60">肖邦夜曲 Op.9 No.2 · 60</option>
+            <option value="entertainer60">演艺人 · 60</option>
+            <option value="furElise72">致爱丽丝 · 72</option>
+            <option value="joy">欢乐颂 · 100</option>
+            <option value="mary">玛丽有只小羊羔 · 100</option>
+            <option value="maple100">枫叶拉格 · 100</option>
           </optgroup>
-          <optgroup label="⚡ 高速挑战">
-            <option value="mazurka160">马祖卡 Op.7 No.2 · 160 BPM</option>
-            <option value="etude160">练习曲 Op.25 No.4 · 160 BPM</option>
-            <option value="presto180">急板马祖卡 Op.7 No.5 · 180 BPM</option>
+          <optgroup label="中等 · 101–139 BPM">
+            <option value="london">伦敦桥 · 108</option>
+            <option value="frere">两只老虎 · 120</option>
+            <option value="jingle">铃儿响叮当 · 120</option>
+            <option value="turkish120">土耳其进行曲 · 120</option>
+            <option value="k545132">莫扎特奏鸣曲 K.545 · 132</option>
+          </optgroup>
+          <optgroup label="困难 · ≥140 BPM">
+            <option value="etude144">肖邦练习曲 Op.10 No.2 · 144</option>
+            <option value="prelude145">巴赫前奏曲 BWV 847 · 145</option>
+            <option value="mazurka160">马祖卡 Op.7 No.2 · 160</option>
+            <option value="etude160">练习曲 Op.25 No.4 · 160</option>
+            <option value="presto180">马祖卡 Op.7 No.5 · 180</option>
           </optgroup>
         </select>
         <span id="song-detail">贝多芬 · 100 BPM · 1:58</span>
@@ -125,9 +138,10 @@
 </div>
 
 <script src="../shared/vocabulary.js"></script>
-<script src="score-data.js?v=20260826a"></script>
-<script src="source-scores.js?v=20260826a"></script>
-<script src="fast-scores.js?v=20260826a"></script>
-<script src="game.js?v=20260826a"></script>
+<script src="score-data.js?v=20260826b"></script>
+<script src="source-scores.js?v=20260826b"></script>
+<script src="fast-scores.js?v=20260826b"></script>
+<script src="library-scores.js?v=20260826b"></script>
+<script src="game.js?v=20260826b"></script>
 </body>
 </html>

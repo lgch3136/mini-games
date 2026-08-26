@@ -153,6 +153,16 @@ const EXACT_TEMPOS = {
   mazurka160: [[0, 160]],
   etude160: [[0, 160]],
   presto180: [[0, 180]],
+  moonlight44: [[0, 44]],
+  gymnopedie60: [[0, 60]],
+  nocturne60: [[0, 60]],
+  entertainer60: [[0, 60]],
+  furElise72: [[0, 72]],
+  maple100: [[0, 100]],
+  turkish120: [[0, 120]],
+  k545132: [[0, 132]],
+  etude144: [[0, 144]],
+  prelude145: [[0, 145]],
 };
 function scoreSecondsAt(song, scoreBeat) {
   const tempos = EXACT_TEMPOS[song.exact] || [[0, song.bpm]];
@@ -253,6 +263,56 @@ const SONGS = [
     id: 'presto180', title: '急板马祖卡 Op.7 No.5', composer: '肖邦', bpm: 180, key: 'C Major',
     exact: 'presto180', chords: [0,4,0,4], source: 'BeatNote · Public Domain',
     sourceUrl: 'https://beatnoteplay.com/sheet-music/chopin-mazurka-op07-no5/', melody: FRERE_THEME,
+  },
+  {
+    id: 'moonlight44', title: '月光奏鸣曲 · 第一乐章', composer: '贝多芬', bpm: 44, key: 'C# Minor',
+    exact: 'moonlight44', chords: [5,2,3,4], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/sonata-no-14-moonlight-1st-movement-adagio-sos-beethoven/', melody: CANON_FULL,
+  },
+  {
+    id: 'gymnopedie60', title: '第一号吉诺佩蒂', composer: '埃里克·萨蒂', bpm: 60, key: 'D Major',
+    exact: 'gymnopedie60', chords: [0,3,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/gymnopedie-no-1-satie/', melody: TWINKLE_THEME,
+  },
+  {
+    id: 'nocturne60', title: '夜曲 Op.9 No.2', composer: '肖邦', bpm: 60, key: 'Eb Major',
+    exact: 'nocturne60', chords: [0,3,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/nocturne-op9-no2-chopin/', melody: LONDON_THEME,
+  },
+  {
+    id: 'entertainer60', title: '演艺人', composer: '斯科特·乔普林', bpm: 60, key: 'C Major',
+    exact: 'entertainer60', chords: [0,4,0,4], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/the-entertainer-joplin/', melody: JINGLE_THEME,
+  },
+  {
+    id: 'furElise72', title: '致爱丽丝', composer: '贝多芬', bpm: 72, key: 'A Minor',
+    exact: 'furElise72', chords: [5,0,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/fur-elise-woo59/', melody: JOY_THEME,
+  },
+  {
+    id: 'maple100', title: '枫叶拉格', composer: '斯科特·乔普林', bpm: 100, key: 'Ab Major',
+    exact: 'maple100', chords: [5,0,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/maple-leaf-rag-joplin/', melody: MARY_THEME,
+  },
+  {
+    id: 'turkish120', title: '土耳其进行曲', composer: '莫扎特', bpm: 120, key: 'A Minor',
+    exact: 'turkish120', chords: [5,0,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/sonate-opus-kv-331-rondo-alla-turca-mozart/', melody: FRERE_THEME,
+  },
+  {
+    id: 'k545132', title: '钢琴奏鸣曲 K.545 · 第一乐章', composer: '莫扎特', bpm: 132, key: 'C Major',
+    exact: 'k545132', chords: [0,4,0,4], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/sonata-no-16-k545-1st-movement-mozart/', melody: JOY_THEME,
+  },
+  {
+    id: 'etude144', title: '练习曲 Op.10 No.2', composer: '肖邦', bpm: 144, key: 'A Minor',
+    exact: 'etude144', chords: [5,0,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/chopin-etude-10-2/', melody: JINGLE_THEME,
+  },
+  {
+    id: 'prelude145', title: '前奏曲 BWV 847', composer: '巴赫', bpm: 145, key: 'C Minor',
+    exact: 'prelude145', chords: [0,3,4,0], source: 'BeatNote · Public Domain',
+    sourceUrl: 'https://beatnoteplay.com/sheet-music/prelude-bwv-847-bach/', melody: LONDON_THEME,
   },
 ];
 for (const song of SONGS) {
@@ -1220,6 +1280,7 @@ function drawMenuDemo() {
 function toggleMute() { Game.muted = !Game.muted; $id('mute-btn').textContent = Game.muted ? '已静音' : '声音'; }
 $id('mute-btn').addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
+$id('exit-btn').addEventListener('click', backToMenu);
 $id('start-btn').addEventListener('click', startGame);
 $id('retry-btn').addEventListener('click', startGame);
 $id('menu-btn').addEventListener('click', backToMenu);
@@ -1249,6 +1310,7 @@ $id('song-select').addEventListener('change', (event) => {
   Game.songId = event.target.value;
   updateSongMenu();
 });
+$id('song-select').value = Game.songId;
 updateSongMenu();
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
@@ -1311,12 +1373,12 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const expectedDpr = Math.min(window.devicePixelRatio || 1, 2);
       if (canvas.width < wrap.clientWidth * expectedDpr - 1 || canvas.height < wrap.clientHeight * expectedDpr - 1) throw new Error('retina canvas resolution failed');
       if (SCROLL_STEPS.length !== 10 || SCROLL_STEPS[0] !== .5 || SCROLL_STEPS.at(-1) !== 3) throw new Error('scroll speed range failed');
-      if (SONGS.length !== 10) throw new Error('song expansion failed');
+      if (SONGS.length !== 20) throw new Error('song expansion failed');
       const exactSongs = SONGS.filter((song) => song.exact);
-      if (exactSongs.length !== 10) throw new Error('exact score catalog missing');
+      if (exactSongs.length !== 20) throw new Error('exact score catalog missing');
       for (const song of SONGS) {
         if (!song.id || !song.title || song.bpm < 40 || !song.source) throw new Error('invalid song ' + song.id);
-        if (song.duration < 75 || song.duration > 200 || !song.source) throw new Error('incomplete arrangement ' + song.id);
+        if (song.duration < 50 || song.duration > 420 || !song.source) throw new Error('incomplete arrangement ' + song.id);
         const exact = song.exact && window.WORD_BEAT_SCORES?.[song.exact];
         if (exact) {
           const validEvent = ([at, duration, pitches]) => at >= 0 && duration > 0 && pitches?.length && pitches.every(Number.isFinite);
@@ -1365,11 +1427,11 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         mary: [78,48,2,1166898,740172], frere: [70,30,3,654134,273558],
         jingle: [72,48,2,1090119,740088], london: [72,48,2,1064670,740088],
       };
+      const checksum = (events) => events.reduce((hash, [at, duration, pitches]) => (hash + Math.round(at * 100) * 3 + Math.round(duration * 100) * 5 + pitches.reduce((sum, pitch) => sum + pitch * 7, 0)) % 1000000007, 0);
       for (const [id, expected] of Object.entries(sourceStarts)) {
         const score = window.WORD_BEAT_SCORES[id];
         const actual = score.key.slice(0, expected.length).map((event) => event[2].at(-1));
         if (actual.join(',') !== expected.join(',')) throw new Error('traditional source melody altered ' + id);
-        const checksum = (events) => events.reduce((hash, [at, duration, pitches]) => (hash + Math.round(at * 100) * 3 + Math.round(duration * 100) * 5 + pitches.reduce((sum, pitch) => sum + pitch * 7, 0)) % 1000000007, 0);
         const signature = [score.key.length, score.auto.length, score.repeat, checksum(score.key), checksum(score.auto)];
         if (signature.join(',') !== sourceSignatures[id].join(',')) throw new Error('traditional source score altered ' + id);
       }
@@ -1380,9 +1442,28 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       };
       for (const [id, expected] of Object.entries(fastSignatures)) {
         const score = window.WORD_BEAT_SCORES[id];
-        const checksum = (events) => events.reduce((hash, [at, duration, pitches]) => (hash + Math.round(at * 100) * 3 + Math.round(duration * 100) * 5 + pitches.reduce((sum, pitch) => sum + pitch * 7, 0)) % 1000000007, 0);
         const signature = [score.key.length, score.auto.length, score.repeat, checksum(score.key), checksum(score.auto)];
         if (signature.join(',') !== expected.join(',')) throw new Error('high-BPM source score altered ' + id);
+      }
+      const librarySignatures = {
+        furElise72: [463,328,1,10905342,7910001], gymnopedie60: [39,47,1,917151,1058527],
+        nocturne60: [413,396,1,14957206,12276169], moonlight44: [908,155,1,36901600,7336642],
+        entertainer60: [515,351,1,14380996,9683374], maple100: [479,330,1,12742774,8796154],
+        k545132: [586,593,1,25354306,27479553], turkish120: [604,482,1,23320071,21754736],
+        etude144: [956,160,1,28197283,4566789], prelude145: [525,532,1,10979244,11383283],
+      };
+      for (const [id, expected] of Object.entries(librarySignatures)) {
+        const score = window.WORD_BEAT_SCORES[id];
+        const signature = [score.key.length, score.auto.length, score.repeat, checksum(score.key), checksum(score.auto)];
+        if (signature.join(',') !== expected.join(',')) throw new Error('library source score altered ' + id);
+      }
+      const songGroups = [...document.querySelectorAll('#song-select optgroup')];
+      if (songGroups.length !== 3 || $id('song-select').options.length !== SONGS.length) throw new Error('BPM song groups missing');
+      for (const option of $id('song-select').options) {
+        const song = SONGS.find((item) => item.id === option.value);
+        if (!song) throw new Error('unknown song option ' + option.value);
+        const group = song.bpm <= 100 ? songGroups[0] : song.bpm < 140 ? songGroups[1] : songGroups[2];
+        if (option.parentElement !== group) throw new Error('song BPM group mismatch ' + option.value);
       }
       if (SONGS.filter((song) => song.bpm >= 150).map((song) => song.bpm).join(',') !== '160,160,180') throw new Error('high-BPM catalog missing');
       const twinkleSong = SONGS.find((song) => song.id === 'twinkle');
@@ -1434,6 +1515,8 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.actx = clockBefore; Game.audioStart = audioBefore; Game.state = stateBefore;
       floatText('PERFECT', 10, 10, '#fff');
       if (!Game.floaters.at(-1).color) throw new Error('floater color missing');
+      Game.state = 'playing'; $id('menu').classList.add('hidden'); backToMenu();
+      if (Game.state !== 'menu' || $id('menu').classList.contains('hidden')) throw new Error('in-game song exit failed');
       document.title = 'SELFTEST-OK';
     } catch (e) {
       document.title = 'SELFTEST-FAIL: ' + e.message;
