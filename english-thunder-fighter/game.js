@@ -141,9 +141,9 @@ const Game = {
   questionIndex: 0,         // 已出题数（用于精英/首领节奏）
   phase: 'question',        // question | boss | transition
   question: null,
-  nextWaveTimer: 0,
+  nextWaveTimer: null,
   bossPending: false,
-  stats: { questions: 0, correct: 0, wrongKills: 0, vocab: 0, grammar: 0 },
+  stats: { questions: 0, correct: 0, wrongAnswers: 0, vocab: 0, grammar: 0 },
   player: {
     x: W / 2, y: H - 90, r: 15,
     fireTimer: 0, fireInterval: 0.15,
@@ -341,11 +341,13 @@ function makeQuestion() {
   return { kind: '单词释义', prompt: item.en, hint: '选择正确的中文释义', options, answer: item.zh, isGrammar: false, en: item.en, zh: item.zh };
 }
 
-function spawnQuestionWave() {
+function spawnQuestionWave(reinforcement) {
   Game.phase = 'question';
-  Game.question = makeQuestion();
-  Game.questionIndex++;
-  Game.stats.questions++;
+  if (!reinforcement || !Game.question) {
+    Game.question = makeQuestion();
+    Game.questionIndex++;
+    Game.stats.questions++;
+  }
   Game.enemies.length = 0;
   const n = Game.question.options.length;
   const eliteIdx = (Game.questionIndex % 5 === 3) ? randInt(n) : -1;
@@ -354,10 +356,11 @@ function spawnQuestionWave() {
   const jitter = Math.min(45, W / (n + 1) * 0.28);
   const edge = W < 600 ? Math.max(62, W * 0.17) : 60;
   Game.question.options.forEach((opt, i) => {
+    const homeX = clamp(W * (i + 1) / (n + 1) + rand(-jitter, jitter), edge, W - edge);
+    const homeY = Math.min(H * .3, hudClearanceY() + 26 + (i % 2) * 54);
     const enemy = {
-      x: clamp(W * (i + 1) / (n + 1) + rand(-jitter, jitter), edge, W - edge),
-      // 两排编队直接在题栏下方展开，玩家无需空等入场动画。
-      y: Math.min(H * .3, hudClearanceY() + 26 + (i % 2) * 54),
+      x: clamp(homeX + (i < n / 2 ? -90 : 90), edge, W - edge),
+      y: -95 - (i % 2) * 38,
       r: 24, hp: 1, maxHp: 1,
       vy: speedBase + rand(-12, 18),
       t: rand(0, 6), phase: rand(0, Math.PI * 2),
@@ -368,12 +371,11 @@ function spawnQuestionWave() {
       nextShot: rand(0.8, 2.5),
       shotInterval: conf.fire * rand(0.75, 1.35),
       hitFlash: 0, dead: false,
-      spawnAt: Game.time,
-      homeX: 0, homeY: 0, route: Game.questionIndex % 3,
+      spawnAt: Game.time + i * .2,
+      homeX, homeY, entering: true, retreating: false,
+      route: Game.questionIndex % 3,
       bulletColor: i % 2 ? '#48cfff' : '#ff9b45',
     };
-    enemy.homeX = enemy.x;
-    enemy.homeY = enemy.y;
     if (i === eliteIdx) {
       enemy.elite = true;
       enemy.r = 29; enemy.hp = enemy.maxHp = 3;
@@ -382,7 +384,10 @@ function spawnQuestionWave() {
     }
     Game.enemies.push(enemy);
   });
-  updateQuestionBar();
+  if (reinforcement) {
+    els.qHint.textContent = '增援抵达：继续击落敌机，寻找正确数据芯片';
+    toast('增援编队接近', '#5ce1ff', W / 2, H * .34, 18);
+  } else updateQuestionBar();
 }
 
 function spawnBoss() {
@@ -412,29 +417,34 @@ function nextWave() {
     Game.bossPending = false;
     spawnBoss();
   } else {
-    spawnQuestionWave();
+    spawnQuestionWave(Boolean(Game.question));
   }
 }
 
 /* ---------------- 波次结算 ---------------- */
-function showAnswerFeedback(ok) {
+function showAnswerFeedback() {
   const q = Game.question;
   if (!q) return;
   const text = q.isGrammar ? q.prompt.replace('___', q.answer) : (q.en + ' = ' + q.zh);
-  els.qFeedback.textContent = (ok ? '✅ ' : '❌ 正确答案：') + text;
-  els.qFeedback.style.color = ok ? '#7dffa8' : '#ff8f8f';
+  els.qFeedback.textContent = '✅ ' + text;
+  els.qFeedback.style.color = '#7dffa8';
 }
 
-function endWave(success) {
+function endWave() {
   if (Game.phase !== 'question' || !Game.question) return;
-  const rest = Game.enemies.slice();
-  Game.enemies.length = 0;
-  for (const e of rest) explode(e.x, e.y, e.boss ? '#ff6b6b' : '#8aa2c9', 18, 0.9);
-  if (!success) showAnswerFeedback(false);
+  for (const e of Game.enemies) {
+    e.option = null;
+    e.entering = false;
+    e.retreating = true;
+  }
+  for (let i = Game.powerups.length - 1; i >= 0; i--) {
+    if (Game.powerups[i].kind === 'answer') Game.powerups.splice(i, 1);
+  }
+  Game.enemyBullets.length = 0;
   Game.question = null;
   Game.phase = 'transition';
   Game.bossPending = Game.questionIndex % 8 === 0;
-  Game.nextWaveTimer = success ? 1.0 : 1.4;
+  Game.nextWaveTimer = .9;
   if (Game.stats.questions % 6 === 0) levelUp();
 }
 
@@ -464,7 +474,9 @@ function killEnemy(e, byCrash) {
     Game.combo = 0;
     if (e.boss) {
       Game.enemyBullets.length = 0;
-      if (Game.phase === 'boss') { Game.phase = 'question'; Game.nextWaveTimer = 1.4; }
+      if (Game.phase === 'boss') { Game.phase = 'transition'; Game.nextWaveTimer = 1.4; }
+    } else if (Game.enemies.length === 0 && Game.phase === 'question') {
+      Game.nextWaveTimer = 1.2;
     }
     updateHud();
     return;
@@ -474,34 +486,21 @@ function killEnemy(e, byCrash) {
     Game.enemyBullets.length = 0;
     toast('+1000', '#ffd166', e.x, e.y - 30, 22);
     dropPowerup(e.x, e.y, 1);
-    if (Game.phase === 'boss') { Game.phase = 'question'; Game.nextWaveTimer = 1.6; }
+    if (Game.phase === 'boss') { Game.phase = 'transition'; Game.nextWaveTimer = 1.6; }
     updateHud();
     return;
   }
-  if (e.option.correct) {
-    Game.combo++;
-    Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
-    const quick = clamp(5 - Math.floor((Game.time - (e.spawnAt || Game.time)) / 1.1), 1, 5);
-    const gain = (100 + Game.combo * 10 + (e.elite ? 50 : 0)) * quick;
-    Game.score += gain;
-    Game.stats.correct++;
-    if (Game.question.isGrammar) Game.stats.grammar++; else Game.stats.vocab++;
-    toast('QUICK ×' + quick + '  +' + gain, '#7dffa8', e.x, e.y - 20, 18);
-    showAnswerFeedback(true);
-    SFX.correct();
-    dropPowerup(e.x, e.y, e.elite ? 0.6 : 0.24);
-    dropWeaponCrystal(e.x - 24, e.y, Game.questionIndex <= 3 ? 1 : .42);
-    dropMedal(e.x + 24, e.y);
-    endWave(true);
-  } else {
-    Game.combo = 0;
-    Game.score = Math.max(0, Game.score - 10);
-    Game.stats.wrongKills++;
-    damagePlayer(8);
-    toast('✗ 错误答案', '#ff6b6b', e.x, e.y - 20, 16);
-    SFX.wrong();
-    if (Game.enemies.length === 0 && Game.phase === 'question') endWave(false);
-  }
+  Game.combo++;
+  Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
+  const quick = clamp(4 - Math.floor((Game.time - (e.spawnAt || Game.time)) / 1.4), 1, 4);
+  const gain = (35 + Game.combo * 4 + (e.elite ? 55 : 0)) * quick;
+  Game.score += gain;
+  toast('+' + gain, e.elite ? '#ffe066' : '#9ff3ff', e.x, e.y - 20, 16);
+  if (e.option) dropAnswerChip(e.option, e.x, e.y);
+  dropPowerup(e.x, e.y, e.elite ? .5 : .08);
+  if (e.elite) dropWeaponCrystal(e.x - 24, e.y, .45);
+  if (Game.combo % 6 === 0) dropMedal(e.x + 24, e.y);
+  if (Game.enemies.length === 0 && Game.phase === 'question') Game.nextWaveTimer = 1.6;
   updateHud();
 }
 
@@ -512,11 +511,7 @@ function onEnemyEscape(e) {
   Game.combo = 0;
   damagePlayer(14);
   explode(e.x, H - 10, '#7f8fa6', 16, 0.8);
-  if (e.option && e.option.correct) {
-    endWave(false);
-  } else if (Game.enemies.length === 0 && Game.phase === 'question') {
-    endWave(false);
-  }
+  if (Game.enemies.length === 0 && Game.phase === 'question') Game.nextWaveTimer = 1.2;
   updateHud();
 }
 
@@ -558,12 +553,12 @@ function useBomb() {
   Game.enemyBullets.length = 0;
   Game.combo = 0;
   if (Game.phase === 'question' && Game.question) {
-    endWave(false);
+    for (const e of Game.enemies.slice()) killEnemy(e, false);
   } else if (Game.phase === 'boss') {
     const rest = Game.enemies.slice();
     Game.enemies.length = 0;
     for (const e of rest) explode(e.x, e.y, '#ff6b6b', 40, 1.6);
-    Game.phase = 'question';
+    Game.phase = 'transition';
     Game.nextWaveTimer = 1.0;
   }
   updateHud();
@@ -591,7 +586,36 @@ function dropMedal(x, y) {
   Game.powerups.push({ kind: 'medal', icon: '★', color: '#ffe066', name: '连锁勋章', x: clamp(x, 30, W - 30), y, vy: 88, t: 0 });
 }
 
+function dropAnswerChip(option, x, y) {
+  Game.powerups.push({ kind: 'answer', text: option.text, correct: option.correct, color: '#5ce1ff', x: clamp(x, 55, W - 55), y, vy: 54, t: 0 });
+}
+
 function applyPowerup(u) {
+  if (u.kind === 'answer') {
+    if (!Game.question || Game.phase !== 'question') return;
+    if (u.correct) {
+      const q = Game.question;
+      const gain = 300 + Game.combo * 20;
+      Game.score += gain;
+      Game.stats.correct++;
+      if (q.isGrammar) Game.stats.grammar++; else Game.stats.vocab++;
+      showAnswerFeedback();
+      toast('答案锁定  +' + gain, '#7dffa8', u.x, u.y - 16, 19);
+      SFX.correct();
+      dropWeaponCrystal(u.x - 24, u.y, Game.questionIndex <= 3 ? 1 : .42);
+      dropMedal(u.x + 24, u.y);
+      endWave();
+    } else {
+      Game.combo = 0;
+      Game.stats.wrongAnswers++;
+      els.qFeedback.textContent = '干扰数据，继续寻找';
+      els.qFeedback.style.color = '#ffb36b';
+      toast('未匹配 · 连击中断', '#ffb36b', u.x, u.y - 14, 16);
+      SFX.wrong();
+    }
+    updateHud();
+    return;
+  }
   if (u.kind === 'weapon') {
     const p = Game.player;
     p.weaponLevel = p.weapon === u.mode ? Math.min(3, p.weaponLevel + 1) : 1;
@@ -808,9 +832,12 @@ function update(dt) {
   updateEnemyBullets(dt);
   updatePowerups(dt);
 
-  if (Game.nextWaveTimer > 0) {
-    Game.nextWaveTimer -= dt;
-    if (Game.nextWaveTimer <= 0 && Game.enemies.length === 0 && Game.state === 'playing') nextWave();
+  if (Game.nextWaveTimer !== null) {
+    if (Game.nextWaveTimer > 0) Game.nextWaveTimer -= dt;
+    if (Game.nextWaveTimer <= 0 && Game.enemies.length === 0 && Game.state === 'playing') {
+      Game.nextWaveTimer = null;
+      nextWave();
+    }
   }
 }
 
@@ -864,7 +891,7 @@ function updateEnemies(dt) {
         e.y -= 140 * dt;
         if (e.y < -100) {
           removeEnemy(e);
-          Game.phase = 'question';
+          Game.phase = 'transition';
           Game.nextWaveTimer = 1.0;
           toast('首领逃走了', '#8fa6c8', W / 2, H * 0.4, 18);
         }
@@ -878,6 +905,18 @@ function updateEnemies(dt) {
     }
 
     const waveAge = Game.time - e.spawnAt;
+    if (e.retreating) {
+      e.y -= 260 * dt;
+      if (e.y < -110) removeEnemy(e);
+      continue;
+    }
+    if (waveAge < 0) continue;
+    if (e.entering) {
+      e.x += (e.homeX - e.x) * Math.min(1, dt * 3.2);
+      e.y += (e.homeY - e.y) * Math.min(1, dt * 2.6);
+      if (Math.abs(e.homeY - e.y) < 4) { e.y = e.homeY; e.entering = false; }
+      continue;
+    }
     const hoverFor = Game.difficulty === 'easy' ? 6.5 : 5.4;
     if (waveAge < hoverFor) {
       const hoverY = e.homeY + Math.sin(e.t * 1.7 + e.phase) * 12;
@@ -906,7 +945,6 @@ function updateEnemies(dt) {
     if (Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) {
       killEnemy(e, true);
       damagePlayer(18);
-      if (Game.enemies.length === 0 && Game.phase === 'question') endWave(false);
       continue;
     }
 
@@ -946,9 +984,10 @@ function updatePowerups(dt) {
       if (u.kind === 'medal') Game.medalChain = 0;
       Game.powerups.splice(i, 1); updateHud(); continue;
     }
-    if (Math.hypot(u.x - p.x, u.y - p.y) < 26 + p.r) {
-      applyPowerup(u);
+    if (Math.hypot(u.x - p.x, u.y - p.y) < (u.kind === 'answer' ? 38 : 26) + p.r) {
       Game.powerups.splice(i, 1);
+      applyPowerup(u);
+      if (u.kind === 'answer' && u.correct) break;
     }
   }
 }
@@ -1163,29 +1202,27 @@ function drawPlayer() {
   }
 }
 
-function drawLabel(text, x, y, size) {
-  ctx.font = '600 ' + size + 'px "PingFang SC","Microsoft YaHei",system-ui,sans-serif';
-  const tw = ctx.measureText(text).width;
-  const w = Math.min(tw + 16, W < 600 ? Math.max(76, W * 0.32) : 190);
-  const h = 21;
-  ctx.fillStyle = 'rgba(8,14,34,0.88)';
-  roundRectPath(x - w / 2, y - h / 2, w, h, 7);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(140,200,255,0.55)';
-  ctx.lineWidth = 1;
-  roundRectPath(x - w / 2, y - h / 2, w, h, 7);
-  ctx.stroke();
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text.length > 26 ? text.slice(0, 25) + '…' : text, x, y + 1, w - 10);
-}
-
 function drawEnemies() {
   for (const e of Game.enemies) {
+    if (e.entering && Game.time >= e.spawnAt - .35 && e.y < 12) {
+      ctx.save();
+      const markerY = Math.max(28, Game._minY - 22);
+      ctx.translate(e.homeX, markerY);
+      ctx.globalAlpha = .55 + Math.sin(Game.time * 8) * .25;
+      ctx.fillStyle = '#5ce1ff';
+      ctx.beginPath(); ctx.moveTo(-7, -4); ctx.lineTo(7, -4); ctx.lineTo(0, 7); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
     ctx.save();
     ctx.translate(e.x, e.y);
     const flash = e.hitFlash > 0;
+    if (e.entering && e.y > 0) {
+      const trail = ctx.createLinearGradient(0, -75, 0, -12);
+      trail.addColorStop(0, 'rgba(92,225,255,0)');
+      trail.addColorStop(1, 'rgba(92,225,255,.48)');
+      ctx.strokeStyle = trail; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, -78); ctx.lineTo(0, -18); ctx.stroke();
+    }
     if (e.boss) {
       const aura = ctx.createRadialGradient(0, 0, e.r * .2, 0, 0, e.r * 2.4);
       aura.addColorStop(0, 'rgba(255,65,218,.34)');
@@ -1241,7 +1278,6 @@ function drawEnemies() {
           const x = sx * bracketW / 2, y = sy * bracketH / 2;
           ctx.beginPath(); ctx.moveTo(x - sx * corner, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * corner); ctx.stroke();
         }
-        drawLabel(e.option.text, 0, spriteH / 2 + 15, e.elite ? 14 : 13);
       }
     }
     ctx.restore();
@@ -1307,6 +1343,20 @@ function drawPowerups() {
     ctx.translate(u.x, u.y);
     const pulse = 1 + Math.sin(Game.time * 6 + u.t * 4) * 0.12;
     ctx.scale(pulse, pulse);
+    if (u.kind === 'answer') {
+      ctx.font = '700 14px "PingFang SC","Microsoft YaHei",system-ui,sans-serif';
+      const w = clamp(ctx.measureText(u.text).width + 32, 72, 190);
+      ctx.fillStyle = 'rgba(5,14,31,.82)';
+      roundRectPath(-w / 2, -15, w, 30, 8); ctx.fill();
+      ctx.strokeStyle = 'rgba(92,225,255,.9)'; ctx.lineWidth = 1.5;
+      roundRectPath(-w / 2, -15, w, 30, 8); ctx.stroke();
+      ctx.fillStyle = '#8ef1ff';
+      ctx.beginPath(); ctx.moveTo(-w / 2 + 8, 0); ctx.lineTo(-w / 2 + 13, -5); ctx.lineTo(-w / 2 + 18, 0); ctx.lineTo(-w / 2 + 13, 5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(u.text.length > 24 ? u.text.slice(0, 23) + '…' : u.text, 6, 1, w - 28);
+      ctx.restore();
+      continue;
+    }
     ctx.fillStyle = u.color + '33'; ctx.strokeStyle = u.color; ctx.lineWidth = 2;
     if (u.kind === 'weapon') {
       ctx.rotate(Math.PI / 4);
@@ -1386,7 +1436,7 @@ function updateQuestionBar() {
   if (!q) return;
   els.qKind.textContent = q.kind;
   els.qPrompt.textContent = q.prompt;
-  els.qHint.textContent = q.hint;
+  els.qHint.textContent = '击落任意敌机，收集正确的数据芯片';
   els.qFeedback.textContent = '';
   els.qFeedback.style.color = '#7dffa8';
 }
@@ -1435,10 +1485,10 @@ function startGame() {
   Game.questionIndex = 0;
   Game.phase = 'question';
   Game.question = null;
-  Game.nextWaveTimer = 0;
+  Game.nextWaveTimer = null;
   Game.bossPending = false;
   Game.shake = 0;
-  Game.stats = { questions: 0, correct: 0, wrongKills: 0, vocab: 0, grammar: 0 };
+  Game.stats = { questions: 0, correct: 0, wrongAnswers: 0, vocab: 0, grammar: 0 };
   Game.bullets.length = 0; Game.enemyBullets.length = 0;
   Game.enemies.length = 0; Game.powerups.length = 0;
   Game.particles.length = 0; Game.shockwaves.length = 0; Game.floaters.length = 0;
@@ -1493,7 +1543,7 @@ function gameOver() {
   const prev = Number(localStorage.getItem(key) || 0);
   const isNew = Game.score > prev;
   if (isNew) localStorage.setItem(key, String(Game.score));
-  const acc = Game.stats.correct + Game.stats.wrongKills;
+  const acc = Game.stats.correct + Game.stats.wrongAnswers;
   const accPct = acc ? Math.round(Game.stats.correct / acc * 100) : 0;
   els.overStats.innerHTML =
     '<div class="stat-row"><span>最终得分</span><b>' + Game.score + (isNew ? ' 🏆新纪录' : '') + '</b></div>' +
@@ -1572,7 +1622,7 @@ if (/[?&]selftest/.test(location.search)) {
   try {
     Game.difficulty = 'easy';
     startGame();
-    if (Math.max(...Game.enemies.map((e) => e.y)) - Math.min(...Game.enemies.map((e) => e.y)) > 60) throw new Error('wave enters too slowly');
+    if (!Game.enemies.every((e) => e.y < 0) || new Set(Game.enemies.map((e) => e.spawnAt)).size < 2) throw new Error('formation entry failed');
     Game.player.invuln = 0;
     const beforeGraze = Game.score;
     Game.enemyBullets.push({ x: Game.player.x + 28, y: Game.player.y, vx: 0, vy: 0, r: 4 });
@@ -1589,9 +1639,19 @@ if (/[?&]selftest/.test(location.search)) {
     const medalScore = Game.score;
     applyPowerup({ kind: 'medal', name: '连锁勋章', color: '#ffe066', x: 0, y: 0 });
     if (Game.medalChain !== 1 || Game.score !== medalScore + 50) throw new Error('medal chain failed');
-    for (let i = 0; i < 30; i++) { update(1 / 60); updateFx(1 / 60); }
+    for (let i = 0; i < 110; i++) { update(1 / 60); updateFx(1 / 60); }
+    const hpBeforeAnswers = Game.hp;
+    const wrong = Game.enemies.find((e) => e.option && !e.option.correct);
+    if (wrong) killEnemy(wrong, false);
+    const wrongChip = Game.powerups.find((u) => u.kind === 'answer' && !u.correct);
+    if (!wrongChip || Game.hp !== hpBeforeAnswers) throw new Error('enemy combat penalty returned');
+    wrongChip.x = Game.player.x; wrongChip.y = Game.player.y; updatePowerups(0);
+    if (Game.stats.wrongAnswers !== 1 || Game.hp !== hpBeforeAnswers) throw new Error('wrong chip penalty failed');
     const correct = Game.enemies.find((e) => e.option && e.option.correct);
     if (correct) killEnemy(correct, false);
+    const correctChip = Game.powerups.find((u) => u.kind === 'answer' && u.correct);
+    if (!correctChip) throw new Error('correct chip missing');
+    correctChip.x = Game.player.x; correctChip.y = Game.player.y; updatePowerups(0);
     for (let i = 0; i < 10; i++) { update(1 / 60); updateFx(1 / 60); }
     const rect = canvas.getBoundingClientRect();
     Game.fireHeld = false;
@@ -1657,8 +1717,10 @@ if (/[?&]fuzz/.test(location.search)) {
       const beforeLevel = Game.level;
       const beforeBoss = Game.enemies.some((e) => e.boss);
       if (i % 90 === 0) {
-        const target = Game.phase === 'boss' ? Game.enemies.find((e) => e.boss) : Game.enemies.find((e) => e.option?.correct);
+        const target = Game.phase === 'boss' ? Game.enemies.find((e) => e.boss) : Game.enemies[0];
         if (target) { target.hp = 1; killEnemy(target, false); }
+        const answer = Game.powerups.find((u) => u.kind === 'answer' && u.correct);
+        if (answer) { answer.x = Game.player.x; answer.y = Game.player.y; }
       }
       if (i % 240 === 0 && Game.powerups[0]) { Game.powerups[0].x = Game.player.x; Game.powerups[0].y = Game.player.y; }
       update(1 / 60);
