@@ -127,6 +127,15 @@ const POWERUPS = [
   { kind: 'bomb',   icon: '💣', color: '#ffd166', name: '炸弹 +1' },
 ];
 
+const ENCOUNTERS = [
+  { kind: 'wedge', label: '楔形突击' },
+  { kind: 'pincer', label: '双翼夹击' },
+  { kind: 'spiral', label: '螺旋合围' },
+  { kind: 'sweep', label: '侧翼扫荡' },
+  { kind: 'meteor', label: '陨石带穿越', event: true },
+  { kind: 'supply', label: '补给舰截获', event: true },
+];
+
 /* ---------------- 全局状态 ---------------- */
 const Game = {
   state: 'menu',            // menu | playing | paused | over
@@ -143,12 +152,13 @@ const Game = {
   question: null,
   nextWaveTimer: null,
   bossPending: false,
+  lastEncounter: null,
   stats: { questions: 0, correct: 0, wrongAnswers: 0, vocab: 0, grammar: 0 },
   player: {
     x: W / 2, y: H - 90, r: 15,
     fireTimer: 0, fireInterval: 0.15,
     weapon: 'spread', weaponLevel: 1,
-    double: 0, invuln: 0, spawnRing: 0, muzzle: 0,
+    double: 0, invuln: 0, spawnRing: 0, muzzle: 0, berserk: 0,
     px: W / 2, py: H - 90,  // 指针目标
     pointer: false,
   },
@@ -341,6 +351,53 @@ function makeQuestion() {
   return { kind: '单词释义', prompt: item.en, hint: '选择正确的中文释义', options, answer: item.zh, isGrammar: false, en: item.en, zh: item.zh };
 }
 
+function pickEncounter(reinforcement) {
+  const pool = ENCOUNTERS.filter((item) => item.kind !== Game.lastEncounter && (!item.event || (!reinforcement && Game.questionIndex > 1)));
+  const encounter = pool[randInt(pool.length)];
+  Game.lastEncounter = encounter.kind;
+  return encounter;
+}
+
+function formationPlan(kind, i, n, homeX, baseY) {
+  const side = i % 2 === 0 ? -1 : 1;
+  if (kind === 'pincer' || kind === 'meteor') {
+    return { x: side < 0 ? -85 : W + 85, y: baseY + (i % 2) * 44, homeX, homeY: baseY + (i % 2) * 48, edge: side < 0 ? 'left' : 'right', flight: 'orbit' };
+  }
+  if (kind === 'spiral') {
+    return { x: W / 2 + side * 20, y: -130 - i * 24, homeX: clamp(W / 2 + (i - (n - 1) / 2) * 145, 70, W - 70), homeY: baseY + (i % 2) * 52, edge: 'top', flight: 'orbit' };
+  }
+  if (kind === 'sweep' || kind === 'supply') {
+    return { x: i < n / 2 ? -85 : W + 85, y: baseY - 30 + i * 34, homeX, homeY: baseY + i * 22, edge: i < n / 2 ? 'left' : 'right', flight: 'weave' };
+  }
+  const rank = Math.abs(i - (n - 1) / 2);
+  return { x: homeX, y: -90 - i * 30, homeX, homeY: baseY + rank * 30, edge: 'top', flight: 'sine' };
+}
+
+function spawnMeteorField() {
+  for (let i = 0; i < 5; i++) {
+    Game.enemies.push({
+      x: W * (.12 + i * .19) + rand(-30, 30), y: -80 - i * 70,
+      r: rand(17, 28), hp: 2, maxHp: 2, vx: rand(-42, 42), vy: rand(115, 165),
+      t: 0, spin: rand(-2.8, 2.8), seed: rand(0, 10), option: null, meteor: true,
+      elite: false, boss: false, hitFlash: 0, dead: false,
+      spawnAt: Game.time + .5 + i * .34, retreating: false,
+    });
+  }
+}
+
+function spawnSupplyShip(baseY, speedBase, conf) {
+  Game.enemies.push({
+    x: -90, y: baseY + 24, homeX: W / 2, homeY: baseY + 58,
+    r: 33, hp: 7, maxHp: 7, vy: speedBase * .72,
+    t: 0, phase: 0, amp: 100, wf: 1.2, flight: 'orbit',
+    option: null, elite: true, supply: true, boss: false,
+    nextShot: 1.2, shotInterval: conf.fire * .72,
+    hitFlash: 0, dead: false, spawnAt: Game.time + .55,
+    entering: true, retreating: false, entryEdge: 'left',
+    bulletColor: '#ff5ed8',
+  });
+}
+
 function spawnQuestionWave(reinforcement) {
   Game.phase = 'question';
   if (!reinforcement || !Game.question) {
@@ -355,12 +412,13 @@ function spawnQuestionWave(reinforcement) {
   const speedBase = conf.speed * (1 + (Game.level - 1) * 0.09);
   const jitter = Math.min(45, W / (n + 1) * 0.28);
   const edge = W < 600 ? Math.max(62, W * 0.17) : 60;
+  const encounter = pickEncounter(reinforcement);
+  const baseY = Math.min(H * .25, hudClearanceY() + 24);
   Game.question.options.forEach((opt, i) => {
     const homeX = clamp(W * (i + 1) / (n + 1) + rand(-jitter, jitter), edge, W - edge);
-    const homeY = Math.min(H * .3, hudClearanceY() + 26 + (i % 2) * 54);
+    const plan = formationPlan(encounter.kind, i, n, homeX, baseY);
     const enemy = {
-      x: clamp(homeX + (i < n / 2 ? -90 : 90), edge, W - edge),
-      y: -95 - (i % 2) * 38,
+      x: plan.x, y: plan.y,
       r: 24, hp: 1, maxHp: 1,
       vy: speedBase + rand(-12, 18),
       t: rand(0, 6), phase: rand(0, Math.PI * 2),
@@ -372,7 +430,8 @@ function spawnQuestionWave(reinforcement) {
       shotInterval: conf.fire * rand(0.75, 1.35),
       hitFlash: 0, dead: false,
       spawnAt: Game.time + i * .2,
-      homeX, homeY, entering: true, retreating: false,
+      homeX: plan.homeX, homeY: plan.homeY, entering: true, retreating: false,
+      entryEdge: plan.edge, flight: plan.flight,
       route: Game.questionIndex % 3,
       bulletColor: i % 2 ? '#48cfff' : '#ff9b45',
     };
@@ -384,10 +443,12 @@ function spawnQuestionWave(reinforcement) {
     }
     Game.enemies.push(enemy);
   });
+  if (encounter.kind === 'meteor') spawnMeteorField();
+  if (encounter.kind === 'supply') spawnSupplyShip(baseY, speedBase, conf);
   if (reinforcement) {
-    els.qHint.textContent = '增援抵达：继续击落敌机，寻找正确数据芯片';
-    toast('增援编队接近', '#5ce1ff', W / 2, H * .34, 18);
+    els.qHint.textContent = encounter.label + '：继续寻找正确数据芯片';
   } else updateQuestionBar();
+  toast(encounter.label, encounter.kind === 'supply' ? '#ffe066' : '#5ce1ff', W / 2, H * .34, 18);
 }
 
 function spawnBoss() {
@@ -468,7 +529,7 @@ function killEnemy(e, byCrash) {
   if (e.dead) return;
   e.dead = true;
   removeEnemy(e);
-  explode(e.x, e.y, e.boss ? '#ff6b6b' : (e.elite ? '#c084fc' : '#ff9f43'), e.boss ? 60 : (e.elite ? 40 : 24), e.boss ? 2.2 : 1);
+  explode(e.x, e.y, e.boss ? '#ff6b6b' : (e.meteor ? '#8aa2c9' : (e.elite ? '#c084fc' : '#ff9f43')), e.boss ? 60 : (e.elite ? 40 : 24), e.boss ? 2.2 : 1);
   SFX.boom();
   if (byCrash) {
     Game.combo = 0;
@@ -485,7 +546,7 @@ function killEnemy(e, byCrash) {
     Game.score += 1000;
     Game.enemyBullets.length = 0;
     toast('+1000', '#ffd166', e.x, e.y - 30, 22);
-    dropPowerup(e.x, e.y, 1);
+    dropLootChest(e.x, e.y);
     if (Game.phase === 'boss') { Game.phase = 'transition'; Game.nextWaveTimer = 1.6; }
     updateHud();
     return;
@@ -493,10 +554,11 @@ function killEnemy(e, byCrash) {
   Game.combo++;
   Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
   const quick = clamp(4 - Math.floor((Game.time - (e.spawnAt || Game.time)) / 1.4), 1, 4);
-  const gain = (35 + Game.combo * 4 + (e.elite ? 55 : 0)) * quick;
+  const gain = (35 + Game.combo * 4 + (e.elite ? 55 : 0)) * quick * (Game.player.berserk > 0 ? 2 : 1);
   Game.score += gain;
   toast('+' + gain, e.elite ? '#ffe066' : '#9ff3ff', e.x, e.y - 20, 16);
   if (e.option) dropAnswerChip(e.option, e.x, e.y);
+  if (e.supply) dropBerserk(e.x, e.y);
   dropPowerup(e.x, e.y, e.elite ? .5 : .08);
   if (e.elite) dropWeaponCrystal(e.x - 24, e.y, .45);
   if (Game.combo % 6 === 0) dropMedal(e.x + 24, e.y);
@@ -590,6 +652,14 @@ function dropAnswerChip(option, x, y) {
   Game.powerups.push({ kind: 'answer', text: option.text, correct: option.correct, color: '#5ce1ff', x: clamp(x, 55, W - 55), y, vy: 54, t: 0 });
 }
 
+function dropBerserk(x, y) {
+  Game.powerups.push({ kind: 'berserk', icon: 'S', color: '#ff5ed8', name: '暴走核心', x: clamp(x, 30, W - 30), y, vy: 62, t: 0 });
+}
+
+function dropLootChest(x, y) {
+  Game.powerups.push({ kind: 'chest', icon: '◆', color: '#ffe066', name: '首领宝箱', x: clamp(x, 30, W - 30), y, vy: 58, t: 0 });
+}
+
 function applyPowerup(u) {
   if (u.kind === 'answer') {
     if (!Game.question || Game.phase !== 'question') return;
@@ -616,7 +686,14 @@ function applyPowerup(u) {
     updateHud();
     return;
   }
-  if (u.kind === 'weapon') {
+  if (u.kind === 'berserk') {
+    Game.player.berserk = Math.max(Game.player.berserk, 7);
+    Game.player.weaponLevel = 3;
+  } else if (u.kind === 'chest') {
+    Game.player.weaponLevel = Math.min(3, Game.player.weaponLevel + 1);
+    Game.bombs = Math.min(3, Game.bombs + 1);
+    Game.score += 500;
+  } else if (u.kind === 'weapon') {
     const p = Game.player;
     p.weaponLevel = p.weapon === u.mode ? Math.min(3, p.weaponLevel + 1) : 1;
     p.weapon = u.mode;
@@ -818,11 +895,14 @@ function update(dt) {
   p.double = Math.max(0, p.double - dt);
   p.spawnRing = Math.max(0, p.spawnRing - dt);
   p.muzzle = Math.max(0, p.muzzle - dt);
+  const berserkWasActive = p.berserk > 0;
+  p.berserk = Math.max(0, p.berserk - dt);
+  if (berserkWasActive && p.berserk === 0) updateHud();
 
   // 手动开火：按住空格/J 或按住触屏/鼠标才射击
   p.fireTimer = Math.max(0, p.fireTimer - dt);
   if (Game.fireHeld && p.fireTimer <= 0) {
-    p.fireTimer = p.fireInterval * (p.weapon === 'laser' ? .82 : 1);
+    p.fireTimer = p.fireInterval * (p.weapon === 'laser' ? .82 : 1) * (p.berserk > 0 ? .52 : 1);
     firePlayerWeapon();
     SFX.shoot();
   }
@@ -911,6 +991,19 @@ function updateEnemies(dt) {
       continue;
     }
     if (waveAge < 0) continue;
+    if (e.meteor) {
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      const p = Game.player;
+      if (Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) {
+        killEnemy(e, true);
+        damagePlayer(16);
+      } else if (e.y > H + 70 || e.x < -80 || e.x > W + 80) {
+        removeEnemy(e);
+        if (Game.enemies.length === 0 && Game.phase === 'question') Game.nextWaveTimer = 1.0;
+      }
+      continue;
+    }
     if (e.entering) {
       e.x += (e.homeX - e.x) * Math.min(1, dt * 3.2);
       e.y += (e.homeY - e.y) * Math.min(1, dt * 2.6);
@@ -919,15 +1012,19 @@ function updateEnemies(dt) {
     }
     const hoverFor = Game.difficulty === 'easy' ? 6.5 : 5.4;
     if (waveAge < hoverFor) {
-      const hoverY = e.homeY + Math.sin(e.t * 1.7 + e.phase) * 12;
+      const hoverY = e.homeY + Math.sin(e.t * (e.flight === 'orbit' ? 1.25 : 1.7) + e.phase) * (e.flight === 'weave' ? 22 : 12);
       e.y += (hoverY - e.y) * Math.min(1, dt * 4.5);
     } else {
       e.y += e.vy * dt * (1 + (waveAge - hoverFor) * .08);
     }
     const routeAmp = e.route === 1 ? e.amp * 1.25 : e.route === 2 ? e.amp * .72 : e.amp;
-    const routeWave = e.route === 2
-      ? Math.sin(e.t * e.wf + e.phase) + Math.sin(e.t * 2.7 + e.phase) * .32
-      : Math.sin(e.t * e.wf + e.phase);
+    const routeWave = e.flight === 'orbit'
+      ? Math.sin(e.t * .9 + e.phase) * .68
+      : e.flight === 'weave'
+        ? Math.sin(e.t * 2.1 + e.phase) * .72 + Math.sin(e.t * .63) * .3
+        : e.route === 2
+          ? Math.sin(e.t * e.wf + e.phase) + Math.sin(e.t * 2.7 + e.phase) * .32
+          : Math.sin(e.t * e.wf + e.phase);
     e.x = e.homeX + routeWave * routeAmp;
     e.x = clamp(e.x, e.option && W < 600 ? Math.max(62, W * 0.17) : 30, W - (e.option && W < 600 ? Math.max(62, W * 0.17) : 30));
 
@@ -1118,6 +1215,15 @@ function drawPlayer() {
     ctx.rotate(bank);
   }
 
+  if (!isWreck && p.berserk > 0) {
+    const aura = ctx.createRadialGradient(0, 0, 12, 0, 0, 58);
+    aura.addColorStop(0, 'rgba(255,235,120,.34)');
+    aura.addColorStop(.5, 'rgba(255,68,215,.2)');
+    aura.addColorStop(1, 'rgba(255,68,215,0)');
+    ctx.fillStyle = aura;
+    ctx.fillRect(-60, -60, 120, 120);
+  }
+
   // 引擎火焰（有贴图时从贴图尾部喷出）
   const hasSprite = ShipAtlas.complete && ShipAtlas.naturalWidth;
   const flameTop = hasSprite ? 20 : 10;
@@ -1132,6 +1238,17 @@ function drawPlayer() {
     ctx.beginPath();
     ctx.moveTo(dx - 4, flameTop); ctx.lineTo(dx, flameTop + flameLen + flick); ctx.lineTo(dx + 4, flameTop);
     ctx.closePath(); ctx.fill();
+  }
+
+  if (!isWreck && p.weaponLevel >= 2) {
+    for (const dx of [-35, 35]) {
+      ctx.fillStyle = '#dffcff';
+      ctx.strokeStyle = p.berserk > 0 ? '#ff5ed8' : '#5ce1ff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(dx, -11); ctx.lineTo(dx + 9, 4); ctx.lineTo(dx, 12); ctx.lineTo(dx - 9, 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = p.berserk > 0 ? '#ff5ed8' : '#48cfff';
+      ctx.fillRect(dx - 3, 12, 6, 9 + Math.sin(Game.time * 18 + dx) * 3);
+    }
   }
 
   if (!drawSprite('player', 88, 70)) {
@@ -1204,26 +1321,44 @@ function drawPlayer() {
 
 function drawEnemies() {
   for (const e of Game.enemies) {
-    if (e.entering && Game.time >= e.spawnAt - .35 && e.y < 12) {
+    if (e.entering && e.entryEdge && Game.time >= e.spawnAt - .35) {
       ctx.save();
-      const markerY = Math.max(28, Game._minY - 22);
-      ctx.translate(e.homeX, markerY);
       ctx.globalAlpha = .55 + Math.sin(Game.time * 8) * .25;
       ctx.fillStyle = '#5ce1ff';
-      ctx.beginPath(); ctx.moveTo(-7, -4); ctx.lineTo(7, -4); ctx.lineTo(0, 7); ctx.closePath(); ctx.fill();
+      if (e.entryEdge === 'left') {
+        ctx.translate(18, e.homeY); ctx.beginPath(); ctx.moveTo(-4, -7); ctx.lineTo(-4, 7); ctx.lineTo(7, 0); ctx.closePath();
+      } else if (e.entryEdge === 'right') {
+        ctx.translate(W - 18, e.homeY); ctx.beginPath(); ctx.moveTo(4, -7); ctx.lineTo(4, 7); ctx.lineTo(-7, 0); ctx.closePath();
+      } else {
+        ctx.translate(e.homeX, Math.max(28, Game._minY - 22)); ctx.beginPath(); ctx.moveTo(-7, -4); ctx.lineTo(7, -4); ctx.lineTo(0, 7); ctx.closePath();
+      }
+      ctx.fill();
       ctx.restore();
     }
     ctx.save();
     ctx.translate(e.x, e.y);
     const flash = e.hitFlash > 0;
-    if (e.entering && e.y > 0) {
-      const trail = ctx.createLinearGradient(0, -75, 0, -12);
-      trail.addColorStop(0, 'rgba(92,225,255,0)');
-      trail.addColorStop(1, 'rgba(92,225,255,.48)');
-      ctx.strokeStyle = trail; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, -78); ctx.lineTo(0, -18); ctx.stroke();
+    if (e.entering && e.entryEdge) {
+      const dx = e.homeX - e.x, dy = e.homeY - e.y, d = Math.hypot(dx, dy) || 1;
+      ctx.strokeStyle = 'rgba(92,225,255,.42)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-dx / d * 74, -dy / d * 74); ctx.lineTo(-dx / d * 18, -dy / d * 18); ctx.stroke();
     }
-    if (e.boss) {
+    if (e.meteor) {
+      ctx.rotate(e.t * e.spin);
+      ctx.fillStyle = flash ? '#ffffff' : '#625d75';
+      ctx.strokeStyle = '#b8a9c8'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 9; i++) {
+        const a = i / 9 * Math.PI * 2;
+        const r = e.r * (.78 + Math.sin(e.seed + i * 2.7) * .13);
+        const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(20,18,34,.45)';
+      ctx.beginPath(); ctx.arc(-e.r * .2, -e.r * .1, e.r * .2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(e.r * .28, e.r * .2, e.r * .12, 0, Math.PI * 2); ctx.fill();
+    } else if (e.boss) {
       const aura = ctx.createRadialGradient(0, 0, e.r * .2, 0, 0, e.r * 2.4);
       aura.addColorStop(0, 'rgba(255,65,218,.34)');
       aura.addColorStop(.52, 'rgba(118,58,255,.14)');
@@ -1270,14 +1405,20 @@ function drawEnemies() {
         ctx.arc(0, e.r * 0.1, 3, 0, Math.PI * 2);
         ctx.fill();
       }
-      if (e.option) {
+      if (e.option || e.supply) {
         const bracketW = spriteW * .62, bracketH = spriteH * .58, corner = 8;
-        ctx.strokeStyle = e.elite ? 'rgba(255,210,92,.8)' : 'rgba(86,222,255,.65)';
+        ctx.strokeStyle = e.supply ? 'rgba(255,94,216,.9)' : e.elite ? 'rgba(255,210,92,.8)' : 'rgba(86,222,255,.65)';
         ctx.lineWidth = 1.5;
         for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
           const x = sx * bracketW / 2, y = sy * bracketH / 2;
           ctx.beginPath(); ctx.moveTo(x - sx * corner, y); ctx.lineTo(x, y); ctx.lineTo(x, y - sy * corner); ctx.stroke();
         }
+      }
+      if (e.supply) {
+        ctx.fillStyle = 'rgba(18,7,35,.86)'; ctx.strokeStyle = '#ff5ed8';
+        ctx.beginPath(); ctx.arc(0, spriteH / 2 + 12, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.font = '800 14px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('S', 0, spriteH / 2 + 13);
       }
     }
     ctx.restore();
@@ -1448,6 +1589,7 @@ function updateHud() {
   els.bombTouch.textContent = Game.bombs;
   const weaponNames = { spread: '散射', laser: '雷光', homing: '追踪' };
   els.weapon.textContent = weaponNames[Game.player.weapon] + ' ' + 'I'.repeat(Game.player.weaponLevel);
+  if (Game.player.berserk > 0) els.weapon.textContent += ' · 暴走';
   els.medalChain.textContent = Game.medalChain;
   els.hpBar.style.width = Game.hp + '%';
   els.hpText.textContent = Math.round(Game.hp);
@@ -1495,7 +1637,8 @@ function startGame() {
   const p = Game.player;
   p.x = p.px = W / 2; p.y = p.py = H - 90;
   p.weapon = 'spread'; p.weaponLevel = 1;
-  p.double = 0; p.invuln = 1.5; p.pointer = false; p.spawnRing = 3; p.muzzle = 0;
+  p.double = 0; p.invuln = 1.5; p.pointer = false; p.spawnRing = 3; p.muzzle = 0; p.berserk = 0;
+  Game.lastEncounter = null;
   els.menu.classList.add('hidden');
   els.over.classList.add('hidden');
   els.paused.classList.add('hidden');
@@ -1622,7 +1765,10 @@ if (/[?&]selftest/.test(location.search)) {
   try {
     Game.difficulty = 'easy';
     startGame();
-    if (!Game.enemies.every((e) => e.y < 0) || new Set(Game.enemies.map((e) => e.spawnAt)).size < 2) throw new Error('formation entry failed');
+    const entrants = Game.enemies.filter((e) => e.option);
+    if (!entrants.every((e) => e.entering && (e.y < 0 || e.x < 0 || e.x > W)) || new Set(entrants.map((e) => e.spawnAt)).size < 2) throw new Error('formation entry failed');
+    const entryEdges = ENCOUNTERS.filter((e) => !e.event).map((e) => formationPlan(e.kind, 0, 4, W * .25, 150).edge);
+    if (new Set(entryEdges).size < 2) throw new Error('encounter variety failed');
     Game.player.invuln = 0;
     const beforeGraze = Game.score;
     Game.enemyBullets.push({ x: Game.player.x + 28, y: Game.player.y, vx: 0, vy: 0, r: 4 });
@@ -1639,6 +1785,9 @@ if (/[?&]selftest/.test(location.search)) {
     const medalScore = Game.score;
     applyPowerup({ kind: 'medal', name: '连锁勋章', color: '#ffe066', x: 0, y: 0 });
     if (Game.medalChain !== 1 || Game.score !== medalScore + 50) throw new Error('medal chain failed');
+    applyPowerup({ kind: 'berserk', name: '暴走核心', color: '#ff5ed8', x: 0, y: 0 });
+    if (Game.player.berserk <= 0 || Game.player.weaponLevel !== 3) throw new Error('berserk failed');
+    Game.player.berserk = 0;
     for (let i = 0; i < 110; i++) { update(1 / 60); updateFx(1 / 60); }
     const hpBeforeAnswers = Game.hp;
     const wrong = Game.enemies.find((e) => e.option && !e.option.correct);
