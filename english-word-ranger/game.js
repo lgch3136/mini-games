@@ -145,6 +145,7 @@ for (const [name, src] of Object.entries({
   terrain1: 'assets/terrain-canyon-v1.webp',
   terrain2: 'assets/terrain-city-v1.webp',
   terrain3: 'assets/terrain-crystal-v1.webp',
+  decor: 'assets/decor-atlas-v1.webp',
 })) {
   const image = new Image();
   image.src = src;
@@ -159,6 +160,18 @@ const HAZARD_SPRITES = {
   laser: { row: 1, column: 1, w: 142, h: 94, baseline: 419 / 512 },
   spring: { row: 1, column: 2, w: 70, h: 78, baseline: 459 / 512 },
 };
+
+// Generated terrain strips contain transparent staging space above the actual ledge.
+// Crop from the first opaque row so the art and collision surface share one baseline.
+const TERRAIN_CROPS = [
+  { y: .215, h: .565 }, { y: .195, h: .57 }, { y: .28, h: .52 }, { y: .305, h: .43 },
+];
+const DECOR_SPECS = [
+  [{ row: 0, column: 0, w: 112, h: 75 }, { row: 0, column: 1, w: 116, h: 78 }],
+  [{ row: 0, column: 2, w: 74, h: 98 }, { row: 0, column: 3, w: 94, h: 72 }],
+  [{ row: 1, column: 0, w: 60, h: 104 }, { row: 1, column: 1, w: 91, h: 92 }],
+  [{ row: 1, column: 2, w: 92, h: 91 }, { row: 1, column: 3, w: 72, h: 104 }],
+];
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
@@ -323,7 +336,11 @@ function generateMissionChunk(index, start) {
     chunk.hazards.push({ type, x: start + offset, y: type === 'updraft' ? y : GROUND_Y - h - (y || 0), w: w || (type === 'rock' ? 40 : 100), h,
       phase: index * .7 + offset * .01, home: start + offset, range: 82, vx: type === 'rock' ? 62 : 0 });
   }
-  for (let i = 0; i < 5; i++) chunk.decor.push({ x: start + 88 + i * 132 + (index * 29 + i * 19) % 38, size: .74 + ((index + i) % 3) * .13 });
+  for (let i = 0; i < 3; i++) chunk.decor.push({
+    x: start + 125 + i * 228 + (index * 29 + i * 19) % 34,
+    size: .72 + ((index + i) % 3) * .1,
+    variant: (index + i) % 2,
+  });
   Game.chunks.push(chunk);
   Game.generatedTo += CHUNK_W;
   maybeSwitchBossMusic(chunk);
@@ -423,8 +440,12 @@ function generateChunk() {
     }
   }
 
-  for (let i = 0; i < 5; i++) {
-    chunk.decor.push({ x: start + 80 + i * 135 + (index * 31 + i * 17) % 45, size: .7 + ((index + i) % 4) * .12 });
+  for (let i = 0; i < 3; i++) {
+    chunk.decor.push({
+      x: start + 110 + i * 232 + (index * 31 + i * 17) % 40,
+      size: .7 + ((index + i) % 3) * .1,
+      variant: (index + i) % 2,
+    });
   }
 
   Game.chunks.push(chunk);
@@ -720,9 +741,9 @@ function detonateBarrel(barrel) {
   const cx = barrel.x + barrel.w / 2;
   const cy = barrel.y + barrel.h / 2;
   Game.score += 220;
-  Game.hitStop = Math.max(Game.hitStop, .085);
-  Game.shake = Math.max(Game.shake, .22);
-  Game.shakeStrength = Math.max(Game.shakeStrength, 6);
+  Game.hitStop = Math.max(Game.hitStop, .06);
+  Game.shake = Math.max(Game.shake, .12);
+  Game.shakeStrength = Math.max(Game.shakeStrength, 4);
   burst(cx, cy, '#ffb34f', 34);
   for (const enemy of Game.enemies) {
     if (enemy.dead || enemy === barrel || Math.hypot(enemy.x + enemy.w / 2 - cx, enemy.y + enemy.h / 2 - cy) > 132) continue;
@@ -745,9 +766,9 @@ function defeatEnemy(enemy, source) {
   if (enemy.type === 'barrel') { detonateBarrel(enemy); return; }
   enemy.dead = true;
   enemy.state = 'dead';
-  Game.hitStop = Math.max(Game.hitStop, enemy.type === 'boss' ? .11 : .055);
-  Game.shake = Math.max(Game.shake, enemy.type === 'boss' ? .42 : .12);
-  Game.shakeStrength = Math.max(Game.shakeStrength, enemy.type === 'boss' ? 9 : 3.5);
+  Game.hitStop = Math.max(Game.hitStop, enemy.type === 'boss' ? .09 : .028);
+  Game.shake = Math.max(Game.shake, enemy.type === 'boss' ? .3 : .055);
+  Game.shakeStrength = Math.max(Game.shakeStrength, enemy.type === 'boss' ? 6 : 1.5);
   if (enemy.type === 'capsule') {
     Game.score += 100;
     dropPowerup(enemy, enemy.dropType || 'spread');
@@ -799,8 +820,8 @@ function hurt(fell = false) {
     player.comboTimer = 0;
     Game.enemyBullets.length = 0;
     Game.hitStop = Math.max(Game.hitStop, .06);
-    Game.shake = Math.max(Game.shake, .18);
-    Game.shakeStrength = Math.max(Game.shakeStrength, 5);
+    Game.shake = Math.max(Game.shake, .1);
+    Game.shakeStrength = Math.max(Game.shakeStrength, 2.5);
     Game.flash = .16;
     burst(player.x + player.w / 2, player.y + player.h / 2, '#f4d37a', 22);
     showFeedback('护盾吸收了这次攻击');
@@ -808,9 +829,9 @@ function hurt(fell = false) {
     return;
   }
   Game.hp--;
-  Game.hitStop = Math.max(Game.hitStop, .08);
-  Game.shake = Math.max(Game.shake, .28);
-  Game.shakeStrength = Math.max(Game.shakeStrength, 7);
+  Game.hitStop = Math.max(Game.hitStop, .06);
+  Game.shake = Math.max(Game.shake, .12);
+  Game.shakeStrength = Math.max(Game.shakeStrength, 4);
   Game.flash = .22;
   burst(player.x + player.w / 2, Math.min(player.y + player.h / 2, GROUND_Y), '#ef835e', 16);
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .22, .52);
@@ -1045,8 +1066,6 @@ function updatePlayer(dt) {
   if (!wasOnGround && player.onGround && fallingSpeed > 180) {
     player.landingTimer = .12;
     dust(player.x + player.w / 2, player.y + player.h, 7);
-    Game.shake = Math.max(Game.shake, .09);
-    Game.shakeStrength = Math.max(Game.shakeStrength, fallingSpeed > 520 ? 4 : 2);
     if (window.ArcadeAudio) ArcadeAudio.play('click', fallingSpeed > 520 ? .16 : .08, fallingSpeed > 520 ? .62 : .78);
   }
   if (player.y > VIEW_H + 90) hurt(true);
@@ -1382,9 +1401,6 @@ function damageEnemy(enemy, bullet) {
   enemy.hit = .12;
   enemy.stun = .055;
   enemy.knockback = Math.sign(bullet.vx || 1) * (enemy.type === 'boss' ? 28 : 95);
-  Game.hitStop = Math.max(Game.hitStop, .05);
-  Game.shake = Math.max(Game.shake, .055);
-  Game.shakeStrength = Math.max(Game.shakeStrength, 2.5);
   burst(bullet.x, bullet.y, '#f4d37a', 7);
   if (window.ArcadeAudio) ArcadeAudio.play('click', .08, enemy.type === 'guardian' || enemy.type === 'boss' ? .82 : 1.3);
   if (enemy.hp <= 0) defeatEnemy(enemy, 'shot');
@@ -1579,46 +1595,32 @@ function drawBackground() {
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   const shade = ctx.createLinearGradient(0, 0, 0, VIEW_H);
   // 可读性纪律：背景整体压暗降饱和，把对比度留给玩法元素（魂斗罗/马里奥的前后景分离原则）
-  shade.addColorStop(0, 'rgba(6,16,15,.30)');
-  shade.addColorStop(.5, 'rgba(6,15,14,.42)');
-  shade.addColorStop(.72, 'rgba(5,13,12,.58)');
-  shade.addColorStop(1, 'rgba(4,10,9,.80)');
+  shade.addColorStop(0, 'rgba(6,16,15,.26)');
+  shade.addColorStop(.46, 'rgba(6,15,14,.38)');
+  shade.addColorStop(.7, 'rgba(5,13,12,.66)');
+  shade.addColorStop(1, 'rgba(4,10,9,.9)');
   ctx.fillStyle = shade;
   ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   drawWeather(index);
 }
 
 function drawDecor(chunk) {
-  ctx.fillStyle = BIOMES[chunk.biome].ground;
   for (const item of chunk.decor) {
-    if (chunk.biome === 0) {
-      ctx.globalAlpha = .72;
-      ctx.fillRect(item.x, GROUND_Y - 27 * item.size, 4, 27 * item.size);
-      ctx.beginPath(); ctx.ellipse(item.x - 7, GROUND_Y - 21 * item.size, 10 * item.size, 4, -.6, 0, TAU); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(item.x + 8, GROUND_Y - 14 * item.size, 11 * item.size, 4, .5, 0, TAU); ctx.fill();
-    } else if (chunk.biome === 1) {
-      ctx.globalAlpha = .58;
-      ctx.beginPath(); ctx.moveTo(item.x - 10, GROUND_Y); ctx.lineTo(item.x, GROUND_Y - 24 * item.size); ctx.lineTo(item.x + 13, GROUND_Y); ctx.fill();
-    } else if (chunk.biome === 2) {
-      ctx.globalAlpha = .6;
-      ctx.fillRect(item.x - 8, GROUND_Y - 35 * item.size, 16, 35 * item.size);
-      ctx.fillRect(item.x - 13, GROUND_Y - 38 * item.size, 26, 5);
-    } else {
-      ctx.globalAlpha = .78;
-      ctx.fillStyle = '#d4a64e';
-      ctx.beginPath(); ctx.moveTo(item.x - 10, GROUND_Y); ctx.lineTo(item.x - 2, GROUND_Y - 28 * item.size); ctx.lineTo(item.x + 4, GROUND_Y); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(item.x + 1, GROUND_Y); ctx.lineTo(item.x + 10, GROUND_Y - 19 * item.size); ctx.lineTo(item.x + 15, GROUND_Y); ctx.fill();
-    }
+    const spec = DECOR_SPECS[chunk.biome][item.variant || 0];
+    const width = spec.w * item.size;
+    const height = spec.h * item.size;
+    ctx.save();
+    ctx.globalAlpha = .5;
+    ctx.filter = 'saturate(.7) brightness(.72)';
+    drawAtlasFrame(ASSETS.decor, spec.row, spec.column, item.x - width / 2, GROUND_Y - height + 4, width, height, false, 4, 2);
+    ctx.restore();
   }
-  ctx.globalAlpha = 1;
 }
 
 function drawTerrain(biomeIndex, x, y, width, height) {
   const image = ASSETS['terrain' + biomeIndex];
   if (!image || !image.complete || !image.naturalWidth) return false;
-  const crop = [
-    { y: .13, h: .66 }, { y: .13, h: .64 }, { y: .23, h: .58 }, { y: .23, h: .55 },
-  ][biomeIndex];
+  const crop = TERRAIN_CROPS[biomeIndex];
   const sourceY = image.naturalHeight * crop.y;
   const sourceH = image.naturalHeight * crop.h;
   const sourceW = Math.min(image.naturalWidth, sourceH * width / height);
@@ -1644,6 +1646,19 @@ function drawGround(chunk) {
       }
     }
     x = gap.x + gap.w;
+  }
+  for (const gap of gaps) {
+    const voidShade = ctx.createLinearGradient(0, GROUND_Y - 8, 0, VIEW_H);
+    voidShade.addColorStop(0, 'rgba(2,8,9,.5)');
+    voidShade.addColorStop(1, 'rgba(0,2,4,.96)');
+    ctx.fillStyle = voidShade;
+    ctx.fillRect(gap.x, GROUND_Y - 5, gap.w, VIEW_H - GROUND_Y + 5);
+    ctx.strokeStyle = biome.edge;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(gap.x, GROUND_Y - 4); ctx.lineTo(gap.x, GROUND_Y + 19);
+    ctx.moveTo(gap.x + gap.w, GROUND_Y - 4); ctx.lineTo(gap.x + gap.w, GROUND_Y + 19);
+    ctx.stroke();
   }
 }
 
@@ -1834,7 +1849,7 @@ function drawEnemy(enemy) {
     const mark = { spread: 'S', rapid: 'R', shield: '盾' }[enemy.dropType] || 'S';
     ctx.save();
     ctx.translate(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2);
-    if (enemy.hit > 0) ctx.globalAlpha = .55;
+    if (enemy.hit > 0) ctx.filter = 'brightness(2.15) saturate(.55)';
     ctx.fillStyle = '#d6c8a3';
     ctx.beginPath(); ctx.moveTo(-23, -5); ctx.lineTo(-34, 5); ctx.lineTo(-21, 7); ctx.fill();
     ctx.beginPath(); ctx.moveTo(23, -5); ctx.lineTo(34, 5); ctx.lineTo(21, 7); ctx.fill();
@@ -1850,7 +1865,7 @@ function drawEnemy(enemy) {
     const pulse = enemy.hp === 1 ? .45 + Math.sin(Game.time * 18) * .25 : 0;
     ctx.save();
     ctx.translate(enemy.x + enemy.w / 2, enemy.y + enemy.h);
-    if (enemy.hit > 0) ctx.globalAlpha = .55;
+    if (enemy.hit > 0) ctx.filter = 'brightness(2.15) saturate(.55)';
     ctx.fillStyle = 'rgba(4,12,10,.45)';
     ctx.beginPath(); ctx.ellipse(0, 2, 21, 5, 0, 0, TAU); ctx.fill();
     const body = ctx.createLinearGradient(-17, 0, 17, 0);
@@ -1871,7 +1886,7 @@ function drawEnemy(enemy) {
   if (enemy.type === 'turret') {
     ctx.save();
     ctx.translate(enemy.x + enemy.w / 2, enemy.y + enemy.h);
-    if (enemy.hit > 0) ctx.globalAlpha = .5;
+    if (enemy.hit > 0) ctx.filter = 'brightness(2.15) saturate(.55)';
     ctx.fillStyle = '#17372f'; ctx.strokeStyle = '#e2b858'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.roundRect(-24, -18, 48, 18, 5); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#294f43'; ctx.beginPath(); ctx.arc(0, -29, 17, Math.PI, TAU); ctx.fill(); ctx.stroke();
@@ -1889,7 +1904,7 @@ function drawEnemy(enemy) {
     const frameRate = enemy.state === 'recover' ? 3 : enemy.type === 'boss' ? 4 : 7;
     const frame = Math.floor(Game.time * frameRate + enemy.phase) % 4;
     ctx.save();
-    if (enemy.hit > 0) ctx.globalAlpha = .45;
+    if (enemy.hit > 0) ctx.filter = 'brightness(2.15) saturate(.55)';
     if (!drawAtlasFrame(ASSETS.enemies, spec.row, frame, enemy.x + spec.ox, enemy.y + spec.oy, spec.w, spec.h, enemy.facing > 0)) {
       ctx.fillStyle = enemy.type === 'boss' ? '#6c4932' : '#365e52';
       ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
@@ -1992,7 +2007,7 @@ function drawPlayer() {
   let row = 0;
   let column = Math.floor(Game.time * 3) % 4;
   let atlas = ASSETS.hero;
-  const firing = player.fireCooldown > .055;
+  const firing = player.recoil > 0;
   if (player.hurtTimer > 0) {
     atlas = ASSETS.actions; row = 3; column = 3;
   } else if (player.landingTimer > 0) {
@@ -2020,8 +2035,8 @@ function drawPlayer() {
     : atlas === ASSETS.hero && row === 3 ? [0, 7, 7, 6][column] : 0;
   const drawY = player.y + player.h - 96 + baselineOffset + (atlas === ASSETS.actions ? (row === 1 ? 14 : 7) : 0);
   const recoilRatio = clamp(player.recoil / .09, 0, 1);
-  const poseX = player.x - player.aimX * recoilRatio * 7;
-  const poseY = drawY - player.aimY * recoilRatio * 5;
+  const poseX = player.x - player.aimX * recoilRatio * 2;
+  const poseY = drawY - player.aimY * recoilRatio * 1.5;
   ctx.save();
   if (invFlash) ctx.globalAlpha = .38;
   ctx.shadowColor = 'rgba(1,7,5,.92)';
@@ -2039,12 +2054,30 @@ function drawPlayer() {
   const status = player.overdrive > 0
     ? '火力爆发 ' + Math.ceil(player.overdrive)
     : player.weapon !== 'normal' ? POWERUP_LABELS[player.weapon] + ' ' + 'I'.repeat(player.weaponLevel) : '';
-  const label = [status, player.combo > 1 ? '连击 ×' + player.combo : ''].filter(Boolean).join(' · ');
+  const label = status;
   if (label) {
     ctx.font = '800 13px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(12,31,26,.85)'; ctx.strokeText(label, player.x + player.w / 2, player.y - 10);
     ctx.fillStyle = '#f8e8af'; ctx.fillText(label, player.x + player.w / 2, player.y - 10);
   }
+}
+
+function drawCombo() {
+  const combo = Game.player.combo;
+  if (combo < 2) return;
+  const x = VIEW_W - 22;
+  const y = VIEW_W < 430 ? 170 : 154;
+  const life = clamp(Game.player.comboTimer / 2.4, 0, 1);
+  ctx.save();
+  ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+  ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(7,20,17,.82)';
+  ctx.font = '950 40px ui-monospace, monospace';
+  ctx.strokeText(combo + '×', x, y); ctx.fillStyle = '#ffe18a'; ctx.fillText(combo + '×', x, y);
+  ctx.font = '900 10px system-ui, sans-serif';
+  ctx.fillStyle = '#f7ecce'; ctx.fillText('COMBO', x, y + 15);
+  ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(x - 110, y + 23, 110, 4);
+  ctx.fillStyle = combo >= 6 ? '#ff8b5e' : '#86d7ae'; ctx.fillRect(x - 110, y + 23, 110 * life, 4);
+  ctx.restore();
 }
 
 function drawWordEcho() {
@@ -2148,6 +2181,7 @@ function render() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+  drawCombo();
   drawBossStatus();
   drawWordEcho();
   drawStageBanner();
@@ -2383,9 +2417,11 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const sweepTarget = makeEnemy('beetle', Game.player.x + 180, gateChunk.index);
       sweepTarget.hp = sweepTarget.maxHp = 2;
       Game.enemies = [sweepTarget];
+      Game.hitStop = Game.shake = 0;
       Game.bullets = [{ x: sweepTarget.x - 80, y: sweepTarget.y + 12, w: 8, h: 8, vx: 2400, vy: 0 }];
       updateProjectiles(.05);
       if (sweepTarget.hp !== 1) throw new Error('swept bullet collision failed');
+      if (Game.hitStop || Game.shake) throw new Error('ordinary bullet hit interrupted the game clock');
       const boss = makeEnemy('boss', Game.player.x + 420, MISSION_BEATS.length - 1);
       Game.enemies = [boss];
       Game.completedWords = [{ en: 'BRIDGE', zh: '桥' }];
