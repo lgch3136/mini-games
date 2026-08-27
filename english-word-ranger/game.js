@@ -1455,7 +1455,14 @@ function burst(x, y, color, count) {
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * TAU;
     const speed = 45 + Math.random() * 150;
-    Game.particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: .25 + Math.random() * .35, color });
+    const smoke = i % 5 === 0;
+    Game.particles.push({
+      kind: smoke ? 'smoke' : 'spark', x, y,
+      vx: Math.cos(angle) * speed * (smoke ? .35 : 1), vy: Math.sin(angle) * speed * (smoke ? .35 : 1),
+      life: smoke ? .45 + Math.random() * .3 : .22 + Math.random() * .28,
+      size: smoke ? 4 + Math.random() * 5 : 1.5 + Math.random() * 1.8,
+      color: smoke ? 'rgba(27,38,34,.58)' : color,
+    });
   }
   if (Game.particles.length > 160) Game.particles.splice(0, Game.particles.length - 160);
 }
@@ -1476,7 +1483,7 @@ function updateParticles(dt) {
     particle.life -= dt;
     particle.x += particle.vx * dt;
     particle.y += particle.vy * dt;
-    particle.vy += (particle.kind === 'dust' ? 90 : 280) * dt;
+    particle.vy += (particle.kind === 'dust' ? 90 : particle.kind === 'smoke' ? -12 : 280) * dt;
     if (particle.life <= 0) Game.particles.splice(i, 1);
   }
 }
@@ -1611,7 +1618,6 @@ function drawDecor(chunk) {
     const height = spec.h * item.size;
     ctx.save();
     ctx.globalAlpha = .5;
-    ctx.filter = 'saturate(.7) brightness(.72)';
     drawAtlasFrame(ASSETS.decor, spec.row, spec.column, item.x - width / 2, GROUND_Y - height + 4, width, height, false, 4, 2);
     ctx.restore();
   }
@@ -1760,8 +1766,8 @@ function drawPickups() {
       ctx.setLineDash([]);
       ctx.restore();
     }
-    ctx.shadowColor = isNext ? 'rgba(255,240,180,1)' : 'rgba(210,190,140,.45)';
-    ctx.shadowBlur = isNext ? 20 : 8;
+    ctx.shadowColor = 'rgba(255,240,180,.9)';
+    ctx.shadowBlur = isNext ? 11 : 0;
     const grad = ctx.createRadialGradient(-6, -8, 3, 0, 0, 21);
     if (isNext) {
       // 当前目标：炽白金高亮，与后续字母的暗金色明显分层（颜色语义 > 光环语义）
@@ -1979,10 +1985,12 @@ function drawBossNodes() {
 
 function drawBullet(bullet, color) {
   ctx.save();
-  ctx.shadowColor = color; ctx.shadowBlur = 8;
-  ctx.fillStyle = color;
   ctx.translate(bullet.x + bullet.w / 2, bullet.y + bullet.h / 2);
   ctx.rotate(Math.atan2(bullet.vy, bullet.vx));
+  ctx.globalAlpha = .24; ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(-9, -4, 18, 8, 4); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
   ctx.beginPath(); ctx.roundRect(-7, -2.5, 14, 5, 3); ctx.fill();
   ctx.restore();
 }
@@ -2175,8 +2183,11 @@ function render() {
     ctx.fillStyle = particle.color;
     if (particle.kind === 'dust') {
       ctx.beginPath(); ctx.ellipse(particle.x, particle.y, 5, 1.5, 0, 0, TAU); ctx.fill();
+    } else if (particle.kind === 'smoke') {
+      ctx.beginPath(); ctx.arc(particle.x, particle.y, particle.size, 0, TAU); ctx.fill();
     } else {
-      ctx.fillRect(particle.x - 1.5, particle.y - 1.5, 3, 3);
+      ctx.strokeStyle = particle.color; ctx.lineWidth = particle.size;
+      ctx.beginPath(); ctx.moveTo(particle.x, particle.y); ctx.lineTo(particle.x - particle.vx * .025, particle.y - particle.vy * .025); ctx.stroke();
     }
   }
   ctx.globalAlpha = 1;
