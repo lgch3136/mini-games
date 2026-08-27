@@ -344,11 +344,54 @@ const SONGS = [
   publicScore('liebestraum152', '爱之梦 No.3', '李斯特', 152, 'Ab Major', 'liebestraum-no-3-liszt'),
   publicScore('campanella97', '钟', '李斯特', 97, 'G# Minor', 'la-campanella-liszt'),
 ];
+const CHART_TIERS = [
+  { label: '简单 · Lv 1–3', max: 3 },
+  { label: '中等 · Lv 4–6', max: 6 },
+  { label: '困难 · Lv 7–9', max: 9 },
+  { label: '极限 · Lv 10+', max: Infinity },
+];
+function chartStats(song) {
+  const exact = song.exact && window.WORD_BEAT_SCORES?.[song.exact];
+  if (!exact) return { average: song.bpm / 60, peak: song.bpm / 60, level: Math.max(1, Math.round(song.bpm / 60)) };
+  const repeat = exact.repeat || 1, times = [];
+  for (let pass = 0; pass < repeat; pass++) {
+    const base = pass * exact.beats;
+    exact.key.forEach(([at]) => times.push(scoreSecondsAt(song, base + at)));
+  }
+  times.sort((a, b) => a - b);
+  let peak = 0, left = 0;
+  for (let right = 0; right < times.length; right++) {
+    while (times[right] - times[left] > 2) left++;
+    peak = Math.max(peak, (right - left + 1) / 2);
+  }
+  const duration = Math.max(.001, scoreSecondsAt(song, exact.beats * repeat));
+  const average = times.length / duration;
+  return { average, peak, level: Math.max(1, Math.round((average + peak) / 2)) };
+}
+const chartTierIndex = (level) => CHART_TIERS.findIndex((tier) => level <= tier.max);
 for (const song of SONGS) {
   const exact = song.exact && window.WORD_BEAT_SCORES?.[song.exact];
   song.beats = exact ? exact.beats * (exact.repeat || 1) : song.melody.reduce((sum, [, beats]) => sum + beats, 0);
   song.duration = Math.round(COUNT_IN_BEATS * 60 / song.bpm + (exact ? scoreSecondsAt(song, song.beats) : song.beats * 60 / song.bpm));
+  song.chart = chartStats(song);
 }
+function buildSongMenu() {
+  const select = $id('song-select');
+  select.replaceChildren(...CHART_TIERS.map((tier, tierIndex) => {
+    const group = document.createElement('optgroup');
+    group.label = tier.label;
+    SONGS.filter((song) => chartTierIndex(song.chart.level) === tierIndex)
+      .sort((a, b) => a.chart.level - b.chart.level || a.bpm - b.bpm)
+      .forEach((song) => {
+        const option = document.createElement('option');
+        option.value = song.id;
+        option.textContent = `${song.title} · ${song.bpm} BPM · Lv ${song.chart.level}`;
+        group.append(option);
+      });
+    return group;
+  }));
+}
+buildSongMenu();
 function formatDuration(seconds) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
@@ -1332,7 +1375,7 @@ document.querySelectorAll('.seg-btn[data-keys]').forEach((b) => b.addEventListen
 $id('speed-select').addEventListener('change', (event) => { Game.scrollMul = Number(event.target.value); });
 function updateSongMenu() {
   const song = currentSong();
-  $id('song-detail').textContent = `${song.composer} · ${song.bpm} BPM · ${formatDuration(song.duration)}`;
+  $id('song-detail').textContent = `${song.composer} · ${song.bpm} BPM · Lv ${song.chart.level} · 平均 ${song.chart.average.toFixed(1)} KPS · 峰值 ${song.chart.peak.toFixed(1)} KPS · ${formatDuration(song.duration)}`;
   const source = $id('score-source');
   source.textContent = `${song.source}${song.sourceUrl ? ' ↗' : ''}`;
   if (song.sourceUrl) source.href = song.sourceUrl;
@@ -1507,13 +1550,15 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         if (signature.join(',') !== expected.join(',')) throw new Error('extended source score altered ' + id);
       }
       const songGroups = [...document.querySelectorAll('#song-select optgroup')];
-      if (songGroups.length !== 3 || $id('song-select').options.length !== SONGS.length) throw new Error('BPM song groups missing');
+      if (songGroups.length !== 4 || $id('song-select').options.length !== SONGS.length) throw new Error('chart load groups missing');
       for (const option of $id('song-select').options) {
         const song = SONGS.find((item) => item.id === option.value);
         if (!song) throw new Error('unknown song option ' + option.value);
-        const group = song.bpm <= 100 ? songGroups[0] : song.bpm < 140 ? songGroups[1] : songGroups[2];
-        if (option.parentElement !== group) throw new Error('song BPM group mismatch ' + option.value);
+        const group = songGroups[chartTierIndex(song.chart.level)];
+        if (option.parentElement !== group || !option.textContent.includes(`Lv ${song.chart.level}`)) throw new Error('song load group mismatch ' + option.value);
       }
+      const love = SONGS.find((song) => song.id === 'liebestraum152'), bell = SONGS.find((song) => song.id === 'campanella97');
+      if (love.chart.level >= bell.chart.level || chartTierIndex(love.chart.level) >= chartTierIndex(bell.chart.level)) throw new Error('BPM was still used as chart difficulty');
       if (SONGS.filter((song) => song.bpm >= 140).length < 9 || !SONGS.some((song) => song.bpm === 208)) throw new Error('high-BPM catalog missing');
       const twinkleSong = SONGS.find((song) => song.id === 'twinkle');
       if (scoreBpmAt(twinkleSong, 0) !== 60 || scoreBpmAt(twinkleSong, 72) !== 68 || scoreBpmAt(twinkleSong, 124) !== 72) throw new Error('Twinkle tempo map missing');

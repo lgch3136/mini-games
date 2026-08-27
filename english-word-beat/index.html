@@ -38,7 +38,7 @@
       <img class="menu-cover" src="assets/cover.png" alt="七轨霓虹音乐舞台">
 
       <h1>英语节奏大师<small>WORD BEAT</small></h1>
-      <p class="sub">公开 MIDI 逐事件制谱：7 键只负责输入，每颗音符触发原谱音高或和弦，自动轨补全伴奏。D/K 固定蓝键，S/F/J/L 固定白键。</p>
+      <p class="sub">公开 MIDI 逐事件制谱：BPM 显示原谱速度，选曲难度按实际按键密度与两秒峰值分级。D/K 固定蓝键，S/F/J/L 固定白键。</p>
       <div class="scale-map" aria-label="七条键音输入轨">
         <span class="white"><b>S</b><small>KS</small></span><span class="blue"><b>D</b><small>KS</small></span>
         <span class="white"><b>F</b><small>KS</small></span><span class="gold"><b>空格</b><small>KS</small></span>
@@ -55,55 +55,8 @@
       </div>
       <div class="opt-row song-row">
         <label class="opt-label" for="song-select">曲目</label>
-        <select id="song-select">
-          <optgroup label="简单 · ≤100 BPM">
-            <option value="pathetique40">悲怆奏鸣曲 第二乐章 · 40</option>
-            <option value="suffocation42">肖邦前奏曲 Op.28 No.4 · 42</option>
-            <option value="moonlight44">月光奏鸣曲 第一乐章 · 44</option>
-            <option value="clair48">德彪西 月光 · 48</option>
-            <option value="canon">卡农进行曲 · 60</option>
-            <option value="twinkle">小星星变奏 · 60</option>
-            <option value="gymnopedie60">第一号吉诺佩蒂 · 60</option>
-            <option value="nocturne60">肖邦夜曲 Op.9 No.2 · 60</option>
-            <option value="entertainer60">演艺人 · 60</option>
-            <option value="furElise72">致爱丽丝 · 72</option>
-            <option value="prelude84672">巴赫前奏曲 BWV 846 · 72</option>
-            <option value="brahmsLullaby72">勃拉姆斯摇篮曲 · 72</option>
-            <option value="schubertLullaby72">舒伯特摇篮曲 · 72</option>
-            <option value="tristesse72">肖邦离别曲 · 72</option>
-            <option value="invention72a">巴赫二部创意曲 No.2 · 72</option>
-            <option value="invention72b">巴赫二部创意曲 No.4 · 72</option>
-            <option value="campanella97">李斯特 钟 · 97</option>
-            <option value="joy">欢乐颂 · 100</option>
-            <option value="mary">玛丽有只小羊羔 · 100</option>
-            <option value="maple100">枫叶拉格 · 100</option>
-          </optgroup>
-          <optgroup label="中等 · 101–139 BPM">
-            <option value="gnossienne102">萨蒂 第一号诺西安舞曲 · 102</option>
-            <option value="london">伦敦桥 · 108</option>
-            <option value="nocturne116">肖邦夜曲 Op.9 No.1 · 116</option>
-            <option value="tempest116">贝多芬暴风雨 第三乐章 · 116</option>
-            <option value="frere">两只老虎 · 120</option>
-            <option value="jingle">铃儿响叮当 · 120</option>
-            <option value="turkish120">土耳其进行曲 · 120</option>
-            <option value="waltz120">肖邦圆舞曲 Op.64 No.2 · 120</option>
-            <option value="arabesque120">德彪西第一号阿拉伯风格曲 · 120</option>
-            <option value="minuet126">G 大调小步舞曲 · 126</option>
-            <option value="k545132">莫扎特奏鸣曲 K.545 · 132</option>
-          </optgroup>
-          <optgroup label="困难 · ≥140 BPM">
-            <option value="etude144">肖邦练习曲 Op.10 No.2 · 144</option>
-            <option value="appassionata144">贝多芬热情 第三乐章 · 144</option>
-            <option value="prelude145">巴赫前奏曲 BWV 847 · 145</option>
-            <option value="liebestraum152">李斯特爱之梦 No.3 · 152</option>
-            <option value="moonlight154">贝多芬月光 第三乐章 · 154</option>
-            <option value="mazurka160">马祖卡 Op.7 No.2 · 160</option>
-            <option value="etude160">练习曲 Op.25 No.4 · 160</option>
-            <option value="presto180">马祖卡 Op.7 No.5 · 180</option>
-            <option value="pathetique208">贝多芬悲怆 第三乐章 · 208</option>
-          </optgroup>
-        </select>
-        <span id="song-detail">贝多芬 · 100 BPM · 1:58</span>
+        <select id="song-select" aria-label="按实际谱面负载分级的曲目"></select>
+        <span id="song-detail">贝多芬 · 100 BPM · Lv 2 · 平均 1.7 KPS · 峰值 2.5 KPS · 1:58</span>
         <a id="score-source" href="https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=528" target="_blank" rel="noopener">Mutopia · Public Domain ↗</a>
         <a class="instrument-source" href="https://sfzinstruments.github.io/pianos/salamander/" target="_blank" rel="noopener">Salamander Piano · CC BY 3.0 ↗</a>
       </div>
@@ -163,6 +116,6 @@
 <script src="fast-scores.js?v=20260826c"></script>
 <script src="library-scores.js?v=20260826c"></script>
 <script src="extended-scores.js?v=20260826c"></script>
-<script src="game.js?v=20260826c"></script>
+<script src="game.js?v=20260827a"></script>
 </body>
 </html>

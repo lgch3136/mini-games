@@ -127,14 +127,7 @@ const POWERUPS = [
   { kind: 'bomb',   icon: '💣', color: '#ffd166', name: '炸弹 +1' },
 ];
 
-const ENCOUNTERS = [
-  { kind: 'wedge', label: '楔形突击' },
-  { kind: 'pincer', label: '双翼夹击' },
-  { kind: 'spiral', label: '螺旋合围' },
-  { kind: 'sweep', label: '侧翼扫荡' },
-  { kind: 'meteor', label: '陨石带穿越', event: true },
-  { kind: 'supply', label: '补给舰截获', event: true },
-];
+const ENCOUNTERS = ['wedge', 'pincer', 'spiral', 'sweep'];
 
 /* ---------------- 全局状态 ---------------- */
 const Game = {
@@ -153,6 +146,9 @@ const Game = {
   nextWaveTimer: null,
   bossPending: false,
   lastEncounter: null,
+  spawnTimer: 0,
+  eventTimer: 0,
+  carrierQueue: [],
   stats: { questions: 0, correct: 0, wrongAnswers: 0, vocab: 0, grammar: 0 },
   player: {
     x: W / 2, y: H - 90, r: 15,
@@ -351,10 +347,10 @@ function makeQuestion() {
   return { kind: '单词释义', prompt: item.en, hint: '选择正确的中文释义', options, answer: item.zh, isGrammar: false, en: item.en, zh: item.zh };
 }
 
-function pickEncounter(reinforcement) {
-  const pool = ENCOUNTERS.filter((item) => item.kind !== Game.lastEncounter && (!item.event || (!reinforcement && Game.questionIndex > 1)));
+function pickEncounter() {
+  const pool = ENCOUNTERS.filter((item) => item !== Game.lastEncounter);
   const encounter = pool[randInt(pool.length)];
-  Game.lastEncounter = encounter.kind;
+  Game.lastEncounter = encounter;
   return encounter;
 }
 
@@ -398,57 +394,65 @@ function spawnSupplyShip(baseY, speedBase, conf) {
   });
 }
 
-function spawnQuestionWave(reinforcement) {
-  Game.phase = 'question';
-  if (!reinforcement || !Game.question) {
-    Game.question = makeQuestion();
-    Game.questionIndex++;
-    Game.stats.questions++;
-  }
-  Game.enemies.length = 0;
-  const n = Game.question.options.length;
-  const eliteIdx = (Game.questionIndex % 5 === 3) ? randInt(n) : -1;
+function spawnStreamEnemy(option) {
   const conf = DIFF_CONF[Game.difficulty];
   const speedBase = conf.speed * (1 + (Game.level - 1) * 0.09);
-  const jitter = Math.min(45, W / (n + 1) * 0.28);
   const edge = W < 600 ? Math.max(62, W * 0.17) : 60;
-  const encounter = pickEncounter(reinforcement);
-  const baseY = Math.min(H * .25, hudClearanceY() + 24);
-  Game.question.options.forEach((opt, i) => {
-    const homeX = clamp(W * (i + 1) / (n + 1) + rand(-jitter, jitter), edge, W - edge);
-    const plan = formationPlan(encounter.kind, i, n, homeX, baseY);
-    const enemy = {
-      x: plan.x, y: plan.y,
-      r: 24, hp: 1, maxHp: 1,
-      vy: speedBase + rand(-12, 18),
-      t: rand(0, 6), phase: rand(0, Math.PI * 2),
-      amp: clamp(50 + Game.level * 3, 40, 120),
-      wf: rand(1.0, 2.1),
-      option: opt,
-      elite: false, boss: false,
-      nextShot: rand(0.8, 2.5),
-      shotInterval: conf.fire * rand(0.75, 1.35),
-      hitFlash: 0, dead: false,
-      spawnAt: Game.time + i * .2,
-      homeX: plan.homeX, homeY: plan.homeY, entering: true, retreating: false,
-      entryEdge: plan.edge, flight: plan.flight,
-      route: Game.questionIndex % 3,
-      bulletColor: i % 2 ? '#48cfff' : '#ff9b45',
-    };
-    if (i === eliteIdx) {
-      enemy.elite = true;
-      enemy.r = 29; enemy.hp = enemy.maxHp = 3;
-      enemy.vy *= 0.9;
-      enemy.shotInterval *= 0.6;
+  const slot = randInt(4), encounter = pickEncounter();
+  const homeX = clamp(W * (slot + 1) / 5 + rand(-38, 38), edge, W - edge);
+  const plan = formationPlan(encounter, slot, 4, homeX, Math.min(H * .25, hudClearanceY() + 24));
+  const elite = Math.random() < Math.min(.2, .08 + Game.level * .012);
+  const enemy = {
+    x: plan.x, y: plan.y, homeX: plan.homeX, homeY: plan.homeY,
+    r: elite ? 29 : 24, hp: elite ? 3 : 1, maxHp: elite ? 3 : 1,
+    vy: (speedBase + rand(-12, 18)) * (elite ? .9 : 1),
+    t: rand(0, 6), phase: rand(0, Math.PI * 2),
+    amp: clamp(50 + Game.level * 3, 40, 120), wf: rand(1, 2.1),
+    option: option || null, elite, boss: false,
+    nextShot: rand(.8, 2.5), shotInterval: conf.fire * rand(.75, 1.35) * (elite ? .6 : 1),
+    hitFlash: 0, dead: false, spawnAt: Game.time,
+    entering: true, retreating: false, entryEdge: plan.edge, flight: plan.flight,
+    linger: option ? rand(4.5, 6) : rand(1.4, 3.2),
+    route: randInt(3), bulletColor: Math.random() < .5 ? '#48cfff' : '#ff9b45',
+  };
+  Game.enemies.push(enemy);
+  return enemy;
+}
+
+function updateDirector(dt) {
+  if (Game.phase !== 'question' || !Game.question) return;
+  Game.spawnTimer -= dt;
+  Game.eventTimer -= dt;
+  if (Game.eventTimer <= 0) {
+    const conf = DIFF_CONF[Game.difficulty];
+    const baseY = Math.min(H * .25, hudClearanceY() + 24);
+    if (Math.random() < .55) {
+      spawnMeteorField();
+      toast('陨石带穿越', '#a9b8d6', W / 2, H * .34, 18);
+    } else {
+      spawnSupplyShip(baseY, conf.speed, conf);
+      toast('S 补给舰接近', '#ff5ed8', W / 2, H * .34, 18);
     }
-    Game.enemies.push(enemy);
-  });
-  if (encounter.kind === 'meteor') spawnMeteorField();
-  if (encounter.kind === 'supply') spawnSupplyShip(baseY, speedBase, conf);
-  if (reinforcement) {
-    els.qHint.textContent = encounter.label + '：继续寻找正确数据芯片';
-  } else updateQuestionBar();
-  toast(encounter.label, encounter.kind === 'supply' ? '#ffe066' : '#5ce1ff', W / 2, H * .34, 18);
+    Game.eventTimer = rand(8, 13);
+  }
+  if (Game.spawnTimer > 0) return;
+  const activeShips = Game.enemies.filter((e) => !e.boss && !e.meteor && !e.retreating).length;
+  if (activeShips >= 9) { Game.spawnTimer = .2; return; }
+  if (!Game.carrierQueue.length) Game.carrierQueue = shuffle(Game.question.options.slice());
+  const hasCarrier = Game.enemies.some((e) => e.option && !e.retreating);
+  spawnStreamEnemy(!hasCarrier || Math.random() < .42 ? Game.carrierQueue.shift() : null);
+  Game.spawnTimer = rand(.55, 1.05) / (1 + Game.level * .035);
+}
+
+function spawnQuestionWave() {
+  Game.phase = 'question';
+  Game.question = makeQuestion();
+  Game.questionIndex++;
+  Game.stats.questions++;
+  Game.carrierQueue = shuffle(Game.question.options.slice());
+  Game.spawnTimer = 0;
+  updateQuestionBar();
+  updateDirector(0);
 }
 
 function spawnBoss() {
@@ -476,13 +480,19 @@ function spawnBoss() {
 function nextWave() {
   if (Game.bossPending) {
     Game.bossPending = false;
+    for (const e of Game.enemies) {
+      e.option = null;
+      e.entering = false;
+      e.retreating = true;
+    }
+    Game.enemyBullets.length = 0;
     spawnBoss();
   } else {
-    spawnQuestionWave(Boolean(Game.question));
+    spawnQuestionWave();
   }
 }
 
-/* ---------------- 波次结算 ---------------- */
+/* ---------------- 任务结算 ---------------- */
 function showAnswerFeedback() {
   const q = Game.question;
   if (!q) return;
@@ -495,17 +505,15 @@ function endWave() {
   if (Game.phase !== 'question' || !Game.question) return;
   for (const e of Game.enemies) {
     e.option = null;
-    e.entering = false;
-    e.retreating = true;
   }
   for (let i = Game.powerups.length - 1; i >= 0; i--) {
     if (Game.powerups[i].kind === 'answer') Game.powerups.splice(i, 1);
   }
-  Game.enemyBullets.length = 0;
+  Game.carrierQueue.length = 0;
   Game.question = null;
   Game.phase = 'transition';
   Game.bossPending = Game.questionIndex % 8 === 0;
-  Game.nextWaveTimer = .9;
+  Game.nextWaveTimer = .65;
   if (Game.stats.questions % 6 === 0) levelUp();
 }
 
@@ -536,8 +544,6 @@ function killEnemy(e, byCrash) {
     if (e.boss) {
       Game.enemyBullets.length = 0;
       if (Game.phase === 'boss') { Game.phase = 'transition'; Game.nextWaveTimer = 1.4; }
-    } else if (Game.enemies.length === 0 && Game.phase === 'question') {
-      Game.nextWaveTimer = 1.2;
     }
     updateHud();
     return;
@@ -562,7 +568,6 @@ function killEnemy(e, byCrash) {
   dropPowerup(e.x, e.y, e.elite ? .5 : .08);
   if (e.elite) dropWeaponCrystal(e.x - 24, e.y, .45);
   if (Game.combo % 6 === 0) dropMedal(e.x + 24, e.y);
-  if (Game.enemies.length === 0 && Game.phase === 'question') Game.nextWaveTimer = 1.6;
   updateHud();
 }
 
@@ -570,10 +575,7 @@ function onEnemyEscape(e) {
   if (e.dead) return;
   e.dead = true;
   removeEnemy(e);
-  Game.combo = 0;
-  damagePlayer(14);
-  explode(e.x, H - 10, '#7f8fa6', 16, 0.8);
-  if (Game.enemies.length === 0 && Game.phase === 'question') Game.nextWaveTimer = 1.2;
+  if (e.option) Game.combo = 0;
   updateHud();
 }
 
@@ -911,10 +913,11 @@ function update(dt) {
   updateEnemies(dt);
   updateEnemyBullets(dt);
   updatePowerups(dt);
+  updateDirector(dt);
 
   if (Game.nextWaveTimer !== null) {
     if (Game.nextWaveTimer > 0) Game.nextWaveTimer -= dt;
-    if (Game.nextWaveTimer <= 0 && Game.enemies.length === 0 && Game.state === 'playing') {
+    if (Game.nextWaveTimer <= 0 && Game.state === 'playing') {
       Game.nextWaveTimer = null;
       nextWave();
     }
@@ -1000,7 +1003,6 @@ function updateEnemies(dt) {
         damagePlayer(16);
       } else if (e.y > H + 70 || e.x < -80 || e.x > W + 80) {
         removeEnemy(e);
-        if (Game.enemies.length === 0 && Game.phase === 'question') Game.nextWaveTimer = 1.0;
       }
       continue;
     }
@@ -1010,7 +1012,7 @@ function updateEnemies(dt) {
       if (Math.abs(e.homeY - e.y) < 4) { e.y = e.homeY; e.entering = false; }
       continue;
     }
-    const hoverFor = Game.difficulty === 'easy' ? 6.5 : 5.4;
+    const hoverFor = e.linger ?? (Game.difficulty === 'easy' ? 6.5 : 5.4);
     if (waveAge < hoverFor) {
       const hoverY = e.homeY + Math.sin(e.t * (e.flight === 'orbit' ? 1.25 : 1.7) + e.phase) * (e.flight === 'weave' ? 22 : 12);
       e.y += (hoverY - e.y) * Math.min(1, dt * 4.5);
@@ -1629,6 +1631,9 @@ function startGame() {
   Game.question = null;
   Game.nextWaveTimer = null;
   Game.bossPending = false;
+  Game.spawnTimer = 0;
+  Game.eventTimer = rand(5.5, 8.5);
+  Game.carrierQueue.length = 0;
   Game.shake = 0;
   Game.stats = { questions: 0, correct: 0, wrongAnswers: 0, vocab: 0, grammar: 0 };
   Game.bullets.length = 0; Game.enemyBullets.length = 0;
@@ -1765,10 +1770,17 @@ if (/[?&]selftest/.test(location.search)) {
   try {
     Game.difficulty = 'easy';
     startGame();
-    const entrants = Game.enemies.filter((e) => e.option);
-    if (!entrants.every((e) => e.entering && (e.y < 0 || e.x < 0 || e.x > W)) || new Set(entrants.map((e) => e.spawnAt)).size < 2) throw new Error('formation entry failed');
-    const entryEdges = ENCOUNTERS.filter((e) => !e.event).map((e) => formationPlan(e.kind, 0, 4, W * .25, 150).edge);
+    const streamBefore = Game.enemies.length;
+    Game.spawnTimer = 0; updateDirector(0);
+    if (Game.enemies.length <= streamBefore) throw new Error('continuous director failed');
+    const entrants = Game.enemies.filter((e) => !e.meteor);
+    if (entrants.length < 2 || !entrants.every((e) => e.entering && (e.y < 0 || e.x < 0 || e.x > W))) throw new Error('formation entry failed');
+    const entryEdges = ENCOUNTERS.map((kind) => formationPlan(kind, 0, 4, W * .25, 150).edge);
     if (new Set(entryEdges).size < 2) throw new Error('encounter variety failed');
+    const wrongOption = Game.question.options.find((option) => !option.correct);
+    const correctOption = Game.question.options.find((option) => option.correct);
+    if (!Game.enemies.some((e) => e.option && !e.option.correct)) spawnStreamEnemy(wrongOption);
+    if (!Game.enemies.some((e) => e.option && e.option.correct)) spawnStreamEnemy(correctOption);
     Game.player.invuln = 0;
     const beforeGraze = Game.score;
     Game.enemyBullets.push({ x: Game.player.x + 28, y: Game.player.y, vx: 0, vy: 0, r: 4 });
@@ -1800,7 +1812,9 @@ if (/[?&]selftest/.test(location.search)) {
     if (correct) killEnemy(correct, false);
     const correctChip = Game.powerups.find((u) => u.kind === 'answer' && u.correct);
     if (!correctChip) throw new Error('correct chip missing');
+    const liveStream = Game.enemies.length;
     correctChip.x = Game.player.x; correctChip.y = Game.player.y; updatePowerups(0);
+    if (Game.enemies.length !== liveStream) throw new Error('answer cleared continuous stream');
     for (let i = 0; i < 10; i++) { update(1 / 60); updateFx(1 / 60); }
     const rect = canvas.getBoundingClientRect();
     Game.fireHeld = false;
@@ -1866,7 +1880,7 @@ if (/[?&]fuzz/.test(location.search)) {
       const beforeLevel = Game.level;
       const beforeBoss = Game.enemies.some((e) => e.boss);
       if (i % 90 === 0) {
-        const target = Game.phase === 'boss' ? Game.enemies.find((e) => e.boss) : Game.enemies[0];
+        const target = Game.phase === 'boss' ? Game.enemies.find((e) => e.boss) : Game.enemies.find((e) => e.option?.correct) || Game.enemies.find((e) => e.option) || Game.enemies[0];
         if (target) { target.hp = 1; killEnemy(target, false); }
         const answer = Game.powerups.find((u) => u.kind === 'answer' && u.correct);
         if (answer) { answer.x = Game.player.x; answer.y = Game.player.y; }
