@@ -145,7 +145,7 @@ for (const [name, src] of Object.entries({
   terrain1: 'assets/terrain-canyon-v1.webp',
   terrain2: 'assets/terrain-city-v1.webp',
   terrain3: 'assets/terrain-crystal-v1.webp',
-  decor: 'assets/decor-atlas-v1.webp',
+  decor: 'assets/decor-atlas-v2.webp',
 })) {
   const image = new Image();
   image.src = src;
@@ -167,10 +167,10 @@ const TERRAIN_CROPS = [
   { y: .215, h: .565 }, { y: .195, h: .57 }, { y: .28, h: .52 }, { y: .305, h: .43 },
 ];
 const DECOR_SPECS = [
-  [{ row: 0, column: 0, w: 112, h: 75 }, { row: 0, column: 1, w: 116, h: 78 }],
-  [{ row: 0, column: 2, w: 74, h: 98 }, { row: 0, column: 3, w: 94, h: 72 }],
-  [{ row: 1, column: 0, w: 60, h: 104 }, { row: 1, column: 1, w: 91, h: 92 }],
-  [{ row: 1, column: 2, w: 92, h: 91 }, { row: 1, column: 3, w: 72, h: 104 }],
+  [{ row: 0, column: 0, w: 132, h: 88 }, { row: 0, column: 1, w: 138, h: 86 }],
+  [{ row: 0, column: 2, w: 82, h: 108 }, { row: 0, column: 3, w: 110, h: 80 }],
+  [{ row: 1, column: 0, w: 68, h: 116 }, { row: 1, column: 1, w: 106, h: 104 }],
+  [{ row: 1, column: 2, w: 106, h: 102 }, { row: 1, column: 3, w: 82, h: 116 }],
 ];
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -322,11 +322,27 @@ function makeEnemy(type, x, chunkIndex, floorY = GROUND_Y) {
   };
 }
 
+function populateDecor(chunk, foeXs = []) {
+  let placed = 0;
+  for (let i = 0; i < 6 && placed < 2; i++) {
+    const x = chunk.start + 178 + i * 92 + ((chunk.index * 31 + i * 17) % 21);
+    const blocked = x > chunk.start + CHUNK_W - 75
+      || chunk.gaps.some((gap) => x > gap.x - 72 && x < gap.x + gap.w + 72)
+      || chunk.hazards.some((hazard) => x > hazard.x - 58 && x < hazard.x + hazard.w + 58)
+      || chunk.platforms.some((platform) => x > platform.x - 42 && x < platform.x + platform.w + 42)
+      || foeXs.some((foeX) => Math.abs(foeX - x) < 94);
+    if (blocked) continue;
+    chunk.decor.push({ x, size: .78 + ((chunk.index + i) % 3) * .08, variant: (chunk.index + i) % 2 });
+    placed++;
+  }
+}
+
 function generateMissionChunk(index, start) {
   const beat = MISSION_BEATS[index] || { tag: 'EXIT', name: '守卫封锁线', hint: '前线任务已结束', foes: [] };
   const chunk = {
     index, start, biome: MISSION_LEVELS[Game.missionLevel].biome, encounter: beat.name, tag: beat.tag, hint: beat.hint,
-    lock: Boolean(beat.lock), wordGate: Boolean(beat.wordGate), checkpoint: Boolean(beat.checkpoint),
+    lock: Boolean(beat.lock && (beat.tag === 'CLIMAX' || beat.tag === 'BOSS')),
+    wordGate: Boolean(beat.wordGate), checkpoint: Boolean(beat.checkpoint), reinforced: false,
     gateUsed: false, cleared: false, gaps: [], platforms: [], hazards: [], decor: [],
   };
   for (const [offset, width] of beat.gaps || []) chunk.gaps.push({ x: start + offset, w: width });
@@ -336,11 +352,7 @@ function generateMissionChunk(index, start) {
     chunk.hazards.push({ type, x: start + offset, y: type === 'updraft' ? y : GROUND_Y - h - (y || 0), w: w || (type === 'rock' ? 40 : 100), h,
       phase: index * .7 + offset * .01, home: start + offset, range: 82, vx: type === 'rock' ? 62 : 0 });
   }
-  for (let i = 0; i < 3; i++) chunk.decor.push({
-    x: start + 125 + i * 228 + (index * 29 + i * 19) % 34,
-    size: .72 + ((index + i) % 3) * .1,
-    variant: (index + i) % 2,
-  });
+  populateDecor(chunk, (beat.foes || []).map(([, offset]) => start + offset));
   Game.chunks.push(chunk);
   Game.generatedTo += CHUNK_W;
   maybeSwitchBossMusic(chunk);
@@ -440,13 +452,7 @@ function generateChunk() {
     }
   }
 
-  for (let i = 0; i < 3; i++) {
-    chunk.decor.push({
-      x: start + 110 + i * 232 + (index * 31 + i * 17) % 40,
-      size: .7 + ((index + i) % 3) * .1,
-      variant: (index + i) % 2,
-    });
-  }
+  populateDecor(chunk, stage.foes.map(([, offset]) => start + offset));
 
   Game.chunks.push(chunk);
   Game.generatedTo += CHUNK_W;
@@ -478,10 +484,15 @@ function ensureWorld(targetX, budget) {
 }
 
 function findSafeSpot(candidate) {
-  ensureWorld(candidate + 260);
-  for (let offset = 0; offset < 420; offset += 32) {
+  ensureWorld(candidate + CHUNK_W * 2, Infinity);
+  for (let offset = 0; offset < CHUNK_W * 2; offset += 32) {
     const x = candidate + offset;
     const chunk = chunkAt(x);
+    const occupied = chunk && (chunk.decor.some((item) => Math.abs(item.x - x) < 82)
+      || chunk.hazards.some((hazard) => x > hazard.x - 36 && x < hazard.x + hazard.w + 36))
+      || Game.enemies.some((enemy) => !enemy.dead && Math.abs(enemy.x + enemy.w / 2 - x) < 72)
+      || Game.pickups.some((pickup) => !pickup.taken && Math.abs(pickup.x - x) < 68);
+    if (occupied) continue;
     const platform = chunk && chunk.platforms.find((item) => !item.move && x > item.x + 18 && x < item.x + item.w - 18);
     if (platform && offset % 64 === 0) return { x, y: platform.y - 42 };
     if (groundAt(x) !== null) return { x, y: GROUND_Y - 42 };
@@ -505,10 +516,11 @@ function nextWord(initial) {
   Game.lastWord = item.en;
   Game.currentWord = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   Game.pickups = [];
-  const start = Game.player.x + (initial ? 320 : 470);
+  let nextX = Game.player.x + (initial ? 320 : 470);
   [...Game.currentWord.en].forEach((letter, index) => {
-    const spot = findSafeSpot(start + index * 145);
+    const spot = findSafeSpot(nextX);
     Game.pickups.push({ ...spot, w: 30, h: 34, letter, index, taken: false });
+    nextX = spot.x + 145;
   });
   showFeedback(initial ? '按顺序收集字母，前线会不断延伸' : '新单词已投放到前方');
   updateHud();
@@ -1346,7 +1358,25 @@ function updateEnemies(dt) {
 }
 
 function updateReinforcements(dt) {
-  if (Game.mode === 'mission') return;
+  if (Game.mode === 'mission') {
+    const chunk = chunkAt(Game.player.x + Game.player.w / 2);
+    const ambush = chunk && ['COMBINE', 'TWIST', 'CLIMAX'].includes(chunk.tag);
+    if (!ambush || chunk.reinforced || Game.player.x < chunk.start + CHUNK_W * .42) return;
+    chunk.reinforced = true;
+    const behind = chunk.tag === 'COMBINE' || (chunk.tag === 'CLIMAX' && chunk.index % 2 === 0);
+    let type = chunk.tag === 'TWIST' ? 'drone' : chunk.tag === 'CLIMAX' ? 'leaper' : chunk.biome % 2 ? 'leaper' : 'beetle';
+    let x = behind ? Game.camera - 64 : Game.camera + VIEW_W + 28;
+    if (type !== 'drone') {
+      for (let i = 0; i < 8 && groundAt(x) === null; i++) x += 32;
+      if (groundAt(x) === null) type = 'drone';
+    }
+    const enemy = makeEnemy(type, x, chunk.index);
+    enemy.facing = behind ? 1 : -1;
+    enemy.cooldown = .22;
+    Game.enemies.push(enemy);
+    showFeedback(behind ? '后方突袭：保持推进！' : '空降增援：注意上空！');
+    return;
+  }
   Game.reinforcementTimer -= dt;
   if (Game.reinforcementTimer > 0) return;
   const conf = DIFFICULTIES[Game.difficulty];
@@ -1617,7 +1647,7 @@ function drawDecor(chunk) {
     const width = spec.w * item.size;
     const height = spec.h * item.size;
     ctx.save();
-    ctx.globalAlpha = .5;
+    ctx.globalAlpha = .72;
     drawAtlasFrame(ASSETS.decor, spec.row, spec.column, item.x - width / 2, GROUND_Y - height + 4, width, height, false, 4, 2);
     ctx.restore();
   }
@@ -2361,10 +2391,29 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const openingBarrel = Game.enemies.find((enemy) => enemy.type === 'barrel' && enemy.chunkIndex === 0);
       const openingTarget = Game.enemies.find((enemy) => enemy.type === 'beetle' && enemy.chunkIndex === 0);
       if (!openingBarrel || !openingTarget || !Game.chunks[0].platforms.length) throw new Error('opening route or explosive choice missing');
+      const clutteredPickup = Game.pickups.find((pickup) => chunkAt(pickup.x)?.decor.some((item) => Math.abs(item.x - pickup.x) < 82));
+      if (clutteredPickup) throw new Error('learning pickup overlaps decorative art at ' + Math.round(clutteredPickup.x));
       const lockProbe = makeEnemy('barrel', 1000, -1);
       Game.enemies.push(lockProbe);
       if (chunkHasThreats({ index: -1 })) throw new Error('optional barrel blocked encounter gate');
       lockProbe.dead = true;
+      ensureWorld(CHUNK_W * MISSION_BEATS.length, Infinity);
+      const flowChunk = Game.chunks.find((chunk) => chunk.tag === 'COMBINE');
+      const lockedTags = new Set(Game.chunks.filter((chunk) => chunk.lock).map((chunk) => chunk.tag));
+      if (!flowChunk || flowChunk.lock || !lockedTags.has('CLIMAX') || !lockedTags.has('BOSS')
+        || [...lockedTags].some((tag) => tag !== 'CLIMAX' && tag !== 'BOSS')) throw new Error('mission encounter locks broke forward flow');
+      const savedX = Game.player.x;
+      const savedCamera = Game.camera;
+      const enemyCount = Game.enemies.length;
+      Game.player.x = flowChunk.start + CHUNK_W * .5;
+      Game.camera = Math.max(0, Game.player.x - VIEW_W * .3);
+      updateReinforcements(0);
+      if (!flowChunk.reinforced || Game.enemies.length !== enemyCount + 1) throw new Error('scripted ambush did not enter from the screen edge');
+      updateReinforcements(0);
+      if (Game.enemies.length !== enemyCount + 1) throw new Error('scripted ambush repeated like a wave');
+      Game.enemies.splice(enemyCount);
+      Game.player.x = savedX;
+      Game.camera = savedCamera;
       detonateBarrel(openingBarrel);
       if (!openingTarget.dead) throw new Error('barrel chain reaction failed');
       const startX = Game.player.x;
