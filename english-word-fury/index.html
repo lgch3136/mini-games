@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#100e1b">
+<title>单词斗魂 · WORD FURY</title>
+<link rel="stylesheet" href="style.css?v=20260829a">
+</head>
+<body>
+<main id="game-wrap" aria-label="单词斗魂格斗游戏区">
+  <canvas id="game"></canvas>
+
+  <section id="hud" class="hidden" aria-live="polite">
+    <div class="fighter-hud player-hud">
+      <div class="name-row"><strong>凌风</strong><span>PLAYER</span></div>
+      <div class="meter health"><i id="player-health"></i></div>
+      <div class="meter guard"><i id="player-guard"></i></div>
+      <div class="meter power"><i id="player-power"></i></div>
+    </div>
+    <div id="round-hud"><b id="round">1</b><span>ROUND</span><strong id="timer">75</strong></div>
+    <div class="fighter-hud enemy-hud">
+      <div class="name-row"><span id="enemy-style">迅击型</span><strong id="enemy-name">赤绫</strong></div>
+      <div class="meter health"><i id="enemy-health"></i></div>
+      <div class="meter guard"><i id="enemy-guard"></i></div>
+      <div class="meter power"><i id="enemy-power"></i></div>
+    </div>
+    <div id="mission">
+      <span>连击拼词</span><b id="word-meaning">准备</b><strong id="word-progress">_ _ _</strong>
+      <small id="feedback">命中即可写入下一个字母</small>
+    </div>
+    <div id="hud-actions">
+      <button id="mute-btn" type="button">声音</button>
+      <button id="pause-btn" type="button">暂停</button>
+    </div>
+  </section>
+
+  <section id="touch-controls" class="hidden" aria-label="触屏格斗操作">
+    <div class="move-pad">
+      <button id="left-btn" data-hold="left" aria-label="向左">←</button>
+      <button id="right-btn" data-hold="right" aria-label="向右">→</button>
+      <button id="crouch-btn" data-hold="down" aria-label="下蹲">蹲</button>
+      <button id="jump-btn" data-action="jump" aria-label="跳跃">跳</button>
+    </div>
+    <div class="action-pad">
+      <button id="block-btn" data-hold="block" aria-label="格挡">防</button>
+      <button id="punch-btn" data-action="punch" aria-label="拳击">拳</button>
+      <button id="kick-btn" data-action="kick" aria-label="踢击">腿</button>
+      <button id="special-btn" data-action="special" aria-label="必杀技">必杀</button>
+    </div>
+  </section>
+
+  <section id="menu" class="overlay">
+    <img class="menu-cover" src="assets/cover-v1.webp" alt="两位原创格斗家在雨夜擂台交锋">
+    <div class="menu-copy">
+      <p class="eyebrow">原创街机格斗 × 单词连击</p>
+      <h1>单词斗魂</h1>
+      <p class="english-title">WORD FURY</p>
+      <p class="lead">拳脚连段写入字母，格挡会被破防，蓄满斗气释放必杀。四座竞技场轮换机关，每次击倒后用单词问答恢复体力。</p>
+      <a class="hub-link" href="../">返回游戏合集</a>
+    </div>
+    <div class="menu-actions">
+      <div id="difficulty" aria-label="选择难度">
+        <button class="difficulty selected" data-difficulty="easy" type="button">新秀<small>AI 会留出反击窗口</small></button>
+        <button class="difficulty" data-difficulty="medium" type="button">斗士<small>标准攻防与场景机关</small></button>
+        <button class="difficulty" data-difficulty="hard" type="button">宗师<small>高压逼近与快速破防</small></button>
+      </div>
+      <button class="primary" id="start-btn" type="button">踏上无限擂台</button>
+      <div class="howto">
+        <p>电脑：A/D 移动，W 跳跃，S 下蹲，J 拳，K 腿，L 必杀，I/Shift 格挡；向后也会自动防御。</p>
+        <p>进阶：双击方向冲刺；贴身按前+拳投技；拳后接腿可取消硬直；敌人发光蓄力时抢攻会触发破招。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="quiz" class="overlay compact hidden" aria-live="assertive">
+    <p class="eyebrow">击倒奖励 · 记忆校验</p>
+    <h2 id="quiz-title">选择正确单词</h2>
+    <p id="quiz-meaning"></p>
+    <div id="quiz-options"></div>
+    <small id="quiz-feedback">答对恢复更多体力并补充斗气</small>
+  </section>
+
+  <section id="paused" class="overlay compact hidden">
+    <p class="eyebrow">擂台暂停</p>
+    <h2>调整呼吸</h2>
+    <button class="primary" id="resume-btn" type="button">继续战斗</button>
+    <button class="secondary" id="pause-menu-btn" type="button">返回主菜单</button>
+  </section>
+
+  <section id="over" class="overlay compact hidden">
+    <p class="eyebrow">本次挑战结束</p>
+    <h2 id="over-title">再战一轮</h2>
+    <div id="over-stats"></div>
+    <button class="primary" id="retry-btn" type="button">重新挑战</button>
+    <button class="secondary" id="menu-btn" type="button">返回主菜单</button>
+  </section>
+</main>
+
+<script src="../shared/vocabulary.js?v=20260820a"></script>
+<script src="../shared/audio.js?v=20260819a"></script>
+<script src="../shared/chip-music.js?v=6"></script>
+<script src="game.js?v=20260829b"></script>
+</body>
+</html>

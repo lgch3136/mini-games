@@ -1,0 +1,1055 @@
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('game');
+const ctx = canvas.getContext('2d');
+const wrap = $('game-wrap');
+const H = 540;
+const TAU = Math.PI * 2;
+let W = 960;
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const rand = (min, max) => min + Math.random() * (max - min);
+const signTo = (from, to) => to >= from ? 1 : -1;
+const floorY = () => W < 560 ? H - 148 : H - 48;
+
+const ASSETS = {};
+for (const [name, src] of Object.entries({
+  hero: 'assets/hero-atlas-v1.webp',
+  rival: 'assets/rival-atlas-v1.webp',
+  bruiser: 'assets/bruiser-atlas-v1.webp',
+  arenas: 'assets/arena-atlas-v1.webp',
+})) {
+  const image = new Image();
+  image.src = src;
+  ASSETS[name] = image;
+}
+
+const DIFFICULTIES = {
+  easy: { timer: 82, ai: .72, enemyDamage: .78, guard: .84, label: '新秀' },
+  medium: { timer: 72, ai: 1, enemyDamage: 1, guard: 1, label: '斗士' },
+  hard: { timer: 64, ai: 1.22, enemyDamage: 1.16, guard: 1.2, label: '宗师' },
+};
+
+const ARENAS = [
+  { name: '霓雨天台', hazard: 'rain' },
+  { name: '地铁工坊', hazard: 'steam' },
+  { name: '暮港仓桥', hazard: 'barrel' },
+  { name: '月瀑神社', hazard: 'lightning' },
+];
+
+const OPPONENTS = [
+  { name: '赤绫', style: '迅击型', atlas: 'rival', speed: 1.08, damage: .92, guard: .94, aggression: .66 },
+  { name: '铁岳', style: '擒拿型', atlas: 'bruiser', speed: .86, damage: 1.22, guard: 1.18, aggression: .58 },
+  { name: '夜绫', style: '反击型', atlas: 'rival', speed: 1, damage: 1.04, guard: 1.18, aggression: .52, filter: 'hue-rotate(24deg) saturate(1.15)' },
+  { name: '震岳', style: '压制型', atlas: 'bruiser', speed: .94, damage: 1.3, guard: 1.28, aggression: .72, filter: 'hue-rotate(-18deg) saturate(1.12)' },
+];
+
+const MOVES = {
+  punch1: { frame: 4, start: .07, active: .13, end: .23, range: 86, damage: 6, stun: .2, knock: 26, level: 'mid', lunge: 42, chain: 1 },
+  punch2: { frame: 4, start: .08, active: .15, end: .25, range: 90, damage: 8, stun: .22, knock: 34, level: 'mid', lunge: 48, chain: 2 },
+  punch3: { frame: 4, start: .12, active: .2, end: .34, range: 97, damage: 12, stun: .36, knock: 104, level: 'mid', lunge: 62, chain: 3, heavy: true },
+  kick: { frame: 5, start: .16, active: .25, end: .43, range: 89, damage: 14, stun: .34, knock: 92, level: 'high', lunge: 36, heavy: true },
+  sweep: { frame: 3, start: .13, active: .21, end: .4, range: 78, damage: 11, stun: .48, knock: 82, lift: -125, level: 'low', heavy: true },
+  airkick: { frame: 5, start: .05, active: .2, end: .36, range: 78, damage: 12, stun: .3, knock: 74, level: 'overhead', lunge: 86 },
+  throw: { frame: 4, start: .1, active: .18, end: .5, range: 78, damage: 17, stun: .58, knock: 155, lift: -150, level: 'throw', unblockable: true, heavy: true },
+  uppercut: { frame: 5, start: .09, active: .19, end: .58, range: 76, damage: 23, stun: .62, knock: 112, lift: -245, level: 'mid', lunge: 54, special: true, heavy: true, cost: 50 },
+  fireball: { frame: 4, start: .18, active: .2, end: .52, range: 0, damage: 16, stun: .38, knock: 85, level: 'mid', special: true, projectile: true, cost: 45 },
+};
+
+const input = { left: false, right: false, down: false, block: false };
+const Game = {
+  state: 'menu', resumeState: 'playing', difficulty: 'easy', score: 0, round: 1, wins: 0, wordsDone: 0,
+  time: 0, timer: 75, stage: 0, introTimer: 0, roundEnding: 0, outcome: '', hudTimer: 0,
+  player: null, enemy: null, word: null, lastWord: '', wordCompleteTimer: 0, recentWords: [], wordEcho: null,
+  combo: 0, maxCombo: 0, comboTimer: 0, freeze: 0, shake: 0, flash: 0,
+  particles: [], projectiles: [], hazard: null, hazardTimer: 8, banner: null,
+  quizAnswer: '', quizLocked: false,
+};
+
+function wordBank() {
+  const source = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
+  return source.filter((item) => item.en.length >= 3 && item.en.length <= 9 && /^[a-z]+$/i.test(item.en));
+}
+
+function nextWord() {
+  const bank = wordBank();
+  let item = bank[Math.floor(Math.random() * bank.length)];
+  if (bank.length > 1 && item.en === Game.lastWord) item = bank[(bank.indexOf(item) + 1) % bank.length];
+  Game.lastWord = item.en;
+  Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
+  Game.wordCompleteTimer = 0;
+  updateHud();
+}
+
+function makeFighter(side, opponent = OPPONENTS[0]) {
+  const isPlayer = side === 'player';
+  const conf = DIFFICULTIES[Game.difficulty];
+  const boss = !isPlayer && Game.round % 5 === 0;
+  const maxHealth = isPlayer ? 100 : Math.round((100 + Math.min(55, Game.round * 3.2)) * (boss ? 1.28 : 1));
+  return {
+    side, atlas: isPlayer ? 'hero' : opponent.atlas, nativeFacing: isPlayer ? 1 : -1,
+    name: isPlayer ? '凌风' : opponent.name, style: isPlayer ? 'PLAYER' : opponent.style,
+    x: isPlayer ? W * .27 : W * .73, y: floorY(), vx: 0, vy: 0, facing: isPlayer ? 1 : -1,
+    health: maxHealth, maxHealth, guard: 100, maxGuard: 100, power: 0,
+    speed: (isPlayer ? 220 : 205 * opponent.speed) * (isPlayer ? 1 : conf.ai),
+    damageScale: isPlayer ? 1 : opponent.damage * conf.enemyDamage,
+    guardScale: isPlayer ? 1 : opponent.guard * conf.guard,
+    aggression: isPlayer ? 0 : opponent.aggression,
+    action: null, queued: null, hitstun: 0, inv: 0, dash: 0, dashDir: 0,
+    blocking: false, crouching: false, onGround: true, ko: false,
+    chainStep: 0, chainWindow: 0, fury: 0, runCycle: 0, filter: opponent.filter || 'none',
+    intent: 0, ai: { think: .2, moveFor: 0, blockFor: 0, disabled: false },
+  };
+}
+
+function resetPositions() {
+  const ground = floorY();
+  const margin = W < 560 ? 52 : 120;
+  Object.assign(Game.player, { x: Math.max(margin, W * .27), y: ground, vx: 0, vy: 0, facing: 1, action: null, queued: null, hitstun: 0, dash: 0, blocking: false, crouching: false, onGround: true, ko: false });
+  Object.assign(Game.enemy, { x: Math.min(W - margin, W * .73), y: ground, vx: 0, vy: 0, facing: -1, action: null, queued: null, hitstun: 0, dash: 0, blocking: false, crouching: false, onGround: true, ko: false });
+}
+
+function startGame() {
+  if (window.ChipMusic) ChipMusic.play('fighter-loop');
+  Object.assign(Game, {
+    state: 'intro', score: 0, round: 1, wins: 0, wordsDone: 0, time: 0, combo: 0, maxCombo: 0,
+    comboTimer: 0, freeze: 0, shake: 0, flash: 0, recentWords: [], wordEcho: null,
+    particles: [], projectiles: [], hazard: null,
+  });
+  Game.player = makeFighter('player');
+  startRound(true);
+  $('menu').classList.add('hidden');
+  $('over').classList.add('hidden');
+  $('paused').classList.add('hidden');
+  $('quiz').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+  $('touch-controls').classList.remove('hidden');
+  if (window.ArcadeAudio) ArcadeAudio.start();
+}
+
+function startRound(first = false) {
+  const opponent = OPPONENTS[(Game.round - 1) % OPPONENTS.length];
+  const oldPlayer = Game.player;
+  Game.stage = (Game.round - 1) % ARENAS.length;
+  Game.enemy = makeFighter('enemy', opponent);
+  if (!oldPlayer || first) Game.player = makeFighter('player');
+  else {
+    Game.player = oldPlayer;
+    Game.player.guard = Game.player.maxGuard;
+    Game.player.power = clamp(Game.player.power, 0, 100);
+    Game.player.fury = 0;
+  }
+  resetPositions();
+  Game.timer = DIFFICULTIES[Game.difficulty].timer;
+  Game.introTimer = 1.45;
+  Game.roundEnding = 0;
+  Game.outcome = '';
+  Game.state = 'intro';
+  Game.projectiles.length = 0;
+  Game.hazard = null;
+  Game.hazardTimer = 6.5;
+  Game.combo = 0;
+  Game.comboTimer = 0;
+  if (!Game.word || first) nextWord();
+  Game.banner = { text: Game.round % 5 === 0 ? 'BOSS ROUND' : ARENAS[Game.stage].name, timer: 1.4, color: Game.round % 5 === 0 ? '#ff6b62' : '#ffe17e' };
+  updateHud();
+}
+
+function backToMenu() {
+  Game.state = 'menu';
+  if (window.ChipMusic) ChipMusic.stop();
+  $('hud').classList.add('hidden');
+  $('touch-controls').classList.add('hidden');
+  $('paused').classList.add('hidden');
+  $('quiz').classList.add('hidden');
+  $('over').classList.add('hidden');
+  $('menu').classList.remove('hidden');
+}
+
+function togglePause() {
+  if (['playing', 'intro', 'ending'].includes(Game.state)) {
+    Game.resumeState = Game.state;
+    Game.state = 'paused';
+    $('paused').classList.remove('hidden');
+  } else if (Game.state === 'paused') {
+    Game.state = Game.resumeState;
+    $('paused').classList.add('hidden');
+    lastTime = performance.now();
+  }
+}
+
+function showFeedback(text) {
+  $('feedback').textContent = text;
+}
+
+function updateHud() {
+  if (!Game.player || !Game.enemy) return;
+  $('player-health').style.width = (100 * Game.player.health / Game.player.maxHealth) + '%';
+  $('enemy-health').style.width = (100 * Game.enemy.health / Game.enemy.maxHealth) + '%';
+  $('player-guard').style.width = Game.player.guard + '%';
+  $('enemy-guard').style.width = Game.enemy.guard + '%';
+  $('player-power').style.width = Game.player.power + '%';
+  $('enemy-power').style.width = Game.enemy.power + '%';
+  $('enemy-name').textContent = Game.enemy.name;
+  $('enemy-style').textContent = Game.enemy.style;
+  $('round').textContent = Game.round;
+  $('timer').textContent = Math.max(0, Math.ceil(Game.timer));
+  if (Game.word) {
+    $('word-meaning').textContent = Game.word.zh;
+    $('word-progress').textContent = [...Game.word.en].map((letter, index) => index < Game.word.progress ? letter : '_').join(' ');
+  }
+}
+
+function moveCommand(fighter, command, opponent) {
+  if (!fighter || fighter.ko || fighter.hitstun > 0 || !['playing', 'intro'].includes(Game.state)) return false;
+  if (command === 'jump') {
+    if (!fighter.onGround || fighter.action) return false;
+    fighter.vy = -525;
+    fighter.onGround = false;
+    fighter.blocking = false;
+    if (fighter.side === 'player' && window.ArcadeAudio) ArcadeAudio.play('jump', .15, 1.05);
+    return true;
+  }
+
+  if (fighter.action) {
+    const canCancel = fighter.action.hit && fighter.action.t >= fighter.action.spec.active && ['punch', 'kick', 'special'].includes(command);
+    if (!canCancel) { fighter.queued = command; return false; }
+    fighter.action = null;
+  }
+
+  const distance = Math.abs(opponent.x - fighter.x);
+  let moveName = command;
+  if (command === 'punch') {
+    const towardHeld = fighter.side === 'player' && ((input.right ? 1 : input.left ? -1 : 0) === fighter.facing);
+    if (fighter.onGround && towardHeld && distance < MOVES.throw.range + 12) moveName = 'throw';
+    else if (!fighter.onGround) moveName = 'airkick';
+    else if (fighter.crouching) moveName = 'sweep';
+    else if (fighter.chainWindow > 0 && fighter.chainStep === 1) moveName = 'punch2';
+    else if (fighter.chainWindow > 0 && fighter.chainStep === 2) moveName = 'punch3';
+    else moveName = 'punch1';
+  } else if (command === 'kick') {
+    moveName = !fighter.onGround ? 'airkick' : fighter.crouching ? 'sweep' : 'kick';
+  } else if (command === 'special') {
+    moveName = distance < 118 ? 'uppercut' : 'fireball';
+  }
+  const spec = MOVES[moveName];
+  if (!spec) return false;
+  if (spec.cost && fighter.power < spec.cost) {
+    if (fighter.side === 'player') showFeedback('斗气不足：命中与格挡都能积蓄');
+    return false;
+  }
+  if (spec.cost) fighter.power -= spec.cost;
+  fighter.action = { name: moveName, spec, t: 0, hit: false, spawned: false };
+  fighter.queued = null;
+  fighter.blocking = false;
+  fighter.crouching = false;
+  return true;
+}
+
+function dashPlayer(direction) {
+  const player = Game.player;
+  if (!player || player.ko || player.hitstun > 0 || player.action || !player.onGround || Game.state !== 'playing') return;
+  player.dash = .2;
+  player.dashDir = direction;
+  player.inv = Math.max(player.inv, .08);
+  burst(player.x, player.y - 8, '#a6e7ff', 7, .42);
+}
+
+function applyPlayerIntent() {
+  const p = Game.player;
+  if (!p || p.ko) return;
+  p.facing = p.action ? p.facing : signTo(p.x, Game.enemy.x);
+  const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+  const awayHeld = direction && direction === -p.facing;
+  p.blocking = !p.action && p.hitstun <= 0 && p.onGround && (input.block || (awayHeld && Math.abs(Game.enemy.x - p.x) < 170));
+  p.crouching = !p.action && p.hitstun <= 0 && p.onGround && input.down;
+  p.intent = p.blocking || p.crouching ? 0 : direction;
+}
+
+function updateAI(dt) {
+  const e = Game.enemy, p = Game.player;
+  if (!e || e.ai.disabled || e.ko || e.hitstun > 0 || e.action) return;
+  e.facing = signTo(e.x, p.x);
+  e.ai.think -= dt;
+  e.ai.moveFor = Math.max(0, e.ai.moveFor - dt);
+  e.ai.blockFor = Math.max(0, e.ai.blockFor - dt);
+  e.blocking = e.ai.blockFor > 0;
+  if (e.blocking) { e.intent = 0; return; }
+  if (e.ai.moveFor <= 0) e.intent = 0;
+  if (e.ai.think > 0) return;
+  const conf = DIFFICULTIES[Game.difficulty];
+  const distance = Math.abs(p.x - e.x);
+  const danger = p.action && p.action.t < p.action.spec.active + .08;
+  const roll = Math.random();
+  e.ai.think = rand(.16, .38) / conf.ai;
+
+  if (danger && distance < p.action.spec.range + 34 && roll < .4 * e.guardScale) {
+    e.ai.blockFor = rand(.25, .55);
+    e.blocking = true;
+    return;
+  }
+  if (distance > 205) {
+    if (e.power >= 45 && roll < .18 * e.aggression) moveCommand(e, 'special', p);
+    else { e.intent = e.facing; e.ai.moveFor = rand(.25, .55); }
+    return;
+  }
+  if (distance > 92) {
+    if (roll < .42) { e.intent = e.facing; e.ai.moveFor = rand(.18, .42); }
+    else if (roll < .7) moveCommand(e, 'kick', p);
+    else if (e.power >= 50 && roll > .9) moveCommand(e, 'special', p);
+    else { e.intent = -e.facing; e.ai.moveFor = rand(.14, .3); }
+    return;
+  }
+  if (roll < .12 * e.guardScale) { e.ai.blockFor = rand(.24, .5); e.blocking = true; }
+  else if (roll < .23 && distance < 58) moveCommand(e, 'throw', p);
+  else if (roll < .65 + e.aggression * .18) moveCommand(e, roll < .43 ? 'punch' : 'kick', p);
+  else { e.intent = -e.facing; e.ai.moveFor = rand(.18, .38); }
+}
+
+function updateFighter(fighter, opponent, dt) {
+  if (!fighter) return;
+  fighter.inv = Math.max(0, fighter.inv - dt);
+  fighter.chainWindow = Math.max(0, fighter.chainWindow - dt);
+  fighter.fury = Math.max(0, fighter.fury - dt);
+  if (!fighter.chainWindow) fighter.chainStep = 0;
+  const ground = floorY();
+
+  if (fighter.hitstun > 0) {
+    fighter.hitstun = Math.max(0, fighter.hitstun - dt);
+    fighter.blocking = false;
+    fighter.crouching = false;
+    fighter.x += fighter.vx * dt;
+    fighter.vx *= Math.exp(-7 * dt);
+  } else if (!fighter.ko && fighter.action) {
+    const action = fighter.action;
+    action.t += dt;
+    if (action.t < action.spec.active + .04) fighter.x += fighter.facing * (action.spec.lunge || 0) * dt;
+    if (action.spec.projectile && !action.spawned && action.t >= action.spec.active) {
+      action.spawned = true;
+      Game.projectiles.push({ owner: fighter, x: fighter.x + fighter.facing * 42, y: fighter.y - (W < 560 ? 92 : 126), vx: fighter.facing * 390, life: 2.2, spec: action.spec, hit: false });
+      burst(fighter.x + fighter.facing * 42, fighter.y - 112, fighter.side === 'player' ? '#6be4ff' : '#ff6f9d', 11, .7);
+      if (window.ArcadeAudio) ArcadeAudio.play('laser', .18, fighter.side === 'player' ? 1.25 : .85);
+    } else if (!action.spec.projectile && !action.hit && action.t >= action.spec.active && action.t <= action.spec.active + .1) {
+      tryHit(fighter, opponent, action);
+    }
+    if (action.t >= action.spec.end) {
+      fighter.action = null;
+      const queued = fighter.queued;
+      fighter.queued = null;
+      if (queued) moveCommand(fighter, queued, opponent);
+    }
+  } else if (!fighter.ko) {
+    if (fighter.dash > 0) {
+      fighter.dash = Math.max(0, fighter.dash - dt);
+      fighter.x += fighter.dashDir * 510 * dt;
+      fighter.runCycle += dt * 19;
+    } else if (!fighter.blocking && !fighter.crouching) {
+      fighter.x += fighter.intent * fighter.speed * (fighter.fury > 0 ? 1.12 : 1) * dt;
+      fighter.runCycle += Math.abs(fighter.intent) * dt * 9;
+    }
+  }
+
+  if (!fighter.onGround) {
+    fighter.vy += 1260 * dt;
+    fighter.y += fighter.vy * dt;
+    if (fighter.y >= ground) { fighter.y = ground; fighter.vy = 0; fighter.onGround = true; }
+  } else fighter.y = ground;
+
+  if (!fighter.blocking && fighter.hitstun <= 0) fighter.guard = Math.min(fighter.maxGuard, fighter.guard + dt * 15);
+  const margin = W < 560 ? 34 : 58;
+  fighter.x = clamp(fighter.x, margin, W - margin);
+}
+
+function tryHit(attacker, target, action) {
+  const spec = action.spec;
+  const dx = target.x - attacker.x;
+  const vertical = Math.abs(target.y - attacker.y);
+  if (dx * attacker.facing < -12 || Math.abs(dx) > spec.range || vertical > (action.name === 'airkick' ? 115 : 82)) return;
+  action.hit = true;
+  receiveHit(target, attacker, spec, action.name);
+}
+
+function receiveHit(target, attacker, spec, moveName) {
+  if (target.inv > 0 || target.ko) return false;
+  const canBlockHeight = spec.level !== 'low' || target.crouching;
+  const canBlockOverhead = spec.level !== 'overhead' || !target.crouching;
+  const blocked = target.blocking && !spec.unblockable && canBlockHeight && canBlockOverhead;
+  const scale = attacker.damageScale * (attacker.fury > 0 ? 1.24 : 1);
+  const damage = Math.max(1, Math.round(spec.damage * scale));
+
+  if (blocked) {
+    target.guard = Math.max(0, target.guard - damage * 3.25 / target.guardScale);
+    target.power = clamp(target.power + damage * .8, 0, 100);
+    attacker.power = clamp(attacker.power + damage * .45, 0, 100);
+    if (spec.special) target.health = Math.max(0, target.health - Math.max(1, Math.floor(damage * .09)));
+    spawnImpact(target.x - target.facing * 23, target.y - 112, '#8fdcff', true);
+    Game.freeze = Math.max(Game.freeze, .025);
+    showFeedback('格挡 · 防御槽持续消耗');
+    if (target.guard <= 0) {
+      target.guard = 0;
+      target.blocking = false;
+      target.hitstun = .95;
+      target.action = null;
+      target.vx = attacker.facing * 92;
+      Game.banner = { text: 'GUARD BREAK', timer: .85, color: '#7de3ff' };
+      Game.shake = Math.max(Game.shake, .18);
+      burst(target.x, target.y - 105, '#7de3ff', 20, .9);
+    }
+    playImpact(false, true);
+    return true;
+  }
+
+  const counter = target.action && target.action.t < target.action.spec.active;
+  const dealt = Math.round(damage * (counter ? 1.45 : 1));
+  target.health = Math.max(0, target.health - dealt);
+  target.hitstun = spec.stun * (counter ? 1.45 : 1);
+  target.action = null;
+  target.queued = null;
+  target.blocking = false;
+  target.vx = attacker.facing * spec.knock;
+  if (spec.lift) { target.vy = spec.lift; target.onGround = false; }
+  target.inv = .035;
+  attacker.power = clamp(attacker.power + dealt * 1.35, 0, 100);
+  spawnImpact(target.x - target.facing * 16, target.y - (target.crouching ? 72 : 118), attacker.side === 'player' ? '#ffd86e' : '#ff6f9d', false);
+  Game.freeze = Math.max(Game.freeze, spec.heavy ? .065 : .038);
+  Game.shake = Math.max(Game.shake, spec.heavy ? .16 : .075);
+  Game.flash = Math.max(Game.flash, spec.special ? .18 : .06);
+  playImpact(spec.heavy || spec.special, false);
+
+  if (counter) {
+    Game.banner = { text: '破招 · COUNTER', timer: .72, color: '#ffda68' };
+    attacker.power = clamp(attacker.power + 13, 0, 100);
+  }
+  if (attacker.side === 'player') {
+    Game.combo = Game.comboTimer > 0 ? Game.combo + 1 : 1;
+    Game.comboTimer = 1.15;
+    Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
+    Game.score += dealt * 12 * Math.min(4, Game.combo);
+    if (MOVES[moveName] && MOVES[moveName].chain) {
+      attacker.chainStep = MOVES[moveName].chain;
+      attacker.chainWindow = .55;
+    }
+    advanceWord();
+  } else {
+    Game.combo = 0;
+    Game.comboTimer = 0;
+  }
+  if (target.health <= 0) target.ko = true;
+  updateHud();
+  return true;
+}
+
+function playImpact(heavy, blocked) {
+  if (!window.ArcadeAudio) return;
+  if (blocked) ArcadeAudio.play('click', .16, .72);
+  else if (heavy) ArcadeAudio.play('laser', .25, .58);
+  else ArcadeAudio.play('confirm', .12, .82);
+}
+
+function advanceWord() {
+  const word = Game.word;
+  if (!word || Game.wordCompleteTimer > 0) return;
+  word.progress++;
+  Game.wordEcho = { text: word.en.slice(0, word.progress), timer: .55, complete: false };
+  if (word.progress >= word.en.length) {
+    Game.wordsDone++;
+    Game.score += 450 + word.en.length * 45;
+    Game.player.fury = 4.2;
+    Game.player.power = clamp(Game.player.power + 30, 0, 100);
+    Game.recentWords.push({ en: word.en, zh: word.zh });
+    if (Game.recentWords.length > 8) Game.recentWords.shift();
+    Game.wordEcho = { text: word.en + ' = ' + word.zh, timer: 1.35, complete: true };
+    Game.wordCompleteTimer = 1.2;
+    Game.banner = { text: 'WORD FURY', timer: .9, color: '#ffe36e' };
+    showFeedback('单词完成：4 秒斗魂强化');
+    burst(Game.player.x, Game.player.y - 115, '#ffe36e', 24, 1.1);
+  } else showFeedback('下一个字母：' + word.en[word.progress]);
+  updateHud();
+}
+
+function spawnImpact(x, y, color, blocked) {
+  burst(x, y, color, blocked ? 8 : 15, blocked ? .55 : .85);
+  Game.particles.push({ type: 'ring', x, y, color, life: .24, max: .24, size: blocked ? 24 : 38, vx: 0, vy: 0 });
+}
+
+function burst(x, y, color, count, energy = 1) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * TAU;
+    const speed = rand(65, 230) * energy;
+    Game.particles.push({ type: 'spark', x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color, life: rand(.18, .46), max: .46, size: rand(2, 5) });
+  }
+  if (Game.particles.length > 180) Game.particles.splice(0, Game.particles.length - 180);
+}
+
+function updateProjectiles(dt) {
+  for (let i = Game.projectiles.length - 1; i >= 0; i--) {
+    const p = Game.projectiles[i];
+    p.x += p.vx * dt;
+    p.life -= dt;
+    const target = p.owner === Game.player ? Game.enemy : Game.player;
+    if (!p.hit && Math.abs(target.x - p.x) < (W < 560 ? 28 : 38) && Math.abs((target.y - 105) - p.y) < 70) {
+      p.hit = true;
+      receiveHit(target, p.owner, p.spec, 'fireball');
+      burst(p.x, p.y, p.owner === Game.player ? '#6be4ff' : '#ff6f9d', 18, 1);
+      Game.projectiles.splice(i, 1);
+    } else if (p.life <= 0 || p.x < -80 || p.x > W + 80) Game.projectiles.splice(i, 1);
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = Game.particles.length - 1; i >= 0; i--) {
+    const p = Game.particles[i];
+    p.life -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.type === 'spark') p.vy += 330 * dt;
+    if (p.life <= 0) Game.particles.splice(i, 1);
+  }
+}
+
+function spawnHazard() {
+  const type = ARENAS[Game.stage].hazard;
+  if (type === 'rain') { Game.hazardTimer = 7; return; }
+  if (type === 'barrel') {
+    const direction = Math.random() < .5 ? 1 : -1;
+    Game.hazard = { type, x: direction > 0 ? -35 : W + 35, vx: direction * rand(175, 225), t: 0, hitPlayer: false, hitEnemy: false };
+  } else Game.hazard = { type, x: rand(Math.max(65, W * .18), Math.min(W - 65, W * .82)), t: 0, hitPlayer: false, hitEnemy: false };
+  Game.hazardTimer = rand(8, 11);
+}
+
+function environmentHit(fighter, x, damage, knock) {
+  if (fighter.inv > 0 || fighter.ko) return;
+  fighter.health = Math.max(0, fighter.health - damage);
+  fighter.hitstun = .48;
+  fighter.action = null;
+  fighter.vx = signTo(x, fighter.x) * knock;
+  fighter.inv = .25;
+  Game.shake = Math.max(Game.shake, .14);
+  spawnImpact(fighter.x, fighter.y - 82, '#ffad66', false);
+  if (fighter.health <= 0) fighter.ko = true;
+}
+
+function updateHazard(dt) {
+  Game.hazardTimer -= dt;
+  if (Game.hazardTimer <= 0 && !Game.hazard) spawnHazard();
+  const hazard = Game.hazard;
+  if (!hazard) return;
+  hazard.t += dt;
+  if (hazard.type === 'barrel') {
+    hazard.x += hazard.vx * dt;
+    for (const fighter of [Game.player, Game.enemy]) {
+      const key = fighter === Game.player ? 'hitPlayer' : 'hitEnemy';
+      if (!hazard[key] && fighter.onGround && Math.abs(fighter.x - hazard.x) < 38) {
+        hazard[key] = true; environmentHit(fighter, hazard.x, 8, 105);
+      }
+    }
+    if (hazard.x < -70 || hazard.x > W + 70) Game.hazard = null;
+  } else {
+    const active = hazard.type === 'steam' ? hazard.t > .9 && hazard.t < 1.34 : hazard.t > 1.05 && hazard.t < 1.2;
+    if (active) for (const fighter of [Game.player, Game.enemy]) {
+      const key = fighter === Game.player ? 'hitPlayer' : 'hitEnemy';
+      if (!hazard[key] && fighter.onGround && Math.abs(fighter.x - hazard.x) < 48) {
+        hazard[key] = true; environmentHit(fighter, hazard.x, hazard.type === 'steam' ? 7 : 11, 80);
+      }
+    }
+    if (hazard.t > (hazard.type === 'steam' ? 1.55 : 1.38)) Game.hazard = null;
+  }
+}
+
+function resolveFighterPush() {
+  const a = Game.player, b = Game.enemy;
+  if (!a || !b) return;
+  const minDistance = W < 560 ? 48 : 72;
+  const dx = b.x - a.x;
+  if (Math.abs(dx) >= minDistance) return;
+  const push = (minDistance - Math.abs(dx)) * .5;
+  const direction = dx >= 0 ? 1 : -1;
+  a.x -= direction * push;
+  b.x += direction * push;
+}
+
+function update(dt) {
+  Game.time += dt;
+  Game.shake = Math.max(0, Game.shake - dt * 2.8);
+  Game.flash = Math.max(0, Game.flash - dt * 2.4);
+  Game.comboTimer = Math.max(0, Game.comboTimer - dt);
+  if (!Game.comboTimer) Game.combo = 0;
+  if (Game.banner) { Game.banner.timer -= dt; if (Game.banner.timer <= 0) Game.banner = null; }
+  if (Game.wordEcho) { Game.wordEcho.timer -= dt; if (Game.wordEcho.timer <= 0) Game.wordEcho = null; }
+  if (Game.wordCompleteTimer > 0) {
+    Game.wordCompleteTimer -= dt;
+    if (Game.wordCompleteTimer <= 0) nextWord();
+  }
+
+  if (Game.freeze > 0) {
+    Game.freeze = Math.max(0, Game.freeze - dt);
+    updateParticles(dt * .2);
+    return;
+  }
+  if (Game.state === 'intro') {
+    Game.introTimer -= dt;
+    updateParticles(dt);
+    if (Game.introTimer <= 0) { Game.state = 'playing'; showFeedback('FIGHT · 拳脚命中会写入字母'); }
+    return;
+  }
+  if (Game.state === 'ending') {
+    Game.roundEnding -= dt;
+    updateFighter(Game.player, Game.enemy, dt);
+    updateFighter(Game.enemy, Game.player, dt);
+    updateParticles(dt);
+    if (Game.roundEnding <= 0) finishRound(Game.outcome);
+    return;
+  }
+  if (Game.state !== 'playing') return;
+
+  Game.timer = Math.max(0, Game.timer - dt);
+  applyPlayerIntent();
+  updateAI(dt);
+  updateFighter(Game.player, Game.enemy, dt);
+  updateFighter(Game.enemy, Game.player, dt);
+  resolveFighterPush();
+  updateProjectiles(dt);
+  updateHazard(dt);
+  updateParticles(dt);
+
+  if (Game.player.ko || Game.enemy.ko || Game.timer <= 0) {
+    const playerRatio = Game.player.health / Game.player.maxHealth;
+    const enemyRatio = Game.enemy.health / Game.enemy.maxHealth;
+    Game.outcome = Game.enemy.ko || (!Game.player.ko && Game.timer <= 0 && playerRatio >= enemyRatio) ? 'player' : 'enemy';
+    Game.state = 'ending';
+    Game.roundEnding = .9;
+    Game.banner = { text: Game.outcome === 'player' ? 'K.O.' : 'DOWN', timer: .9, color: Game.outcome === 'player' ? '#ffe176' : '#ff7586' };
+    Game.shake = .22;
+  }
+  Game.hudTimer -= dt;
+  if (Game.hudTimer <= 0) { Game.hudTimer = .08; updateHud(); }
+}
+
+function finishRound(outcome) {
+  if (outcome === 'player') {
+    Game.wins++;
+    Game.score += 800 + Game.round * 180 + Math.ceil(Game.timer) * 8;
+    showQuiz();
+  } else gameOver();
+}
+
+function showQuiz() {
+  Game.state = 'quiz';
+  Game.quizLocked = false;
+  const item = Game.recentWords.length ? Game.recentWords[Game.recentWords.length - 1] : { en: Game.word.en, zh: Game.word.zh };
+  Game.quizAnswer = item.en.toUpperCase();
+  const bank = wordBank();
+  const options = [Game.quizAnswer];
+  while (options.length < 3) {
+    const choice = bank[Math.floor(Math.random() * bank.length)].en.toUpperCase();
+    if (!options.includes(choice)) options.push(choice);
+  }
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+  $('quiz-meaning').textContent = item.zh;
+  $('quiz-title').textContent = '哪一个是刚才练过的单词？';
+  $('quiz-feedback').textContent = '答对恢复 22 体力并补充斗气';
+  const holder = $('quiz-options');
+  holder.replaceChildren();
+  options.forEach((text) => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = text;
+    button.addEventListener('click', () => answerQuiz(text, button));
+    holder.appendChild(button);
+  });
+  $('quiz').classList.remove('hidden');
+}
+
+function answerQuiz(answer, button, instant = false) {
+  if (Game.quizLocked) return;
+  Game.quizLocked = true;
+  const correct = answer === Game.quizAnswer;
+  if (button) button.classList.add(correct ? 'correct' : 'wrong');
+  Game.player.health = Math.min(Game.player.maxHealth, Game.player.health + (correct ? 22 : 8));
+  if (correct) Game.player.power = Math.min(100, Game.player.power + 28);
+  Game.score += correct ? 500 : 80;
+  $('quiz-feedback').textContent = correct ? '正确 · 体力与斗气恢复' : '正确答案：' + Game.quizAnswer;
+  if (window.ArcadeAudio) ArcadeAudio.play(correct ? 'confirm' : 'click', .22, correct ? 1.25 : .62);
+  const proceed = () => {
+    $('quiz').classList.add('hidden');
+    Game.round++;
+    startRound(false);
+  };
+  if (instant) proceed(); else setTimeout(proceed, 950);
+}
+
+function gameOver() {
+  Game.state = 'over';
+  if (window.ChipMusic) ChipMusic.stop();
+  $('hud').classList.add('hidden');
+  $('touch-controls').classList.add('hidden');
+  $('over').classList.remove('hidden');
+  const key = 'word-fury-highscore-' + Game.difficulty;
+  let high = 0;
+  try {
+    high = Number(localStorage.getItem(key) || 0);
+    if (Game.score > high) { high = Game.score; localStorage.setItem(key, String(high)); }
+  } catch (error) { /* storage can be unavailable */ }
+  $('over-title').textContent = Game.score >= high && Game.score > 0 ? '新纪录！' : '再战一轮';
+  $('over-stats').innerHTML =
+    '<div><span>本局得分</span><b>' + Game.score + '</b></div>' +
+    '<div><span>连胜</span><b>' + Game.wins + '</b></div>' +
+    '<div><span>完成单词</span><b>' + Game.wordsDone + '</b></div>' +
+    '<div><span>最高连击</span><b>×' + Game.maxCombo + '</b></div>' +
+    '<div><span>最高纪录</span><b>' + high + '</b></div>';
+}
+
+function drawArena() {
+  const image = ASSETS.arenas;
+  if (!image.complete || !image.naturalWidth) {
+    ctx.fillStyle = ['#17152b', '#2a1c10', '#362315', '#111a31'][Game.stage];
+    ctx.fillRect(0, 0, W, H);
+    return;
+  }
+  const cellW = image.naturalWidth / 2, cellH = image.naturalHeight / 2;
+  const col = Game.stage % 2, row = Math.floor(Game.stage / 2);
+  const targetAspect = W / H;
+  let sx = col * cellW, sy = row * cellH, sw = cellW, sh = cellH;
+  if (cellW / cellH > targetAspect) {
+    sw = cellH * targetAspect;
+    sx += (cellW - sw) / 2;
+  } else {
+    sh = cellW / targetAspect;
+    sy += (cellH - sh) * .42;
+  }
+  ctx.drawImage(image, sx, sy, sw, sh, 0, 0, W, H);
+  const shade = ctx.createLinearGradient(0, 0, 0, H);
+  shade.addColorStop(0, 'rgba(5,7,16,.16)');
+  shade.addColorStop(.55, 'rgba(5,7,16,0)');
+  shade.addColorStop(1, 'rgba(5,7,16,.38)');
+  ctx.fillStyle = shade; ctx.fillRect(0, 0, W, H);
+  if (Game.stage === 0) drawRain();
+}
+
+function drawRain() {
+  ctx.save(); ctx.strokeStyle = 'rgba(135,199,255,.22)'; ctx.lineWidth = 1;
+  for (let i = 0; i < 42; i++) {
+    const x = (i * 79 + Game.time * 330) % (W + 100) - 50;
+    const y = (i * 47 + Game.time * 510) % H;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 8, y + 19); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function fighterFrame(fighter) {
+  if (fighter.ko || fighter.hitstun > 0) return 7;
+  if (fighter.blocking) return 6;
+  if (fighter.action) return fighter.action.spec.frame;
+  if (fighter.crouching) return 3;
+  if (!fighter.onGround) return 2;
+  if (fighter.dash > 0 || Math.abs(fighter.intent) > 0) return 1 + (Math.floor(fighter.runCycle) % 2);
+  return 0;
+}
+
+function drawFighter(fighter) {
+  const image = ASSETS[fighter.atlas];
+  const compact = W < 560;
+  const drawW = compact ? 112 : fighter.atlas === 'bruiser' ? 190 : 174;
+  const drawH = compact ? 178 : fighter.atlas === 'bruiser' ? 264 : 250;
+  const frame = fighterFrame(fighter);
+  const sourceW = image.naturalWidth / 4 || 384;
+  const sourceH = image.naturalHeight / 2 || 512;
+  const row = Math.floor(frame / 4), col = frame % 4;
+
+  ctx.save();
+  ctx.globalAlpha = fighter.inv > 0 && Math.floor(Game.time * 20) % 2 ? .42 : 1;
+  ctx.fillStyle = 'rgba(2,4,10,.48)';
+  ctx.beginPath(); ctx.ellipse(fighter.x, floorY() + 2, compact ? 29 : 47, compact ? 7 : 11, 0, 0, TAU); ctx.fill();
+  if (fighter.fury > 0) {
+    ctx.strokeStyle = 'rgba(255,221,92,' + (.5 + Math.sin(Game.time * 11) * .2) + ')';
+    ctx.lineWidth = 3; ctx.shadowColor = '#ffd85e'; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.ellipse(fighter.x, fighter.y - drawH * .47, drawW * .38, drawH * .47, 0, 0, TAU); ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  ctx.translate(fighter.x, fighter.y);
+  if (fighter.facing !== fighter.nativeFacing) ctx.scale(-1, 1);
+  ctx.filter = fighter.filter;
+  if (image.complete && image.naturalWidth) ctx.drawImage(image, col * sourceW, row * sourceH, sourceW, sourceH, -drawW / 2, -drawH, drawW, drawH);
+  else {
+    ctx.fillStyle = fighter.side === 'player' ? '#32cbd3' : '#c7467d';
+    ctx.fillRect(-drawW * .2, -drawH * .72, drawW * .4, drawH * .72);
+  }
+  ctx.restore();
+}
+
+function drawProjectiles() {
+  for (const p of Game.projectiles) {
+    const color = p.owner === Game.player ? '#66e7ff' : '#ff6eaa';
+    ctx.save(); ctx.translate(p.x, p.y); ctx.shadowColor = color; ctx.shadowBlur = 20;
+    const gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, 19);
+    gradient.addColorStop(0, '#fff'); gradient.addColorStop(.28, color); gradient.addColorStop(1, 'rgba(40,80,255,0)');
+    ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, 21, 0, TAU); ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 3;
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(-p.owner.facing * (22 + i * 9), (i - 1) * 5); ctx.lineTo(0, 0); ctx.stroke(); }
+    ctx.restore();
+  }
+}
+
+function drawHazard() {
+  const h = Game.hazard;
+  if (!h) return;
+  const ground = floorY();
+  if (h.type === 'barrel') {
+    ctx.save(); ctx.translate(h.x, ground - 20); ctx.rotate(h.t * h.vx * .025);
+    ctx.fillStyle = '#9b5c2d'; ctx.strokeStyle = '#ffd07c'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, 21, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#4c2816'; ctx.beginPath(); ctx.moveTo(-19, -7); ctx.lineTo(19, -7); ctx.moveTo(-19, 7); ctx.lineTo(19, 7); ctx.stroke(); ctx.restore();
+  } else {
+    const active = h.type === 'steam' ? h.t > .9 : h.t > 1.05;
+    ctx.save();
+    ctx.strokeStyle = active ? '#fff4c7' : 'rgba(255,117,74,.7)'; ctx.lineWidth = active ? 6 : 2;
+    ctx.setLineDash(active ? [] : [8, 7]);
+    ctx.beginPath(); ctx.ellipse(h.x, ground - 3, 48, 11, 0, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    if (active) {
+      const color = h.type === 'steam' ? 'rgba(221,245,255,.7)' : 'rgba(150,205,255,.9)';
+      ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 22;
+      ctx.beginPath(); ctx.moveTo(h.x - 26, ground); ctx.lineTo(h.x - 11, ground - 170); ctx.lineTo(h.x + 8, ground - 70); ctx.lineTo(h.x + 24, ground - 220); ctx.lineTo(h.x + 32, ground); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  for (const p of Game.particles) {
+    const alpha = clamp(p.life / p.max, 0, 1);
+    ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = p.color; ctx.fillStyle = p.color;
+    if (p.type === 'ring') {
+      ctx.lineWidth = 3 * alpha; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.5 - alpha), 0, TAU); ctx.stroke();
+    } else {
+      ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(p.vy, p.vx));
+      ctx.fillRect(-p.size * 2, -p.size / 2, p.size * 4, p.size);
+    }
+    ctx.restore();
+  }
+}
+
+function drawCombatText() {
+  if (Game.combo >= 2) {
+    const size = Math.min(62, 28 + Game.combo * 3);
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '950 ' + size + 'px system-ui,sans-serif'; ctx.lineWidth = 8;
+    ctx.strokeStyle = 'rgba(21,12,38,.9)'; ctx.fillStyle = Game.combo >= 6 ? '#ffb354' : '#78e7ff';
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 18;
+    ctx.strokeText(Game.combo + ' HIT', W * .5, H * .33); ctx.fillText(Game.combo + ' HIT', W * .5, H * .33);
+    ctx.restore();
+  }
+  if (Game.wordEcho) {
+    const alpha = clamp(Game.wordEcho.timer * 2, 0, 1);
+    ctx.save(); ctx.globalAlpha = alpha; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = Game.wordEcho.complete ? '#ffe574' : '#fff3c1';
+    ctx.font = '950 ' + (Game.wordEcho.complete ? 27 : 20) + 'px ui-monospace,monospace';
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 14;
+    ctx.fillText(Game.wordEcho.text, W / 2, H * .43); ctx.restore();
+  }
+  if (Game.banner) {
+    const scale = 1 + Math.min(.2, Game.banner.timer * .08);
+    ctx.save(); ctx.translate(W / 2, H * .54); ctx.scale(scale, scale);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '950 ' + (W < 560 ? 28 : 44) + 'px system-ui,sans-serif';
+    ctx.strokeStyle = 'rgba(8,5,17,.92)'; ctx.lineWidth = 10; ctx.fillStyle = Game.banner.color; ctx.shadowColor = Game.banner.color; ctx.shadowBlur = 18;
+    ctx.strokeText(Game.banner.text, 0, 0); ctx.fillText(Game.banner.text, 0, 0); ctx.restore();
+  }
+  if (Game.state === 'intro') {
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff1b0'; ctx.font = '950 ' + (W < 560 ? 38 : 66) + 'px system-ui,sans-serif'; ctx.shadowColor = '#ff9c55'; ctx.shadowBlur = 24;
+    ctx.fillText(Game.introTimer > .72 ? 'ROUND ' + Game.round : 'FIGHT!', W / 2, H * .48); ctx.restore();
+  }
+}
+
+function render() {
+  const scaleX = canvas.width / W, scaleY = canvas.height / H;
+  ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  drawArena();
+  const shakeX = Game.shake > 0 ? Math.sin(Game.time * 67) * Game.shake * 15 : 0;
+  const shakeY = Game.shake > 0 ? Math.cos(Game.time * 53) * Game.shake * 6 : 0;
+  ctx.save(); ctx.translate(shakeX, shakeY);
+  drawHazard();
+  drawProjectiles();
+  if (Game.enemy) drawFighter(Game.enemy);
+  if (Game.player) drawFighter(Game.player);
+  drawParticles();
+  ctx.restore();
+  drawCombatText();
+  if (Game.flash > 0) { ctx.fillStyle = 'rgba(255,244,207,' + Game.flash + ')'; ctx.fillRect(0, 0, W, H); }
+}
+
+function resize() {
+  const rect = wrap.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = H * rect.width / Math.max(1, rect.height);
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  if (Game.player && Game.player.onGround) Game.player.y = floorY();
+  if (Game.enemy && Game.enemy.onGround) Game.enemy.y = floorY();
+}
+
+const lastTap = { left: 0, right: 0 };
+window.addEventListener('keydown', (event) => {
+  const code = event.code;
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'ShiftLeft', 'ShiftRight'].includes(code)) event.preventDefault();
+  if (code === 'ArrowLeft' || code === 'KeyA') {
+    if (!event.repeat) { const now = performance.now(); if (now - lastTap.left < 270) dashPlayer(-1); lastTap.left = now; }
+    input.left = true;
+  }
+  if (code === 'ArrowRight' || code === 'KeyD') {
+    if (!event.repeat) { const now = performance.now(); if (now - lastTap.right < 270) dashPlayer(1); lastTap.right = now; }
+    input.right = true;
+  }
+  if (code === 'ArrowDown' || code === 'KeyS') input.down = true;
+  if (code === 'KeyI' || code === 'ShiftLeft' || code === 'ShiftRight') input.block = true;
+  if (!event.repeat && (code === 'ArrowUp' || code === 'KeyW' || code === 'Space')) moveCommand(Game.player, 'jump', Game.enemy);
+  if (!event.repeat && code === 'KeyJ') moveCommand(Game.player, 'punch', Game.enemy);
+  if (!event.repeat && code === 'KeyK') moveCommand(Game.player, 'kick', Game.enemy);
+  if (!event.repeat && code === 'KeyL') moveCommand(Game.player, 'special', Game.enemy);
+  if ((code === 'KeyP' || code === 'Escape') && !event.repeat) togglePause();
+  if (code === 'KeyM' && !event.repeat) toggleMute();
+  if (code === 'Enter' && !event.repeat && (Game.state === 'menu' || Game.state === 'over')) startGame();
+});
+window.addEventListener('keyup', (event) => {
+  if (event.code === 'ArrowLeft' || event.code === 'KeyA') input.left = false;
+  if (event.code === 'ArrowRight' || event.code === 'KeyD') input.right = false;
+  if (event.code === 'ArrowDown' || event.code === 'KeyS') input.down = false;
+  if (event.code === 'KeyI' || event.code === 'ShiftLeft' || event.code === 'ShiftRight') input.block = false;
+});
+
+for (const button of document.querySelectorAll('[data-hold]')) {
+  const key = button.dataset.hold;
+  const release = () => { input[key] = false; button.classList.remove('active'); };
+  button.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    if (key === 'left' || key === 'right') {
+      const now = performance.now();
+      if (now - lastTap[key] < 270) dashPlayer(key === 'left' ? -1 : 1);
+      lastTap[key] = now;
+    }
+    input[key] = true; button.classList.add('active'); button.setPointerCapture(event.pointerId);
+  });
+  button.addEventListener('pointerup', release);
+  button.addEventListener('pointercancel', release);
+  button.addEventListener('lostpointercapture', release);
+}
+for (const button of document.querySelectorAll('[data-action]')) {
+  button.addEventListener('pointerdown', (event) => {
+    event.preventDefault(); button.classList.add('active'); moveCommand(Game.player, button.dataset.action, Game.enemy);
+    button.setPointerCapture(event.pointerId);
+  });
+  const release = () => button.classList.remove('active');
+  button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('lostpointercapture', release);
+}
+
+function toggleMute() {
+  if (!window.ArcadeAudio) return;
+  const muted = ArcadeAudio.toggle();
+  if (window.ChipMusic) ChipMusic.setMuted(muted);
+  $('mute-btn').textContent = muted ? '已静音' : '声音';
+}
+
+document.querySelectorAll('.difficulty').forEach((button) => button.addEventListener('click', () => {
+  document.querySelectorAll('.difficulty').forEach((item) => item.classList.remove('selected'));
+  button.classList.add('selected');
+  Game.difficulty = button.dataset.difficulty;
+}));
+$('start-btn').addEventListener('click', startGame);
+$('retry-btn').addEventListener('click', startGame);
+$('menu-btn').addEventListener('click', backToMenu);
+$('pause-menu-btn').addEventListener('click', backToMenu);
+$('resume-btn').addEventListener('click', togglePause);
+$('pause-btn').addEventListener('click', togglePause);
+$('mute-btn').addEventListener('click', toggleMute);
+document.addEventListener('visibilitychange', () => { if (document.hidden && ['playing', 'intro', 'ending'].includes(Game.state)) togglePause(); });
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 160));
+
+resize();
+let lastTime = performance.now();
+function frame(now) {
+  const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
+  lastTime = now;
+  if (['playing', 'intro', 'ending'].includes(Game.state)) update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+window.__wordFury = Game;
+
+if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    try {
+      Game.difficulty = 'easy';
+      if (!window.ChipMusic || !ChipMusic.songs.includes('fighter-loop')) throw new Error('fighter music missing');
+      startGame();
+      Game.state = 'playing'; Game.introTimer = 0; Game.timer = 999;
+      Game.enemy.ai.disabled = true;
+      Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
+      Game.player.facing = 1; Game.enemy.facing = -1;
+      const healthBefore = Game.enemy.health;
+      const progressBefore = Game.word.progress;
+      const cleanStarted = moveCommand(Game.player, 'punch', Game.enemy);
+      for (let i = 0; i < 45; i++) update(1 / 120);
+      if (!(Game.enemy.health < healthBefore) || Game.word.progress !== progressBefore + 1) {
+        throw new Error('clean hit failed started=' + cleanStarted + ' dx=' + Math.round(Game.enemy.x - Game.player.x) + ' face=' + Game.player.facing + ' hp=' + healthBefore + '→' + Game.enemy.health + ' word=' + progressBefore + '→' + Game.word.progress);
+      }
+
+      Game.enemy.hitstun = 0; Game.enemy.action = null; Game.enemy.guard = 100; Game.enemy.blocking = true; Game.enemy.ai.blockFor = 1;
+      Game.player.action = null; Game.player.chainWindow = 0; Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
+      const blockedHealth = Game.enemy.health;
+      moveCommand(Game.player, 'punch', Game.enemy);
+      for (let i = 0; i < 45; i++) update(1 / 120);
+      if (!(Game.enemy.guard < 100) || Game.enemy.health !== blockedHealth) throw new Error('guard failed');
+
+      Game.enemy.hitstun = 0; Game.enemy.action = null; Game.enemy.guard = 1; Game.enemy.blocking = true; Game.enemy.ai.blockFor = 1;
+      Game.player.action = null; Game.player.chainWindow = 0;
+      moveCommand(Game.player, 'punch', Game.enemy);
+      for (let i = 0; i < 45; i++) update(1 / 120);
+      if (Game.enemy.guard !== 0 || Game.enemy.hitstun <= 0) throw new Error('guard break failed');
+
+      Game.player.action = null; Game.enemy.hitstun = 0; Game.enemy.blocking = false; Game.enemy.ai.blockFor = 0;
+      Game.player.x = W * .25; Game.enemy.x = W * .72; Game.player.facing = 1; Game.enemy.facing = -1;
+      Game.player.power = 100; const specialHealth = Game.enemy.health;
+      moveCommand(Game.player, 'special', Game.enemy);
+      for (let i = 0; i < 220; i++) update(1 / 120);
+      if (Game.player.power >= 100 || Game.enemy.health >= specialHealth) throw new Error('projectile special failed');
+
+      Game.enemy.health = 999; Game.enemy.maxHealth = 999; Game.enemy.hitstun = 0; Game.enemy.x = Game.player.x + 48;
+      Game.player.action = null; Game.player.chainWindow = 0;
+      Game.word.progress = Game.word.en.length - 1;
+      const wordsBefore = Game.wordsDone;
+      moveCommand(Game.player, 'punch', Game.enemy);
+      for (let i = 0; i < 45; i++) update(1 / 120);
+      if (Game.wordsDone !== wordsBefore + 1 || Game.player.fury <= 0) throw new Error('word fury failed');
+
+      finishRound('player');
+      if (Game.state !== 'quiz' || !$('quiz-options').children.length || !Game.quizAnswer) throw new Error('round quiz failed');
+      const roundBefore = Game.round;
+      answerQuiz(Game.quizAnswer, null, true);
+      if (Game.round !== roundBefore + 1 || Game.state !== 'intro') throw new Error('quiz reward failed');
+
+      Game.state = 'playing'; Game.timer = 999; Game.enemy.ai.disabled = false;
+      Game.player.health = Game.enemy.health = 9999; Game.player.maxHealth = Game.enemy.maxHealth = 9999;
+      for (let i = 0; i < 4200; i++) {
+        if (i % 95 === 0) moveCommand(Game.player, i % 190 ? 'punch' : 'kick', Game.enemy);
+        if (i % 420 === 0) { Game.player.power = 100; moveCommand(Game.player, 'special', Game.enemy); }
+        update(1 / 60);
+        if (Game.particles.length > 180 || Game.projectiles.length > 12) throw new Error('unbounded effects');
+      }
+      if (![Game.player.x, Game.enemy.x, Game.player.health, Game.score].every(Number.isFinite)) throw new Error('non-finite state');
+      Game.state = 'paused';
+      document.title = 'SELFTEST PASS · WORD FURY';
+      document.documentElement.dataset.selftest = 'pass';
+    } catch (error) {
+      document.title = 'SELFTEST FAIL · ' + error.message;
+      document.documentElement.dataset.selftest = 'fail';
+      console.error(error);
+    }
+  });
+}
