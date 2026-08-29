@@ -11,6 +11,7 @@ let W = 960;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const rand = (min, max) => min + Math.random() * (max - min);
 const signTo = (from, to) => to >= from ? 1 : -1;
+const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
 const floorY = () => W < 560 ? H - 148 : H - 48;
 
 const ASSETS = {};
@@ -46,15 +47,16 @@ const OPPONENTS = [
 ];
 
 const MOVES = {
-  punch1: { frame: 4, start: .07, active: .13, end: .23, range: 86, damage: 6, stun: .2, knock: 26, level: 'mid', lunge: 42, chain: 1 },
-  punch2: { frame: 4, start: .08, active: .15, end: .25, range: 90, damage: 8, stun: .22, knock: 34, level: 'mid', lunge: 48, chain: 2 },
-  punch3: { frame: 4, start: .12, active: .2, end: .34, range: 97, damage: 12, stun: .36, knock: 104, level: 'mid', lunge: 62, chain: 3, heavy: true },
-  kick: { frame: 5, start: .16, active: .25, end: .43, range: 89, damage: 14, stun: .34, knock: 92, level: 'high', lunge: 36, heavy: true },
-  sweep: { frame: 3, start: .13, active: .21, end: .4, range: 78, damage: 11, stun: .48, knock: 82, lift: -125, level: 'low', heavy: true },
-  airkick: { frame: 5, start: .05, active: .2, end: .36, range: 78, damage: 12, stun: .3, knock: 74, level: 'overhead', lunge: 86 },
-  throw: { frame: 4, start: .1, active: .18, end: .5, range: 78, damage: 17, stun: .58, knock: 155, lift: -150, level: 'throw', unblockable: true, heavy: true },
-  uppercut: { frame: 5, start: .09, active: .19, end: .58, range: 76, damage: 23, stun: .62, knock: 112, lift: -245, level: 'mid', lunge: 54, special: true, heavy: true, cost: 50 },
-  fireball: { frame: 4, start: .18, active: .2, end: .52, range: 0, damage: 16, stun: .38, knock: 85, level: 'mid', special: true, projectile: true, cost: 45 },
+  punch1: { frame: 4, start: .065, active: .12, end: .22, range: 86, damage: 5, stun: .27, knock: 24, level: 'mid', lunge: 10, chain: 1, cancel: ['punch', 'kick'] },
+  punch2: { frame: 4, start: .075, active: .14, end: .25, range: 92, damage: 7, stun: .31, knock: 32, level: 'mid', lunge: 14, chain: 2, cancel: ['punch', 'kick', 'special'] },
+  punch3: { frame: 4, start: .12, active: .2, end: .39, range: 101, damage: 12, stun: .38, knock: 116, level: 'mid', lunge: 22, chain: 3, heavy: true, knockdown: .5, cancel: ['special'] },
+  kick: { frame: 5, start: .145, active: .24, end: .43, range: 104, damage: 13, stun: .34, knock: 92, level: 'high', lunge: 14, heavy: true, cancel: ['special'] },
+  comboKick: { frame: 5, start: .095, active: .18, end: .4, range: 108, damage: 16, stun: .4, knock: 126, lift: -105, level: 'mid', lunge: 20, heavy: true, knockdown: .58, cancel: ['special'] },
+  sweep: { frame: 3, start: .12, active: .2, end: .43, range: 91, damage: 11, stun: .34, knock: 86, lift: -115, level: 'low', lunge: 8, heavy: true, knockdown: .64 },
+  airkick: { frame: 5, start: .055, active: .18, end: .34, range: 88, damage: 11, stun: .3, knock: 78, level: 'overhead', lunge: 34, knockdown: .42 },
+  throw: { frame: 4, start: .08, active: .16, end: .52, range: 78, damage: 16, stun: .32, knock: 165, lift: -165, level: 'throw', lunge: 8, unblockable: true, heavy: true, knockdown: .74 },
+  uppercut: { frame: 5, start: .075, active: .18, end: .64, range: 84, damage: 21, stun: .42, knock: 118, lift: -265, level: 'mid', lunge: 18, special: true, heavy: true, cost: 50, knockdown: .72 },
+  fireball: { frame: 4, start: .2, active: .24, end: .58, range: 0, damage: 14, stun: .34, knock: 76, level: 'mid', special: true, projectile: true, cost: 42 },
 };
 
 const input = { left: false, right: false, down: false, block: false };
@@ -63,9 +65,69 @@ const Game = {
   time: 0, timer: 75, stage: 0, introTimer: 0, roundEnding: 0, outcome: '', hudTimer: 0,
   player: null, enemy: null, word: null, lastWord: '', wordCompleteTimer: 0, recentWords: [], wordEcho: null,
   combo: 0, maxCombo: 0, comboTimer: 0, freeze: 0, shake: 0, flash: 0,
+  cameraPunch: 0,
   particles: [], projectiles: [], hazard: null, hazardTimer: 8, banner: null,
   quizAnswer: '', quizLocked: false,
 };
+
+const FurySound = (() => {
+  let audioCtx = null;
+  let noiseBuffer = null;
+  const context = () => {
+    if (window.ArcadeAudio?.muted) return null;
+    if (!audioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return null;
+      audioCtx = new AudioContext();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    return audioCtx;
+  };
+  const tone = (frequency, duration, volume, type = 'triangle', endFrequency = frequency) => {
+    const audio = context(); if (!audio) return;
+    const now = audio.currentTime;
+    const oscillator = audio.createOscillator(), gain = audio.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, now);
+    oscillator.frequency.exponentialRampToValueAtTime(Math.max(30, endFrequency), now + duration);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(.001, now + duration);
+    oscillator.connect(gain); gain.connect(audio.destination);
+    oscillator.start(now); oscillator.stop(now + duration + .01);
+  };
+  const noise = (duration, volume, frequency = 900) => {
+    const audio = context(); if (!audio) return;
+    if (!noiseBuffer) {
+      noiseBuffer = audio.createBuffer(1, audio.sampleRate * .25, audio.sampleRate);
+      const data = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    const now = audio.currentTime;
+    const source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+    source.buffer = noiseBuffer;
+    filter.type = 'bandpass'; filter.frequency.value = frequency; filter.Q.value = .7;
+    gain.gain.setValueAtTime(volume, now); gain.gain.exponentialRampToValueAtTime(.001, now + duration);
+    source.connect(filter); filter.connect(gain); gain.connect(audio.destination);
+    source.start(now, Math.random() * .08); source.stop(now + duration + .01);
+  };
+  return {
+    play(name) {
+      if (name === 'hit') { noise(.045, .18, 720); tone(115, .055, .12, 'square', 72); }
+      else if (name === 'heavyHit') { noise(.09, .28, 520); tone(95, .11, .2, 'sawtooth', 45); }
+      else if (name === 'counter') { noise(.11, .3, 1250); tone(210, .13, .19, 'square', 62); }
+      else if (name === 'block') { noise(.045, .12, 2100); tone(760, .065, .11, 'triangle', 390); }
+      else if (name === 'guardBreak') { noise(.16, .3, 1800); tone(1200, .18, .16, 'square', 120); }
+      else if (name === 'whoosh') noise(.045, .055, 1150);
+      else if (name === 'whooshHeavy') noise(.08, .08, 850);
+      else if (name === 'dash') noise(.055, .06, 620);
+      else if (name === 'jump') tone(180, .09, .08, 'triangle', 330);
+      else if (name === 'land') { noise(.055, .09, 180); tone(72, .07, .08, 'triangle', 48); }
+      else if (name === 'rise') tone(260, .08, .055, 'triangle', 420);
+      else if (name === 'power') { tone(130, .16, .1, 'sawtooth', 460); tone(260, .12, .065, 'square', 620); }
+      else if (name === 'projectile') { tone(540, .14, .11, 'square', 95); noise(.06, .06, 1400); }
+    },
+  };
+})();
 
 function wordBank() {
   const source = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
@@ -86,7 +148,7 @@ function makeFighter(side, opponent = OPPONENTS[0]) {
   const isPlayer = side === 'player';
   const conf = DIFFICULTIES[Game.difficulty];
   const boss = !isPlayer && Game.round % 5 === 0;
-  const maxHealth = isPlayer ? 100 : Math.round((100 + Math.min(55, Game.round * 3.2)) * (boss ? 1.28 : 1));
+  const maxHealth = isPlayer ? 100 : Math.round((100 + Math.min(55, (Game.round - 1) * 3.2)) * (boss ? 1.28 : 1));
   return {
     side, atlas: isPlayer ? 'hero' : opponent.atlas, nativeFacing: isPlayer ? 1 : -1,
     name: isPlayer ? '凌风' : opponent.name, style: isPlayer ? 'PLAYER' : opponent.style,
@@ -96,25 +158,26 @@ function makeFighter(side, opponent = OPPONENTS[0]) {
     damageScale: isPlayer ? 1 : opponent.damage * conf.enemyDamage,
     guardScale: isPlayer ? 1 : opponent.guard * conf.guard,
     aggression: isPlayer ? 0 : opponent.aggression,
-    action: null, queued: null, hitstun: 0, inv: 0, dash: 0, dashDir: 0,
+    action: null, queued: null, hitstun: 0, blockstun: 0, inv: 0, dash: 0, dashDir: 0, dashMax: 0, evade: 0, evadeDir: 0, moveVx: 0,
+    knockdown: 0, wakeup: 0, flash: 0,
     blocking: false, crouching: false, onGround: true, ko: false,
     chainStep: 0, chainWindow: 0, fury: 0, runCycle: 0, filter: opponent.filter || 'none',
-    intent: 0, ai: { think: .2, moveFor: 0, blockFor: 0, disabled: false },
+    intent: 0, ai: { think: .28, moveFor: 0, blockFor: 0, attackCd: .45, windup: 0, pending: '', disabled: false },
   };
 }
 
 function resetPositions() {
   const ground = floorY();
   const margin = W < 560 ? 52 : 120;
-  Object.assign(Game.player, { x: Math.max(margin, W * .27), y: ground, vx: 0, vy: 0, facing: 1, action: null, queued: null, hitstun: 0, dash: 0, blocking: false, crouching: false, onGround: true, ko: false });
-  Object.assign(Game.enemy, { x: Math.min(W - margin, W * .73), y: ground, vx: 0, vy: 0, facing: -1, action: null, queued: null, hitstun: 0, dash: 0, blocking: false, crouching: false, onGround: true, ko: false });
+  Object.assign(Game.player, { x: Math.max(margin, W * .27), y: ground, vx: 0, vy: 0, moveVx: 0, facing: 1, action: null, queued: null, hitstun: 0, blockstun: 0, dash: 0, evade: 0, knockdown: 0, wakeup: 0, blocking: false, crouching: false, onGround: true, ko: false });
+  Object.assign(Game.enemy, { x: Math.min(W - margin, W * .73), y: ground, vx: 0, vy: 0, moveVx: 0, facing: -1, action: null, queued: null, hitstun: 0, blockstun: 0, dash: 0, evade: 0, knockdown: 0, wakeup: 0, blocking: false, crouching: false, onGround: true, ko: false });
 }
 
 function startGame() {
   if (window.ChipMusic) ChipMusic.play('fighter-loop');
   Object.assign(Game, {
     state: 'intro', score: 0, round: 1, wins: 0, wordsDone: 0, time: 0, combo: 0, maxCombo: 0,
-    comboTimer: 0, freeze: 0, shake: 0, flash: 0, recentWords: [], wordEcho: null,
+    comboTimer: 0, freeze: 0, shake: 0, flash: 0, cameraPunch: 0, recentWords: [], wordEcho: null,
     particles: [], projectiles: [], hazard: null,
   });
   Game.player = makeFighter('player');
@@ -176,6 +239,7 @@ function togglePause() {
     Game.state = Game.resumeState;
     $('paused').classList.add('hidden');
     lastTime = performance.now();
+    accumulator = 0;
   }
 }
 
@@ -185,12 +249,12 @@ function showFeedback(text) {
 
 function updateHud() {
   if (!Game.player || !Game.enemy) return;
-  $('player-health').style.width = (100 * Game.player.health / Game.player.maxHealth) + '%';
-  $('enemy-health').style.width = (100 * Game.enemy.health / Game.enemy.maxHealth) + '%';
-  $('player-guard').style.width = Game.player.guard + '%';
-  $('enemy-guard').style.width = Game.enemy.guard + '%';
-  $('player-power').style.width = Game.player.power + '%';
-  $('enemy-power').style.width = Game.enemy.power + '%';
+  $('player-health').style.transform = 'scaleX(' + Game.player.health / Game.player.maxHealth + ')';
+  $('enemy-health').style.transform = 'scaleX(' + Game.enemy.health / Game.enemy.maxHealth + ')';
+  $('player-guard').style.transform = 'scaleX(' + Game.player.guard / 100 + ')';
+  $('enemy-guard').style.transform = 'scaleX(' + Game.enemy.guard / 100 + ')';
+  $('player-power').style.transform = 'scaleX(' + Game.player.power / 100 + ')';
+  $('enemy-power').style.transform = 'scaleX(' + Game.enemy.power / 100 + ')';
   $('enemy-name').textContent = Game.enemy.name;
   $('enemy-style').textContent = Game.enemy.style;
   $('round').textContent = Game.round;
@@ -202,74 +266,128 @@ function updateHud() {
 }
 
 function moveCommand(fighter, command, opponent) {
-  if (!fighter || fighter.ko || fighter.hitstun > 0 || !['playing', 'intro'].includes(Game.state)) return false;
+  if (!fighter || fighter.ko || Game.state !== 'playing') return false;
+  if (command === 'evade') {
+    const guardCancel = fighter.blockstun > 0;
+    if (guardCancel && fighter.power < 25) { if (fighter.side === 'player') showFeedback('防御取消需要 25 斗气'); return false; }
+    if (guardCancel) { fighter.power -= 25; fighter.blockstun = 0; }
+    const direction = fighter.side === 'player' ? ((input.right ? 1 : 0) - (input.left ? 1 : 0) || -fighter.facing) : -fighter.facing;
+    return startEvade(fighter, direction, guardCancel);
+  }
+  if (fighter.hitstun > 0 || fighter.blockstun > 0 || fighter.knockdown > 0 || fighter.wakeup > 0 || fighter.dash > 0 || fighter.evade > 0) {
+    fighter.queued = { command, time: .16 };
+    return false;
+  }
   if (command === 'jump') {
-    if (!fighter.onGround || fighter.action) return false;
+    if (!fighter.onGround || fighter.action) { fighter.queued = { command, time: .16 }; return false; }
     fighter.vy = -525;
+    fighter.moveVx += fighter.intent * 55;
     fighter.onGround = false;
     fighter.blocking = false;
-    if (fighter.side === 'player' && window.ArcadeAudio) ArcadeAudio.play('jump', .15, 1.05);
+    FurySound.play('jump');
     return true;
   }
 
+  let cancelledAction = null;
   if (fighter.action) {
-    const canCancel = fighter.action.hit && fighter.action.t >= fighter.action.spec.active && ['punch', 'kick', 'special'].includes(command);
-    if (!canCancel) { fighter.queued = command; return false; }
+    const canCancel = fighter.action.hit && fighter.action.t >= fighter.action.spec.active && fighter.action.spec.cancel?.includes(command);
+    if (!canCancel) { fighter.queued = { command, time: .16 }; return false; }
+    cancelledAction = fighter.action;
     fighter.action = null;
   }
 
   const distance = Math.abs(opponent.x - fighter.x);
   let moveName = command;
+  const downHeld = fighter.side === 'player' ? input.down : fighter.crouching;
   if (command === 'punch') {
     const towardHeld = fighter.side === 'player' && ((input.right ? 1 : input.left ? -1 : 0) === fighter.facing);
     if (fighter.onGround && towardHeld && distance < MOVES.throw.range + 12) moveName = 'throw';
     else if (!fighter.onGround) moveName = 'airkick';
-    else if (fighter.crouching) moveName = 'sweep';
+    else if (downHeld) moveName = 'sweep';
     else if (fighter.chainWindow > 0 && fighter.chainStep === 1) moveName = 'punch2';
     else if (fighter.chainWindow > 0 && fighter.chainStep === 2) moveName = 'punch3';
     else moveName = 'punch1';
   } else if (command === 'kick') {
-    moveName = !fighter.onGround ? 'airkick' : fighter.crouching ? 'sweep' : 'kick';
+    moveName = !fighter.onGround ? 'airkick' : downHeld ? 'sweep' : fighter.chainWindow > 0 ? 'comboKick' : 'kick';
   } else if (command === 'special') {
     moveName = distance < 118 ? 'uppercut' : 'fireball';
   }
   const spec = MOVES[moveName];
   if (!spec) return false;
   if (spec.cost && fighter.power < spec.cost) {
+    if (cancelledAction) fighter.action = cancelledAction;
     if (fighter.side === 'player') showFeedback('斗气不足：命中与格挡都能积蓄');
     return false;
   }
   if (spec.cost) fighter.power -= spec.cost;
   fighter.action = { name: moveName, spec, t: 0, hit: false, spawned: false };
+  if (moveName === 'uppercut') fighter.inv = Math.max(fighter.inv, .11);
   fighter.queued = null;
   fighter.blocking = false;
   fighter.crouching = false;
+  fighter.moveVx *= .38;
+  if (fighter.side === 'enemy') fighter.ai.attackCd = command === 'punch' ? .42 : command === 'kick' ? .55 : .75;
+  FurySound.play(spec.special ? 'power' : spec.heavy ? 'whooshHeavy' : 'whoosh');
   return true;
 }
 
-function dashPlayer(direction) {
-  const player = Game.player;
-  if (!player || player.ko || player.hitstun > 0 || player.action || !player.onGround || Game.state !== 'playing') return;
-  player.dash = .2;
-  player.dashDir = direction;
-  player.inv = Math.max(player.inv, .08);
-  burst(player.x, player.y - 8, '#a6e7ff', 7, .42);
+function startDash(fighter, direction) {
+  if (!fighter || fighter.ko || fighter.hitstun > 0 || fighter.knockdown > 0 || fighter.evade > 0 || fighter.action || !fighter.onGround || Game.state !== 'playing') return false;
+  fighter.dash = direction === -fighter.facing ? .16 : .22;
+  fighter.dashMax = fighter.dash;
+  fighter.dashDir = direction;
+  fighter.inv = Math.max(fighter.inv, direction === -fighter.facing ? .11 : .055);
+  fighter.blocking = false;
+  fighter.crouching = false;
+  burst(fighter.x, fighter.y - 8, fighter.side === 'player' ? '#a6e7ff' : '#ff8fb3', 7, .42);
+  FurySound.play('dash');
+  return true;
+}
+
+function dashPlayer(direction) { return startDash(Game.player, direction); }
+
+function startEvade(fighter, direction, guardCancel = false) {
+  if (!fighter || fighter.ko || fighter.hitstun > 0 || fighter.knockdown > 0 || fighter.wakeup > 0 || fighter.action || fighter.dash > 0 || fighter.evade > 0 || !fighter.onGround || Game.state !== 'playing') return false;
+  fighter.evade = .42;
+  fighter.evadeDir = direction || -fighter.facing;
+  fighter.inv = Math.max(fighter.inv, .26);
+  fighter.blocking = false;
+  fighter.crouching = false;
+  fighter.queued = null;
+  fighter.moveVx = 0;
+  Game.banner = guardCancel ? { text: 'GUARD CANCEL', timer: .55, color: '#7de3ff' } : Game.banner;
+  FurySound.play('dash');
+  return true;
 }
 
 function applyPlayerIntent() {
   const p = Game.player;
-  if (!p || p.ko) return;
+  if (!p || p.ko || p.knockdown > 0 || p.wakeup > 0 || p.evade > 0) return;
   p.facing = p.action ? p.facing : signTo(p.x, Game.enemy.x);
   const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
   const awayHeld = direction && direction === -p.facing;
-  p.blocking = !p.action && p.hitstun <= 0 && p.onGround && (input.block || (awayHeld && Math.abs(Game.enemy.x - p.x) < 170));
+  const projectileThreat = Game.projectiles.some((shot) => shot.owner === Game.enemy && (shot.x - p.x) * p.facing > 0 && Math.abs(shot.x - p.x) < 210);
+  const guardThreat = Math.abs(Game.enemy.x - p.x) < 180 || projectileThreat;
+  p.blocking = p.blockstun > 0 || (!p.action && p.dash <= 0 && p.hitstun <= 0 && p.onGround && (input.block || (awayHeld && guardThreat)));
   p.crouching = !p.action && p.hitstun <= 0 && p.onGround && input.down;
   p.intent = p.blocking || p.crouching ? 0 : direction;
 }
 
 function updateAI(dt) {
   const e = Game.enemy, p = Game.player;
-  if (!e || e.ai.disabled || e.ko || e.hitstun > 0 || e.action) return;
+  if (!e || e.ai.disabled || e.ko) return;
+  e.ai.attackCd = Math.max(0, e.ai.attackCd - dt);
+  if (e.hitstun > 0 || e.blockstun > 0 || e.knockdown > 0 || e.wakeup > 0 || e.action || e.dash > 0 || e.evade > 0) return;
+  if (e.ai.windup > 0) {
+    e.ai.windup = Math.max(0, e.ai.windup - dt);
+    e.intent = 0;
+    if (!e.ai.windup && e.ai.pending) {
+      const pending = e.ai.pending;
+      e.ai.pending = '';
+      moveCommand(e, pending, p);
+    }
+    return;
+  }
   e.facing = signTo(e.x, p.x);
   e.ai.think -= dt;
   e.ai.moveFor = Math.max(0, e.ai.moveFor - dt);
@@ -280,56 +398,118 @@ function updateAI(dt) {
   if (e.ai.think > 0) return;
   const conf = DIFFICULTIES[Game.difficulty];
   const distance = Math.abs(p.x - e.x);
-  const danger = p.action && p.action.t < p.action.spec.active + .08;
+  const danger = p.action && p.action.t < p.action.spec.active + .07;
+  const recovery = p.action && p.action.t > p.action.spec.active + .1;
   const roll = Math.random();
-  e.ai.think = rand(.16, .38) / conf.ai;
+  const reaction = Game.difficulty === 'easy' ? .2 : Game.difficulty === 'hard' ? .085 : .13;
+  const commit = (command, tell = reaction) => {
+    e.ai.pending = command;
+    e.ai.windup = tell;
+    e.intent = 0;
+  };
+  e.ai.think = rand(.2, .44) / conf.ai;
 
-  if (danger && distance < p.action.spec.range + 34 && roll < .4 * e.guardScale) {
-    e.ai.blockFor = rand(.25, .55);
-    e.blocking = true;
+  if (danger && distance < p.action.spec.range + 28 && roll < .58 * e.guardScale) {
+    if (roll < .14 && distance > 82) startDash(e, -e.facing);
+    else { e.ai.blockFor = rand(.28, .5); e.blocking = true; }
     return;
   }
-  if (distance > 205) {
-    if (e.power >= 45 && roll < .18 * e.aggression) moveCommand(e, 'special', p);
-    else { e.intent = e.facing; e.ai.moveFor = rand(.25, .55); }
+  if (recovery && e.ai.attackCd <= 0 && distance < 112) {
+    commit(distance < 76 && roll < .18 ? 'throw' : 'punch', reaction * .55);
     return;
   }
-  if (distance > 92) {
-    if (roll < .42) { e.intent = e.facing; e.ai.moveFor = rand(.18, .42); }
-    else if (roll < .7) moveCommand(e, 'kick', p);
-    else if (e.power >= 50 && roll > .9) moveCommand(e, 'special', p);
-    else { e.intent = -e.facing; e.ai.moveFor = rand(.14, .3); }
+  if (!p.onGround && distance < 112 && e.ai.attackCd <= 0) {
+    if (e.power >= 50 && roll < .42 * conf.ai) commit('special', reaction * .7);
+    else { e.ai.blockFor = .24; e.blocking = true; }
     return;
   }
-  if (roll < .12 * e.guardScale) { e.ai.blockFor = rand(.24, .5); e.blocking = true; }
-  else if (roll < .23 && distance < 58) moveCommand(e, 'throw', p);
-  else if (roll < .65 + e.aggression * .18) moveCommand(e, roll < .43 ? 'punch' : 'kick', p);
-  else { e.intent = -e.facing; e.ai.moveFor = rand(.18, .38); }
+  const preferred = e.atlas === 'bruiser' ? 82 : 118;
+  if (distance > preferred + 115) {
+    if (e.power >= 42 && e.ai.attackCd <= 0 && roll < .2 * e.aggression) commit('special');
+    else if (distance > 300 && roll < .3) startDash(e, e.facing);
+    else { e.intent = e.facing; e.ai.moveFor = rand(.28, .56); }
+    return;
+  }
+  if (distance > preferred + 12) {
+    if (e.ai.attackCd <= 0 && roll < .34 * e.aggression) commit(roll < .15 ? 'kick' : 'punch');
+    else { e.intent = e.facing; e.ai.moveFor = rand(.16, .36); }
+    return;
+  }
+  if (distance < 68 && p.blocking && e.ai.attackCd <= 0 && roll < .42) commit('throw', reaction * .8);
+  else if (p.hitstun > .06 && e.ai.attackCd <= 0) commit(roll < .65 ? 'punch' : 'kick', reaction * .45);
+  else if (e.ai.attackCd <= 0 && roll < .48 + e.aggression * .2) commit(roll < .54 ? 'punch' : 'kick');
+  else if (roll < .72) { e.intent = -e.facing; e.ai.moveFor = rand(.16, .34); }
+  else { e.ai.blockFor = rand(.2, .38); e.blocking = true; }
 }
 
 function updateFighter(fighter, opponent, dt) {
   if (!fighter) return;
   fighter.inv = Math.max(0, fighter.inv - dt);
+  fighter.flash = Math.max(0, fighter.flash - dt);
   fighter.chainWindow = Math.max(0, fighter.chainWindow - dt);
   fighter.fury = Math.max(0, fighter.fury - dt);
+  if (fighter.queued) {
+    fighter.queued.time -= dt;
+    if (fighter.queued.time <= 0) fighter.queued = null;
+  }
   if (!fighter.chainWindow) fighter.chainStep = 0;
   const ground = floorY();
 
-  if (fighter.hitstun > 0) {
+  if (fighter.ko) {
+    fighter.blocking = false;
+    fighter.crouching = false;
+    fighter.action = null;
+    fighter.x += fighter.vx * dt;
+    fighter.vx *= Math.exp(-4 * dt);
+  } else if (fighter.hitstun > 0) {
     fighter.hitstun = Math.max(0, fighter.hitstun - dt);
     fighter.blocking = false;
     fighter.crouching = false;
+    fighter.moveVx = 0;
     fighter.x += fighter.vx * dt;
     fighter.vx *= Math.exp(-7 * dt);
-  } else if (!fighter.ko && fighter.action) {
+  } else if (fighter.blockstun > 0) {
+    fighter.blockstun = Math.max(0, fighter.blockstun - dt);
+    fighter.blocking = true;
+    fighter.crouching = false;
+    fighter.moveVx = 0;
+    fighter.x += fighter.vx * dt;
+    fighter.vx *= Math.exp(-12 * dt);
+  } else if (fighter.knockdown > 0) {
+    fighter.blocking = false;
+    fighter.crouching = false;
+    fighter.action = null;
+    fighter.x += fighter.vx * dt;
+    fighter.vx *= Math.exp(-5 * dt);
+    if (fighter.onGround) {
+      fighter.knockdown = Math.max(0, fighter.knockdown - dt);
+      if (!fighter.knockdown) {
+        fighter.wakeup = .3;
+        fighter.inv = Math.max(fighter.inv, .34);
+        FurySound.play('rise');
+      }
+    }
+  } else if (fighter.wakeup > 0) {
+    fighter.wakeup = Math.max(0, fighter.wakeup - dt);
+    fighter.moveVx = 0;
+  } else if (fighter.evade > 0) {
+    const progress = 1 - fighter.evade / .42;
+    fighter.evade = Math.max(0, fighter.evade - dt);
+    fighter.x += fighter.evadeDir * 540 * Math.sin(clamp(progress, 0, 1) * Math.PI) * dt;
+    fighter.runCycle += dt * 15;
+    if (!fighter.evade) fighter.moveVx = fighter.evadeDir * 35;
+  } else if (fighter.action) {
     const action = fighter.action;
+    const before = action.t;
     action.t += dt;
-    if (action.t < action.spec.active + .04) fighter.x += fighter.facing * (action.spec.lunge || 0) * dt;
+    const beforeLunge = easeOut(before / action.spec.active);
+    const afterLunge = easeOut(Math.min(action.t, action.spec.active) / action.spec.active);
+    fighter.x += fighter.facing * (action.spec.lunge || 0) * Math.max(0, afterLunge - beforeLunge);
     if (action.spec.projectile && !action.spawned && action.t >= action.spec.active) {
       action.spawned = true;
       Game.projectiles.push({ owner: fighter, x: fighter.x + fighter.facing * 42, y: fighter.y - (W < 560 ? 92 : 126), vx: fighter.facing * 390, life: 2.2, spec: action.spec, hit: false });
       burst(fighter.x + fighter.facing * 42, fighter.y - 112, fighter.side === 'player' ? '#6be4ff' : '#ff6f9d', 11, .7);
-      if (window.ArcadeAudio) ArcadeAudio.play('laser', .18, fighter.side === 'player' ? 1.25 : .85);
+      FurySound.play('projectile');
     } else if (!action.spec.projectile && !action.hit && action.t >= action.spec.active && action.t <= action.spec.active + .1) {
       tryHit(fighter, opponent, action);
     }
@@ -337,26 +517,49 @@ function updateFighter(fighter, opponent, dt) {
       fighter.action = null;
       const queued = fighter.queued;
       fighter.queued = null;
-      if (queued) moveCommand(fighter, queued, opponent);
+      if (queued) moveCommand(fighter, queued.command, opponent);
     }
-  } else if (!fighter.ko) {
+  } else {
     if (fighter.dash > 0) {
+      const dashMax = fighter.dashMax || .2;
+      const speed = (fighter.dashDir === -fighter.facing ? 670 : 610) * easeOut(fighter.dash / dashMax);
       fighter.dash = Math.max(0, fighter.dash - dt);
-      fighter.x += fighter.dashDir * 510 * dt;
+      fighter.x += fighter.dashDir * speed * dt;
       fighter.runCycle += dt * 19;
+      if (!fighter.dash) fighter.moveVx = fighter.dashDir * 85;
     } else if (!fighter.blocking && !fighter.crouching) {
-      fighter.x += fighter.intent * fighter.speed * (fighter.fury > 0 ? 1.12 : 1) * dt;
+      const control = fighter.onGround ? 1 : .42;
+      const desired = fighter.intent * fighter.speed * (fighter.fury > 0 ? 1.1 : 1) * control;
+      const acceleration = fighter.onGround ? 1550 : 520;
+      fighter.moveVx += clamp(desired - fighter.moveVx, -acceleration * dt, acceleration * dt);
+      fighter.x += fighter.moveVx * dt;
       fighter.runCycle += Math.abs(fighter.intent) * dt * 9;
+    } else {
+      fighter.moveVx *= Math.exp(-18 * dt);
     }
   }
 
   if (!fighter.onGround) {
     fighter.vy += 1260 * dt;
     fighter.y += fighter.vy * dt;
-    if (fighter.y >= ground) { fighter.y = ground; fighter.vy = 0; fighter.onGround = true; }
+    if (fighter.y >= ground) {
+      fighter.y = ground;
+      fighter.vy = 0;
+      fighter.onGround = true;
+      if (fighter.knockdown > 0 || fighter.ko) {
+        Game.shake = Math.max(Game.shake, .055);
+        burst(fighter.x, ground - 5, '#d7b98a', 7, .3);
+        FurySound.play('land');
+      }
+    }
   } else fighter.y = ground;
 
-  if (!fighter.blocking && fighter.hitstun <= 0) fighter.guard = Math.min(fighter.maxGuard, fighter.guard + dt * 15);
+  if (!fighter.blocking && fighter.hitstun <= 0 && fighter.blockstun <= 0 && fighter.knockdown <= 0) fighter.guard = Math.min(fighter.maxGuard, fighter.guard + dt * 13);
+  if (!fighter.action && fighter.hitstun <= 0 && fighter.blockstun <= 0 && fighter.knockdown <= 0 && fighter.wakeup <= 0 && fighter.evade <= 0 && fighter.queued) {
+    const queued = fighter.queued;
+    fighter.queued = null;
+    moveCommand(fighter, queued.command, opponent);
+  }
   const margin = W < 560 ? 34 : 58;
   fighter.x = clamp(fighter.x, margin, W - margin);
 }
@@ -365,57 +568,71 @@ function tryHit(attacker, target, action) {
   const spec = action.spec;
   const dx = target.x - attacker.x;
   const vertical = Math.abs(target.y - attacker.y);
-  if (dx * attacker.facing < -12 || Math.abs(dx) > spec.range || vertical > (action.name === 'airkick' ? 115 : 82)) return;
-  action.hit = true;
-  receiveHit(target, attacker, spec, action.name);
+  if (target.knockdown > 0 || (spec.level === 'throw' && !target.onGround)) return;
+  if (dx * attacker.facing < -12 || Math.abs(dx) > spec.range || vertical > (action.name === 'airkick' ? 118 : 84)) return;
+  if (receiveHit(target, attacker, spec, action.name)) action.hit = true;
 }
 
 function receiveHit(target, attacker, spec, moveName) {
-  if (target.inv > 0 || target.ko) return false;
+  if (target.wakeup > 0 || (target.inv > 0 && spec.level !== 'throw') || target.ko) return false;
   const canBlockHeight = spec.level !== 'low' || target.crouching;
   const canBlockOverhead = spec.level !== 'overhead' || !target.crouching;
-  const blocked = target.blocking && !spec.unblockable && canBlockHeight && canBlockOverhead;
+  const attackerInFront = (attacker.x - target.x) * target.facing >= -8;
+  const blocked = target.blocking && attackerInFront && !spec.unblockable && canBlockHeight && canBlockOverhead;
   const scale = attacker.damageScale * (attacker.fury > 0 ? 1.24 : 1);
   const damage = Math.max(1, Math.round(spec.damage * scale));
 
   if (blocked) {
+    target.blockstun = Math.max(target.blockstun, spec.heavy || spec.special ? .17 : .115);
+    target.vx = attacker.facing * (spec.heavy ? 44 : 24);
     target.guard = Math.max(0, target.guard - damage * 3.25 / target.guardScale);
     target.power = clamp(target.power + damage * .8, 0, 100);
     attacker.power = clamp(attacker.power + damage * .45, 0, 100);
     if (spec.special) target.health = Math.max(0, target.health - Math.max(1, Math.floor(damage * .09)));
     spawnImpact(target.x - target.facing * 23, target.y - 112, '#8fdcff', true);
-    Game.freeze = Math.max(Game.freeze, .025);
+    Game.freeze = Math.max(Game.freeze, .032);
+    target.flash = .065;
     showFeedback('格挡 · 防御槽持续消耗');
     if (target.guard <= 0) {
       target.guard = 0;
       target.blocking = false;
+      target.blockstun = 0;
       target.hitstun = .95;
       target.action = null;
       target.vx = attacker.facing * 92;
       Game.banner = { text: 'GUARD BREAK', timer: .85, color: '#7de3ff' };
-      Game.shake = Math.max(Game.shake, .18);
+      Game.shake = Math.max(Game.shake, .1);
       burst(target.x, target.y - 105, '#7de3ff', 20, .9);
     }
-    playImpact(false, true);
+    FurySound.play(target.guard <= 0 ? 'guardBreak' : 'block');
     return true;
   }
 
-  const counter = target.action && target.action.t < target.action.spec.active;
+  const counter = Boolean((target.action && target.action.t < target.action.spec.active) || (target.ai?.windup > 0 && target.ai.pending));
+  if (counter && target.ai) { target.ai.windup = 0; target.ai.pending = ''; }
   const dealt = Math.round(damage * (counter ? 1.45 : 1));
   target.health = Math.max(0, target.health - dealt);
   target.hitstun = spec.stun * (counter ? 1.45 : 1);
+  target.blockstun = 0;
   target.action = null;
   target.queued = null;
   target.blocking = false;
+  target.moveVx = 0;
   target.vx = attacker.facing * spec.knock;
-  if (spec.lift) { target.vy = spec.lift; target.onGround = false; }
+  if (spec.knockdown) {
+    target.knockdown = Math.max(target.knockdown, spec.knockdown);
+    target.vy = spec.lift || -105;
+    target.onGround = false;
+  } else if (spec.lift) { target.vy = spec.lift; target.onGround = false; }
   target.inv = .035;
+  target.flash = spec.heavy ? .12 : .085;
   attacker.power = clamp(attacker.power + dealt * 1.35, 0, 100);
   spawnImpact(target.x - target.facing * 16, target.y - (target.crouching ? 72 : 118), attacker.side === 'player' ? '#ffd86e' : '#ff6f9d', false);
-  Game.freeze = Math.max(Game.freeze, spec.heavy ? .065 : .038);
-  Game.shake = Math.max(Game.shake, spec.heavy ? .16 : .075);
+  Game.freeze = Math.max(Game.freeze, spec.heavy ? .082 : .045);
+  Game.shake = Math.max(Game.shake, spec.heavy ? .1 : .018);
+  Game.cameraPunch = Math.max(Game.cameraPunch, spec.special ? .05 : spec.heavy ? .028 : .008);
   Game.flash = Math.max(Game.flash, spec.special ? .18 : .06);
-  playImpact(spec.heavy || spec.special, false);
+  FurySound.play(counter ? 'counter' : spec.heavy || spec.special ? 'heavyHit' : 'hit');
 
   if (counter) {
     Game.banner = { text: '破招 · COUNTER', timer: .72, color: '#ffda68' };
@@ -423,28 +640,28 @@ function receiveHit(target, attacker, spec, moveName) {
   }
   if (attacker.side === 'player') {
     Game.combo = Game.comboTimer > 0 ? Game.combo + 1 : 1;
-    Game.comboTimer = 1.15;
+    Game.comboTimer = 1.05;
     Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
     Game.score += dealt * 12 * Math.min(4, Game.combo);
-    if (MOVES[moveName] && MOVES[moveName].chain) {
-      attacker.chainStep = MOVES[moveName].chain;
-      attacker.chainWindow = .55;
-    }
     advanceWord();
   } else {
     Game.combo = 0;
     Game.comboTimer = 0;
   }
-  if (target.health <= 0) target.ko = true;
+  if (MOVES[moveName] && MOVES[moveName].chain) {
+    attacker.chainStep = MOVES[moveName].chain;
+    attacker.chainWindow = .5;
+    if (attacker.side === 'enemy' && attacker.chainStep < 3 && !target.ko && Math.random() < .64 * DIFFICULTIES[Game.difficulty].ai) {
+      attacker.queued = { command: attacker.chainStep === 2 && Math.random() < .42 ? 'kick' : 'punch', time: .22 };
+    }
+  }
+  if (target.health <= 0) {
+    target.ko = true;
+    target.knockdown = Math.max(target.knockdown, 1);
+    if (target.onGround) { target.vy = -135; target.onGround = false; }
+  }
   updateHud();
   return true;
-}
-
-function playImpact(heavy, blocked) {
-  if (!window.ArcadeAudio) return;
-  if (blocked) ArcadeAudio.play('click', .16, .72);
-  else if (heavy) ArcadeAudio.play('laser', .25, .58);
-  else ArcadeAudio.play('confirm', .12, .82);
 }
 
 function advanceWord() {
@@ -519,14 +736,22 @@ function spawnHazard() {
 }
 
 function environmentHit(fighter, x, damage, knock) {
-  if (fighter.inv > 0 || fighter.ko) return;
+  if (fighter.inv > 0 || fighter.ko || fighter.knockdown > 0) return;
   fighter.health = Math.max(0, fighter.health - damage);
-  fighter.hitstun = .48;
+  fighter.hitstun = .28;
+  fighter.knockdown = .48;
   fighter.action = null;
+  fighter.queued = null;
+  fighter.moveVx = 0;
   fighter.vx = signTo(x, fighter.x) * knock;
+  fighter.vy = -105;
+  fighter.onGround = false;
   fighter.inv = .25;
-  Game.shake = Math.max(Game.shake, .14);
+  fighter.flash = .1;
+  Game.shake = Math.max(Game.shake, .08);
+  Game.cameraPunch = Math.max(Game.cameraPunch, .02);
   spawnImpact(fighter.x, fighter.y - 82, '#ffad66', false);
+  FurySound.play('heavyHit');
   if (fighter.health <= 0) fighter.ko = true;
 }
 
@@ -559,8 +784,9 @@ function updateHazard(dt) {
 
 function resolveFighterPush() {
   const a = Game.player, b = Game.enemy;
-  if (!a || !b) return;
-  const minDistance = W < 560 ? 48 : 72;
+  if (!a || !b || !a.onGround || !b.onGround || a.evade > 0 || b.evade > 0 || a.knockdown > 0 || b.knockdown > 0 || a.ko || b.ko) return;
+  const attacking = a.action || b.action;
+  const minDistance = W < 560 ? (attacking ? 50 : 56) : (attacking ? 72 : 82);
   const dx = b.x - a.x;
   if (Math.abs(dx) >= minDistance) return;
   const push = (minDistance - Math.abs(dx)) * .5;
@@ -573,6 +799,7 @@ function update(dt) {
   Game.time += dt;
   Game.shake = Math.max(0, Game.shake - dt * 2.8);
   Game.flash = Math.max(0, Game.flash - dt * 2.4);
+  Game.cameraPunch = Math.max(0, Game.cameraPunch - dt * .3);
   Game.comboTimer = Math.max(0, Game.comboTimer - dt);
   if (!Game.comboTimer) Game.combo = 0;
   if (Game.banner) { Game.banner.timer -= dt; if (Game.banner.timer <= 0) Game.banner = null; }
@@ -739,14 +966,59 @@ function drawRain() {
   ctx.restore();
 }
 
-function fighterFrame(fighter) {
-  if (fighter.ko || fighter.hitstun > 0) return 7;
-  if (fighter.blocking) return 6;
-  if (fighter.action) return fighter.action.spec.frame;
-  if (fighter.crouching) return 3;
-  if (!fighter.onGround) return 2;
-  if (fighter.dash > 0 || Math.abs(fighter.intent) > 0) return 1 + (Math.floor(fighter.runCycle) % 2);
-  return 0;
+function fighterVisual(fighter) {
+  const pose = { frame: 0, dx: 0, dy: 0, rotate: 0, sx: 1, sy: 1 };
+  const breath = Math.sin(Game.time * 4 + (fighter.side === 'enemy' ? 1.4 : 0));
+  pose.dy = breath * 1.2;
+  pose.sx = 1 - breath * .004;
+  pose.sy = 1 + breath * .006;
+
+  if (fighter.ko || fighter.knockdown > 0) {
+    pose.frame = 7;
+    const grounded = fighter.onGround ? 1 : clamp((fighter.vy + 240) / 480, 0, 1);
+    pose.rotate = -fighter.facing * grounded * 1.18;
+    pose.dy = grounded * 12;
+  } else if (fighter.wakeup > 0) {
+    pose.frame = 7;
+    pose.rotate = -fighter.facing * 1.05 * (fighter.wakeup / .3);
+    pose.dy = 8 * (fighter.wakeup / .3);
+  } else if (fighter.hitstun > 0) {
+    pose.frame = 7;
+    pose.rotate = -fighter.facing * .075;
+    pose.sx = .97; pose.sy = 1.025;
+  } else if (fighter.blocking) {
+    pose.frame = 6;
+    pose.dx = -fighter.facing * 2;
+    pose.sx = .985; pose.sy = 1.012;
+  } else if (fighter.evade > 0) {
+    const progress = 1 - fighter.evade / .42;
+    pose.frame = progress < .58 ? 3 : 1;
+    pose.rotate = -fighter.evadeDir * Math.sin(progress * Math.PI) * .12;
+    pose.dy = Math.sin(progress * Math.PI) * 7;
+    pose.sx = 1.04; pose.sy = .96;
+  } else if (fighter.action) {
+    const action = fighter.action, spec = action.spec;
+    const startup = clamp(action.t / Math.max(.001, spec.start), 0, 1);
+    const recovery = clamp((action.t - spec.active) / Math.max(.001, spec.end - spec.active), 0, 1);
+    pose.frame = action.t < spec.start ? (action.name === 'sweep' ? 3 : !fighter.onGround ? 2 : 0) : spec.frame;
+    pose.dx = -fighter.facing * (1 - startup) * (spec.heavy ? 8 : 4) + fighter.facing * Math.sin(recovery * Math.PI) * 2;
+    pose.sx = 1 - (1 - startup) * .035 + Math.sin(recovery * Math.PI) * .018;
+    pose.sy = 1 + (1 - startup) * .035 - Math.sin(recovery * Math.PI) * .012;
+    if (action.name.toLowerCase().includes('kick')) pose.rotate = -fighter.facing * (.03 + Math.sin(recovery * Math.PI) * .025);
+    if (action.name === 'uppercut') { pose.dy = -Math.sin(clamp(action.t / spec.end, 0, 1) * Math.PI) * 18; pose.rotate = fighter.facing * .045; }
+    if (action.name === 'sweep') { pose.dy = 7; pose.sx = 1.035; pose.sy = .96; }
+    if (action.name === 'fireball') { pose.dx -= fighter.facing * (1 - startup) * 7; pose.sx *= 1.025; }
+  } else if (fighter.crouching) {
+    pose.frame = 3; pose.dy = 4;
+  } else if (!fighter.onGround) {
+    pose.frame = 2;
+    pose.rotate = fighter.facing * clamp(fighter.vy / 1800, -.08, .1);
+  } else if (fighter.dash > 0 || Math.abs(fighter.moveVx) > 18) {
+    pose.frame = 1 + (Math.floor(fighter.runCycle) % 2);
+    pose.dy = Math.abs(Math.sin(fighter.runCycle * Math.PI)) * 2;
+    pose.rotate = fighter.facing * clamp(fighter.moveVx / 7000, -.035, .035);
+  }
+  return pose;
 }
 
 function drawFighter(fighter) {
@@ -754,29 +1026,56 @@ function drawFighter(fighter) {
   const compact = W < 560;
   const drawW = compact ? 112 : fighter.atlas === 'bruiser' ? 190 : 174;
   const drawH = compact ? 178 : fighter.atlas === 'bruiser' ? 264 : 250;
-  const frame = fighterFrame(fighter);
+  const pose = fighterVisual(fighter);
+  const frame = pose.frame;
   const sourceW = image.naturalWidth / 4 || 384;
   const sourceH = image.naturalHeight / 2 || 512;
   const row = Math.floor(frame / 4), col = frame % 4;
 
   ctx.save();
-  ctx.globalAlpha = fighter.inv > 0 && Math.floor(Game.time * 20) % 2 ? .42 : 1;
   ctx.fillStyle = 'rgba(2,4,10,.48)';
-  ctx.beginPath(); ctx.ellipse(fighter.x, floorY() + 2, compact ? 29 : 47, compact ? 7 : 11, 0, 0, TAU); ctx.fill();
+  const height = Math.max(0, floorY() - fighter.y);
+  const shadowScale = clamp(1 - height / 360, .55, 1) * (fighter.knockdown > 0 || fighter.ko ? 1.25 : 1);
+  ctx.globalAlpha = .5 * shadowScale;
+  ctx.beginPath(); ctx.ellipse(fighter.x, floorY() + 2, (compact ? 29 : 47) * shadowScale, (compact ? 7 : 11) * shadowScale, 0, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 1;
   if (fighter.fury > 0) {
     ctx.strokeStyle = 'rgba(255,221,92,' + (.5 + Math.sin(Game.time * 11) * .2) + ')';
     ctx.lineWidth = 3; ctx.shadowColor = '#ffd85e'; ctx.shadowBlur = 16;
     ctx.beginPath(); ctx.ellipse(fighter.x, fighter.y - drawH * .47, drawW * .38, drawH * .47, 0, 0, TAU); ctx.stroke();
     ctx.shadowBlur = 0;
   }
-  ctx.translate(fighter.x, fighter.y);
-  if (fighter.facing !== fighter.nativeFacing) ctx.scale(-1, 1);
-  ctx.filter = fighter.filter;
-  if (image.complete && image.naturalWidth) ctx.drawImage(image, col * sourceW, row * sourceH, sourceW, sourceH, -drawW / 2, -drawH, drawW, drawH);
-  else {
-    ctx.fillStyle = fighter.side === 'player' ? '#32cbd3' : '#c7467d';
-    ctx.fillRect(-drawW * .2, -drawH * .72, drawW * .4, drawH * .72);
+
+  if (fighter.action && fighter.action.t >= fighter.action.spec.start && fighter.action.t <= fighter.action.spec.active + .055) {
+    const isKick = fighter.action.name.toLowerCase().includes('kick');
+    const reach = isKick || fighter.action.name === 'uppercut' ? 86 : 66;
+    ctx.save(); ctx.translate(fighter.x, fighter.y - (fighter.action.name === 'sweep' ? 48 : 112)); ctx.scale(fighter.facing, 1);
+    ctx.strokeStyle = fighter.side === 'player' ? 'rgba(119,229,255,.72)' : 'rgba(255,120,166,.7)';
+    ctx.lineWidth = fighter.action.spec.heavy ? 8 : 5; ctx.lineCap = 'round'; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 15;
+    ctx.beginPath();
+    if (fighter.action.name === 'fireball') ctx.arc(40, 0, 18, 0, TAU);
+    else if (isKick || fighter.action.name === 'uppercut' || fighter.action.name === 'sweep') ctx.arc(2, 4, reach, -.72, .46);
+    else { ctx.moveTo(26, 2); ctx.lineTo(reach, -3); }
+    ctx.stroke(); ctx.restore();
   }
+
+  const paint = (offset, alpha) => {
+    ctx.save();
+    ctx.globalAlpha = alpha * (fighter.inv > 0 && Math.floor(Game.time * 24) % 2 ? .48 : 1);
+    ctx.translate(fighter.x + pose.dx + offset, fighter.y + pose.dy);
+    ctx.rotate(pose.rotate);
+    const flip = fighter.facing !== fighter.nativeFacing ? -1 : 1;
+    ctx.scale(flip * pose.sx, pose.sy);
+    if (fighter.ai?.windup > 0) { ctx.shadowColor = '#ffd26b'; ctx.shadowBlur = 20 + Math.sin(Game.time * 30) * 6; }
+    const flashFilter = fighter.flash > 0 ? ' brightness(2.5) saturate(.35)' : '';
+    ctx.filter = (fighter.filter === 'none' ? '' : fighter.filter) + flashFilter;
+    if (image.complete && image.naturalWidth) ctx.drawImage(image, col * sourceW, row * sourceH, sourceW, sourceH, -drawW / 2, -drawH, drawW, drawH);
+    else { ctx.fillStyle = fighter.side === 'player' ? '#32cbd3' : '#c7467d'; ctx.fillRect(-drawW * .2, -drawH * .72, drawW * .4, drawH * .72); }
+    ctx.restore();
+  };
+  if (fighter.dash > 0) paint(-fighter.dashDir * 22, .18);
+  if (fighter.evade > 0) paint(-fighter.evadeDir * 26, .22);
+  paint(0, 1);
   ctx.restore();
 }
 
@@ -834,12 +1133,15 @@ function drawParticles() {
 
 function drawCombatText() {
   if (Game.combo >= 2) {
-    const size = Math.min(62, 28 + Game.combo * 3);
-    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = '950 ' + size + 'px system-ui,sans-serif'; ctx.lineWidth = 8;
-    ctx.strokeStyle = 'rgba(21,12,38,.9)'; ctx.fillStyle = Game.combo >= 6 ? '#ffb354' : '#78e7ff';
-    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 18;
-    ctx.strokeText(Game.combo + ' HIT', W * .5, H * .33); ctx.fillText(Game.combo + ' HIT', W * .5, H * .33);
+    const size = Math.min(78, 42 + Game.combo * 4);
+    const pulse = 1 + clamp(Game.comboTimer - .88, 0, .17) * 1.25;
+    ctx.save(); ctx.translate(W * .5, H * .32); ctx.rotate(-.045); ctx.scale(pulse, pulse); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '950 ' + size + 'px ui-monospace,monospace'; ctx.lineWidth = 10;
+    ctx.strokeStyle = 'rgba(21,12,38,.92)'; ctx.fillStyle = Game.combo >= 6 ? '#ffb354' : '#78e7ff';
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 22;
+    ctx.strokeText(String(Game.combo), -16, 0); ctx.fillText(String(Game.combo), -16, 0);
+    ctx.shadowBlur = 8; ctx.font = '950 14px system-ui,sans-serif'; ctx.letterSpacing = '3px';
+    ctx.strokeText('HIT CHAIN', 42, 9); ctx.fillText('HIT CHAIN', 42, 9);
     ctx.restore();
   }
   if (Game.wordEcho) {
@@ -852,15 +1154,20 @@ function drawCombatText() {
   }
   if (Game.banner) {
     const scale = 1 + Math.min(.2, Game.banner.timer * .08);
-    ctx.save(); ctx.translate(W / 2, H * .54); ctx.scale(scale, scale);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '950 ' + (W < 560 ? 28 : 44) + 'px system-ui,sans-serif';
+    const introBanner = Game.state === 'intro';
+    ctx.save(); ctx.translate(W / 2, introBanner ? H * .63 : H * .54); ctx.scale(scale, scale);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '950 ' + (introBanner ? (W < 560 ? 14 : 18) : (W < 560 ? 28 : 44)) + 'px system-ui,sans-serif';
     ctx.strokeStyle = 'rgba(8,5,17,.92)'; ctx.lineWidth = 10; ctx.fillStyle = Game.banner.color; ctx.shadowColor = Game.banner.color; ctx.shadowBlur = 18;
     ctx.strokeText(Game.banner.text, 0, 0); ctx.fillText(Game.banner.text, 0, 0); ctx.restore();
   }
   if (Game.state === 'intro') {
-    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const roundPhase = Game.introTimer > .72;
+    const age = roundPhase ? 1.45 - Game.introTimer : .72 - Game.introTimer;
+    const introScale = 1.28 - easeOut(age / .22) * .28;
+    ctx.save(); ctx.translate(W / 2, H * .48); ctx.scale(introScale, introScale); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.globalAlpha = clamp(age / .08, 0, 1);
     ctx.fillStyle = '#fff1b0'; ctx.font = '950 ' + (W < 560 ? 38 : 66) + 'px system-ui,sans-serif'; ctx.shadowColor = '#ff9c55'; ctx.shadowBlur = 24;
-    ctx.fillText(Game.introTimer > .72 ? 'ROUND ' + Game.round : 'FIGHT!', W / 2, H * .48); ctx.restore();
+    ctx.fillText(roundPhase ? 'ROUND ' + Game.round : 'FIGHT!', 0, 0); ctx.restore();
   }
 }
 
@@ -868,6 +1175,9 @@ function render() {
   const scaleX = canvas.width / W, scaleY = canvas.height / H;
   ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
   ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  const zoom = 1 + Game.cameraPunch;
+  ctx.translate(W / 2, H * .58); ctx.scale(zoom, zoom); ctx.translate(-W / 2, -H * .58);
   drawArena();
   const shakeX = Game.shake > 0 ? Math.sin(Game.time * 67) * Game.shake * 15 : 0;
   const shakeY = Game.shake > 0 ? Math.cos(Game.time * 53) * Game.shake * 6 : 0;
@@ -877,6 +1187,7 @@ function render() {
   if (Game.enemy) drawFighter(Game.enemy);
   if (Game.player) drawFighter(Game.player);
   drawParticles();
+  ctx.restore();
   ctx.restore();
   drawCombatText();
   if (Game.flash > 0) { ctx.fillStyle = 'rgba(255,244,207,' + Game.flash + ')'; ctx.fillRect(0, 0, W, H); }
@@ -895,7 +1206,7 @@ function resize() {
 const lastTap = { left: 0, right: 0 };
 window.addEventListener('keydown', (event) => {
   const code = event.code;
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'KeyJ', 'KeyK', 'KeyL', 'KeyI', 'ShiftLeft', 'ShiftRight'].includes(code)) event.preventDefault();
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'KeyA', 'KeyD', 'KeyW', 'KeyS', 'KeyJ', 'KeyK', 'KeyL', 'KeyU', 'KeyI', 'ShiftLeft', 'ShiftRight'].includes(code)) event.preventDefault();
   if (code === 'ArrowLeft' || code === 'KeyA') {
     if (!event.repeat) { const now = performance.now(); if (now - lastTap.left < 270) dashPlayer(-1); lastTap.left = now; }
     input.left = true;
@@ -910,6 +1221,7 @@ window.addEventListener('keydown', (event) => {
   if (!event.repeat && code === 'KeyJ') moveCommand(Game.player, 'punch', Game.enemy);
   if (!event.repeat && code === 'KeyK') moveCommand(Game.player, 'kick', Game.enemy);
   if (!event.repeat && code === 'KeyL') moveCommand(Game.player, 'special', Game.enemy);
+  if (!event.repeat && code === 'KeyU') moveCommand(Game.player, 'evade', Game.enemy);
   if ((code === 'KeyP' || code === 'Escape') && !event.repeat) togglePause();
   if (code === 'KeyM' && !event.repeat) toggleMute();
   if (code === 'Enter' && !event.repeat && (Game.state === 'menu' || Game.state === 'over')) startGame();
@@ -971,10 +1283,14 @@ window.addEventListener('orientationchange', () => setTimeout(resize, 160));
 
 resize();
 let lastTime = performance.now();
+let accumulator = 0;
 function frame(now) {
-  const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
+  const dt = Math.min(.05, (now - lastTime) / 1000 || .016);
   lastTime = now;
-  if (['playing', 'intro', 'ending'].includes(Game.state)) update(dt);
+  accumulator = Math.min(.1, accumulator + dt);
+  if (['playing', 'intro', 'ending'].includes(Game.state)) {
+    while (accumulator >= 1 / 60) { update(1 / 60); accumulator -= 1 / 60; }
+  } else accumulator = 0;
   render();
   requestAnimationFrame(frame);
 }
@@ -1000,7 +1316,21 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         throw new Error('clean hit failed started=' + cleanStarted + ' dx=' + Math.round(Game.enemy.x - Game.player.x) + ' face=' + Game.player.facing + ' hp=' + healthBefore + '→' + Game.enemy.health + ' word=' + progressBefore + '→' + Game.word.progress);
       }
 
-      Game.enemy.hitstun = 0; Game.enemy.action = null; Game.enemy.guard = 100; Game.enemy.blocking = true; Game.enemy.ai.blockFor = 1;
+      Game.word = { en: 'FIGHTING', zh: '格斗', progress: 0 };
+      Game.combo = 0; Game.comboTimer = 0;
+      Game.player.action = null; Game.player.queued = null; Game.player.chainWindow = 0; Game.player.chainStep = 0;
+      Game.enemy.health = 999; Game.enemy.maxHealth = 999; Game.enemy.hitstun = 0; Game.enemy.knockdown = 0; Game.enemy.inv = 0; Game.enemy.onGround = true; Game.enemy.y = floorY(); Game.enemy.blocking = false;
+      const comboRoute = [];
+      for (let hit = 0; hit < 3; hit++) {
+        Game.player.x = W * .42; Game.enemy.x = Game.player.x + 82; Game.player.facing = 1; Game.enemy.facing = -1;
+        moveCommand(Game.player, 'punch', Game.enemy);
+        comboRoute.push(Game.player.action?.name);
+        for (let i = 0; i < 40; i++) update(1 / 120);
+        Game.enemy.hitstun = 0; Game.enemy.inv = 0;
+      }
+      if (comboRoute.join(',') !== 'punch1,punch2,punch3' || Game.combo < 3 || Game.enemy.knockdown <= 0) throw new Error('three-hit route or knockdown failed');
+
+      Game.enemy.hitstun = 0; Game.enemy.knockdown = 0; Game.enemy.wakeup = 0; Game.enemy.inv = 0; Game.enemy.onGround = true; Game.enemy.y = floorY(); Game.enemy.action = null; Game.enemy.guard = 100; Game.enemy.blocking = true; Game.enemy.ai.blockFor = 1;
       Game.player.action = null; Game.player.chainWindow = 0; Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
       const blockedHealth = Game.enemy.health;
       moveCommand(Game.player, 'punch', Game.enemy);
@@ -1013,7 +1343,15 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       for (let i = 0; i < 45; i++) update(1 / 120);
       if (Game.enemy.guard !== 0 || Game.enemy.hitstun <= 0) throw new Error('guard break failed');
 
-      Game.player.action = null; Game.enemy.hitstun = 0; Game.enemy.blocking = false; Game.enemy.ai.blockFor = 0;
+      Game.player.action = null; Game.player.hitstun = 0; Game.player.blockstun = .1; Game.player.knockdown = 0; Game.player.wakeup = 0; Game.player.evade = 0; Game.player.onGround = true; Game.player.power = 30; Game.player.health = 100; Game.player.facing = 1;
+      Game.enemy.x = Game.player.x + 70; Game.enemy.facing = -1;
+      if (!moveCommand(Game.player, 'evade', Game.enemy) || Game.player.power !== 5 || Game.player.blockstun !== 0) throw new Error('guard cancel evade failed');
+      const evadeHealth = Game.player.health;
+      if (receiveHit(Game.player, Game.enemy, MOVES.punch1, 'punch1') || Game.player.health !== evadeHealth) throw new Error('evade invulnerability failed');
+      if (!receiveHit(Game.player, Game.enemy, MOVES.throw, 'throw') || Game.player.health >= evadeHealth) throw new Error('throw must catch evade');
+
+      Game.player.action = null; Game.player.hitstun = 0; Game.player.blockstun = 0; Game.player.knockdown = 0; Game.player.wakeup = 0; Game.player.evade = 0; Game.player.inv = 0; Game.player.onGround = true; Game.player.y = floorY();
+      Game.enemy.hitstun = 0; Game.enemy.blocking = false; Game.enemy.ai.blockFor = 0;
       Game.player.x = W * .25; Game.enemy.x = W * .72; Game.player.facing = 1; Game.enemy.facing = -1;
       Game.player.power = 100; const specialHealth = Game.enemy.health;
       moveCommand(Game.player, 'special', Game.enemy);

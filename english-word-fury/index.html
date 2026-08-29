@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#100e1b">
 <title>单词斗魂 · WORD FURY</title>
-<link rel="stylesheet" href="style.css?v=20260829a">
+<link rel="stylesheet" href="style.css?v=20260829b">
 </head>
 <body>
 <main id="game-wrap" aria-label="单词斗魂格斗游戏区">
@@ -46,6 +46,7 @@
       <button id="block-btn" data-hold="block" aria-label="格挡">防</button>
       <button id="punch-btn" data-action="punch" aria-label="拳击">拳</button>
       <button id="kick-btn" data-action="kick" aria-label="踢击">腿</button>
+      <button id="evade-btn" data-action="evade" aria-label="紧急闪避">闪</button>
       <button id="special-btn" data-action="special" aria-label="必杀技">必杀</button>
     </div>
   </section>
@@ -67,8 +68,9 @@
       </div>
       <button class="primary" id="start-btn" type="button">踏上无限擂台</button>
       <div class="howto">
-        <p>电脑：A/D 移动，W 跳跃，S 下蹲，J 拳，K 腿，L 必杀，I/Shift 格挡；向后也会自动防御。</p>
-        <p>进阶：双击方向冲刺；贴身按前+拳投技；拳后接腿可取消硬直；敌人发光蓄力时抢攻会触发破招。</p>
+        <p>电脑：A/D 移动，W 跳跃，S 下蹲，J 拳，K 腿，L 必杀，U 闪避，I/Shift 格挡；向后也会自动防御。</p>
+        <p>连段：J-J-J 三连拳；J-J-K 击倒终结；S+K 下段扫腿；W+K 空中踢；贴身前+J 投技。</p>
+        <p>立回：双击方向冲刺/后撤；方向+U 紧急闪避；防御中 U 消耗 25 斗气取消；敌人发光时抢攻会破招。</p>
       </div>
     </div>
   </section>
@@ -100,6 +102,6 @@
 <script src="../shared/vocabulary.js?v=20260820a"></script>
 <script src="../shared/audio.js?v=20260819a"></script>
 <script src="../shared/chip-music.js?v=6"></script>
-<script src="game.js?v=20260829b"></script>
+<script src="game.js?v=20260829c"></script>
 </body>
 </html>
