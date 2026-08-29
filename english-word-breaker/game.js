@@ -22,6 +22,13 @@ const DIFFS = {
   hard:   { ballSpeed: 360, label: '高级' },
 };
 
+const POWERUPS = {
+  multi: { label: 'M', color: '#60a5fa' },
+  wide: { label: 'W', color: '#34d399' },
+  slow: { label: 'S', color: '#c084fc' },
+  fire: { label: 'F', color: '#fb7185' },
+};
+
 /* ---------------- 工具 ---------------- */
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -43,6 +50,7 @@ const Game = {
   paddle: null,
   feedback: '', feedbackUntil: 0,
   fireTimer: 0,
+  dropMeter: 0,
 };
 
 function newPaddle() {
@@ -155,7 +163,7 @@ function buildLevel() {
 
   Game.paddle = newPaddle();
   Game.balls = [Object.assign(newBall(W / 2, Game.paddle.y - 12), { stuck: true })];
-  Game.powerups = []; Game.particles = []; Game.floaters = [];
+  Game.particles = []; Game.floaters = [];
   updateHud();
   showFeedback(`第 ${Game.level} 关 · 拼出「${Game.word.zh}」`);
 }
@@ -164,6 +172,7 @@ function startGame() {
   Game.score = 0; Game.lives = 3; Game.level = 1;
   Game.wordsDone = 0; Game.bestCombo = 0;
   Game.time = 0; Game.shake = 0; Game.fireTimer = 0;
+  Game.dropMeter = 0; Game.powerups = [];
   Game.state = 'playing';
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
@@ -358,9 +367,10 @@ function hitBrick(k, idx) {
   Game.score += 20;
   burst(k.x + k.w / 2, k.y + k.h / 2, `hsl(${k.hue},70%,62%)`, 8);
   if (k.letter) collectLetter(k);
-  // 道具掉落
-  if (Math.random() < .13) {
-    const kinds = ['multi', 'wide', 'slow', 'fire'];
+  // 每破四块必掉一个字母胶囊；计量与正在下落的胶囊都跨关保留。
+  if (++Game.dropMeter >= 4) {
+    Game.dropMeter = 0;
+    const kinds = Object.keys(POWERUPS);
     Game.powerups.push({ x: k.x + k.w / 2, y: k.y, kind: kinds[Math.floor(Math.random() * kinds.length)], phase: Math.random() * TAU });
   }
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .1, 1.3);
@@ -532,16 +542,18 @@ function render() {
     }
 
     // 道具
-    const icons = { multi: '⚡', wide: '📏', slow: '🐢', fire: '🔥' };
     for (const u of Game.powerups) {
+      const spec = POWERUPS[u.kind];
       ctx.save();
       ctx.translate(u.x, u.y);
-      ctx.rotate(Math.sin(Game.time * 3 + u.phase) * .2);
-      ctx.fillStyle = 'rgba(12,21,36,.92)';
-      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.roundRect(-13, -11, 26, 22, 6); ctx.fill(); ctx.stroke();
-      ctx.font = '13px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(icons[u.kind], 0, 1);
+      ctx.rotate(Math.sin(Game.time * 3 + u.phase) * .08);
+      ctx.shadowColor = spec.color; ctx.shadowBlur = 14;
+      ctx.fillStyle = 'rgba(8,17,31,.96)';
+      ctx.strokeStyle = spec.color; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.roundRect(-18, -11, 36, 22, 11); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#f8fafc'; ctx.font = '900 14px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(spec.label, 0, 1);
       ctx.restore();
     }
 
@@ -667,6 +679,19 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       startGame();
       if (Game.state !== 'playing' || !Game.bricks.length) throw new Error('start failed');
       if (Game.player_check) throw new Error('nope');
+      const ordinary = Game.bricks.filter((brick) => !brick.letter).slice(0, 4);
+      for (const brick of ordinary) {
+        brick.hp = 1;
+        hitBrick(brick, Game.bricks.indexOf(brick));
+      }
+      if (Game.powerups.length !== 1) throw new Error('guaranteed powerup drop failed');
+      const capsule = Game.powerups[0];
+      buildLevel();
+      if (!Game.powerups.includes(capsule)) throw new Error('powerup did not survive level change');
+      capsule.kind = 'wide'; capsule.x = Game.paddle.x + Game.paddle.w / 2; capsule.y = Game.paddle.y - 12;
+      const paddleWidth = Game.paddle.w;
+      update(.01);
+      if (Game.powerups.includes(capsule) || Game.paddle.w <= paddleWidth) throw new Error('powerup pickup failed');
       // 字母数=单词长度
       const letterCount = Game.bricks.filter((b) => b.letter).length;
       if (letterCount !== Game.word.en.length) throw new Error('letter count mismatch');

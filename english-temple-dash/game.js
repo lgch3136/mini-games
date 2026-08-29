@@ -11,8 +11,7 @@ const HORIZON_Y = 142;
 const PLAYER_GROUND_Y = 510;
 const MAX_Z = 145;
 const TAU = Math.PI * 2;
-const LANE_MARKER_SPACING = 46;
-const LANE_MARKER_RATE = 4.2;
+const LANE_MARKER_WORLD = 18;
 
 const DIFFICULTIES = {
   easy: { speed: 29, density: .82, label: '初级' },
@@ -21,10 +20,10 @@ const DIFFICULTIES = {
 };
 
 const BIOMES = [
-  { name: '日升神庙', road: '#445149', edge: '#e4bd63', gravity: 1260, laneRate: 14, jump: 545, jumpType: 'log', blockType: 'root' },
-  { name: '悬桥峡谷', road: '#6a4932', edge: '#efc36f', gravity: 1320, laneRate: 13.5, jump: 560, jumpType: 'pit', blockType: 'pillar' },
-  { name: '暴雨古城', road: '#28505a', edge: '#a7d8d4', gravity: 1280, laneRate: 12.5, jump: 530, jumpType: 'arch', blockType: 'puddle' },
-  { name: '月晶遗迹', road: '#2b3b5c', edge: '#e1bd68', gravity: 780, laneRate: 13, jump: 470, jumpType: 'beam', blockType: 'crystal' },
+  { name: '日升神庙', road: '#5b604d', shoulder: '#20372b', edge: '#e4bd63', gravity: 1260, laneRate: 14, jump: 545, jumpType: 'log', blockType: 'root' },
+  { name: '悬桥峡谷', road: '#75533c', shoulder: '#4a3021', edge: '#efc36f', gravity: 1320, laneRate: 13.5, jump: 560, jumpType: 'pit', blockType: 'pillar' },
+  { name: '暴雨古城', road: '#355d64', shoulder: '#17383e', edge: '#a7d8d4', gravity: 1280, laneRate: 12.5, jump: 530, jumpType: 'arch', blockType: 'puddle' },
+  { name: '月晶遗迹', road: '#3b4c72', shoulder: '#202944', edge: '#e1bd68', gravity: 780, laneRate: 13, jump: 470, jumpType: 'beam', blockType: 'crystal' },
 ];
 
 const ASSETS = {};
@@ -222,7 +221,7 @@ function spawnRelicTrail(lane, z) {
 
 function spawnPattern() {
   const biome = BIOMES[Game.biome];
-  const pattern = Game.pattern++ % 8;
+  const pattern = Game.pattern++ % 12;
   const lane = Math.floor(Math.random() * 3) - 1;
   const other = lane === -1 ? 1 : -1;
   let safeLane = other;
@@ -257,11 +256,38 @@ function spawnPattern() {
     addObject(biome.jumpType, lane, MAX_Z);
     addObject(Game.biome === 3 ? 'beam' : 'arch', lane, MAX_Z + 31);
     for (let i = 0; i < 4; i++) addObject('relic', lane, MAX_Z + 8 + i * 7);
-  } else {
+  } else if (pattern === 7) {
     // 蛇形穿门：每个截面只封一条泳道，可连续预判换道。
     [-1, 0, 1].forEach((blocked, index) => addObject(biome.blockType, blocked, MAX_Z + index * 17));
     [1, -1, 0].forEach((route, index) => addObject('relic', route, MAX_Z + index * 17 + 5));
     safeLane = 0;
+  } else if (pattern === 8) {
+    // 连跳节奏：同一泳道两次起跳，遗物给出落点和第二次起跳时机。
+    safeLane = lane;
+    addObject(biome.jumpType, lane, MAX_Z);
+    addObject(biome.jumpType, lane, MAX_Z + 34);
+    for (let i = 0; i < 5; i++) addObject('relic', lane, MAX_Z + 7 + i * 7);
+  } else if (pattern === 9) {
+    // 先走中央，再按遗物提示切到侧道，避免一眼看穿整段答案。
+    const exit = Math.random() < .5 ? -1 : 1;
+    addObject(biome.blockType, -1, MAX_Z);
+    addObject(biome.blockType, 1, MAX_Z);
+    addObject(biome.blockType, 0, MAX_Z + 27);
+    [0, 0, exit, exit].forEach((route, index) => addObject('relic', route, MAX_Z + 5 + index * 8));
+    safeLane = exit;
+  } else if (pattern === 10) {
+    // 左右交替的短促换道，截面始终只封一条泳道。
+    const side = Math.random() < .5 ? -1 : 1;
+    [side, -side, side].forEach((blocked, index) => addObject(biome.blockType, blocked, MAX_Z + index * 18));
+    [-side, side, 0].forEach((route, index) => addObject('relic', route, MAX_Z + index * 18 + 5));
+    safeLane = 0;
+  } else {
+    // 高风险奖励线：中央连续动作，侧道可安全绕行。
+    safeLane = other;
+    addObject(biome.jumpType, lane, MAX_Z);
+    addObject(Game.biome === 3 ? 'beam' : 'arch', lane, MAX_Z + 31);
+    addObject('boost', lane, MAX_Z + 18);
+    spawnRelicTrail(other, MAX_Z + 4);
   }
 
   if (Game.pattern % 2 === 0 && Game.currentWord) {
@@ -504,10 +530,7 @@ function update(dt) {
 
 function roadCenter(z) {
   const near = 1 - clamp(z / MAX_Z, 0, 1);
-  const curve = Game.biome === 1 ? Math.sin((Game.travel + z) * .018) * 58
-    : Game.biome === 2 ? Math.sin((Game.travel + z) * .011) * 24
-      : Game.biome === 3 ? Math.sin((Game.travel + z) * .014) * 34 : 0;
-  return VIEW_W / 2 + (curve + Game.turnVisual * 118) * near;
+  return VIEW_W / 2 + Game.turnVisual * 118 * near;
 }
 
 function project(lane, z) {
@@ -518,17 +541,10 @@ function project(lane, z) {
   return { x: roadCenter(z) + lane * halfRoad * .54, y, scale: lerp(.16, 1.2, eased), halfRoad };
 }
 
-function laneMarkerOffset(travel) {
-  return travel * LANE_MARKER_RATE % LANE_MARKER_SPACING;
-}
-
-function zAtScreenY(y) {
-  const depth = Math.sqrt(clamp((y - HORIZON_Y) / (PLAYER_GROUND_Y - HORIZON_Y), 0, 1));
-  return MAX_Z * (1 - depth);
-}
-
 function drawBackground() {
   const biome = Game.biome;
+  ctx.fillStyle = BIOMES[biome].shoulder;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   if (ASSETS.biomes.complete && ASSETS.biomes.naturalWidth) {
     const sourceH = ASSETS.biomes.naturalHeight / 4;
     const destH = 338;
@@ -547,7 +563,10 @@ function drawRoad() {
   const biome = BIOMES[Game.biome];
   const farCenter = roadCenter(MAX_Z);
   const nearCenter = roadCenter(0);
-  ctx.fillStyle = '#0b1714';
+  const shoulderGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, VIEW_H);
+  shoulderGrad.addColorStop(0, shadeColor(biome.shoulder, -.28));
+  shoulderGrad.addColorStop(1, shadeColor(biome.shoulder, .06));
+  ctx.fillStyle = shoulderGrad;
   ctx.beginPath(); ctx.moveTo(farCenter - 55, HORIZON_Y); ctx.lineTo(farCenter + 55, HORIZON_Y); ctx.lineTo(VIEW_W + 80, VIEW_H); ctx.lineTo(-80, VIEW_H); ctx.closePath(); ctx.fill();
   // 路基渐变：远处压暗融入雾气，近处提亮，强化纵深（大气透视）
   const roadGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, VIEW_H);
@@ -574,14 +593,21 @@ function drawRoad() {
     const leftNear = project(-1.82, Math.max(1, zz - SLAB_WORLD * .5));
     const rightNear = project(1.82, Math.max(1, zz - SLAB_WORLD * .5));
     const depth = clamp((yFar - HORIZON_Y) / (VIEW_H - HORIZON_Y), 0, 1);
-    // 交替石板: 极轻的暖色差(±3%), 远处几乎不可见 —— 有节奏但不刺眼
+    // 三列石板用固定世界编号着色，既能读出泳道，也不会随帧闪烁。
     const slabIdx = firstSlab + si;
-    const alt = slabIdx % 2 === 0;
-    ctx.fillStyle = 'rgba(255,238,190,' + (alt ? .04 + depth * .045 : .012) + ')';
-    ctx.beginPath();
-    ctx.moveTo(leftFar.x, leftFar.y); ctx.lineTo(rightFar.x, rightFar.y);
-    ctx.lineTo(rightNear.x, rightNear.y); ctx.lineTo(leftNear.x, leftNear.y);
-    ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.globalAlpha = .08 + depth * .12;
+    for (let laneIndex = 0; laneIndex < 3; laneIndex++) {
+      const laneLeft = -1.5 + laneIndex;
+      const laneRight = laneLeft + 1;
+      const lf = project(laneLeft, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
+      const rf = project(laneRight, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
+      const ln = project(laneLeft, Math.max(1, zz - SLAB_WORLD * .5));
+      const rn = project(laneRight, Math.max(1, zz - SLAB_WORLD * .5));
+      const tone = (((slabIdx * 17 + laneIndex * 11) % 5) - 2) * .025;
+      ctx.fillStyle = shadeColor(biome.road, tone);
+      ctx.beginPath(); ctx.moveTo(lf.x, lf.y); ctx.lineTo(rf.x, rf.y); ctx.lineTo(rn.x, rn.y); ctx.lineTo(ln.x, ln.y); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
     // 横缝: 近处清晰远处淡出(大气透视), 无高对比
     const seamAlpha = .10 + depth * .14;
     ctx.strokeStyle = 'rgba(8,14,11,' + seamAlpha + ')';
@@ -590,36 +616,37 @@ function drawRoad() {
     ctx.moveTo(leftNear.x, leftNear.y);
     ctx.lineTo(rightNear.x, rightNear.y);
     ctx.stroke();
+    ctx.save(); ctx.globalAlpha = .28 + depth * .22;
+    for (const side of [-1, 1]) {
+      const outerFar = project(side * 1.82, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
+      const innerFar = project(side * 1.58, Math.min(MAX_Z, zz + SLAB_WORLD * .5));
+      const outerNear = project(side * 1.82, Math.max(1, zz - SLAB_WORLD * .5));
+      const innerNear = project(side * 1.58, Math.max(1, zz - SLAB_WORLD * .5));
+      ctx.fillStyle = shadeColor(biome.edge, slabIdx % 2 ? -.26 : -.1);
+      ctx.beginPath(); ctx.moveTo(outerFar.x, outerFar.y); ctx.lineTo(innerFar.x, innerFar.y); ctx.lineTo(innerNear.x, innerNear.y); ctx.lineTo(outerNear.x, outerNear.y); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
   }
-  // 中央引导虚线：透视收缩，滚动
-  const dashOffset = (Game.travel * LANE_MARKER_RATE) % (LANE_MARKER_SPACING * 2);
-  ctx.strokeStyle = 'rgba(246,231,183,.30)';
-  ctx.setLineDash([26, 22]);
-  ctx.lineDashOffset = dashOffset;
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(roadCenter(90), HORIZON_Y + 6); ctx.lineTo(nearCenter, PLAYER_GROUND_Y + 40); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.lineDashOffset = 0;
   // 路缘石：亮色描边加宽，明确"台面"边界
-  ctx.strokeStyle = shadeColor(biome.edge, .08); ctx.lineWidth = 4;
+  ctx.strokeStyle = shadeColor(biome.edge, .08); ctx.lineWidth = 2.5;
   ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.stroke();
 
-  const markerOffset = laneMarkerOffset(Game.travel);
+  const firstMarker = Math.floor(Game.travel / LANE_MARKER_WORLD) + 1;
   for (const boundary of [-.5, .5]) {
     ctx.strokeStyle = 'rgba(238,226,185,.14)'; ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let y = HORIZON_Y; y <= PLAYER_GROUND_Y; y += 18) {
-      const point = project(boundary, zAtScreenY(y));
-      if (y === HORIZON_Y) ctx.moveTo(point.x, y); else ctx.lineTo(point.x, y);
-    }
-    ctx.stroke();
-    for (let y = HORIZON_Y + markerOffset; y < PLAYER_GROUND_Y; y += LANE_MARKER_SPACING) {
-      const endY = Math.min(PLAYER_GROUND_Y, y + 16);
-      const a = project(boundary, zAtScreenY(y));
-      const b = project(boundary, zAtScreenY(endY));
+    const far = project(boundary, MAX_Z);
+    const near = project(boundary, 0);
+    ctx.beginPath(); ctx.moveTo(far.x, far.y); ctx.lineTo(near.x, near.y); ctx.stroke();
+    for (let i = 0; i < 10; i++) {
+      const zFar = (firstMarker + i) * LANE_MARKER_WORLD - Game.travel;
+      const zNear = zFar - LANE_MARKER_WORLD * .42;
+      if (zFar < 1 || zNear > MAX_Z) continue;
+      const a = project(boundary, clamp(zFar, 1, MAX_Z));
+      const b = project(boundary, clamp(zNear, 1, MAX_Z));
+      const depth = clamp((b.y - HORIZON_Y) / (PLAYER_GROUND_Y - HORIZON_Y), 0, 1);
       ctx.strokeStyle = 'rgba(246,231,183,.42)';
-      ctx.lineWidth = 1.2 + (y - HORIZON_Y) / (PLAYER_GROUND_Y - HORIZON_Y) * 1.4;
+      ctx.lineWidth = 1.2 + depth * 1.4;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     }
   }
@@ -640,51 +667,20 @@ function shadeColor(hex, amount) {
   return 'rgb(' + r + ',' + g + ',' + b + ')';
 }
 
-function drawEdgeScenery() {
-  for (let i = 0; i < 9; i++) {
-    const z = ((i * 19 - Game.travel) % MAX_Z + MAX_Z) % MAX_Z;
-    if (z < 6) continue;
-    for (const side of [-1, 1]) {
-      const point = project(side * 1.55, z);
-      const scale = point.scale;
-      ctx.save(); ctx.translate(point.x, point.y);
-      if (Game.biome === 0) {
-        ctx.restore();
-        continue;
-      } else if (Game.biome === 1) {
-        ctx.fillStyle = '#6b4429'; ctx.fillRect(-14 * scale, -58 * scale, 28 * scale, 58 * scale);
-        ctx.fillStyle = '#c18a52'; ctx.fillRect(-18 * scale, -61 * scale, 36 * scale, 7 * scale);
-      } else if (Game.biome === 2) {
-        ctx.fillStyle = '#17343a'; ctx.fillRect(-10 * scale, -66 * scale, 20 * scale, 66 * scale);
-        ctx.fillStyle = '#8fc5c2'; ctx.fillRect(-12 * scale, -55 * scale, 24 * scale, 3 * scale);
-      } else {
-        ctx.fillStyle = '#c5a04c';
-        ctx.beginPath(); ctx.moveTo(-16 * scale, 0); ctx.lineTo(0, -64 * scale); ctx.lineTo(15 * scale, 0); ctx.closePath(); ctx.fill();
-      }
-      ctx.restore();
-    }
-  }
-}
-
 // 危险物清单: 警示红描边标记"会撞死你的东西"
 const LETHAL_TYPES = new Set(['log', 'rock', 'pillar', 'root', 'arch', 'crystal', 'beam']);
 function drawObject(object) {
   if (object.z > MAX_Z + 30 || object.z < -8) return;
   const point = project(object.lane, Math.max(0, object.z));
   const s = point.scale;
-  // 雾中淡入: 远处物体被地平线雾色遮盖, 从黑暗中浮现(纵深+消除生成突兀)
+  // 雾中淡入只作用于物体本身，不能再画贯穿屏幕的遮罩柱。
   const fogStartZ = MAX_Z * .55;
-  if (object.z > fogStartZ && !object.taken && !object.passed) {
-    const fogA = clamp((object.z - fogStartZ) / (MAX_Z + 20 - fogStartZ), 0, 1);
-    ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = 'rgba(11,23,19,' + (fogA * .92) + ')';
-    ctx.fillRect(point.x - 60 * s - 8, HORIZON_Y, 120 * s + 16, VIEW_H - HORIZON_Y);
-    ctx.restore();
-  }
+  const fogAlpha = object.z > fogStartZ
+    ? 1 - clamp((object.z - fogStartZ) / (MAX_Z + 20 - fogStartZ), 0, 1) * .84 : 1;
   // 统一接地软阴影：伪3D可信度的生命线（随高度略缩放）
   if (object.type !== 'beam' && object.type !== 'puddle') {
     ctx.save();
+    ctx.globalAlpha = fogAlpha;
     ctx.fillStyle = 'rgba(4,12,9,.34)';
     ctx.beginPath();
     ctx.ellipse(point.x, point.y + 2, 26 * s, 6.5 * s, 0, 0, TAU);
@@ -699,7 +695,7 @@ function drawObject(object) {
     }
     ctx.restore();
   }
-  ctx.save(); ctx.translate(point.x, point.y);
+  ctx.save(); ctx.globalAlpha = fogAlpha; ctx.translate(point.x, point.y);
   if (object.type === 'relic') {
     ctx.translate(0, -28 * s); ctx.rotate(Game.time * 2 + object.phase);
     ctx.fillStyle = '#d4a849'; ctx.strokeStyle = '#f7df9b'; ctx.lineWidth = Math.max(1, 2 * s);
@@ -771,18 +767,17 @@ function drawPlayer() {
 }
 
 function drawPursuer() {
+  const danger = clamp((Game.chase - .38) / .62, 0, 1);
+  if (!danger) return;
   const point = project(Game.player.lanePos, 0);
-  const closeness = clamp(Game.chase, 0, 1);
-  const y = VIEW_H + 34 - closeness * 92;
-  const s = .55 + closeness * .72;
-  ctx.save(); ctx.translate(point.x, y); ctx.scale(s, s);
-  ctx.fillStyle = 'rgba(5,12,10,.88)';
-  ctx.beginPath(); ctx.ellipse(0, 16, 46, 50, 0, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc(0, -18, 30, 0, TAU); ctx.fill();
-  ctx.fillStyle = closeness > .7 ? '#ff6b4f' : '#e8c56e';
-  ctx.beginPath(); ctx.arc(-10, -22, 3.5, 0, TAU); ctx.arc(10, -22, 3.5, 0, TAU); ctx.fill();
-  ctx.strokeStyle = 'rgba(8,16,13,.9)'; ctx.lineWidth = 12; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-28, 8); ctx.lineTo(-58, -8); ctx.moveTo(28, 8); ctx.lineTo(58, -8); ctx.stroke();
+  const glow = ctx.createRadialGradient(point.x, VIEW_H + 24, 8, point.x, VIEW_H + 24, 150);
+  glow.addColorStop(0, 'rgba(255,82,48,' + (.28 * danger) + ')');
+  glow.addColorStop(1, 'rgba(3,10,8,0)');
+  ctx.fillStyle = glow; ctx.fillRect(point.x - 170, VIEW_H - 96, 340, 110);
+  ctx.save(); ctx.globalAlpha = .4 + danger * .6; ctx.translate(point.x, VIEW_H - 5 + (1 - danger) * 20);
+  ctx.fillStyle = danger > .58 ? '#ff6b4f' : '#e8c56e';
+  ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.ellipse(-12, 0, 5, 2.5, -.18, 0, TAU); ctx.ellipse(12, 0, 5, 2.5, .18, 0, TAU); ctx.fill();
   ctx.restore();
 }
 
@@ -880,7 +875,7 @@ function render() {
   const shakeX = shakeAmp > 0 ? Math.sin(Game.time * 46) * shakeAmp * 11 : 0;
   const shakeY = shakeAmp > 0 ? Math.cos(Game.time * 39) * shakeAmp * 5 : 0;
   ctx.save(); ctx.translate(shakeX, shakeY);
-  drawBackground(); drawRoad(); drawEdgeScenery();
+  drawBackground(); drawRoad();
   [...Game.objects].sort((a, b) => b.z - a.z).forEach(drawObject);
   drawPursuer();
   drawPlayer();
@@ -989,7 +984,11 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.speedScale = 1;
       startGame();
       if (Object.keys(OBSTACLES).length !== 8 || RUNNER_BASELINES.length !== 8 || ACTION_BASELINES.length !== 4) throw new Error('generated sprite atlas mapping failed');
-      if (Math.abs((laneMarkerOffset(2) - laneMarkerOffset(1)) - (laneMarkerOffset(3) - laneMarkerOffset(2))) > .001) throw new Error('lane markers are not linear');
+      Game.turnVisual = 0;
+      if (roadCenter(0) !== VIEW_W / 2 || roadCenter(MAX_Z) !== VIEW_W / 2) throw new Error('road lanes are not straight');
+      Game.objects.length = 0; Game.pattern = 0;
+      for (let i = 0; i < 12; i++) spawnPattern();
+      if (Game.pattern !== 12 || !Game.objects.some((object) => object.type === 'boost')) throw new Error('pattern variety failed');
       if (!Game.currentWord || !(window.PROJECT_VOCAB && PROJECT_VOCAB.easy.some((item) => item.en.toUpperCase() === Game.currentWord.en))) throw new Error('project vocabulary missing');
       moveLane(1); updatePlayer(.2);
       if (!(Game.player.lanePos > 0)) throw new Error('lane change failed');
