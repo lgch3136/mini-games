@@ -103,12 +103,13 @@ const MOVES = {
 const ATTACK_ROWS = {
   closeLP: 0, farLP: 0, crouchLP: 0, airLP: 0,
   rush2: 1, closeHP: 1, farHP: 1, airHP: 1,
-  rush3: 2, closeLK: 2, farLK: 2, crouchLK: 2, sweep: 2, airLK: 2, airHK: 2,
+  rush3: 2, closeLK: 2, farLK: 2, crouchLK: 2, sweep: 2,
+  overhead: 3, blowback: 3, airLK: 3, airHK: 3,
 };
 
 const SPECIAL_ROWS = {
   uppercut: 0, exUppercut: 0,
-  rushFinish: 1, closeHK: 1, farHK: 1, overhead: 1, blowback: 1, hurricane: 1,
+  rushFinish: 1, closeHK: 1, farHK: 1, hurricane: 1,
 };
 
 const COMBAT_ROWS = { fireball: 0, exFireball: 0, super: 1, throw: 3 };
@@ -123,13 +124,12 @@ const FRAME_ANCHORS = {
   bruiser: [[-6,-1],[4,-1],[3,-1],[20,-1],[6,-1],[-6,1],[-7,-1],[1,-1],[14,-1],[-3,10],[-35,11],[-23,10],[-4,-1],[-14,-1],[16,-1],[26,-1],[-53,15],[-24,15],[6,33],[30,32],[-9,33],[-22,33],[6,37],[-55,40]],
 };
 
-function setPoseFrame(pose, row, phase, loop = false, blendStart = .62) {
+function setPoseFrame(pose, row, phase, loop = false) {
   const position = clamp(phase, 0, loop ? 5.999 : 5);
-  const index = Math.floor(position), fraction = position - index;
+  const index = Math.floor(position);
   pose.frame = row * 6 + index;
-  const next = loop ? (index + 1) % 6 : Math.min(5, index + 1);
-  pose.nextFrame = row * 6 + next;
-  pose.frameMix = next === index ? 0 : easeOut(clamp((fraction - blendStart) / (1 - blendStart), 0, 1));
+  pose.nextFrame = undefined;
+  pose.frameMix = 0;
 }
 
 function paintSpriteCell(image, sourceW, sourceH, drawW, drawH, frame, anchor, opacity) {
@@ -493,7 +493,7 @@ function moveCommand(fighter, command, opponent) {
     return true;
   }
 
-  const moveName = resolveMoveName(fighter, command, opponent);
+  const moveName = MOVES[command] ? command : resolveMoveName(fighter, command, opponent);
   const spec = MOVES[moveName];
   if (!spec) return false;
   const guardBlowback = command === 'blowback' && fighter.blockstun > 0;
@@ -620,7 +620,13 @@ function updateAI(dt) {
     e.ai.windup = tell;
     e.intent = 0;
   };
-  e.ai.think = rand(.2, .44) / conf.ai;
+  e.ai.think = rand(.14, .32) / conf.ai;
+
+  if (!e.onGround) {
+    e.intent = e.facing;
+    if (distance < 150 && e.ai.attackCd <= 0 && roll < .72 * conf.ai) commit(roll < .42 ? 'lightKick' : 'heavyKick', reaction * .3);
+    return;
+  }
 
   if (e.power >= 100 && e.maxMode <= 0 && e.health / e.maxHealth < .42 && roll < .08 * conf.ai) {
     moveCommand(e, 'max', p);
@@ -901,7 +907,6 @@ function receiveHit(target, attacker, spec, moveName) {
     target.vy = spec.lift || -105;
     target.onGround = false;
   } else if (spec.lift) { target.vy = spec.lift; target.onGround = false; }
-  target.inv = .035;
   target.flash = spec.heavy ? .07 : .045;
   gainPower(attacker, dealt * 1.35);
   spawnImpact(target.x - target.facing * 16, target.y - (target.crouching ? 72 : 118), attacker.side === 'player' ? '#ffd86e' : '#ff6f9d', false);
@@ -963,10 +968,8 @@ function advanceWord() {
 }
 
 function spawnImpact(x, y, color, blocked) {
-  burst(x, y, color, blocked ? 6 : 11, blocked ? .55 : .85);
-  Game.particles.push({ type: 'ring', x, y, color, life: .24, max: .24, size: blocked ? 24 : 38, vx: 0, vy: 0 });
-  Game.particles.push({ type: 'core', x, y, color: '#fff8df', life: blocked ? .055 : .085, max: blocked ? .055 : .085, size: blocked ? 18 : 29, vx: 0, vy: 0 });
-  if (!blocked) Game.particles.push({ type: 'slash', x, y, color, life: .15, max: .15, size: 54, vx: rand(-18, 18), vy: rand(-8, 8), angle: rand(-.65, .65) });
+  burst(x, y, color, blocked ? 4 : 7, blocked ? .42 : .72);
+  Game.particles.push({ type: 'impact', x, y, color, life: blocked ? .09 : .13, max: blocked ? .09 : .13, size: blocked ? 20 : 34, vx: 0, vy: 0 });
 }
 
 function burst(x, y, color, count, energy = 1) {
@@ -1102,8 +1105,7 @@ function update(dt) {
   updateFighter(Game.enemy, Game.player, dt);
   resolvePendingHits();
   resolveFighterPush();
-  const separation = Math.abs(Game.player.x - Game.enemy.x);
-  const targetZoom = 1.025 + clamp(1 - separation / Math.max(300, W * .68), 0, 1) * .045;
+  const targetZoom = W < 560 ? 1.02 : 1.035;
   Game.cameraZoom += (targetZoom - Game.cameraZoom) * Math.min(1, dt * 4.5);
   Game.cameraX += (((Game.player.x + Game.enemy.x) * .5) - Game.cameraX) * Math.min(1, dt * 3.8);
   updateProjectiles(dt);
@@ -1291,15 +1293,11 @@ function drawStage() {
 
 function fighterVisual(fighter) {
   const hero = fighter.atlas === 'hero';
-  const breath = Math.sin(Game.time * 5 + (fighter.side === 'enemy' ? 1.4 : 0));
   const idleCycle = (Game.time * 2.8 + (fighter.side === 'enemy' ? .7 : 0)) % 2;
-  const pose = { frame: Math.floor(idleCycle), dx: 0, dy: breath * .65, rotate: 0, sx: 1 - breath * .002, sy: 1 + breath * .003 };
+  const pose = { frame: Math.floor(idleCycle), dx: 0, dy: 0, rotate: 0, sx: 1, sy: 1 };
   if (hero) {
     pose.sheet = 'motion'; pose.fallbackFrame = pose.frame;
     setPoseFrame(pose, 0, (Game.time * 7) % 6, true);
-  } else {
-    pose.nextFrame = (pose.frame + 1) % 2;
-    pose.frameMix = easeOut(clamp((idleCycle % 1 - .62) / .38, 0, 1));
   }
 
   if (fighter.ko || fighter.knockdown > 0) {
@@ -1307,21 +1305,21 @@ function fighterVisual(fighter) {
       pose.sheet = 'specials'; pose.fallbackFrame = 23;
       if (fighter.onGround) {
         const impact = fighter.groundImpact > 0 ? 1 - fighter.groundImpact / F(5) : 1;
-        setPoseFrame(pose, 3, 2 + clamp(impact, 0, 1), false, .42);
+        setPoseFrame(pose, 3, 2 + clamp(impact, 0, 1));
       } else setPoseFrame(pose, 3, fighter.vy < 0 ? 0 : 1, false);
     } else { pose.frame = 23; pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.dy = fighter.onGround ? 7 : 0;
   } else if (fighter.wakeup > 0) {
     if (hero) {
       pose.sheet = 'specials'; pose.fallbackFrame = fighter.wakeup > .18 ? 23 : 4;
-      setPoseFrame(pose, 3, 3 + clamp((.3 - fighter.wakeup) / .3, 0, 1) * 2, false, .5);
+      setPoseFrame(pose, 3, 3 + clamp((.3 - fighter.wakeup) / .3, 0, 1) * 2);
     } else { pose.frame = fighter.wakeup > .18 ? 23 : fighter.wakeup > .08 ? 4 : 0; pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.dy = fighter.wakeup > .18 ? 7 : 1;
   } else if (fighter.hitstun > 0) {
     if (hero) {
       pose.sheet = 'combat'; pose.fallbackFrame = fighter.hitLow ? 22 : 21;
       const progress = 1 - fighter.hitstun / Math.max(STEP, fighter.hitstunMax || fighter.hitstun);
-      setPoseFrame(pose, 2, fighter.hitLow ? 3 + progress * 2 : progress * 5, false, .5);
+      setPoseFrame(pose, 2, fighter.hitLow ? 3 + progress * 2 : progress * 5);
     } else { delete pose.sheet; pose.frame = fighter.hitLow ? 22 : 21; pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.sx = .97; pose.sy = 1.025;
   } else if (fighter.blocking) {
@@ -1331,7 +1329,7 @@ function fighterVisual(fighter) {
     pose.sx = .985; pose.sy = 1.012;
   } else if (fighter.evade > 0) {
     const progress = 1 - fighter.evade / .42;
-    if (hero) { pose.sheet = 'specials'; pose.fallbackFrame = progress < .52 ? 4 : 3; setPoseFrame(pose, 2, progress * 5, false, .5); }
+    if (hero) { pose.sheet = 'specials'; pose.fallbackFrame = progress < .52 ? 4 : 3; setPoseFrame(pose, 2, progress * 5); }
     else { pose.frame = progress < .52 ? 4 : 3; pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.rotate = -fighter.evadeDir * Math.sin(progress * Math.PI) * .08;
     pose.dy = Math.sin(progress * Math.PI) * 5;
@@ -1349,18 +1347,15 @@ function fighterVisual(fighter) {
       const framePosition = action.t < spec.start
         ? clamp(action.t / Math.max(.001, spec.start), 0, 1) * 2.9
         : action.t <= contactEnd ? 3 : 4 + recovery * 1.999;
-      setPoseFrame(pose, row, framePosition, false, .58);
+      setPoseFrame(pose, row, framePosition);
       if (action.t >= spec.start && action.t <= contactEnd) pose.frameMix = 0;
     } else {
       delete pose.sheet;
       const beforeContact = action.t < spec.start;
       const inContact = !beforeContact && action.t <= contactEnd;
-      pose.frame = beforeContact ? spec.anim[0] : spec.anim[1];
-      pose.nextFrame = beforeContact ? spec.anim[1] : inContact ? undefined : spec.anim[2];
-      const phase = beforeContact
-        ? action.t / Math.max(.001, spec.start)
-        : (action.t - contactEnd) / Math.max(.001, spec.end - contactEnd);
-      pose.frameMix = inContact ? 0 : easeOut(clamp((phase - .58) / .42, 0, 1));
+      pose.frame = beforeContact ? spec.anim[0] : inContact ? spec.anim[1] : spec.anim[2];
+      pose.nextFrame = undefined;
+      pose.frameMix = 0;
     }
     if (action.t < spec.start) {
       const startup = clamp(action.t / Math.max(.001, spec.start), 0, 1);
@@ -1388,22 +1383,13 @@ function fighterVisual(fighter) {
   } else if (!fighter.onGround) {
     if (hero) {
       pose.sheet = 'motion'; pose.fallbackFrame = 5;
-      setPoseFrame(pose, 2, 1 + clamp((fighter.vy + 420) / 840, 0, 1) * 3, false, .48);
+      setPoseFrame(pose, 2, 1 + clamp((fighter.vy + 420) / 840, 0, 1) * 3);
     } else { pose.frame = 5; pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.rotate = fighter.facing * clamp(fighter.vy / 2400, -.045, .055);
   } else if (fighter.dash > 0 || Math.abs(fighter.moveVx) > 18) {
-    const stride = Math.sin(fighter.runCycle * Math.PI);
-    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 2 + Math.floor(fighter.runCycle % 2); setPoseFrame(pose, 1, fighter.runCycle % 6, true, .58); }
-    else {
-      const runPhase = fighter.runCycle % 2, runFrame = Math.floor(runPhase);
-      pose.frame = 2 + runFrame; pose.nextFrame = 2 + (runFrame + 1) % 2;
-      pose.frameMix = easeOut(clamp((runPhase % 1 - .58) / .42, 0, 1));
-    }
-    pose.dx = fighter.facing * stride * 1.2;
-    pose.dy = Math.abs(stride) * 2.4;
-    pose.sx = 1 + Math.abs(stride) * .006;
-    pose.sy = 1 - Math.abs(stride) * .006;
-    pose.rotate = fighter.facing * clamp(fighter.moveVx / 9000, -.025, .025);
+    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 2 + Math.floor(fighter.runCycle % 2); setPoseFrame(pose, 1, fighter.runCycle % 6, true); }
+    else { pose.frame = 2 + Math.floor(fighter.runCycle % 2); pose.nextFrame = undefined; pose.frameMix = 0; }
+    pose.rotate = fighter.facing * clamp(fighter.moveVx / 12000, -.018, .018);
   }
   return pose;
 }
@@ -1441,20 +1427,6 @@ function drawFighter(fighter) {
     ctx.shadowBlur = 0;
   }
 
-  if (fighter.action && fighter.action.t >= fighter.action.spec.active - F(1) && fighter.action.t <= activeEnd(fighter.action.spec)) {
-    const spec = fighter.action.spec;
-    const isKick = spec.anim[1] === 13 || spec.anim[1] === 16 || ['sweep', 'overhead', 'hurricane'].includes(fighter.action.name);
-    const reach = Math.min(112, Math.max(58, spec.range || 74));
-    ctx.save(); ctx.translate(drawX, drawY - (spec.hitY || 100)); ctx.scale(fighter.facing, 1);
-    ctx.strokeStyle = fighter.side === 'player' ? 'rgba(119,229,255,.72)' : 'rgba(255,120,166,.7)';
-    ctx.lineWidth = spec.super ? 11 : spec.heavy ? 7 : 4; ctx.lineCap = 'round'; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 15;
-    ctx.beginPath();
-    if (spec.projectile) ctx.arc(42, 0, spec.super ? 28 : 17, 0, TAU);
-    else if (isKick || fighter.action.name === 'uppercut' || fighter.action.name === 'exUppercut') ctx.arc(2, 4, reach, -.72, .46);
-    else { ctx.moveTo(26, 2); ctx.lineTo(reach, -3); }
-    ctx.stroke(); ctx.restore();
-  }
-
   const paint = (offset, alpha) => {
     ctx.save();
     const flicker = fighter.inv > 0 && Math.floor(Game.time * 24) % 2 ? .48 : 1;
@@ -1466,9 +1438,7 @@ function drawFighter(fighter) {
     ctx.filter = ((fighter.filter === 'none' ? '' : fighter.filter) + flashFilter).trim() || 'none';
     if (image.complete && image.naturalWidth) {
       const anchors = FRAME_ANCHORS[pose.sheet || fighter.atlas] || [];
-      const mix = clamp(pose.frameMix || 0, 0, 1);
-      paintSpriteCell(image, sourceW, sourceH, drawW, drawH, pose.frame, anchors[pose.frame] || [0, 0], alpha * flicker * (1 - mix));
-      if (mix > 0 && pose.nextFrame !== undefined) paintSpriteCell(image, sourceW, sourceH, drawW, drawH, pose.nextFrame, anchors[pose.nextFrame] || [0, 0], alpha * flicker * mix);
+      paintSpriteCell(image, sourceW, sourceH, drawW, drawH, pose.frame, anchors[pose.frame] || [0, 0], alpha * flicker);
     } else {
       ctx.globalAlpha = alpha * flicker;
       ctx.fillStyle = fighter.side === 'player' ? '#32cbd3' : '#c7467d'; ctx.fillRect(-drawW * .2, -drawH * .72, drawW * .4, drawH * .72);
@@ -1533,14 +1503,14 @@ function drawParticles() {
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - p.vx / speed * length, y - p.vy / speed * length); ctx.stroke();
       continue;
     }
-    ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = p.color; ctx.fillStyle = p.color;
-    if (p.type === 'ring') {
-      ctx.lineWidth = 3 * alpha; ctx.beginPath(); ctx.arc(x, y, p.size * (1.5 - alpha), 0, TAU); ctx.stroke();
-    } else if (p.type === 'core') {
-      ctx.shadowColor = p.color; ctx.shadowBlur = 14; ctx.beginPath(); ctx.arc(x, y, p.size * alpha, 0, TAU); ctx.fill();
-    } else if (p.type === 'slash') {
-      ctx.translate(x, y); ctx.rotate(p.angle); ctx.lineWidth = 9 * alpha; ctx.lineCap = 'round'; ctx.shadowColor = p.color; ctx.shadowBlur = 10;
-      ctx.beginPath(); ctx.moveTo(-p.size * .6, 0); ctx.lineTo(p.size * .6, 0); ctx.stroke();
+    ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = p.color; ctx.fillStyle = '#fff8df';
+    if (p.type === 'impact') {
+      const radius = p.size * (.65 + (1 - alpha) * .45);
+      ctx.translate(x, y); ctx.rotate(Math.PI / 8); ctx.lineCap = 'square'; ctx.lineWidth = Math.max(2, p.size * .12 * alpha);
+      for (let i = 0; i < 8; i++) {
+        ctx.rotate(TAU / 8); ctx.beginPath(); ctx.moveTo(radius * .24, 0); ctx.lineTo(radius * (i % 2 ? .7 : 1), 0); ctx.stroke();
+      }
+      ctx.rotate(Math.PI / 4); ctx.fillRect(-radius * .18, -radius * .18, radius * .36, radius * .36);
     }
     ctx.restore();
   }
@@ -1772,15 +1742,22 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (!(activeEnd(MOVES.closeHP) < MOVES.closeHP.end) || travelAt(MOVES.closeHP, MOVES.closeHP.start - F(3)) !== 0 || travelAt(MOVES.closeHP, MOVES.closeHP.active) !== MOVES.closeHP.lunge) throw new Error('action timeline regression');
       Game.player.action = { name: 'closeHK', spec: MOVES.closeHK, t: MOVES.closeHK.end - F(2), hit: false, spawned: false };
       const recoveryPose = fighterVisual(Game.player);
-      if (Object.values(ATTACK_ROWS).includes(3) || recoveryPose.sheet !== 'specials' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
+      if (ATTACK_ROWS.overhead !== 3 || ATTACK_ROWS.airHK !== 3 || recoveryPose.sheet !== 'specials' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
       Game.player.action = null;
       Game.player.moveVx = 80;
       Game.player.runCycle = 1.72;
       const runPose = fighterVisual(Game.player);
-      if (runPose.sheet !== 'motion' || runPose.nextFrame === undefined || !(runPose.frameMix > 0)) throw new Error('smooth motion regression');
+      if (runPose.sheet !== 'motion' || runPose.nextFrame !== undefined || runPose.frameMix !== 0) throw new Error('sprite dissolve regression');
       Game.player.moveVx = 0;
       const uncoveredMoves = Object.keys(MOVES).filter((name) => ATTACK_ROWS[name] === undefined && SPECIAL_ROWS[name] === undefined && (typeof COMBAT_ROWS === 'undefined' || COMBAT_ROWS[name] === undefined));
       if (uncoveredMoves.length) throw new Error('hero action sheet gaps: ' + uncoveredMoves.join(','));
+
+      Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
+      Game.player.action = { name: 'closeLP', spec: MOVES.closeLP, t: MOVES.closeLP.end - F(2), hit: false, spawned: false };
+      moveCommand(Game.player, 'heavyKick', Game.enemy);
+      for (let i = 0; i < 3; i++) update(STEP);
+      if (Game.player.action?.name !== 'closeHK') throw new Error('buffered move lost');
+      Game.player.action = null; Game.player.queued = null;
 
       Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
       Game.player.facing = 1; Game.enemy.facing = -1;
