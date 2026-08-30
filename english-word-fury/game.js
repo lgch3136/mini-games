@@ -29,6 +29,8 @@ const ASSET_SOURCES = {
   rival: 'assets/rival-atlas-v2.webp',
   bruiser: 'assets/bruiser-atlas-v2.webp',
   heroAttacks: 'assets/hero-attacks-v3.webp',
+  heroMotion: 'assets/hero-motion-v1.webp',
+  heroSpecials: 'assets/hero-specials-v1.webp',
   arenas: 'assets/arena-atlas-v1.webp',
 };
 const ASSETS = {};
@@ -100,8 +102,12 @@ const MOVES = {
 const ATTACK_ROWS = {
   closeLP: 0, farLP: 0, airLP: 0,
   rush2: 1, closeHP: 1, farHP: 1, airHP: 1,
-  rush3: 2, rushFinish: 2, closeLK: 2, farLK: 2, closeHK: 2, farHK: 2,
-  sweep: 2, overhead: 2, airLK: 2, airHK: 2, blowback: 2, hurricane: 2,
+  rush3: 2, closeLK: 2, farLK: 2, sweep: 2, airLK: 2, airHK: 2,
+};
+
+const SPECIAL_ROWS = {
+  uppercut: 0, exUppercut: 0,
+  rushFinish: 1, closeHK: 1, farHK: 1, overhead: 1, blowback: 1, hurricane: 1,
 };
 
 const input = { left: false, right: false, down: false, block: false, history: [], lastDirection: 5, lastMotion: 0 };
@@ -111,7 +117,7 @@ const Game = {
   player: null, enemy: null, word: null, lastWord: '', wordCompleteTimer: 0, recentWords: [], wordEcho: null,
   combo: 0, maxCombo: 0, comboTimer: 0, freeze: 0, shake: 0, flash: 0,
   cameraPunch: 0, cameraZoom: 1, cameraX: 0, prevCameraZoom: 1, prevCameraX: 0,
-  particles: [], projectiles: [], hazard: null, hazardTimer: 8, banner: null,
+  particles: [], projectiles: [], pendingHits: [], hazard: null, hazardTimer: 8, banner: null,
   quizAnswer: '', quizLocked: false,
 };
 
@@ -218,7 +224,7 @@ function makeFighter(side, opponent = OPPONENTS[0]) {
     guardScale: isPlayer ? 1 : opponent.guard * conf.guard,
     aggression: isPlayer ? 0 : opponent.aggression,
     action: null, queued: null, hitstun: 0, blockstun: 0, inv: 0, dash: 0, dashDir: 0, dashMax: 0, running: false, evade: 0, evadeDir: 0, moveVx: 0,
-    knockdown: 0, wakeup: 0, landing: 0, throwTech: 0, flash: 0, hitLow: false, jumpKind: '', jumpStarted: 0,
+    knockdown: 0, wakeup: 0, landing: 0, groundImpact: 0, throwTech: 0, flash: 0, hitLow: false, jumpKind: '', jumpStarted: 0,
     blocking: false, crouching: false, guardLow: false, onGround: true, ko: false,
     chainStep: 0, chainWindow: 0, fury: 0, runCycle: 0, filter: opponent.filter || 'none',
     intent: 0, ai: { think: .28, moveFor: 0, blockFor: 0, attackCd: .45, windup: 0, pending: '', disabled: false },
@@ -229,19 +235,21 @@ function resetPositions() {
   const ground = floorY();
   const margin = W < 560 ? 52 : 120;
   const playerX = Math.max(margin, W * .27), enemyX = Math.min(W - margin, W * .73);
-  Object.assign(Game.player, { x: playerX, y: ground, prevX: playerX, prevY: ground, vx: 0, vy: 0, moveVx: 0, facing: 1, action: null, queued: null, hitstun: 0, blockstun: 0, dash: 0, running: false, evade: 0, knockdown: 0, wakeup: 0, landing: 0, maxMode: 0, blocking: false, crouching: false, onGround: true, ko: false });
-  Object.assign(Game.enemy, { x: enemyX, y: ground, prevX: enemyX, prevY: ground, vx: 0, vy: 0, moveVx: 0, facing: -1, action: null, queued: null, hitstun: 0, blockstun: 0, dash: 0, running: false, evade: 0, knockdown: 0, wakeup: 0, landing: 0, maxMode: 0, blocking: false, crouching: false, onGround: true, ko: false });
+  Object.assign(Game.player, { x: playerX, y: ground, prevX: playerX, prevY: ground, vx: 0, vy: 0, moveVx: 0, facing: 1, action: null, queued: null, hitstun: 0, blockstun: 0, dash: 0, running: false, evade: 0, knockdown: 0, wakeup: 0, landing: 0, groundImpact: 0, maxMode: 0, blocking: false, crouching: false, onGround: true, ko: false });
+  Object.assign(Game.enemy, { x: enemyX, y: ground, prevX: enemyX, prevY: ground, vx: 0, vy: 0, moveVx: 0, facing: -1, action: null, queued: null, hitstun: 0, blockstun: 0, dash: 0, running: false, evade: 0, knockdown: 0, wakeup: 0, landing: 0, groundImpact: 0, maxMode: 0, blocking: false, crouching: false, onGround: true, ko: false });
 }
 
 function startGame() {
   loadAsset('hero');
   loadAsset('heroAttacks');
+  loadAsset('heroMotion');
+  loadAsset('heroSpecials');
   loadAsset('arenas');
   input.history.length = 0; input.lastDirection = 5; input.lastMotion = 0;
   Object.assign(Game, {
     state: 'intro', score: 0, round: 1, wins: 0, wordsDone: 0, time: 0, combo: 0, maxCombo: 0,
     comboTimer: 0, freeze: 0, shake: 0, flash: 0, cameraPunch: 0, cameraZoom: 1.03, cameraX: W / 2, prevCameraZoom: 1.03, prevCameraX: W / 2, recentWords: [], wordEcho: null,
-    particles: [], projectiles: [], hazard: null,
+    particles: [], projectiles: [], pendingHits: [], hazard: null,
   });
   Game.player = makeFighter('player');
   startRound(true);
@@ -637,6 +645,7 @@ function updateFighter(fighter, opponent, dt) {
   fighter.fury = Math.max(0, fighter.fury - dt);
   fighter.maxMode = Math.max(0, fighter.maxMode - dt);
   fighter.landing = Math.max(0, fighter.landing - dt);
+  fighter.groundImpact = Math.max(0, fighter.groundImpact - dt);
   if (fighter.queued) {
     fighter.queued.time -= dt;
     if (fighter.queued.time <= 0) fighter.queued = null;
@@ -731,7 +740,7 @@ function updateFighter(fighter, opponent, dt) {
       const acceleration = fighter.onGround ? 5200 : 420;
       fighter.moveVx += clamp(desired - fighter.moveVx, -acceleration * dt, acceleration * dt);
       fighter.x += fighter.moveVx * dt;
-      fighter.runCycle += Math.abs(fighter.intent) * dt * 9;
+      fighter.runCycle += Math.abs(fighter.intent) * dt * 12;
     } else {
       fighter.moveVx *= Math.exp(-28 * dt);
     }
@@ -749,6 +758,7 @@ function updateFighter(fighter, opponent, dt) {
         fighter.jumpKind = '';
       }
       if (fighter.knockdown > 0 || fighter.ko) {
+        fighter.groundImpact = F(5);
         Game.shake = Math.max(Game.shake, .025);
         burst(fighter.x, ground - 5, '#d7b98a', 7, .3);
         FurySound.play('land', fighter.x / W * 2 - 1);
@@ -766,15 +776,35 @@ function updateFighter(fighter, opponent, dt) {
   fighter.x = clamp(fighter.x, margin, W - margin);
 }
 
+function hurtbox(fighter) {
+  const halfWidth = W < 560 ? 21 : 28;
+  const height = fighter.crouching ? 102 : fighter.onGround ? 172 : 150;
+  return { left: fighter.x - halfWidth, right: fighter.x + halfWidth, top: fighter.y - height, bottom: fighter.y };
+}
+
+function attackBox(attacker, action) {
+  const spec = action.spec;
+  const progress = clamp((action.t - spec.active) / Math.max(STEP, activeEnd(spec) - spec.active), 0, 1);
+  const reach = (spec.range || 0) * (progress < .34 ? .86 : progress < .68 ? 1 : .9);
+  const near = attacker.x - attacker.facing * 12;
+  const far = attacker.x + attacker.facing * reach;
+  const centerY = attacker.y - (spec.hitY || 92);
+  return { left: Math.min(near, far), right: Math.max(near, far), top: centerY - (spec.hitH || 60) * .5, bottom: centerY + (spec.hitH || 60) * .5 };
+}
+
 function tryHit(attacker, target, action) {
   const spec = action.spec;
-  const forward = (target.x - attacker.x) * attacker.facing;
-  const targetHeight = target.crouching ? 102 : 172;
-  const attackY = attacker.y - (spec.hitY || 92);
-  const targetY = target.y - targetHeight * .5;
   if (target.knockdown > 0 || (spec.level === 'throw' && !target.onGround)) return;
-  if (forward < -12 || forward > spec.range || Math.abs(targetY - attackY) > targetHeight * .5 + (spec.hitH || 60) * .5) return;
-  if (receiveHit(target, attacker, spec, action.name)) action.hit = true;
+  const hit = attackBox(attacker, action), hurt = hurtbox(target);
+  if (hit.left > hurt.right || hit.right < hurt.left || hit.top > hurt.bottom || hit.bottom < hurt.top) return;
+  Game.pendingHits.push({ attacker, target, action });
+}
+
+function resolvePendingHits() {
+  const hits = Game.pendingHits.splice(0);
+  for (const { attacker, target, action } of hits) {
+    if (!action.hit && receiveHit(target, attacker, action.spec, action.name)) action.hit = true;
+  }
 }
 
 function receiveHit(target, attacker, spec, moveName) {
@@ -1022,8 +1052,10 @@ function update(dt) {
   }
   if (Game.state === 'ending') {
     Game.roundEnding -= dt;
+    Game.pendingHits.length = 0;
     updateFighter(Game.player, Game.enemy, dt);
     updateFighter(Game.enemy, Game.player, dt);
+    resolvePendingHits();
     updateParticles(dt);
     if (Game.roundEnding <= 0) finishRound(Game.outcome);
     return;
@@ -1033,8 +1065,10 @@ function update(dt) {
   Game.timer = Math.max(0, Game.timer - dt);
   applyPlayerIntent();
   updateAI(dt);
+  Game.pendingHits.length = 0;
   updateFighter(Game.player, Game.enemy, dt);
   updateFighter(Game.enemy, Game.player, dt);
+  resolvePendingHits();
   resolveFighterPush();
   const separation = Math.abs(Game.player.x - Game.enemy.x);
   const targetZoom = 1.025 + clamp(1 - separation / Math.max(300, W * .68), 0, 1) * .045;
@@ -1224,26 +1258,33 @@ function drawStage() {
 }
 
 function fighterVisual(fighter) {
+  const hero = fighter.atlas === 'hero';
   const breath = Math.sin(Game.time * 5 + (fighter.side === 'enemy' ? 1.4 : 0));
   const idleCycle = (Game.time * 2.8 + (fighter.side === 'enemy' ? .7 : 0)) % 2;
   const pose = { frame: Math.floor(idleCycle), dx: 0, dy: breath * .65, rotate: 0, sx: 1 - breath * .002, sy: 1 + breath * .003 };
+  if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = pose.frame; pose.frame = Math.floor(Game.time * 7) % 6; }
 
   if (fighter.ko || fighter.knockdown > 0) {
-    pose.frame = 23;
+    if (hero) { pose.sheet = 'specials'; pose.fallbackFrame = 23; pose.frame = fighter.onGround ? fighter.groundImpact > 0 ? 20 : 21 : fighter.vy < 0 ? 18 : 19; }
+    else pose.frame = 23;
     pose.dy = fighter.onGround ? 7 : 0;
   } else if (fighter.wakeup > 0) {
-    pose.frame = fighter.wakeup > .18 ? 23 : fighter.wakeup > .08 ? 4 : 0;
+    if (hero) { pose.sheet = 'specials'; pose.fallbackFrame = fighter.wakeup > .18 ? 23 : 4; pose.frame = fighter.wakeup > .2 ? 21 : fighter.wakeup > .1 ? 22 : 23; }
+    else pose.frame = fighter.wakeup > .18 ? 23 : fighter.wakeup > .08 ? 4 : 0;
     pose.dy = fighter.wakeup > .18 ? 7 : 1;
   } else if (fighter.hitstun > 0) {
+    delete pose.sheet;
     pose.frame = fighter.hitLow ? 22 : 21;
     pose.sx = .97; pose.sy = 1.025;
   } else if (fighter.blocking) {
-    pose.frame = 20;
+    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 20; pose.frame = fighter.crouching ? 22 : 19 + Math.floor(Game.time * 12) % 2; }
+    else pose.frame = 20;
     pose.dx = -fighter.facing * 2;
     pose.sx = .985; pose.sy = 1.012;
   } else if (fighter.evade > 0) {
     const progress = 1 - fighter.evade / .42;
-    pose.frame = progress < .52 ? 4 : 3;
+    if (hero) { pose.sheet = 'specials'; pose.fallbackFrame = progress < .52 ? 4 : 3; pose.frame = 12 + Math.min(5, Math.floor(progress * 6)); }
+    else pose.frame = progress < .52 ? 4 : 3;
     pose.rotate = -fighter.evadeDir * Math.sin(progress * Math.PI) * .08;
     pose.dy = Math.sin(progress * Math.PI) * 5;
     pose.sx = 1.025; pose.sy = .975;
@@ -1251,17 +1292,18 @@ function fighterVisual(fighter) {
     const action = fighter.action, spec = action.spec;
     const contactEnd = activeEnd(spec);
     const fallbackFrame = action.t < spec.start ? spec.anim[0] : action.t <= contactEnd ? spec.anim[1] : spec.anim[2];
-    const attackRow = ATTACK_ROWS[action.name];
-    if (attackRow !== undefined) {
-      pose.sheet = 'attacks';
+    const specialRow = SPECIAL_ROWS[action.name], attackRow = ATTACK_ROWS[action.name];
+    const row = specialRow ?? attackRow;
+    if (row !== undefined) {
+      pose.sheet = specialRow !== undefined ? 'specials' : 'attacks';
       pose.fallbackFrame = fallbackFrame;
       const recovery = clamp((action.t - contactEnd) / Math.max(.001, spec.end - contactEnd), 0, 1);
       const framePosition = action.t < spec.start
         ? clamp(action.t / Math.max(.001, spec.start), 0, 1) * 2.9
         : action.t <= contactEnd ? 3 : 4 + recovery * 1.999;
       const frameIndex = Math.min(5, Math.floor(framePosition));
-      pose.frame = attackRow * 6 + frameIndex;
-    } else pose.frame = fallbackFrame;
+      pose.frame = row * 6 + frameIndex;
+    } else { delete pose.sheet; pose.frame = fallbackFrame; }
     if (action.t < spec.start) {
       const startup = clamp(action.t / Math.max(.001, spec.start), 0, 1);
       pose.dx = -fighter.facing * easeOut(startup) * (spec.heavy ? 6 : 3);
@@ -1278,15 +1320,23 @@ function fighterVisual(fighter) {
     if (action.name === 'uppercut' || action.name === 'exUppercut') pose.rotate += fighter.facing * .025;
     if (action.name === 'sweep') { pose.dy = 5; pose.sx = 1.025; pose.sy = .98; }
   } else if (fighter.crouching) {
-    pose.frame = 4; pose.dy = 2;
+    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 4; pose.frame = 21; }
+    else pose.frame = 4;
+    pose.dy = 2;
   } else if (fighter.landing > 0) {
-    pose.frame = 4; pose.dy = 2 + fighter.landing / F(4) * 2; pose.sx = 1.012; pose.sy = .988;
+    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 4; pose.frame = 17; }
+    else pose.frame = 4;
+    pose.dy = 2 + fighter.landing / F(4) * 2; pose.sx = 1.012; pose.sy = .988;
   } else if (!fighter.onGround) {
-    pose.frame = 5;
+    if (hero) {
+      pose.sheet = 'motion'; pose.fallbackFrame = 5;
+      pose.frame = fighter.vy < -280 ? 13 : fighter.vy < -80 ? 14 : fighter.vy < 100 ? 15 : 16;
+    } else pose.frame = 5;
     pose.rotate = fighter.facing * clamp(fighter.vy / 2400, -.045, .055);
   } else if (fighter.dash > 0 || Math.abs(fighter.moveVx) > 18) {
     const stride = Math.sin(fighter.runCycle * Math.PI);
-    pose.frame = 2 + Math.floor(fighter.runCycle % 2);
+    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 2 + Math.floor(fighter.runCycle % 2); pose.frame = 6 + Math.floor(fighter.runCycle % 6); }
+    else pose.frame = 2 + Math.floor(fighter.runCycle % 2);
     pose.dx = fighter.facing * stride * 1.2;
     pose.dy = Math.abs(stride) * 2.4;
     pose.sx = 1 + Math.abs(stride) * .006;
@@ -1301,9 +1351,10 @@ function drawFighter(fighter) {
   const drawW = compact ? (fighter.atlas === 'bruiser' ? 150 : 142) : fighter.atlas === 'bruiser' ? 252 : 238;
   const drawH = compact ? (fighter.atlas === 'bruiser' ? 150 : 142) : fighter.atlas === 'bruiser' ? 252 : 238;
   const pose = fighterVisual(fighter);
-  const attackImage = pose.sheet === 'attacks' ? ASSETS[fighter.atlas + 'Attacks'] : null;
-  const image = attackImage?.complete && attackImage.naturalWidth ? attackImage : ASSETS[fighter.atlas];
-  if (pose.sheet === 'attacks' && image !== attackImage) {
+  const sheetSuffix = pose.sheet === 'motion' ? 'Motion' : pose.sheet === 'specials' ? 'Specials' : pose.sheet === 'attacks' ? 'Attacks' : '';
+  const sheetImage = sheetSuffix ? ASSETS[fighter.atlas + sheetSuffix] : null;
+  const image = sheetImage?.complete && sheetImage.naturalWidth ? sheetImage : ASSETS[fighter.atlas];
+  if (pose.sheet && image !== sheetImage) {
     pose.frame = pose.fallbackFrame;
   }
   const sourceW = image.naturalWidth / 6 || 256;
@@ -1655,8 +1706,25 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (!(activeEnd(MOVES.closeHP) < MOVES.closeHP.end) || travelAt(MOVES.closeHP, MOVES.closeHP.start - F(3)) !== 0 || travelAt(MOVES.closeHP, MOVES.closeHP.active) !== MOVES.closeHP.lunge) throw new Error('action timeline regression');
       Game.player.action = { name: 'closeHK', spec: MOVES.closeHK, t: MOVES.closeHK.end - F(2), hit: false, spawned: false };
       const recoveryPose = fighterVisual(Game.player);
-      if (Object.values(ATTACK_ROWS).includes(3) || recoveryPose.sheet !== 'attacks' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
+      if (Object.values(ATTACK_ROWS).includes(3) || recoveryPose.sheet !== 'specials' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
       Game.player.action = null;
+      Game.player.moveVx = 80;
+      if (fighterVisual(Game.player).sheet !== 'motion') throw new Error('motion sheet regression');
+      Game.player.moveVx = 0;
+
+      Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
+      Game.player.facing = 1; Game.enemy.facing = -1;
+      Game.player.health = Game.player.maxHealth; Game.enemy.health = Game.enemy.maxHealth;
+      Game.player.inv = Game.enemy.inv = 0; Game.player.hitstun = Game.enemy.hitstun = 0;
+      Game.player.blocking = Game.enemy.blocking = false;
+      Game.player.action = { name: 'closeLP', spec: MOVES.closeLP, t: MOVES.closeLP.active - STEP, hit: false, spawned: false };
+      Game.enemy.action = { name: 'closeLP', spec: MOVES.closeLP, t: MOVES.closeLP.active - STEP, hit: false, spawned: false };
+      const playerBeforeTrade = Game.player.health, enemyBeforeTrade = Game.enemy.health;
+      update(STEP);
+      if (!(Game.player.health < playerBeforeTrade && Game.enemy.health < enemyBeforeTrade)) throw new Error('simultaneous trade failed');
+      for (const fighter of [Game.player, Game.enemy]) Object.assign(fighter, { health: fighter.maxHealth, action: null, queued: null, hitstun: 0, blockstun: 0, inv: 0, knockdown: 0, wakeup: 0, vx: 0, vy: 0, moveVx: 0, onGround: true, y: floorY(), blocking: false, crouching: false });
+      Game.pendingHits.length = 0; Game.freeze = 0; Game.combo = 0; Game.comboTimer = 0; Game.word.progress = 0;
+
       Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
       Game.player.facing = 1; Game.enemy.facing = -1;
       const healthBefore = Game.enemy.health;
