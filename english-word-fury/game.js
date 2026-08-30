@@ -94,8 +94,8 @@ const MOVES = {
 const ATTACK_ROWS = {
   closeLP: 0, farLP: 0, airLP: 0,
   rush2: 1, closeHP: 1, farHP: 1, airHP: 1,
-  rush3: 2, closeLK: 2, farLK: 2, airLK: 2,
-  rushFinish: 3, closeHK: 3, farHK: 3, sweep: 3, overhead: 3, airHK: 3, blowback: 3, hurricane: 3,
+  rush3: 2, rushFinish: 2, closeLK: 2, farLK: 2, closeHK: 2, farHK: 2,
+  sweep: 2, overhead: 2, airLK: 2, airHK: 2, blowback: 2, hurricane: 2,
 };
 
 const input = { left: false, right: false, down: false, block: false, history: [], lastDirection: 5, lastMotion: 0 };
@@ -489,7 +489,7 @@ function moveCommand(fighter, command, opponent) {
   if (fighter.side === 'enemy') fighter.ai.attackCd = spec.special ? .7 : spec.heavy ? .48 : .26;
   const pan = fighter.x / W * 2 - 1;
   if (spec.super) {
-    Game.freeze = Math.max(Game.freeze, F(12)); Game.flash = .34; Game.cameraPunch = .045;
+    Game.freeze = Math.max(Game.freeze, F(10)); Game.flash = .18; Game.cameraPunch = .03;
     Game.banner = { text: cancelledAction ? 'SUPER CANCEL' : 'SUPER MOVE', timer: .7, color: '#fff0a0' };
     FurySound.play('super', pan);
   } else FurySound.play(spec.special ? 'power' : spec.heavy ? 'whooshHeavy' : 'whoosh', pan);
@@ -741,7 +741,7 @@ function updateFighter(fighter, opponent, dt) {
         fighter.jumpKind = '';
       }
       if (fighter.knockdown > 0 || fighter.ko) {
-        Game.shake = Math.max(Game.shake, .055);
+        Game.shake = Math.max(Game.shake, .025);
         burst(fighter.x, ground - 5, '#d7b98a', 7, .3);
         FurySound.play('land', fighter.x / W * 2 - 1);
       }
@@ -796,7 +796,7 @@ function receiveHit(target, attacker, spec, moveName) {
     if (spec.special) target.health = Math.max(0, target.health - Math.max(1, Math.floor(damage * .09)));
     spawnImpact(target.x - target.facing * 23, target.y - 112, '#8fdcff', true);
     Game.freeze = Math.max(Game.freeze, F(Math.max(4, (spec.hitstop || 6) - 2)));
-    target.flash = .065;
+    target.flash = .04;
     showFeedback('格挡 · 防御槽持续消耗');
     if (target.guard <= 0) {
       target.guard = 0;
@@ -806,7 +806,7 @@ function receiveHit(target, attacker, spec, moveName) {
       target.action = null;
       target.vx = attacker.facing * 92;
       Game.banner = { text: 'GUARD BREAK', timer: .85, color: '#7de3ff' };
-      Game.shake = Math.max(Game.shake, .1);
+      Game.shake = Math.max(Game.shake, .055);
       burst(target.x, target.y - 105, '#7de3ff', 20, .9);
     }
     FurySound.play(target.guard <= 0 ? 'guardBreak' : 'block', target.x / W * 2 - 1);
@@ -832,13 +832,13 @@ function receiveHit(target, attacker, spec, moveName) {
     target.onGround = false;
   } else if (spec.lift) { target.vy = spec.lift; target.onGround = false; }
   target.inv = .035;
-  target.flash = spec.heavy ? .12 : .085;
+  target.flash = spec.heavy ? .07 : .045;
   gainPower(attacker, dealt * 1.35);
   spawnImpact(target.x - target.facing * 16, target.y - (target.crouching ? 72 : 118), attacker.side === 'player' ? '#ffd86e' : '#ff6f9d', false);
   Game.freeze = Math.max(Game.freeze, F(spec.hitstop || (spec.heavy ? 10 : 5)));
-  Game.shake = Math.max(Game.shake, spec.super ? .09 : spec.heavy ? .052 : .008);
-  Game.cameraPunch = Math.max(Game.cameraPunch, spec.super ? .045 : spec.special ? .026 : spec.heavy ? .016 : .004);
-  Game.flash = Math.max(Game.flash, spec.super ? .26 : spec.special ? .12 : spec.heavy ? .055 : .025);
+  Game.shake = Math.max(Game.shake, spec.super ? .06 : spec.special ? .035 : spec.heavy ? .022 : 0);
+  Game.cameraPunch = Math.max(Game.cameraPunch, spec.super ? .032 : spec.special ? .016 : spec.heavy ? .009 : 0);
+  Game.flash = Math.max(Game.flash, spec.super ? .14 : spec.special ? .05 : spec.heavy ? .018 : 0);
   FurySound.play(counter ? 'counter' : spec.heavy || spec.special ? 'heavyHit' : 'hit', target.x / W * 2 - 1);
 
   if (counter) {
@@ -1043,7 +1043,7 @@ function update(dt) {
     Game.state = 'ending';
     Game.roundEnding = .9;
     Game.banner = { text: Game.outcome === 'player' ? 'K.O.' : 'DOWN', timer: .9, color: Game.outcome === 'player' ? '#ffe176' : '#ff7586' };
-    Game.shake = .22;
+    Game.shake = .1;
     FurySound.play('ko');
   }
   Game.hudTimer -= dt;
@@ -1250,7 +1250,7 @@ function fighterVisual(fighter) {
       const recovery = clamp((action.t - contactEnd) / Math.max(.001, spec.end - contactEnd), 0, 1);
       const framePosition = action.t < spec.start
         ? clamp(action.t / Math.max(.001, spec.start), 0, 1) * 2.9
-        : action.t <= contactEnd ? 3 : 4 + recovery;
+        : action.t <= contactEnd ? 3 : 4 + recovery * 1.999;
       const frameIndex = Math.min(5, Math.floor(framePosition));
       pose.frame = attackRow * 6 + frameIndex;
     } else pose.frame = fallbackFrame;
@@ -1271,13 +1271,18 @@ function fighterVisual(fighter) {
     if (action.name === 'sweep') { pose.dy = 5; pose.sx = 1.025; pose.sy = .98; }
   } else if (fighter.crouching) {
     pose.frame = 4; pose.dy = 2;
+  } else if (fighter.landing > 0) {
+    pose.frame = 4; pose.dy = 2 + fighter.landing / F(4) * 2; pose.sx = 1.012; pose.sy = .988;
   } else if (!fighter.onGround) {
     pose.frame = 5;
     pose.rotate = fighter.facing * clamp(fighter.vy / 2400, -.045, .055);
   } else if (fighter.dash > 0 || Math.abs(fighter.moveVx) > 18) {
-    const runCycle = fighter.runCycle % 2;
-    pose.frame = 2 + Math.floor(runCycle);
-    pose.dy = Math.abs(Math.sin(fighter.runCycle * Math.PI)) * 1.2;
+    const stride = Math.sin(fighter.runCycle * Math.PI);
+    pose.frame = 2 + Math.floor(fighter.runCycle % 2);
+    pose.dx = fighter.facing * stride * 1.2;
+    pose.dy = Math.abs(stride) * 2.4;
+    pose.sx = 1 + Math.abs(stride) * .006;
+    pose.sy = 1 - Math.abs(stride) * .006;
     pose.rotate = fighter.facing * clamp(fighter.moveVx / 9000, -.025, .025);
   }
   return pose;
@@ -1333,7 +1338,7 @@ function drawFighter(fighter) {
     ctx.rotate(pose.rotate);
     const flip = fighter.facing !== fighter.nativeFacing ? -1 : 1;
     ctx.scale(flip * pose.sx, pose.sy);
-    const flashFilter = fighter.flash > 0 ? ' brightness(2.5) saturate(.35)' : '';
+    const flashFilter = fighter.flash > 0 ? ' brightness(1.5) saturate(.82) contrast(1.06)' : '';
     ctx.filter = ((fighter.filter === 'none' ? '' : fighter.filter) + flashFilter).trim() || 'none';
     if (image.complete && image.naturalWidth) {
       const row = Math.floor(pose.frame / 6), col = pose.frame % 6;
@@ -1639,6 +1644,10 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       startGame();
       Game.state = 'playing'; Game.introTimer = 0; Game.timer = 999;
       Game.enemy.ai.disabled = true;
+      Game.player.action = { name: 'closeHK', spec: MOVES.closeHK, t: MOVES.closeHK.end - F(2), hit: false, spawned: false };
+      const recoveryPose = fighterVisual(Game.player);
+      if (Object.values(ATTACK_ROWS).includes(3) || recoveryPose.sheet !== 'attacks' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
+      Game.player.action = null;
       Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
       Game.player.facing = 1; Game.enemy.facing = -1;
       const healthBefore = Game.enemy.health;
