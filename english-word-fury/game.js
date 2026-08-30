@@ -16,6 +16,12 @@ const rand = (min, max) => min + Math.random() * (max - min);
 const signTo = (from, to) => to >= from ? 1 : -1;
 const lerp = (from, to, amount) => from + (to - from) * amount;
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const activeEnd = (spec) => spec.active + F(spec.super ? 4 : spec.special || spec.heavy ? 3 : 2);
+const cancelEnd = (spec) => Math.min(spec.end, activeEnd(spec) + F(spec.heavy || spec.special ? 10 : 12));
+const travelAt = (spec, time) => {
+  const start = Math.max(0, spec.start - F(spec.heavy ? 3 : 1));
+  return (spec.lunge || 0) * easeOut(clamp((time - start) / Math.max(STEP, spec.active - start), 0, 1));
+};
 const floorY = () => W < 560 ? H - 148 : H - 48;
 
 const ASSET_SOURCES = {
@@ -413,7 +419,7 @@ function moveCommand(fighter, command, opponent) {
   if (!fighter || fighter.ko || Game.state !== 'playing') return false;
   if (command === 'heavyPunch' || command === 'heavyKick') fighter.throwTech = F(8);
   if (command === 'max') {
-    const quickCancel = fighter.action?.hit && !fighter.action.spec.special;
+    const quickCancel = fighter.action?.hit && fighter.action.t <= cancelEnd(fighter.action.spec) && !fighter.action.spec.special;
     if (fighter.maxMode > 0 || fighter.power < 100 || (fighter.action && !quickCancel)) return false;
     fighter.power -= 100;
     fighter.maxMode = quickCancel ? 5.2 : 7;
@@ -465,7 +471,7 @@ function moveCommand(fighter, command, opponent) {
   let cancelledAction = null;
   if (fighter.action) {
     const category = spec.super ? 'super' : spec.special ? 'special' : command;
-    const canCancel = fighter.action.hit && fighter.action.t >= fighter.action.spec.active && fighter.action.spec.cancel?.includes(category);
+    const canCancel = fighter.action.hit && fighter.action.t >= fighter.action.spec.active && fighter.action.t <= cancelEnd(fighter.action.spec) && fighter.action.spec.cancel?.includes(category);
     if (!canCancel) { fighter.queued = { command: moveName, time: F(10) }; return false; }
     cancelledAction = fighter.action;
     fighter.action = null;
@@ -479,7 +485,7 @@ function moveCommand(fighter, command, opponent) {
   }
   fighter.power -= cost;
   if (spec.super && fighter.maxMode > 0) fighter.maxMode = 0;
-  fighter.action = { name: moveName, spec, t: 0, hit: false, spawned: false };
+  fighter.action = { name: moveName, spec, t: 0, hit: false, spawned: false, sounded: Boolean(spec.special) };
   if (moveName === 'uppercut' || moveName === 'exUppercut') fighter.inv = Math.max(fighter.inv, moveName === 'exUppercut' ? F(10) : F(6));
   fighter.queued = null;
   fighter.blocking = false;
@@ -492,7 +498,7 @@ function moveCommand(fighter, command, opponent) {
     Game.freeze = Math.max(Game.freeze, F(10)); Game.flash = .18; Game.cameraPunch = .03;
     Game.banner = { text: cancelledAction ? 'SUPER CANCEL' : 'SUPER MOVE', timer: .7, color: '#fff0a0' };
     FurySound.play('super', pan);
-  } else FurySound.play(spec.special ? 'power' : spec.heavy ? 'whooshHeavy' : 'whoosh', pan);
+  } else if (spec.special) FurySound.play('power', pan);
   return true;
 }
 
@@ -687,9 +693,11 @@ function updateFighter(fighter, opponent, dt) {
     const action = fighter.action;
     const before = action.t;
     action.t += dt;
-    const beforeLunge = easeOut(before / action.spec.active);
-    const afterLunge = easeOut(Math.min(action.t, action.spec.active) / action.spec.active);
-    fighter.x += fighter.facing * (action.spec.lunge || 0) * Math.max(0, afterLunge - beforeLunge);
+    fighter.x += fighter.facing * Math.max(0, travelAt(action.spec, action.t) - travelAt(action.spec, before));
+    if (!action.sounded && action.t >= Math.max(0, action.spec.active - F(2))) {
+      action.sounded = true;
+      FurySound.play(action.spec.heavy ? 'whooshHeavy' : 'whoosh', fighter.x / W * 2 - 1);
+    }
     if (!action.launched && (action.name === 'uppercut' || action.name === 'exUppercut') && action.t >= action.spec.start) {
       action.launched = true;
       fighter.vy = action.name === 'exUppercut' ? -325 : -285;
@@ -700,7 +708,7 @@ function updateFighter(fighter, opponent, dt) {
       Game.projectiles.push({ owner: fighter, x: fighter.x + fighter.facing * 48, y: fighter.y - (W < 560 ? 90 : 116), vx: fighter.facing * (action.spec.projectileSpeed || 410), life: 2.2, spec: action.spec, hit: false, radius: action.spec.super ? 42 : action.spec.ex ? 29 : 22 });
       burst(fighter.x + fighter.facing * 42, fighter.y - 112, fighter.side === 'player' ? '#6be4ff' : '#ff6f9d', 11, .7);
       FurySound.play(action.spec.super ? 'super' : 'projectile', fighter.x / W * 2 - 1);
-    } else if (!action.spec.projectile && !action.hit && action.t >= action.spec.active && action.t <= action.spec.active + .1) {
+    } else if (!action.spec.projectile && !action.hit && action.t >= action.spec.active && action.t <= activeEnd(action.spec)) {
       tryHit(fighter, opponent, action);
     }
     if (action.t >= action.spec.end) {
@@ -1241,7 +1249,7 @@ function fighterVisual(fighter) {
     pose.sx = 1.025; pose.sy = .975;
   } else if (fighter.action) {
     const action = fighter.action, spec = action.spec;
-    const contactEnd = spec.active + F(2);
+    const contactEnd = activeEnd(spec);
     const fallbackFrame = action.t < spec.start ? spec.anim[0] : action.t <= contactEnd ? spec.anim[1] : spec.anim[2];
     const attackRow = ATTACK_ROWS[action.name];
     if (attackRow !== undefined) {
@@ -1317,7 +1325,7 @@ function drawFighter(fighter) {
     ctx.shadowBlur = 0;
   }
 
-  if (fighter.action && fighter.action.t >= fighter.action.spec.start && fighter.action.t <= fighter.action.spec.active + .055) {
+  if (fighter.action && fighter.action.t >= fighter.action.spec.active - F(1) && fighter.action.t <= activeEnd(fighter.action.spec)) {
     const spec = fighter.action.spec;
     const isKick = spec.anim[1] === 13 || spec.anim[1] === 16 || ['sweep', 'overhead', 'hurricane'].includes(fighter.action.name);
     const reach = Math.min(112, Math.max(58, spec.range || 74));
@@ -1644,6 +1652,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       startGame();
       Game.state = 'playing'; Game.introTimer = 0; Game.timer = 999;
       Game.enemy.ai.disabled = true;
+      if (!(activeEnd(MOVES.closeHP) < MOVES.closeHP.end) || travelAt(MOVES.closeHP, MOVES.closeHP.start - F(3)) !== 0 || travelAt(MOVES.closeHP, MOVES.closeHP.active) !== MOVES.closeHP.lunge) throw new Error('action timeline regression');
       Game.player.action = { name: 'closeHK', spec: MOVES.closeHK, t: MOVES.closeHK.end - F(2), hit: false, spawned: false };
       const recoveryPose = fighterVisual(Game.player);
       if (Object.values(ATTACK_ROWS).includes(3) || recoveryPose.sheet !== 'attacks' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
@@ -1693,7 +1702,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       receiveHit(Game.enemy, Game.player, MOVES.throw, 'throw');
       if (Game.enemy.health !== techHealth || Game.player.hitstun <= 0) throw new Error('throw break failed');
 
-      Game.enemy.hitstun = 0; Game.enemy.action = null; Game.enemy.guard = 1; Game.enemy.blocking = true; Game.enemy.ai.blockFor = 1;
+      Game.enemy.hitstun = 0; Game.enemy.inv = 0; Game.enemy.action = null; Game.enemy.guard = 1; Game.enemy.blocking = true; Game.enemy.ai.blockFor = 1;
       Game.player.action = null; Game.player.hitstun = 0; Game.player.chainWindow = 0;
       moveCommand(Game.player, 'heavyPunch', Game.enemy);
       for (let i = 0; i < 70; i++) update(1 / 120);
