@@ -29,9 +29,13 @@ const ASSET_SOURCES = {
   rival: 'assets/rival-atlas-v3.webp',
   bruiser: 'assets/bruiser-atlas-v3.webp',
   heroAttacks: 'assets/hero-attacks-v4.webp',
+  heroGround: 'assets/hero-ground-v1.webp?v=20260831a',
+  heroAir: 'assets/hero-air-v1.webp?v=20260831a',
   heroMotion: 'assets/hero-motion-v1.webp',
   heroSpecials: 'assets/hero-specials-v1.webp',
   heroCombat: 'assets/hero-combat-v1.webp',
+  rivalMotion: 'assets/rival-motion-v1.webp?v=20260831a',
+  vfx: 'assets/vfx-atlas-v1.webp?v=20260831a',
   arenas: 'assets/arena-atlas-v1.webp',
 };
 const ASSETS = {};
@@ -71,20 +75,20 @@ const OPPONENTS = [
 
 // Timings are authored as 60 Hz frame data: startup/contact/total, matching the fixed simulation below.
 const MOVES = {
-  closeLP: { anim: [6, 7, 8], start: F(2), active: F(3), end: F(12), range: 74, hitY: 112, hitH: 55, damage: 4, stun: F(14), blockstun: F(10), knock: 18, level: 'mid', lunge: 5, hitstop: 5, chain: 1, cancel: ['lightPunch', 'lightKick', 'heavyPunch', 'heavyKick', 'special'] },
-  farLP: { anim: [6, 7, 8], start: F(3), active: F(4), end: F(16), range: 96, hitY: 112, hitH: 48, damage: 5, stun: F(14), blockstun: F(9), knock: 24, level: 'mid', lunge: 8, hitstop: 5, cancel: ['special'] },
-  rush2: { anim: [9, 10, 11], start: F(3), active: F(5), end: F(17), range: 84, hitY: 108, hitH: 58, damage: 6, stun: F(17), blockstun: F(11), knock: 25, level: 'mid', lunge: 9, hitstop: 6, chain: 2, cancel: ['lightPunch', 'heavyPunch', 'heavyKick', 'special'] },
-  rush3: { anim: [12, 13, 14], start: F(4), active: F(6), end: F(20), range: 91, hitY: 82, hitH: 62, damage: 7, stun: F(19), blockstun: F(12), knock: 34, level: 'mid', lunge: 12, hitstop: 7, chain: 3, cancel: ['lightPunch', 'heavyPunch', 'heavyKick', 'special'] },
+  closeLP: { anim: [6, 7, 8], start: F(2), active: F(3), end: F(12), range: 74, hitY: 142, hitH: 55, damage: 4, stun: F(14), blockstun: F(10), knock: 18, level: 'mid', lunge: 5, hitstop: 5, chain: 1, cancel: ['lightPunch', 'lightKick', 'heavyPunch', 'heavyKick', 'special'] },
+  farLP: { anim: [6, 7, 8], start: F(3), active: F(4), end: F(16), range: 96, hitY: 140, hitH: 52, damage: 5, stun: F(14), blockstun: F(9), knock: 24, level: 'mid', lunge: 8, hitstop: 5, cancel: ['special'] },
+  rush2: { anim: [9, 10, 11], start: F(3), active: F(5), end: F(17), range: 84, hitY: 138, hitH: 60, damage: 6, stun: F(17), blockstun: F(11), knock: 25, level: 'mid', lunge: 9, hitstop: 6, chain: 2, cancel: ['lightPunch', 'heavyPunch', 'heavyKick', 'special'] },
+  rush3: { anim: [12, 13, 14], start: F(4), active: F(6), end: F(20), range: 91, hitY: 104, hitH: 62, damage: 7, stun: F(19), blockstun: F(12), knock: 34, level: 'mid', lunge: 12, hitstop: 7, chain: 3, cancel: ['lightPunch', 'heavyPunch', 'heavyKick', 'special'] },
   rushFinish: { anim: [15, 16, 17], start: F(7), active: F(9), end: F(31), range: 112, hitY: 103, hitH: 74, damage: 14, stun: F(24), blockstun: F(16), knock: 128, lift: -120, level: 'mid', lunge: 20, hitstop: 10, chain: 4, heavy: true, knockdown: .58, cancel: ['special'] },
-  closeHP: { anim: [9, 10, 11], start: F(5), active: F(7), end: F(27), range: 88, hitY: 116, hitH: 70, damage: 12, stun: F(22), blockstun: F(15), knock: 58, level: 'mid', lunge: 10, hitstop: 9, heavy: true, cancel: ['special'] },
-  farHP: { anim: [9, 10, 11], start: F(7), active: F(9), end: F(31), range: 126, hitY: 116, hitH: 58, damage: 13, stun: F(21), blockstun: F(14), knock: 76, level: 'mid', lunge: 12, hitstop: 9, heavy: true },
-  closeLK: { anim: [12, 13, 14], start: F(3), active: F(4), end: F(15), range: 72, hitY: 68, hitH: 54, damage: 4, stun: F(13), blockstun: F(9), knock: 17, level: 'mid', lunge: 4, hitstop: 5, cancel: ['lightPunch', 'lightKick', 'special'] },
-  farLK: { anim: [12, 13, 14], start: F(5), active: F(6), end: F(22), range: 103, hitY: 82, hitH: 62, damage: 7, stun: F(16), blockstun: F(11), knock: 36, level: 'mid', lunge: 7, hitstop: 6, cancel: ['special'] },
+  closeHP: { anim: [9, 10, 11], start: F(5), active: F(7), end: F(27), range: 88, hitY: 138, hitH: 70, damage: 12, stun: F(22), blockstun: F(15), knock: 58, level: 'mid', lunge: 10, hitstop: 9, heavy: true, cancel: ['special'] },
+  farHP: { anim: [9, 10, 11], start: F(7), active: F(9), end: F(31), range: 126, hitY: 140, hitH: 62, damage: 13, stun: F(21), blockstun: F(14), knock: 76, level: 'mid', lunge: 12, hitstop: 9, heavy: true },
+  closeLK: { anim: [12, 13, 14], start: F(3), active: F(4), end: F(15), range: 72, hitY: 98, hitH: 54, damage: 4, stun: F(13), blockstun: F(9), knock: 17, level: 'mid', lunge: 4, hitstop: 5, cancel: ['lightPunch', 'lightKick', 'special'] },
+  farLK: { anim: [12, 13, 14], start: F(5), active: F(6), end: F(22), range: 103, hitY: 102, hitH: 62, damage: 7, stun: F(16), blockstun: F(11), knock: 36, level: 'mid', lunge: 7, hitstop: 6, cancel: ['special'] },
   closeHK: { anim: [15, 16, 17], start: F(7), active: F(9), end: F(31), range: 104, hitY: 106, hitH: 78, damage: 14, stun: F(23), blockstun: F(16), knock: 105, level: 'mid', lunge: 13, hitstop: 10, heavy: true, knockdown: .46, cancel: ['special'] },
   farHK: { anim: [15, 16, 17], start: F(9), active: F(11), end: F(36), range: 139, hitY: 116, hitH: 78, damage: 15, stun: F(22), blockstun: F(15), knock: 118, level: 'mid', lunge: 14, hitstop: 10, heavy: true, knockdown: .5 },
-  crouchLP: { anim: [4, 7, 8], start: F(3), active: F(4), end: F(14), range: 76, hitY: 69, hitH: 42, damage: 4, stun: F(13), blockstun: F(9), knock: 16, level: 'mid', lunge: 3, hitstop: 5, cancel: ['lightPunch', 'lightKick', 'special'] },
-  crouchLK: { anim: [4, 13, 4], start: F(3), active: F(4), end: F(15), range: 82, hitY: 37, hitH: 35, damage: 4, stun: F(13), blockstun: F(9), knock: 18, level: 'low', lunge: 4, hitstop: 5, cancel: ['lightPunch', 'lightKick', 'special'] },
-  sweep: { anim: [15, 16, 17], start: F(7), active: F(9), end: F(35), range: 128, hitY: 34, hitH: 35, damage: 12, stun: F(23), blockstun: F(14), knock: 105, lift: -110, level: 'low', lunge: 8, hitstop: 9, heavy: true, knockdown: .62 },
+  crouchLP: { anim: [4, 7, 8], start: F(3), active: F(4), end: F(14), range: 76, hitY: 126, hitH: 70, damage: 4, stun: F(13), blockstun: F(9), knock: 16, level: 'mid', lunge: 3, hitstop: 5, cancel: ['lightPunch', 'lightKick', 'special'] },
+  crouchLK: { anim: [4, 13, 4], start: F(3), active: F(4), end: F(15), range: 82, hitY: 65, hitH: 46, damage: 4, stun: F(13), blockstun: F(9), knock: 18, level: 'low', lunge: 4, hitstop: 5, cancel: ['lightPunch', 'lightKick', 'special'] },
+  sweep: { anim: [15, 16, 17], start: F(7), active: F(9), end: F(35), range: 128, hitY: 42, hitH: 42, damage: 12, stun: F(23), blockstun: F(14), knock: 105, lift: -110, level: 'low', lunge: 8, hitstop: 9, heavy: true, knockdown: .62 },
   overhead: { anim: [15, 16, 17], start: F(13), active: F(15), end: F(39), range: 111, hitY: 126, hitH: 78, damage: 15, stun: F(24), blockstun: F(16), knock: 92, level: 'overhead', lunge: 20, hitstop: 10, heavy: true, knockdown: .45, cancel: ['special'] },
   airLP: { anim: [6, 7, 8], start: F(3), active: F(4), end: F(18), range: 82, hitY: 90, hitH: 54, damage: 5, stun: F(15), blockstun: F(10), knock: 26, level: 'overhead', lunge: 6, hitstop: 5 },
   airLK: { anim: [12, 13, 14], start: F(4), active: F(6), end: F(21), range: 96, hitY: 77, hitH: 64, damage: 7, stun: F(17), blockstun: F(11), knock: 42, level: 'overhead', lunge: 8, hitstop: 6 },
@@ -101,11 +105,14 @@ const MOVES = {
 };
 
 const ATTACK_ROWS = {
-  closeLP: 0, farLP: 0, crouchLP: 0, airLP: 0,
-  rush2: 1, closeHP: 1, farHP: 1, airHP: 1,
-  rush3: 2, closeLK: 2, farLK: 2, crouchLK: 2, sweep: 2,
-  overhead: 3, blowback: 3, airLK: 3, airHK: 3,
+  closeLP: 0, farLP: 0,
+  rush2: 1, closeHP: 1, farHP: 1,
+  rush3: 2, closeLK: 2, farLK: 2,
+  blowback: 3,
 };
+
+const GROUND_ROWS = { crouchLP: 0, crouchLK: 1, sweep: 2, overhead: 3 };
+const AIR_ROWS = { airLP: 0, airHP: 1, airLK: 2, airHK: 3 };
 
 const SPECIAL_ROWS = {
   uppercut: 0, exUppercut: 0,
@@ -117,10 +124,13 @@ const COMBAT_ROWS = { fireball: 0, exFireball: 0, super: 1, throw: 3 };
 // Frame-authored root offsets keep the waist and floor contact registered across generated cels.
 const FRAME_ANCHORS = {
   motion: [[-15,1],[-10,1],[8,1],[26,1],[-3,2],[-9,1],[-19,10],[-31,14],[-1,9],[-1,-1],[4,10],[13,9],[4,30],[-2,27],[-29,-1],[6,27],[18,26],[10,30],[-12,26],[32,26],[22,26],[33,26],[37,27],[16,26]],
+  ground: Array.from({ length: 24 }, () => [0, 1]),
+  air: Array.from({ length: 24 }, () => [0, 10]),
   specials: [[-39,-1],[-33,-1],[-13,-1],[-12,-1],[41,-1],[31,-1],[-40,-1],[-11,-1],[32,-1],[52,-1],[26,-1],[27,-1],[-32,35],[-26,35],[26,49],[63,34],[38,26],[25,25],[-40,53],[-6,72],[34,47],[-40,55],[-5,50],[27,47]],
   attacks: [[-3,8],[-7,9],[-1,9],[-10,9],[-11,9],[-3,9],[-4,9],[-11,9],[-5,9],[-10,9],[-15,8],[0,8],[-5,9],[15,9],[55,9],[45,9],[27,9],[0,9],[-14,9],[15,9],[-1,9],[41,9],[54,9],[2,9]],
   combat: [[-3,8],[16,8],[24,8],[27,8],[27,8],[-2,8],[-5,9],[10,9],[23,9],[7,9],[7,9],[-13,9],[-11,18],[-10,18],[-17,18],[-5,20],[-3,18],[-3,18],[-3,27],[6,27],[9,27],[43,28],[26,27],[-4,27]],
   rival: [[-12,-1],[-7,-1],[-16,-1],[-28,-1],[-23,-1],[-3,18],[-15,-1],[-8,-1],[-18,-1],[-19,-1],[-36,-1],[-10,-1],[-14,1],[-49,3],[-22,2],[-36,8],[-82,1],[-31,2],[11,10],[-59,10],[-51,9],[-39,9],[-6,10],[-31,60]],
+  rivalMotion: Array.from({ length: 24 }, () => [0, 1]),
   bruiser: [[-6,-1],[4,-1],[3,-1],[20,-1],[6,-1],[-6,1],[-7,-1],[1,-1],[14,-1],[-3,10],[-35,11],[-23,10],[-4,-1],[-14,-1],[16,-1],[26,-1],[-53,15],[-24,15],[6,33],[30,32],[-9,33],[-22,33],[6,37],[-55,40]],
 };
 
@@ -272,8 +282,11 @@ function startGame() {
   loadAsset('hero');
   ASSETS.heroMotion = ASSETS.hero;
   loadAsset('heroAttacks');
+  loadAsset('heroGround');
+  loadAsset('heroAir');
   loadAsset('heroSpecials');
   loadAsset('heroCombat');
+  loadAsset('vfx');
   loadAsset('arenas');
   input.history.length = 0; input.lastDirection = 5; input.lastMotion = 0;
   Object.assign(Game, {
@@ -299,6 +312,7 @@ function startRound(first = false) {
     if (ASSETS[atlas]) { ASSETS[atlas].removeAttribute('src'); delete ASSETS[atlas]; }
   }
   loadAsset(opponent.atlas);
+  if (opponent.atlas === 'rival') loadAsset('rivalMotion');
   const oldPlayer = Game.player;
   Game.stage = (Game.round - 1) % ARENAS.length;
   Game.enemy = makeFighter('enemy', opponent);
@@ -549,7 +563,7 @@ function startDash(fighter, direction) {
   fighter.inv = Math.max(fighter.inv, direction === -fighter.facing ? .11 : .055);
   fighter.blocking = false;
   fighter.crouching = false;
-  burst(fighter.x, fighter.y - 8, fighter.side === 'player' ? '#a6e7ff' : '#ff8fb3', 7, .42);
+  spawnDust(fighter.x, .72);
   FurySound.play('dash', fighter.x / W * 2 - 1);
   return true;
 }
@@ -790,13 +804,14 @@ function updateFighter(fighter, opponent, dt) {
       fighter.vy = 0;
       fighter.onGround = true;
       if (!fighter.knockdown && !fighter.ko && fighter.jumpKind) {
+        spawnDust(fighter.x, fighter.jumpKind === 'hyper' ? 1.04 : .7);
         fighter.landing = F(4);
         fighter.jumpKind = '';
       }
       if (fighter.knockdown > 0 || fighter.ko) {
         fighter.groundImpact = F(5);
         Game.shake = Math.max(Game.shake, .025);
-        burst(fighter.x, ground - 5, '#d7b98a', 7, .3);
+        spawnDust(fighter.x, 1.12);
         FurySound.play('land', fighter.x / W * 2 - 1);
       }
     }
@@ -849,7 +864,7 @@ function receiveHit(target, attacker, spec, moveName) {
     target.throwTech = 0; target.inv = F(10); target.vx = -attacker.facing * 46;
     attacker.hitstun = F(10); attacker.hitstunMax = attacker.hitstun; attacker.vx = attacker.facing * -34;
     Game.banner = { text: 'THROW BREAK', timer: .6, color: '#a9efff' };
-    spawnImpact((target.x + attacker.x) * .5, target.y - 96, '#a9efff', true);
+    spawnImpact((target.x + attacker.x) * .5, target.y - 96, '#a9efff', true, false, attacker.facing);
     FurySound.play('block', target.x / W * 2 - 1);
     return true;
   }
@@ -859,6 +874,7 @@ function receiveHit(target, attacker, spec, moveName) {
   const blocked = target.blocking && attackerInFront && !spec.unblockable && canBlockHeight && canBlockOverhead;
   const scale = attacker.damageScale * (attacker.fury > 0 ? 1.18 : 1) * (attacker.maxMode > 0 ? 1.1 : 1);
   const damage = Math.max(1, Math.round(spec.damage * scale));
+  const contactY = spec.projectile ? target.y - (W < 560 ? 90 : 116) : attacker.y - (spec.hitY || 92);
 
   if (blocked) {
     target.guardLow = target.crouching;
@@ -868,7 +884,7 @@ function receiveHit(target, attacker, spec, moveName) {
     gainPower(target, damage * .8);
     gainPower(attacker, damage * .45);
     if (spec.special) target.health = Math.max(0, target.health - Math.max(1, Math.floor(damage * .09)));
-    spawnImpact(target.x - target.facing * 23, target.y - 112, '#8fdcff', true);
+    spawnImpact(target.x - target.facing * 23, contactY, '#8fdcff', true, false, attacker.facing);
     Game.freeze = Math.max(Game.freeze, F(Math.max(4, (spec.hitstop || 6) - 2)));
     target.flash = .04;
     showFeedback('格挡 · 防御槽持续消耗');
@@ -909,7 +925,7 @@ function receiveHit(target, attacker, spec, moveName) {
   } else if (spec.lift) { target.vy = spec.lift; target.onGround = false; }
   target.flash = spec.heavy ? .07 : .045;
   gainPower(attacker, dealt * 1.35);
-  spawnImpact(target.x - target.facing * 16, target.y - (target.crouching ? 72 : 118), attacker.side === 'player' ? '#ffd86e' : '#ff6f9d', false);
+  spawnImpact(target.x - target.facing * 16, contactY, attacker.side === 'player' ? '#ffd86e' : '#ff6f9d', false, spec.heavy || spec.special, attacker.facing);
   Game.freeze = Math.max(Game.freeze, F(spec.hitstop || (spec.heavy ? 10 : 5)));
   Game.shake = Math.max(Game.shake, spec.super ? .06 : spec.special ? .035 : spec.heavy ? .022 : 0);
   Game.cameraPunch = Math.max(Game.cameraPunch, spec.super ? .032 : spec.special ? .016 : spec.heavy ? .009 : 0);
@@ -967,9 +983,15 @@ function advanceWord() {
   updateHud();
 }
 
-function spawnImpact(x, y, color, blocked) {
-  burst(x, y, color, blocked ? 4 : 7, blocked ? .42 : .72);
-  Game.particles.push({ type: 'impact', x, y, color, life: blocked ? .09 : .13, max: blocked ? .09 : .13, size: blocked ? 20 : 34, vx: 0, vy: 0 });
+function spawnImpact(x, y, color, blocked, heavy = false, facing = 1) {
+  burst(x, y, color, blocked ? 3 : heavy ? 6 : 4, blocked ? .35 : heavy ? .58 : .44);
+  const life = blocked ? .18 : heavy ? .2 : .15;
+  Game.particles.push({ type: 'impact', x, y, color, row: blocked ? 2 : heavy ? 1 : 0, facing, life, max: life, size: blocked ? 64 : heavy ? 92 : 62, vx: 0, vy: 0 });
+}
+
+function spawnDust(x, scale = 1) {
+  const life = .28;
+  Game.particles.push({ type: 'dust', x, y: floorY() + 2, row: 3, facing: 1, life, max: life, size: 86 * scale, vx: 0, vy: 0 });
 }
 
 function burst(x, y, color, count, energy = 1) {
@@ -1293,9 +1315,10 @@ function drawStage() {
 
 function fighterVisual(fighter) {
   const hero = fighter.atlas === 'hero';
+  const fullMotion = hero || fighter.atlas === 'rival';
   const idleCycle = (Game.time * 2.8 + (fighter.side === 'enemy' ? .7 : 0)) % 2;
   const pose = { frame: Math.floor(idleCycle), dx: 0, dy: 0, rotate: 0, sx: 1, sy: 1 };
-  if (hero) {
+  if (fullMotion) {
     pose.sheet = 'motion'; pose.fallbackFrame = pose.frame;
     setPoseFrame(pose, 0, (Game.time * 7) % 6, true);
   }
@@ -1338,10 +1361,10 @@ function fighterVisual(fighter) {
     const action = fighter.action, spec = action.spec;
     const contactEnd = activeEnd(spec);
     const fallbackFrame = action.t < spec.start ? spec.anim[0] : action.t <= contactEnd ? spec.anim[1] : spec.anim[2];
-    const combatRow = COMBAT_ROWS[action.name], specialRow = SPECIAL_ROWS[action.name], attackRow = ATTACK_ROWS[action.name];
-    const row = combatRow ?? specialRow ?? attackRow;
+    const combatRow = COMBAT_ROWS[action.name], specialRow = SPECIAL_ROWS[action.name], groundRow = GROUND_ROWS[action.name], airRow = AIR_ROWS[action.name], attackRow = ATTACK_ROWS[action.name];
+    const row = combatRow ?? specialRow ?? groundRow ?? airRow ?? attackRow;
     if (hero && row !== undefined) {
-      pose.sheet = combatRow !== undefined ? 'combat' : specialRow !== undefined ? 'specials' : 'attacks';
+      pose.sheet = combatRow !== undefined ? 'combat' : specialRow !== undefined ? 'specials' : groundRow !== undefined ? 'ground' : airRow !== undefined ? 'air' : 'attacks';
       pose.fallbackFrame = fallbackFrame;
       const recovery = clamp((action.t - contactEnd) / Math.max(.001, spec.end - contactEnd), 0, 1);
       const framePosition = action.t < spec.start
@@ -1373,21 +1396,21 @@ function fighterVisual(fighter) {
     if (action.name === 'uppercut' || action.name === 'exUppercut') pose.rotate += fighter.facing * .025;
     if (action.name === 'sweep') { pose.dy = 5; pose.sx = 1.025; pose.sy = .98; }
   } else if (fighter.crouching) {
-    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 4; setPoseFrame(pose, 3, 3, false); }
+    if (fullMotion) { pose.sheet = 'motion'; pose.fallbackFrame = 4; setPoseFrame(pose, 3, hero ? 3 : 2 + (Game.time * 4 % 2), false); }
     else { pose.frame = 4; pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.dy = 2;
   } else if (fighter.landing > 0) {
-    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 4; setPoseFrame(pose, 2, 5, false); }
+    if (fullMotion) { pose.sheet = 'motion'; pose.fallbackFrame = 4; setPoseFrame(pose, hero ? 2 : 3, hero ? 5 : 4 + clamp(1 - fighter.landing / F(4), 0, 1), false); }
     else { pose.frame = 4; pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.dy = 2 + fighter.landing / F(4) * 2; pose.sx = 1.012; pose.sy = .988;
   } else if (!fighter.onGround) {
-    if (hero) {
+    if (fullMotion) {
       pose.sheet = 'motion'; pose.fallbackFrame = 5;
-      setPoseFrame(pose, 2, 1 + clamp((fighter.vy + 420) / 840, 0, 1) * 3);
+      setPoseFrame(pose, 2, (hero ? 1 : 0) + clamp((fighter.vy + 420) / 840, 0, 1) * (hero ? 3 : 5));
     } else { pose.frame = 5; pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.rotate = fighter.facing * clamp(fighter.vy / 2400, -.045, .055);
   } else if (fighter.dash > 0 || Math.abs(fighter.moveVx) > 18) {
-    if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 2 + Math.floor(fighter.runCycle % 2); setPoseFrame(pose, 1, fighter.runCycle % 6, true); }
+    if (fullMotion) { pose.sheet = 'motion'; pose.fallbackFrame = 2 + Math.floor(fighter.runCycle % 2); setPoseFrame(pose, 1, fighter.runCycle % 6, true); }
     else { pose.frame = 2 + Math.floor(fighter.runCycle % 2); pose.nextFrame = undefined; pose.frameMix = 0; }
     pose.rotate = fighter.facing * clamp(fighter.moveVx / 12000, -.018, .018);
   }
@@ -1399,7 +1422,7 @@ function drawFighter(fighter) {
   const drawW = compact ? (fighter.atlas === 'bruiser' ? 150 : 142) : fighter.atlas === 'bruiser' ? 252 : 238;
   const drawH = compact ? (fighter.atlas === 'bruiser' ? 150 : 142) : fighter.atlas === 'bruiser' ? 252 : 238;
   const pose = fighterVisual(fighter);
-  const sheetSuffix = pose.sheet === 'motion' ? 'Motion' : pose.sheet === 'specials' ? 'Specials' : pose.sheet === 'attacks' ? 'Attacks' : pose.sheet === 'combat' ? 'Combat' : '';
+  const sheetSuffix = pose.sheet === 'motion' ? 'Motion' : pose.sheet === 'specials' ? 'Specials' : pose.sheet === 'attacks' ? 'Attacks' : pose.sheet === 'ground' ? 'Ground' : pose.sheet === 'air' ? 'Air' : pose.sheet === 'combat' ? 'Combat' : '';
   const sheetImage = sheetSuffix ? ASSETS[fighter.atlas + sheetSuffix] : null;
   const image = sheetImage?.complete && sheetImage.naturalWidth ? sheetImage : ASSETS[fighter.atlas];
   if (pose.sheet && image !== sheetImage) {
@@ -1437,7 +1460,8 @@ function drawFighter(fighter) {
     const flashFilter = fighter.flash > 0 ? ' brightness(1.5) saturate(.82) contrast(1.06)' : '';
     ctx.filter = ((fighter.filter === 'none' ? '' : fighter.filter) + flashFilter).trim() || 'none';
     if (image.complete && image.naturalWidth) {
-      const anchors = FRAME_ANCHORS[pose.sheet || fighter.atlas] || [];
+      const anchorKey = pose.sheet === 'motion' && fighter.atlas === 'rival' ? 'rivalMotion' : pose.sheet || fighter.atlas;
+      const anchors = FRAME_ANCHORS[anchorKey] || [];
       paintSpriteCell(image, sourceW, sourceH, drawW, drawH, pose.frame, anchors[pose.frame] || [0, 0], alpha * flicker);
     } else {
       ctx.globalAlpha = alpha * flicker;
@@ -1496,6 +1520,17 @@ function drawParticles() {
   for (const p of Game.particles) {
     const alpha = clamp(p.life / p.max, 0, 1);
     const x = lerp(p.prevX ?? p.x, p.x, renderAlpha), y = lerp(p.prevY ?? p.y, p.y, renderAlpha);
+    const vfx = ASSETS.vfx;
+    if ((p.type === 'impact' || p.type === 'dust') && vfx?.complete && vfx.naturalWidth) {
+      const progress = 1 - alpha;
+      const frame = p.type === 'dust' ? Math.min(3, Math.floor(progress * 4)) : Math.min(3, 1 + Math.floor(progress * 3));
+      const cellW = vfx.naturalWidth / 4, cellH = vfx.naturalHeight / 4;
+      const size = p.size * (p.type === 'dust' ? .9 + Math.sin(progress * Math.PI) * .18 : 1);
+      ctx.save(); ctx.globalAlpha = Math.min(1, alpha * 1.45); ctx.translate(x, y); ctx.scale(p.facing || 1, 1);
+      ctx.drawImage(vfx, frame * cellW, p.row * cellH, cellW, cellH, -size / 2, p.type === 'dust' ? -size * .66 : -size / 2, size, size);
+      ctx.restore();
+      continue;
+    }
     if (p.type === 'spark') {
       const length = Math.min(16, Math.hypot(p.vx, p.vy) * .028);
       const speed = Math.max(1, Math.hypot(p.vx, p.vy));
@@ -1540,11 +1575,12 @@ function drawCombatText() {
     ctx.fillText(Game.wordEcho.text, W / 2, H * .43); ctx.restore();
   }
   if (Game.banner) {
-    const scale = 1 + Math.min(.2, Game.banner.timer * .08);
     const introBanner = Game.state === 'intro';
-    ctx.save(); ctx.translate(W / 2, introBanner ? H * .63 : H * .54); ctx.scale(scale, scale);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '950 ' + (introBanner ? (W < 560 ? 14 : 18) : (W < 560 ? 28 : 44)) + 'px system-ui,sans-serif';
-    ctx.strokeStyle = 'rgba(8,5,17,.92)'; ctx.lineWidth = 10; ctx.fillStyle = Game.banner.color; ctx.shadowColor = Game.banner.color; ctx.shadowBlur = 18;
+    const major = Game.banner.text === 'K.O.' || Game.banner.text === 'DOWN';
+    const scale = 1 + Math.min(major ? .2 : .08, Game.banner.timer * .06);
+    ctx.save(); ctx.translate(W / 2, introBanner ? H * .63 : major ? H * .5 : H * .29); ctx.scale(scale, scale);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '950 ' + (introBanner ? (W < 560 ? 14 : 18) : major ? (W < 560 ? 34 : 58) : (W < 560 ? 18 : 26)) + 'px system-ui,sans-serif';
+    ctx.strokeStyle = 'rgba(8,5,17,.92)'; ctx.lineWidth = major ? 10 : 6; ctx.fillStyle = Game.banner.color; ctx.shadowColor = Game.banner.color; ctx.shadowBlur = major ? 18 : 10;
     ctx.strokeText(Game.banner.text, 0, 0); ctx.fillText(Game.banner.text, 0, 0); ctx.restore();
   }
   if (Game.state === 'intro') {
@@ -1586,8 +1622,8 @@ function render() {
 
 function resize() {
   const rect = wrap.getBoundingClientRect();
-  const pixelBudgetScale = Math.max(1, Math.sqrt(1400000 / Math.max(1, rect.width * rect.height)));
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5, pixelBudgetScale);
+  const pixelBudgetScale = Math.sqrt(1200000 / Math.max(1, rect.width * rect.height));
+  const dpr = Math.max(.5, Math.min(window.devicePixelRatio || 1, 1.25, pixelBudgetScale));
   W = H * rect.width / Math.max(1, rect.height);
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
@@ -1742,14 +1778,26 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (!(activeEnd(MOVES.closeHP) < MOVES.closeHP.end) || travelAt(MOVES.closeHP, MOVES.closeHP.start - F(3)) !== 0 || travelAt(MOVES.closeHP, MOVES.closeHP.active) !== MOVES.closeHP.lunge) throw new Error('action timeline regression');
       Game.player.action = { name: 'closeHK', spec: MOVES.closeHK, t: MOVES.closeHK.end - F(2), hit: false, spawned: false };
       const recoveryPose = fighterVisual(Game.player);
-      if (ATTACK_ROWS.overhead !== 3 || ATTACK_ROWS.airHK !== 3 || recoveryPose.sheet !== 'specials' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
+      if (GROUND_ROWS.overhead !== 3 || AIR_ROWS.airHK !== 3 || recoveryPose.sheet !== 'specials' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
+      Game.player.action = { name: 'crouchLK', spec: MOVES.crouchLK, t: MOVES.crouchLK.active, hit: false, spawned: false };
+      const lowPose = fighterVisual(Game.player);
+      Game.player.action = { name: 'airHK', spec: MOVES.airHK, t: MOVES.airHK.active, hit: false, spawned: false };
+      const airPose = fighterVisual(Game.player);
+      if (lowPose.sheet !== 'ground' || Math.floor(lowPose.frame / 6) !== 1 || airPose.sheet !== 'air' || Math.floor(airPose.frame / 6) !== 3) throw new Error('dedicated low/air action sheet regression');
       Game.player.action = null;
       Game.player.moveVx = 80;
       Game.player.runCycle = 1.72;
       const runPose = fighterVisual(Game.player);
       if (runPose.sheet !== 'motion' || runPose.nextFrame !== undefined || runPose.frameMix !== 0) throw new Error('sprite dissolve regression');
       Game.player.moveVx = 0;
-      const uncoveredMoves = Object.keys(MOVES).filter((name) => ATTACK_ROWS[name] === undefined && SPECIAL_ROWS[name] === undefined && (typeof COMBAT_ROWS === 'undefined' || COMBAT_ROWS[name] === undefined));
+      const rivalPose = fighterVisual(Game.enemy);
+      if (rivalPose.sheet !== 'motion' || FRAME_ANCHORS.rivalMotion.length !== 24 || !ASSET_SOURCES.vfx) throw new Error('rival motion or VFX atlas missing');
+      const effectsBefore = Game.particles.length;
+      spawnImpact(W / 2, floorY() - 90, '#fff', false, true, 1);
+      spawnDust(W / 2, 1);
+      if (Game.particles.at(-2)?.row !== 1 || Game.particles.at(-1)?.type !== 'dust') throw new Error('authored VFX routing failed');
+      Game.particles.length = effectsBefore;
+      const uncoveredMoves = Object.keys(MOVES).filter((name) => ATTACK_ROWS[name] === undefined && GROUND_ROWS[name] === undefined && AIR_ROWS[name] === undefined && SPECIAL_ROWS[name] === undefined && COMBAT_ROWS[name] === undefined);
       if (uncoveredMoves.length) throw new Error('hero action sheet gaps: ' + uncoveredMoves.join(','));
 
       Game.player.x = W * .42; Game.enemy.x = Game.player.x + 48;
@@ -1876,7 +1924,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         if (Game.particles.length > 120 || Game.projectiles.length > 12) throw new Error('unbounded effects');
       }
       if (![Game.player.x, Game.enemy.x, Game.player.health, Game.score].every(Number.isFinite)) throw new Error('non-finite state');
-      if (canvas.width * canvas.height > 1410000) throw new Error('canvas pixel budget exceeded');
+      if (canvas.width * canvas.height > 2100000) throw new Error('canvas pixel budget exceeded');
       Game.state = 'paused';
       document.title = 'SELFTEST PASS · WORD FURY';
       document.documentElement.dataset.selftest = 'pass';

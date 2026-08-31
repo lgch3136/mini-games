@@ -12,25 +12,32 @@ button { color: inherit; }
 
 #game-wrap {
   position: relative; width: 100vw; height: 100dvh;
-  overflow: hidden; background: #0c0b17;
+  isolation: isolate; overflow: hidden; background: #0c0b17;
 }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#game-wrap::after {
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 54%, transparent 55%, rgba(2,4,12,.18) 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 4px);
+}
 
 #hud { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
-.fighter-hud { position: absolute; top: max(12px, env(safe-area-inset-top)); width: min(35%, 340px); }
+.fighter-hud { position: absolute; top: max(10px, env(safe-area-inset-top)); width: min(40%, 430px); }
 .player-hud { left: 14px; }
 .enemy-hud { right: 14px; text-align: right; }
-.name-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; text-shadow: 0 2px 4px #000; }
-.name-row strong { font-size: 17px; letter-spacing: .08em; }
-.name-row span { color: #9db4ca; font-size: 10px; font-weight: 900; letter-spacing: .13em; }
-.meter { height: 13px; margin-top: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,.28); background: rgba(3,7,16,.78); box-shadow: inset 0 1px 4px rgba(0,0,0,.72); }
-.player-hud .meter { border-radius: 4px 11px 11px 4px; }
-.enemy-hud .meter { border-radius: 11px 4px 4px 11px; }
+.name-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-bottom: 3px; text-shadow: 0 2px 4px #000; }
+.name-row strong { font-size: 18px; font-weight: 950; font-style: italic; letter-spacing: .09em; }
+.name-row span { color: #b6c8dc; font: 900 9px/1 ui-monospace, monospace; letter-spacing: .16em; }
+.meter { height: 13px; margin-top: 3px; overflow: hidden; border: 1px solid rgba(255,232,176,.5); background: rgba(3,7,16,.88); box-shadow: inset 0 1px 4px rgba(0,0,0,.8), 0 1px rgba(255,255,255,.1); }
+.player-hud .meter { clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%); }
+.enemy-hud .meter { clip-path: polygon(4% 100%, 0 0, 100% 0, 100% 100%); }
 .player-hud .health { clip-path: polygon(0 0, 100% 0, 97% 100%, 0 100%); }
 .enemy-hud .health { clip-path: polygon(3% 0, 100% 0, 100% 100%, 0 100%); }
 .meter i { display: block; width: 100%; height: 100%; transform-origin: left; transition: transform .08s linear; will-change: transform; }
 .enemy-hud .meter i { margin-left: auto; transform-origin: right; }
-.health i { background: linear-gradient(90deg, #23d18b, #c8ff74); }
+.player-hud .health i { background: linear-gradient(90deg, #ff4059 0 24%, #ffd84f 38%, #caff68 100%); }
+.enemy-hud .health i { background: linear-gradient(90deg, #caff68 0, #ffd84f 62%, #ff4059 78%); }
 .guard { height: 6px; }
 .guard i { background: linear-gradient(90deg, #4ab8ff, #a8e8ff); }
 .power-line { display: flex; align-items: center; gap: 6px; }
@@ -42,22 +49,23 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .fighter-hud.max-mode .power i { background: linear-gradient(90deg, #43d8ff, #d1fbff); box-shadow: 0 0 14px #54e4ff; }
 .fighter-hud.max-mode .name-row strong { color: #a9f4ff; text-shadow: 0 0 12px #31ccea; }
 
-#round-hud { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: grid; place-items: center; text-shadow: 0 2px 5px #000; }
-#round-hud b { font-size: 23px; line-height: 1; }
+#round-hud { position: absolute; top: max(5px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); min-width: 66px; display: grid; place-items: center; text-shadow: 0 2px 5px #000; }
+#round-hud b { position: absolute; top: 3px; left: -10px; color: #92a7be; font: 900 10px/1 ui-monospace, monospace; }
 #round-hud span { color: #9db4ca; font-size: 8px; font-weight: 900; letter-spacing: .24em; }
-#round-hud strong { margin-top: 2px; color: #ffe786; font: 900 20px/1 ui-monospace, monospace; }
+#round-hud strong { margin-top: 3px; color: #ffe786; font: 950 34px/.85 ui-monospace, monospace; letter-spacing: -.08em; }
 #mission {
-  position: absolute; top: max(67px, calc(env(safe-area-inset-top) + 59px)); left: 50%; transform: translateX(-50%);
-  min-width: 250px; max-width: 56%; display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 10px;
-  padding: 7px 14px; border: 1px solid rgba(255, 203, 96, .52); border-radius: 12px;
-  background: rgba(15, 12, 28, .82); box-shadow: 0 8px 24px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.08);
-  backdrop-filter: blur(8px);
+  position: absolute; top: max(55px, calc(env(safe-area-inset-top) + 47px)); left: 50%; transform: translateX(-50%);
+  min-width: 330px; max-width: 48%; display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 1px 10px;
+  padding: 4px 18px 5px; border-block: 1px solid rgba(255, 211, 112, .68);
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
+  background: linear-gradient(90deg, rgba(8,10,22,.2), rgba(12,13,29,.9) 18% 82%, rgba(8,10,22,.2));
+  box-shadow: 0 7px 20px rgba(0,0,0,.2); backdrop-filter: blur(5px);
 }
 #mission span { color: #ffcd64; font-size: 9px; font-weight: 950; letter-spacing: .12em; }
 #mission b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#word-progress { grid-column: 1 / -1; color: #ffe999; font: 950 17px/1.15 ui-monospace, monospace; letter-spacing: .18em; }
+#word-progress { color: #ffe999; font: 950 18px/1 ui-monospace, monospace; letter-spacing: .16em; text-align: right; white-space: nowrap; }
 #feedback { grid-column: 1 / -1; color: #aebcd0; font-size: 9px; }
-#hud-actions { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); margin-left: min(42%, 410px); display: flex; gap: 5px; pointer-events: auto; }
+#hud-actions { position: absolute; top: max(60px, calc(env(safe-area-inset-top) + 52px)); right: 14px; display: flex; gap: 5px; pointer-events: auto; }
 #hud-actions button { cursor: pointer; padding: 5px 9px; border: 1px solid rgba(255,255,255,.24); border-radius: 8px; background: rgba(12,10,24,.72); font-size: 10px; }
 
 .overlay {
