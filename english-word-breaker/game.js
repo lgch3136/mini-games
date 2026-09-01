@@ -24,10 +24,10 @@ const DIFFS = {
 };
 
 const POWERUPS = {
-  multi: { label: 'M', color: '#60a5fa' },
-  wide: { label: 'W', color: '#34d399' },
-  slow: { label: 'S', color: '#c084fc' },
-  fire: { label: 'F', color: '#fb7185' },
+  multi: { label: 'M', name: '分裂球', color: '#60a5fa' },
+  wide: { label: 'W', name: '加长板', color: '#34d399' },
+  slow: { label: 'S', name: '减速球', color: '#c084fc' },
+  fire: { label: 'F', name: '熔甲球', color: '#fb7185' },
 };
 
 /* ---------------- 工具 ---------------- */
@@ -46,12 +46,14 @@ const Game = {
   score: 0, lives: 3, level: 1,
   wordsDone: 0, bestCombo: 0,
   time: 0, shake: 0,
-  bricks: [], balls: [], powerups: [], particles: [], floaters: [],
+  bricks: [], balls: [], powerups: [], particles: [], floaters: [], trails: [],
   word: null, lastWord: '',
+  letterLayout: [], levelClearTimer: 0,
   paddle: null,
   feedback: '', feedbackUntil: 0,
   fireTimer: 0,
   dropMeter: 0,
+  logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
 function newPaddle() {
@@ -139,24 +141,26 @@ function buildLevel() {
     [slots[i], slots[j]] = [slots[j], slots[i]];
   }
   const letters = [...Game.word.en];
+  Game.letterLayout = slots.slice(0, letters.length);
+  const letterAt = new Map(Game.letterLayout.map(([r, c], index) => [`${r}:${c}`, { letter: letters[index], index }]));
 
   Game.bricks = [];
   const bw = (W - 40) / 10, bh = 22;
-  let li = 0;
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < grid[r].length; c++) {
       const cell = grid[r][c];
       if (!cell) continue;
       const brick = {
         x: 20 + c * bw, y: 56 + r * bh, w: bw - 3, h: bh - 3,
+        row: r, column: c,
         hp: cell.hp + (Game.level > 4 ? 1 : 0),
         letter: null, index: -1,
         hue: 30 + r * 28 + c * 4,
       };
-      if (li < letters.length) {
-        brick.letter = letters[li];
-        brick.index = li;
-        li++;
+      const assigned = letterAt.get(`${r}:${c}`);
+      if (assigned) {
+        brick.letter = assigned.letter;
+        brick.index = assigned.index;
       }
       Game.bricks.push(brick);
     }
@@ -164,7 +168,7 @@ function buildLevel() {
 
   Game.paddle = newPaddle();
   Game.balls = [Object.assign(newBall(W / 2, Game.paddle.y - 12), { stuck: true })];
-  Game.particles = []; Game.floaters = [];
+  Game.particles = []; Game.floaters = []; Game.trails = [];
   updateHud();
   showFeedback(`第 ${Game.level} 关 · 拼出「${Game.word.zh}」`);
 }
@@ -173,7 +177,9 @@ function startGame() {
   Game.score = 0; Game.lives = 3; Game.level = 1;
   Game.wordsDone = 0; Game.bestCombo = 0;
   Game.time = 0; Game.shake = 0; Game.fireTimer = 0;
+  Game.levelClearTimer = 0;
   Game.dropMeter = 0; Game.powerups = [];
+  Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   Game.state = 'playing';
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
@@ -246,6 +252,7 @@ function backToMenu() {
 
 /* ---------------- 物理 ---------------- */
 function update(dt) {
+  Game.logicFrame++;
   Game.time += dt;
   Game.comboTimer = Math.max(0, Game.comboTimer - dt);
   if (!Game.comboTimer) Game.comboCount = 0;
@@ -253,6 +260,13 @@ function update(dt) {
   Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
   Game.fireTimer = Math.max(0, Game.fireTimer - dt);
   if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
+
+  if (Game.levelClearTimer > 0) {
+    Game.levelClearTimer -= dt;
+    updateEffects(dt);
+    if (Game.levelClearTimer <= 0) nextLevel();
+    return;
+  }
 
   // 挡板
   const p = Game.paddle;
@@ -338,7 +352,16 @@ function update(dt) {
     }
   }
 
-  // 粒子与浮字
+  for (const b of Game.balls) if (!b.stuck) Game.trails.push({ x: b.x, y: b.y, life: 1 });
+  if (Game.trails.length > 90) Game.trails.splice(0, Game.trails.length - 90);
+  updateEffects(dt);
+}
+
+function updateEffects(dt) {
+  for (let i = Game.trails.length - 1; i >= 0; i--) {
+    Game.trails[i].life -= dt * 2.7;
+    if (Game.trails[i].life <= 0) Game.trails.splice(i, 1);
+  }
   for (let i = Game.particles.length - 1; i >= 0; i--) {
     const pt = Game.particles[i];
     pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 300 * dt;
@@ -379,8 +402,11 @@ function hitBrick(k, idx) {
   if (++Game.dropMeter >= 4) {
     Game.dropMeter = 0;
     const kinds = Object.keys(POWERUPS);
-    Game.powerups.push({ x: k.x + k.w / 2, y: k.y, kind: kinds[Math.floor(Math.random() * kinds.length)], phase: Math.random() * TAU });
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+    Game.powerups.push({ x: k.x + k.w / 2, y: k.y, kind, phase: Math.random() * TAU });
+    showFeedback(`道具掉落 · ${POWERUPS[kind].name}`);
   }
+  updateHud();
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .1, 1.3);
   // 清版判定: 只剩无字母的普通砖也算过? 不——字母砖全收集即胜利(经典单词玩法)
   const letterBricks = Game.bricks.filter((b) => b.letter).length;
@@ -405,6 +431,7 @@ function collectLetter(brick) {
 }
 
 function wordComplete() {
+  if (Game.levelClearTimer > 0) return;
   Game.wordsDone++;
   const bonus = 300 + Game.word.en.length * 40 + Game.lives * 80;
   Game.score += bonus;
@@ -412,7 +439,11 @@ function wordComplete() {
   showFeedback('拼写完成! 进入下一关');
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .32, 1.3);
   Game.shake = .3;
-  nextLevel();
+  for (const brick of Game.bricks) burst(brick.x + brick.w / 2, brick.y + brick.h / 2, `hsl(${brick.hue},70%,62%)`, 3);
+  Game.score += Game.bricks.length * 5;
+  Game.bricks.length = 0;
+  Game.levelClearTimer = .85;
+  updateHud();
 }
 
 function applyPowerup(kind) {
@@ -440,6 +471,7 @@ function applyPowerup(kind) {
     showFeedback('🔥 10 秒熔穿装甲砖!');
   }
   Game.score += 60;
+  updateHud();
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .18, 1.15);
 }
 
@@ -468,6 +500,7 @@ function burst(x, y, color, n) {
   for (let i = 0; i < n; i++) {
     Game.particles.push({ x, y, vx: rand(-150, 150), vy: rand(-160, 40), life: rand(.25, .5), color, size: rand(2.5, 5) });
   }
+  if (Game.particles.length > 180) Game.particles.splice(0, Game.particles.length - 180);
 }
 function floatText(text, x, y, color) {
   Game.floaters.push({ text, x, y, color, life: .95 });
@@ -482,6 +515,7 @@ function updateHud() {
   $id('score').textContent = Game.score;
   $id('lives').textContent = Game.lives;
   $id('level').textContent = Game.level;
+  $id('drop').textContent = `${Game.dropMeter}/4`;
   const w = Game.word;
   if (w) {
     $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
@@ -493,6 +527,7 @@ function updateHud() {
 
 /* ---------------- 渲染 ---------------- */
 function render() {
+  Game.renderCount++;
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   // 宣传图同级的竞技场环境；中央压暗保证砖块、球和字母始终可读。
   if (ArenaBackground.complete && ArenaBackground.naturalWidth) {
@@ -558,7 +593,7 @@ function render() {
       ctx.shadowColor = spec.color; ctx.shadowBlur = 14;
       ctx.fillStyle = 'rgba(8,17,31,.96)';
       ctx.strokeStyle = spec.color; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.roundRect(-18, -11, 36, 22, 11); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(-22, -14, 44, 28, 14); ctx.fill(); ctx.stroke();
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#f8fafc'; ctx.font = '900 14px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(spec.label, 0, 1);
@@ -575,14 +610,7 @@ function render() {
     ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 7); ctx.stroke();
 
     // 球 + 拖尾
-    if (!Game.trails) Game.trails = [];
-    for (const b of Game.balls) {
-      Game.trails.push({ x: b.x, y: b.y, life: 1 });
-    }
-    for (let i = Game.trails.length - 1; i >= 0; i--) {
-      const tr = Game.trails[i];
-      tr.life -= .045;
-      if (tr.life <= 0) { Game.trails.splice(i, 1); continue; }
+    for (const tr of Game.trails) {
       ctx.globalAlpha = tr.life * .3;
       ctx.fillStyle = Game.fireTimer > 0 ? '#fb923c' : '#fde68a';
       ctx.beginPath(); ctx.arc(tr.x, tr.y, 6 * tr.life, 0, TAU); ctx.fill();
@@ -602,7 +630,7 @@ function render() {
 
     drawParticles();
     ctx.restore();
-    if (Game.state === 'ready') {
+    if (Game.balls.some((ball) => ball.stuck)) {
       ctx.fillStyle = 'rgba(232,241,255,.9)';
       ctx.font = '700 16px system-ui'; ctx.textAlign = 'center';
       ctx.fillText('点击 / 空格 发射', W / 2, H * .62);
@@ -675,13 +703,16 @@ function ensureLoop() {
 }
 function frame(now) {
   rafId = 0;
+  Game.rafCount++;
   const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
   lastTime = now;
+  let advanced = false;
   if (Game.state === 'playing') {
     accumulator = Math.min(.1, accumulator + dt);
     while (accumulator >= FIXED_STEP && Game.state === 'playing') {
       update(FIXED_STEP);
       accumulator -= FIXED_STEP;
+      advanced = true;
     }
   }
   else if (Game.state !== 'menu') {
@@ -690,17 +721,20 @@ function frame(now) {
     Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
     if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
   } else accumulator = 0;
-  render();
+  if (advanced || Game.state !== 'playing') render();
   if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
 
 /* ---------------- 自检 ---------------- */
+window.__wordBreaker = Game;
+
 if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
   requestAnimationFrame(() => {
     try {
       Game.difficulty = 'easy';
       startGame();
       if (FIXED_STEP !== 1 / 60) throw new Error('fixed-step setup failed');
+      if (Game.logicFrame || Game.renderCount || Game.rafCount) throw new Error('frame counters were not reset');
       if (Game.state !== 'playing' || !Game.bricks.length) throw new Error('start failed');
       if (Game.player_check) throw new Error('nope');
       const ordinary = Game.bricks.filter((brick) => !brick.letter).slice(0, 4);
@@ -719,19 +753,26 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       // 字母数=单词长度
       const letterCount = Game.bricks.filter((b) => b.letter).length;
       if (letterCount !== Game.word.en.length) throw new Error('letter count mismatch');
+      const placedLetters = Game.bricks.filter((b) => b.letter).sort((a, b) => a.index - b.index);
+      if (!placedLetters.every((brick, index) => brick.row === Game.letterLayout[index][0] && brick.column === Game.letterLayout[index][1])) throw new Error('shuffled letter layout was ignored');
+      const trailCount = Game.trails.length;
+      render();
+      if (Game.trails.length !== trailCount) throw new Error('render mutated trail state');
       const lockedIdx = Game.bricks.findIndex((b) => b.letter && b.index === 1);
       if (lockedIdx >= 0) {
         const locked = Game.bricks[lockedIdx], hpBefore = locked.hp;
         hitBrick(locked, lockedIdx);
         if (!Game.bricks.includes(locked) || locked.hp !== hpBefore || Game.word.progress !== 0) throw new Error('letter lock failed');
       }
-      // 模拟按序命中字母砖(wordComplete会换关重建, 所以每次重新找index=progress的砖)
+      // 模拟按序命中字母砖，过关演出结束后再进入新砖阵。
       const startLevel = Game.level;
       for (let hits = 0; hits < 40; hits++) {
-        if (Game.level > startLevel) break;   // 词拼完自动过关
+        if (Game.levelClearTimer > 0) break;
         const idx = Game.bricks.findIndex((b) => b.letter && b.index === Game.word.progress);
         if (idx >= 0) hitBrick(Game.bricks[idx], idx);
       }
+      if (Game.levelClearTimer <= 0 || Game.bricks.length) throw new Error('level clear presentation failed');
+      for (let i = 0; i < 60 && Game.level === startLevel; i++) update(FIXED_STEP);
       if (Game.level <= startLevel) throw new Error('did not advance level');
       if (Game.level <= 1) throw new Error('did not advance level');
       // 球拍反弹
@@ -756,6 +797,22 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.state = 'paused';
       console.error(e);
     }
+  });
+}
+
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    startGame();
+    launchStuck();
+    setTimeout(() => {
+      const duplicateRenders = Game.renderCount - Game.logicFrame;
+      const passed = Game.logicFrame >= 40 && duplicateRenders <= 3 && Game.trails.length <= 90;
+      Game.state = 'paused';
+      document.title = passed
+        ? `FRAME-BUDGET PASS · ${Game.logicFrame}/${Game.renderCount}`
+        : `FRAME-BUDGET FAIL · ${Game.logicFrame}/${Game.renderCount}`;
+      document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+    }, 1200);
   });
 }
 
