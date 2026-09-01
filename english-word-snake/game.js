@@ -15,6 +15,8 @@ let GRID_Y = 120, ROWS = 16;                       // 动态布局，避开顶�
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const wrap = document.getElementById('game-wrap');
+const FIXED_STEP = 1 / 60;
+const TEST_MODE = /[?&](selftest|fuzz|probe|frametest)/.test(location.search);
 
 const $id = (id) => document.getElementById(id);
 const els = {
@@ -103,9 +105,9 @@ const SFX = {
 
 /* ---------------- 难度配置 ---------------- */
 const DIFF_CONF = {
-  easy:   { label: '初级', tick: 0.145 },
-  medium: { label: '中级', tick: 0.12 },
-  hard:   { label: '高级', tick: 0.10 },
+  easy:   { label: '初级', tick: 0.12 },
+  medium: { label: '中级', tick: 0.10 },
+  hard:   { label: '高级', tick: 0.082 },
 };
 
 const POWERUP_KINDS = {
@@ -149,6 +151,7 @@ const Game = {
   _barKey: '',
   _hudKey: '',
   _lastCombo: 0,
+  logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
 /* ---------------- 输入 ---------------- */
@@ -501,6 +504,7 @@ function selfHit() {
 }
 
 function wallHit() {
+  if (Game.invuln > 0) return;
   Game.combo = 0;
   Game.invuln = 1.2;
   Game.wallFlashUntil = Game.time + 0.6;
@@ -589,6 +593,7 @@ function tick() {
 }
 
 function update(dt) {
+  Game.logicFrame++;
   Game.time += dt;
   Game.shake = Math.max(0, Game.shake - dt * 2.2);
   Game.invuln = Math.max(0, Game.invuln - dt);
@@ -653,6 +658,7 @@ function burst(x, y, color, count) {
       r: rand(1.5, 3.5), color, t: 0, life: rand(0.3, 0.7), drag: 2.8,
     });
   }
+  if (Game.particles.length > 120) Game.particles.splice(0, Game.particles.length - 120);
 }
 
 function floatText(text, color, x, y, size) {
@@ -661,6 +667,7 @@ function floatText(text, color, x, y, size) {
 
 /* ---------------- 渲染 ---------------- */
 function render(dt) {
+  Game.renderCount++;
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#06251b');
   g.addColorStop(1, '#020a06');
@@ -1062,6 +1069,7 @@ function startGame() {
   Game.nextPowerupAt = 6;
   Game.powerupOnField = false;
   Game.stats = { words: 0, correctLetters: 0, wrongEats: 0 };
+  Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   Game.tiles.length = 0;
   Game.particles.length = 0;
   Game.floaters.length = 0;
@@ -1079,6 +1087,10 @@ function startGame() {
   layoutGrid();
   newWord();
   updateHud();
+  if (!TEST_MODE) {
+    accumulator = 0;
+    ensureLoop();
+  }
 }
 
 function togglePause() {
@@ -1088,7 +1100,8 @@ function togglePause() {
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
     els.paused.classList.add('hidden');
-    last = performance.now();
+    accumulator = 0;
+    ensureLoop();
   }
 }
 
@@ -1152,29 +1165,45 @@ function resize() {
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   lastW = w; lastH = h; lastDpr = dpr;
   layoutGrid();
+  if (Game.state !== 'playing') render(0);
 }
 window.addEventListener('resize', resize);
 resize();
 
 /* ---------------- 主循环 ---------------- */
 let last = performance.now();
+let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  last = performance.now();
+  rafId = requestAnimationFrame(frame);
+}
 function frame(now) {
-  const dt = Math.min((now - last) / 1000, 0.05);
+  rafId = 0;
+  Game.rafCount++;
+  const dt = Math.min((now - last) / 1000 || FIXED_STEP, .1);
   last = now;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   if (wrap.clientWidth !== lastW || wrap.clientHeight !== lastH || dpr !== lastDpr) resize();
+  let advanced = false;
   if (Game.state === 'playing') {
-    update(dt);
-  } else if (Game.state === 'over') {
-    updateFx(dt);
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+      update(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+      advanced = true;
+    }
+  } else {
+    accumulator = 0;
   }
-  render(Game.state === 'paused' ? 0 : dt);
-  requestAnimationFrame(frame);
+  if (advanced || Game.state !== 'playing') render(advanced ? FIXED_STEP : 0);
+  if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
 
 updateHighScore();
 els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
+window.__wordSnake = Game;
 
 /* ---------------- 自检（仅 ?selftest 触发，供无头测试） ---------------- */
 if (/[?&]selftest/.test(location.search)) {
@@ -1190,10 +1219,16 @@ if (/[?&]selftest/.test(location.search)) {
     Game.mode = 'spell';
     Game.difficulty = 'easy';
     startGame();
-    ok = ok && currentInterval() <= .145;
+    ok = ok && FIXED_STEP === 1 / 60 && currentInterval() === .12;
+    ok = ok && Game.logicFrame === 0 && Game.renderCount === 0 && Game.rafCount === 0;
     const startHeadX = Game.snake[0].x;
     tick();
     ok = ok && Array.isArray(Game.prevSnake) && Game.prevSnake[0].x === startHeadX && Game.snake[0].x === startHeadX + 1;
+    Game.snake = [{ x: 0, y: 2 }, { x: 1, y: 2 }, { x: 2, y: 2 }, { x: 3, y: 2 }];
+    Game.prevSnake = Game.snake.map((seg) => ({ ...seg }));
+    Game.dir = DIRS.left; Game.queue.length = 0; Game.hp = 3; Game.invuln = 0;
+    tick(); tick();
+    ok = ok && Game.hp === 2 && Game.invuln > 0;
     // 提前误吃重复字母后，后续仍必须保留足量正确答案
     Game.mode = 'spell';
     Game.difficulty = 'easy';
@@ -1250,8 +1285,12 @@ if (/[?&]selftest/.test(location.search)) {
     }
     ok = ok && Game.level === 2 && Game.wordsDone === 6;
     document.title = ok ? 'SELFTEST-OK' : 'SELFTEST-FAIL L=' + Game.level + ' W=' + Game.wordsDone + ' C=' + Game.stats.correctLetters + ' T=' + Game.tiles.length;
+    document.documentElement.dataset.selftest = ok ? 'pass' : 'fail';
+    Game.state = 'paused';
   } catch (err) {
     document.title = 'SELFTEST-ERR:' + err.message;
+    document.documentElement.dataset.selftest = 'fail';
+    Game.state = 'paused';
   }
 }
 
@@ -1320,4 +1359,18 @@ if (/[?&]fuzz/.test(location.search)) {
   } catch (err) {
     document.title = 'FUZZ-ERR:' + err.message;
   }
+}
+
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  startGame();
+  ensureLoop();
+  setTimeout(() => {
+    const duplicateRenders = Game.renderCount - Game.logicFrame;
+    const passed = Game.logicFrame >= 40 && duplicateRenders <= 3 && Game.particles.length <= 120;
+    Game.state = 'paused';
+    document.title = passed
+      ? `FRAME-BUDGET PASS · ${Game.logicFrame}/${Game.renderCount}`
+      : `FRAME-BUDGET FAIL · ${Game.logicFrame}/${Game.renderCount}`;
+    document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+  }, 1200);
 }
