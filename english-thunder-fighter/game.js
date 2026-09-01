@@ -7,6 +7,9 @@
 
 /* ---------------- 基础 ---------------- */
 let W = 900, H = 640;
+const FIXED_STEP = 1 / 60;
+const MAX_CANVAS_PIXELS = 1200000;
+const FX_STAR_COUNT = 96;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -146,6 +149,8 @@ const Game = {
   nextWaveTimer: null,
   bossPending: false,
   lastEncounter: null,
+  encounterKind: null,
+  encounterSlot: 0,
   spawnTimer: 0,
   eventTimer: 0,
   carrierQueue: [],
@@ -398,7 +403,12 @@ function spawnStreamEnemy(option) {
   const conf = DIFF_CONF[Game.difficulty];
   const speedBase = conf.speed * (1 + (Game.level - 1) * 0.09);
   const edge = W < 600 ? Math.max(62, W * 0.17) : 60;
-  const slot = randInt(4), encounter = pickEncounter();
+  if (!Game.encounterKind || Game.encounterSlot >= 4) {
+    Game.encounterKind = pickEncounter();
+    Game.encounterSlot = 0;
+  }
+  const encounter = Game.encounterKind;
+  const slot = Game.encounterSlot++;
   const homeX = clamp(W * (slot + 1) / 5 + rand(-38, 38), edge, W - edge);
   const plan = formationPlan(encounter, slot, 4, homeX, Math.min(H * .25, hudClearanceY() + 24));
   const elite = Math.random() < Math.min(.2, .08 + Game.level * .012);
@@ -412,6 +422,7 @@ function spawnStreamEnemy(option) {
     nextShot: rand(.8, 2.5), shotInterval: conf.fire * rand(.75, 1.35) * (elite ? .6 : 1),
     hitFlash: 0, dead: false, spawnAt: Game.time,
     entering: true, retreating: false, entryEdge: plan.edge, flight: plan.flight,
+    formation: encounter, formationSlot: slot,
     linger: option ? rand(4.5, 6) : rand(1.4, 3.2),
     route: randInt(3), bulletColor: Math.random() < .5 ? '#48cfff' : '#ff9b45',
   };
@@ -1644,12 +1655,16 @@ function startGame() {
   p.weapon = 'spread'; p.weaponLevel = 1;
   p.double = 0; p.invuln = 1.5; p.pointer = false; p.spawnRing = 3; p.muzzle = 0; p.berserk = 0;
   Game.lastEncounter = null;
+  Game.encounterKind = null;
+  Game.encounterSlot = 0;
   els.menu.classList.add('hidden');
   els.over.classList.add('hidden');
   els.paused.classList.add('hidden');
   els.hud.classList.remove('hidden');
   spawnQuestionWave();
   updateHud();
+  accumulator = 0;
+  ensureLoop();
 }
 
 function togglePause() {
@@ -1660,7 +1675,8 @@ function togglePause() {
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
     els.paused.classList.add('hidden');
-    last = performance.now();
+    accumulator = 0;
+    ensureLoop();
   }
 }
 
@@ -1669,6 +1685,7 @@ function resumeGame() { if (Game.state === 'paused') togglePause(); }
 function backToMenu() {
   releaseTouchControls();
   Game.state = 'menu';
+  if (window.ChipMusic) ChipMusic.stop();
   els.hud.classList.add('hidden');
   els.over.classList.add('hidden');
   els.paused.classList.add('hidden');
@@ -1715,9 +1732,12 @@ function toggleMute() {
 
 /* ---------------- 画布尺寸 ---------------- */
 let lastW = 0, lastH = 0, lastDpr = 0;
+function canvasDpr(width, height) {
+  return Math.max(.5, Math.min(window.devicePixelRatio || 1, 1.25, Math.sqrt(MAX_CANVAS_PIXELS / Math.max(1, width * height))));
+}
 function resize() {
-  const w = wrap.clientWidth, h = wrap.clientHeight;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, wrap.clientWidth), h = Math.max(1, wrap.clientHeight);
+  const dpr = canvasDpr(w, h);
   const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
   const nextW = portrait ? w : 900;
   const nextH = portrait ? h : 640;
@@ -1734,6 +1754,8 @@ function resize() {
   canvas.height = Math.round(h * dpr);
   // 分别按实际宽高缩放：任何窗口比例下世界都完整可见（不会裁掉底部）
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   lastW = w; lastH = h; lastDpr = dpr;
 }
 window.addEventListener('resize', resize);
@@ -1741,26 +1763,39 @@ resize();
 
 /* ---------------- 主循环 ---------------- */
 let last = performance.now();
+let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  last = performance.now();
+  rafId = requestAnimationFrame(frame);
+}
 function frame(now) {
-  const dt = Math.min((now - last) / 1000, 0.05);
+  rafId = 0;
+  const dt = Math.min((now - last) / 1000 || FIXED_STEP, 0.1);
   last = now;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = canvasDpr(Math.max(1, wrap.clientWidth), Math.max(1, wrap.clientHeight));
   if (wrap.clientWidth !== lastW || wrap.clientHeight !== lastH || dpr !== lastDpr) resize();
   if (Game.state === 'playing') {
-    update(dt);
-    updateFx(dt);
-  } else if (Game.state === 'over') {
-    updateFx(dt);
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+      update(FIXED_STEP);
+      updateFx(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+    }
+  } else {
+    accumulator = 0;
   }
   render(Game.state === 'paused' ? 0 : dt);
   if (FX.available) FX.frame(dt, 0);
-  requestAnimationFrame(frame);
+  if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
 /* WebGL增效层: 远景发光星尘(垫在游戏画面下) */
 const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
-if (FX.available) FX.setStarfield({ count: 240, speed: 42, tint: [0.55, 0.72, 1] });
+if (FX.available) FX.setStarfield({ count: FX_STAR_COUNT, speed: 42, tint: [0.55, 0.72, 1] });
 
-requestAnimationFrame(frame);
+render(0);
+if (FX.available) FX.frame(0, 0);
 
 updateHighScore();
 els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
@@ -1770,6 +1805,11 @@ if (/[?&]selftest/.test(location.search)) {
   try {
     Game.difficulty = 'easy';
     startGame();
+    if (FIXED_STEP !== 1 / 60 || FX_STAR_COUNT > 120 || canvas.width * canvas.height > MAX_CANVAS_PIXELS * 1.01 || (FX.available && FX.cv.width * FX.cv.height > MAX_CANVAS_PIXELS * 1.01)) throw new Error('frame pacing or render budget failed');
+    const openingFormation = Game.encounterKind;
+    for (let i = 1; i < 4; i++) spawnStreamEnemy(null);
+    const openingShips = Game.enemies.filter((e) => e.formation === openingFormation);
+    if (openingShips.length !== 4 || openingShips.some((e, index) => e.formationSlot !== index)) throw new Error('continuous formation failed');
     const streamBefore = Game.enemies.length;
     Game.spawnTimer = 0; updateDirector(0);
     if (Game.enemies.length <= streamBefore) throw new Error('continuous director failed');
@@ -1828,10 +1868,14 @@ if (/[?&]selftest/.test(location.search)) {
     const fireReleased = !Game.fireHeld && movePointerId === 91 && firePointerId === null;
     canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 91, pointerType: 'touch' }));
     const inputOk = moveOnly && separateFire && fireReleased && movePointerId === null;
-    if (Game.score > 0 && Game.stats.correct === 1 && inputOk) document.title = 'SELFTEST-OK';
-    else document.title = 'SELFTEST-FAIL';
+    const passed = Game.score > 0 && Game.stats.correct === 1 && inputOk;
+    document.title = passed ? 'SELFTEST-OK' : 'SELFTEST-FAIL';
+    document.documentElement.dataset.selftest = passed ? 'pass' : 'fail';
+    Game.state = 'paused';
   } catch (err) {
     document.title = 'SELFTEST-ERR:' + err.message;
+    document.documentElement.dataset.selftest = 'fail';
+    Game.state = 'paused';
   }
 }
 

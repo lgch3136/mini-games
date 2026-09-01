@@ -12,6 +12,8 @@ const PLAYER_GROUND_Y = 510;
 const MAX_Z = 145;
 const TAU = Math.PI * 2;
 const LANE_MARKER_WORLD = 18;
+const FIXED_STEP = 1 / 60;
+const MAX_CANVAS_PIXELS = 1200000;
 
 const DIFFICULTIES = {
   easy: { speed: 29, density: .82, label: '初级' },
@@ -113,10 +115,13 @@ function startGame() {
   $('touch-controls').classList.remove('hidden');
   if (window.ArcadeAudio) ArcadeAudio.start();
   updateHud();
+  accumulator = 0;
+  ensureLoop();
 }
 
 function backToMenu() {
   Game.state = 'menu';
+  if (window.ChipMusic) ChipMusic.stop();
   $('hud').classList.add('hidden');
   $('touch-controls').classList.add('hidden');
   $('paused').classList.add('hidden');
@@ -131,7 +136,8 @@ function togglePause() {
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
     $('paused').classList.add('hidden');
-    lastTime = performance.now();
+    accumulator = 0;
+    ensureLoop();
   }
 }
 
@@ -893,10 +899,13 @@ function render() {
 function resize() {
   const width = Math.max(1, wrap.clientWidth);
   const height = Math.max(1, wrap.clientHeight);
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const pixelBudgetScale = Math.sqrt(MAX_CANVAS_PIXELS / (width * height));
+  const dpr = Math.max(.5, Math.min(window.devicePixelRatio || 1, 1.25, pixelBudgetScale));
   VIEW_W = VIEW_H * width / height;
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 }
 
 function setMuteButton() {
@@ -963,14 +972,27 @@ window.addEventListener('orientationchange', () => setTimeout(resize, 180));
 resize(); setMuteButton(); render();
 
 let lastTime = performance.now();
-function frame(now) {
-  const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
-  lastTime = now;
-  if (Game.state === 'playing') update(dt);
-  render();
-  requestAnimationFrame(frame);
+let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+function frame(now) {
+  rafId = 0;
+  const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
+  lastTime = now;
+  if (Game.state === 'playing') {
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+      update(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+    }
+  } else accumulator = 0;
+  render();
+  if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
+}
 
 window.__templeDash = Game;
 
@@ -980,6 +1002,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.difficulty = 'easy';
       Game.speedScale = .8;
       startGame();
+      if (FIXED_STEP !== 1 / 60 || canvas.width * canvas.height > MAX_CANVAS_PIXELS * 1.01) throw new Error('frame pacing or pixel budget failed');
       if (Math.abs(Game.speed - DIFFICULTIES.easy.speed * .8) > .001) throw new Error('speed setting failed');
       Game.speedScale = 1;
       startGame();

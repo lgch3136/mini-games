@@ -105,7 +105,8 @@
     resize() {
       if (!this.available) return;
       const r = this.cv.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const pixelBudgetScale = Math.sqrt(800000 / Math.max(1, r.width * r.height));
+      const dpr = Math.max(.5, Math.min(window.devicePixelRatio || 1, 1.25, pixelBudgetScale));
       this.cv.width = Math.max(2, Math.round(r.width * dpr));
       this.cv.height = Math.max(2, Math.round(r.height * dpr));
       this.w = r.width; this.h = r.height;

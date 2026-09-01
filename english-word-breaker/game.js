@@ -15,6 +15,7 @@ ArenaBackground.src = 'assets/arena-bg-v3.webp';
 
 let W = 720, H = 560;                 // 逻辑尺寸, 手机按视口重算
 const TAU = Math.PI * 2;
+const FIXED_STEP = 1 / 60;
 
 const DIFFS = {
   easy:   { ballSpeed: 250, label: '初级' },
@@ -181,6 +182,8 @@ function startGame() {
   if (window.ChipMusic) ChipMusic.play('breaker-loop');
   if (window.ArcadeAudio) ArcadeAudio.start();
   buildLevel();
+  accumulator = 0;
+  ensureLoop();
 }
 
 function nextLevel() {
@@ -225,7 +228,12 @@ function launchStuck() {
 
 function togglePause() {
   if (Game.state === 'playing') { Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
-  else if (Game.state === 'paused') { Game.state = 'playing'; $id('paused').classList.add('hidden'); }
+  else if (Game.state === 'paused') {
+    Game.state = 'playing';
+    $id('paused').classList.add('hidden');
+    accumulator = 0;
+    ensureLoop();
+  }
 }
 function backToMenu() {
   Game.state = 'menu';
@@ -658,17 +666,32 @@ document.addEventListener('visibilitychange', () => {
 
 /* ---------------- 主循环 ---------------- */
 let lastTime = performance.now();
+let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(frame);
+}
 function frame(now) {
-  const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
+  rafId = 0;
+  const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
   lastTime = now;
-  if (Game.state === 'playing') update(dt);
+  if (Game.state === 'playing') {
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+      update(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+    }
+  }
   else if (Game.state !== 'menu') {
+    accumulator = 0;
     // paused/over 时仍更新浮字淡出
     Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
     if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
-  }
+  } else accumulator = 0;
   render();
-  requestAnimationFrame(frame);
+  if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
 
 /* ---------------- 自检 ---------------- */
@@ -677,6 +700,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
     try {
       Game.difficulty = 'easy';
       startGame();
+      if (FIXED_STEP !== 1 / 60) throw new Error('fixed-step setup failed');
       if (Game.state !== 'playing' || !Game.bricks.length) throw new Error('start failed');
       if (Game.player_check) throw new Error('nope');
       const ordinary = Game.bricks.filter((brick) => !brick.letter).slice(0, 4);
@@ -724,11 +748,15 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       }
       if (!bounced) throw new Error('paddle bounce failed');
       document.title = 'SELFTEST-OK';
+      document.documentElement.dataset.selftest = 'pass';
+      Game.state = 'paused';
     } catch (e) {
       document.title = 'SELFTEST-FAIL: ' + e.message;
+      document.documentElement.dataset.selftest = 'fail';
+      Game.state = 'paused';
       console.error(e);
     }
   });
 }
 
-requestAnimationFrame(frame);
+render();

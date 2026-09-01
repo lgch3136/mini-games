@@ -570,6 +570,8 @@ function startGame(mode = Game.mode) {
   // 芯片配乐：任务=丛林行动曲
   if (window.ChipMusic) ChipMusic.play('ranger-stage');
   updateHud();
+  accumulator = 0;
+  ensureLoop();
 }
 
 function resetInput() {
@@ -586,12 +588,14 @@ function togglePause() {
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
     $('paused').classList.add('hidden');
-    lastTime = performance.now();
+    accumulator = 0;
+    ensureLoop();
   }
 }
 
 function backToMenu() {
   Game.state = 'menu';
+  if (window.ChipMusic) ChipMusic.stop();
   resetInput();
   $('hud').classList.add('hidden');
   $('touch-controls').classList.add('hidden');
@@ -982,6 +986,7 @@ function answerWordGate(option) {
   showFeedback(feedback);
   lastTime = performance.now();
   accumulator = 0;
+  ensureLoop();
   updateHud();
 }
 
@@ -2235,10 +2240,13 @@ function render() {
 function resize() {
   const width = Math.max(1, wrap.clientWidth);
   const height = Math.max(1, wrap.clientHeight);
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const pixelBudgetScale = Math.sqrt(1200000 / (width * height));
+  const dpr = Math.max(.5, Math.min(window.devicePixelRatio || 1, 1.25, pixelBudgetScale));
   VIEW_W = VIEW_H * width / height;
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 }
 
 function setMuteButton() {
@@ -2358,7 +2366,14 @@ render();
 
 let lastTime = performance.now();
 let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(frame);
+}
 function frame(now) {
+  rafId = 0;
   const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
   lastTime = now;
   if (Game.state === 'playing') {
@@ -2371,9 +2386,8 @@ function frame(now) {
     accumulator = 0;
   }
   render();
-  requestAnimationFrame(frame);
+  if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
 
 window.__wordRanger = Game;
 
@@ -2516,11 +2530,13 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       cullWorld();
       if (Game.chunks.length > 6) throw new Error('old chunks were not reclaimed');
       if (![Game.player.x, Game.player.y, Game.camera, Game.generatedTo].every(Number.isFinite)) throw new Error('non-finite game state');
+      Game.state = 'paused';
       document.title = 'SELFTEST PASS · WORD RANGER';
       document.documentElement.dataset.selftest = 'pass';
     } catch (error) {
       document.title = 'SELFTEST FAIL · ' + error.message;
       document.documentElement.dataset.selftest = 'fail';
+      Game.state = 'paused';
       console.error(error);
     }
   });
