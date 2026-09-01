@@ -14,6 +14,8 @@ const PLAYER_H = 59.8;
 const CROUCH_H = 30;
 const BULLET_SPEED = 660;
 const FIXED_STEP = 1 / 60;
+const ENEMY_ACTIVATION_MARGIN = 64;
+const PARTICLE_CAP = 120;
 const POWERUP_LABELS = { spread: '散射', rapid: '连射', shield: '护盾' };
 const PLAYER_BULLET_CAPS = { normal: 4, rapid: 6, spread: 10 };
 const AIM_OCTANTS = [
@@ -208,13 +210,15 @@ const DECOR_SPECS = [
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+const secondsToFrames = (seconds) => Number.isFinite(seconds) ? Math.max(0, Math.round(seconds / FIXED_STEP)) : Infinity;
 const input = { left: false, right: false, up: false, down: false, fire: false, firePressed: false, jumpHeld: false, jumpBuffer: 0 };
 const mobileAssist = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 
 const Game = {
   state: 'menu', mode: 'mission', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
   missionLevel: 0,
-  distance: 0, maxX: 70, camera: 0, prevCamera: 0, renderAlpha: 1, checkpoint: 70, time: 0,
+  distance: 0, maxX: 70, camera: 0, checkpoint: 70, time: 0, logicFrame: 0, rngState: 0x4c434731,
+  rafCount: 0, renderCount: 0,
   feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null,
   generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
   reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
@@ -223,16 +227,23 @@ const Game = {
   bossNodes: [], bossNodeProgress: 0, bossGateDone: false, bossWord: null,
   chunks: [], pickups: [], powerups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
   player: {
-    x: 70, y: GROUND_Y - PLAYER_H, prevX: 70, prevY: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
+    x: 70, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
     vx: 0, vy: 0, facing: 1, onGround: true,
     coyote: .1, inv: 0, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0,
     landingTimer: 0, skidTimer: 0, hurtTimer: 0,
-    runCycle: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
+    action: 'idle', actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
     weapon: 'normal', weaponLevel: 0, weaponTimer: 0, shield: 0,
     overdrive: 0, combo: 0, comboTimer: 0,
   },
 };
+
+function gameRandom() {
+  let state = Game.rngState >>> 0 || 0x4c434731;
+  state ^= state << 13; state ^= state >>> 17; state ^= state << 5;
+  Game.rngState = state >>> 0;
+  return Game.rngState / 0x100000000;
+}
 
 function resolveAimPose(source = input, player = Game.player) {
   const horizontal = Number(Boolean(source.right)) - Number(Boolean(source.left));
@@ -360,9 +371,10 @@ function makeEnemy(type, x, chunkIndex, floorY = GROUND_Y) {
     type, chunkIndex, x, home: x, floorY, baseY, y: baseY,
     w: spec.w, h: spec.h, hp, maxHp: hp, range: spec.range,
     vx: 0, vy: 0, facing: -1, onGround: !spec.air,
-    state: 'idle', stateTimer: 0, animTime: 0, cooldown: .65 + Math.random() * .8, attackIndex: 0,
+    active: false, activatedFrame: -1,
+    state: 'idle', stateFrames: 0, animTicks: 0, cooldownFrames: secondsToFrames(.65 + gameRandom() * .8), attackIndex: 0,
     targetX: x, targetY: baseY, bossPhase: 1,
-    phase: Math.random() * TAU, prevX: x, prevY: baseY, dead: false, hit: 0, stun: 0, dropType: null,
+    phase: gameRandom() * TAU, dead: false, hit: 0, stun: 0, dropType: null,
   };
 }
 
@@ -548,7 +560,7 @@ function buildSessionWords() {
   const pool = wordBank().slice();
   const count = Math.min(8, pool.length);
   for (let i = 0; i < count; i++) {
-    const pick = i + Math.floor(Math.random() * (pool.length - i));
+    const pick = i + Math.floor(gameRandom() * (pool.length - i));
     [pool[i], pool[pick]] = [pool[pick], pool[i]];
   }
   return pool.slice(0, count);
@@ -573,10 +585,10 @@ function nextWord(initial) {
 function resetPlayer(x) {
   const startX = x == null ? 70 : x;
   Object.assign(Game.player, {
-    x: startX, y: GROUND_Y - PLAYER_H, prevX: startX, prevY: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
+    x: startX, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
     facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
-    runCycle: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
+    action: 'idle', actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
     weapon: 'normal', weaponLevel: 0, weaponTimer: 0, shield: 0, overdrive: 0, combo: 0, comboTimer: 0,
   });
 }
@@ -588,9 +600,11 @@ function startGame(mode = Game.mode) {
     Game.missionLevel = clamp(Game.selectedLevel || 0, 0, MISSION_LEVELS.length - 1);
   }
   MISSION_BEATS = MISSION_LEVELS[Game.missionLevel].beats;
+  const deterministicTest = /[?&]selftest(?:[=&]|$)/.test(location.search);
+  const seed = deterministicTest ? 0x434f4e54 : (Date.now() ^ (Game.missionLevel + 1) * 0x9e3779b9) >>> 0;
   Object.assign(Game, {
     state: 'playing', score: 0, wordsDone: 0, hp: 3, distance: 0, maxX: 70,
-    camera: 0, prevCamera: 0, renderAlpha: 1, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '',
+    camera: 0, checkpoint: 70, time: 0, logicFrame: 0, rngState: seed, rafCount: 0, renderCount: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '',
     currentWord: null, wordEcho: null, generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
     reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
     hitStop: 0, shake: 0, shakeStrength: 0, flash: 0, victoryTimer: 0,
@@ -706,7 +720,7 @@ function advanceLevel() {
         nextLv = Game.missionLevel;
   Object.assign(Game, {
     hp: Math.min(5, Game.hp + 1), distance: 0, maxX: 70,
-    camera: 0, prevCamera: 0, renderAlpha: 1, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0,
+    camera: 0, checkpoint: 70, time: 0, logicFrame: 0, rngState: (Game.rngState ^ ((nextLv + 1) * 0x9e3779b9)) >>> 0, feedbackTimer: 0, hudTimer: 0,
     generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
     reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
     hitStop: 0, shake: 0, shakeStrength: 0, flash: 0, victoryTimer: 0,
@@ -778,7 +792,7 @@ function shoot() {
 
 function dropPowerup(enemy, type) {
   const spot = findSafeSpot(enemy.x);
-  Game.powerups.push({ x: spot.x - 17, y: spot.y + 8, w: 34, h: 34, type, phase: Math.random() * TAU, taken: false });
+  Game.powerups.push({ x: spot.x - 17, y: spot.y + 8, w: 34, h: 34, type, phase: gameRandom() * TAU, taken: false });
   showFeedback('补给已落地：' + POWERUP_LABELS[type]);
 }
 
@@ -992,7 +1006,7 @@ function openWordGate(chunk) {
   const distractors = Game.sessionWords.map((item) => item.en.toUpperCase()).filter((item) => item !== word.en).slice(0, 2);
   const options = [word.en, ...distractors];
   for (let i = options.length - 1; i > 0; i--) {
-    const pick = Math.floor(Math.random() * (i + 1));
+    const pick = Math.floor(gameRandom() * (i + 1));
     [options[i], options[pick]] = [options[pick], options[i]];
   }
   Game.state = 'word-gate';
@@ -1070,6 +1084,28 @@ function playerOnPuddle(player) {
     && player.x + player.w > hazard.x && player.x < hazard.x + hazard.w));
 }
 
+function updatePlayerAnimation() {
+  const player = Game.player;
+  const moving = Math.abs(player.vx) > 30;
+  const firing = player.recoil > 0;
+  const action = player.hurtTimer > 0 ? 'hurt'
+    : player.landingTimer > 0 ? 'land'
+    : player.skidTimer > 0 && player.onGround ? 'skid'
+    : player.crouching ? (firing ? 'crouch-fire' : 'crouch')
+    : !player.onGround ? (firing ? 'air-fire' : 'air')
+    : moving ? (firing ? 'run-fire' : 'run')
+    : firing ? 'fire' : 'idle';
+  if (action !== player.action) {
+    player.action = action;
+    player.actionTicks = 1;
+  } else {
+    player.actionTicks++;
+  }
+  const cadence = action.startsWith('run') ? 8 : action.startsWith('air') ? 5 : action === 'idle' ? 18 : action.includes('fire') ? 4 : 60;
+  const count = action.startsWith('run') || action === 'idle' ? 4 : action.includes('fire') ? 2 : 1;
+  player.animFrame = Math.floor(player.actionTicks / cadence) % count;
+}
+
 function updatePlayer(dt) {
   const conf = DIFFICULTIES[Game.difficulty];
   const player = Game.player;
@@ -1102,7 +1138,6 @@ function updatePlayer(dt) {
     ? approach(player.vx, targetSpeed, (move ? 620 : 190) * dt)
     : targetSpeed;
   if (!player.onGround && biomeIndex === 1) player.vx += Math.sin(Game.time * 1.1) * 58 * dt;
-  player.runCycle = (player.runCycle + Math.abs(player.vx) * dt / 30) % 4;
   const aim = aimDirection();
   if (input.up || input.down || move || player.fireCooldown <= 0) {
     player.aimX = aim.x;
@@ -1211,9 +1246,9 @@ function updateHazards(dt) {
 }
 
 function setEnemyState(enemy, state, duration) {
-  if (enemy.state !== state) enemy.animTime = 0;
+  if (enemy.state !== state) enemy.animTicks = 0;
   enemy.state = state;
-  enemy.stateTimer = duration;
+  enemy.stateFrames = secondsToFrames(duration);
   if (state === 'telegraph' && enemy.x > Game.camera - 80 && enemy.x < Game.camera + VIEW_W + 80 && window.ArcadeAudio) {
     ArcadeAudio.play('confirm', enemy.type === 'boss' ? .16 : .07, enemy.type === 'boss' ? .55 : .78);
   }
@@ -1254,7 +1289,7 @@ function startBossShield(boss) {
   const distractor = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find((letter) => !letters.includes(letter));
   entries.push({ letter: distractor, order: -1 });
   for (let i = entries.length - 1; i > 0; i--) {
-    const pick = Math.floor(Math.random() * (i + 1));
+    const pick = Math.floor(gameRandom() * (i + 1));
     [entries[i], entries[pick]] = [entries[pick], entries[i]];
   }
   const positions = [{ ox: -126, oy: -62 }, { ox: -44, oy: -112 }, { ox: 44, oy: -112 }, { ox: 126, oy: -62 }];
@@ -1276,7 +1311,7 @@ function hitBossNode(node, boss) {
     if (Game.bossNodeProgress >= 3) {
       Game.bossGateDone = true;
       boss.bossPhase = 3;
-      boss.cooldown = .8;
+      boss.cooldownFrames = secondsToFrames(.8);
       setEnemyState(boss, 'recover', .85);
       Game.player.overdrive = 6;
       Game.score += 900;
@@ -1304,7 +1339,7 @@ function updateBoss(enemy, dt, dx, dy, conf) {
   if (enemy.state === 'idle') {
     enemy.vx = Math.abs(dx) > 260 ? Math.sign(dx) * conf.enemySpeed * .5 : 0;
     moveGroundEnemy(enemy, dt);
-    if (enemy.cooldown <= 0 && Math.abs(dx) < 680) {
+    if (enemy.cooldownFrames <= 0 && Math.abs(dx) < 680) {
       enemy.attackKind = enemy.attackIndex++ % 3;
       enemy.targetX = Game.player.x + Game.player.w / 2;
       enemy.targetY = Game.player.y + Game.player.h / 2;
@@ -1312,7 +1347,7 @@ function updateBoss(enemy, dt, dx, dy, conf) {
       enemy.vx = 0;
       setEnemyState(enemy, 'telegraph', enemy.bossPhase === 3 ? .38 : .58);
     }
-  } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+  } else if (enemy.state === 'telegraph' && enemy.stateFrames <= 0) {
     if (enemy.attackKind === 0) fireEnemyVolley(enemy, enemy.bossPhase === 3 ? [-.24, -.08, .08, .24] : [-.14, 0, .14], enemy.bossPhase === 3 ? 330 : 285);
     else if (enemy.attackKind === 1) enemy.vx = enemy.facing * (enemy.bossPhase === 3 ? 360 : 300);
     else {
@@ -1325,9 +1360,9 @@ function updateBoss(enemy, dt, dx, dy, conf) {
     setEnemyState(enemy, 'attack', enemy.attackKind === 1 ? .48 : .22);
   } else if (enemy.state === 'attack') {
     if (enemy.attackKind === 1) moveGroundEnemy(enemy, dt);
-    if (enemy.stateTimer <= 0) { enemy.vx = 0; setEnemyState(enemy, 'recover', enemy.bossPhase === 3 ? .42 : .68); }
-  } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
-    enemy.cooldown = enemy.bossPhase === 3 ? .55 : .9;
+    if (enemy.stateFrames <= 0) { enemy.vx = 0; setEnemyState(enemy, 'recover', enemy.bossPhase === 3 ? .42 : .68); }
+  } else if (enemy.state === 'recover' && enemy.stateFrames <= 0) {
+    enemy.cooldownFrames = secondsToFrames(enemy.bossPhase === 3 ? .55 : .9);
     setEnemyState(enemy, 'idle', 0);
   }
 }
@@ -1337,11 +1372,18 @@ function updateEnemies(dt) {
   const player = Game.player;
   for (const enemy of Game.enemies) {
     if (enemy.dead || enemy.x < Game.camera - 500 || enemy.x > Game.camera + VIEW_W + 650) continue;
+    if (!enemy.active) {
+      const entered = enemy.x + enemy.w >= Game.camera - ENEMY_ACTIVATION_MARGIN
+        && enemy.x <= Game.camera + VIEW_W + ENEMY_ACTIVATION_MARGIN;
+      if (!entered) continue;
+      enemy.active = true;
+      enemy.activatedFrame = Game.logicFrame;
+    }
     enemy.hit = Math.max(0, enemy.hit - dt);
     enemy.stun = Math.max(0, enemy.stun - dt);
-    enemy.cooldown -= dt;
-    enemy.animTime += dt;
-    if (Number.isFinite(enemy.stateTimer)) enemy.stateTimer = Math.max(0, enemy.stateTimer - dt);
+    enemy.cooldownFrames = Math.max(0, enemy.cooldownFrames - 1);
+    enemy.animTicks++;
+    if (Number.isFinite(enemy.stateFrames)) enemy.stateFrames = Math.max(0, enemy.stateFrames - 1);
     const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
     const dy = player.y + player.h / 2 - (enemy.y + enemy.h / 2);
     if (enemy.state !== 'attack') enemy.facing = Math.sign(dx || enemy.facing || -1);
@@ -1361,20 +1403,20 @@ function updateEnemies(dt) {
       if (enemy.state === 'idle') {
         enemy.vx = enemy.facing * conf.enemySpeed * .48;
         moveGroundEnemy(enemy, dt);
-        if (enemy.cooldown <= 0 && Math.abs(dx) < 270) { enemy.vx = 0; setEnemyState(enemy, 'telegraph', .42); }
-      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+        if (enemy.cooldownFrames <= 0 && Math.abs(dx) < 270) { enemy.vx = 0; setEnemyState(enemy, 'telegraph', .42); }
+      } else if (enemy.state === 'telegraph' && enemy.stateFrames <= 0) {
         enemy.vx = enemy.facing * conf.enemySpeed * 4.4;
         setEnemyState(enemy, 'attack', .36);
       } else if (enemy.state === 'attack') {
         moveGroundEnemy(enemy, dt);
-        if (enemy.stateTimer <= 0) { enemy.vx = 0; setEnemyState(enemy, 'recover', .52); }
-      } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
-        enemy.cooldown = 1.05; setEnemyState(enemy, 'idle', 0);
+        if (enemy.stateFrames <= 0) { enemy.vx = 0; setEnemyState(enemy, 'recover', .52); }
+      } else if (enemy.state === 'recover' && enemy.stateFrames <= 0) {
+        enemy.cooldownFrames = secondsToFrames(1.05); setEnemyState(enemy, 'idle', 0);
       }
     } else if (enemy.type === 'leaper') {
-      if (enemy.state === 'idle' && enemy.cooldown <= 0 && Math.abs(dx) < 340) {
+      if (enemy.state === 'idle' && enemy.cooldownFrames <= 0 && Math.abs(dx) < 340) {
         enemy.vx = 0; setEnemyState(enemy, 'telegraph', .52);
-      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+      } else if (enemy.state === 'telegraph' && enemy.stateFrames <= 0) {
         enemy.vx = enemy.facing * conf.enemySpeed * 3;
         enemy.vy = -470; enemy.onGround = false; setEnemyState(enemy, 'attack', 1.2);
       } else if (enemy.state === 'attack') {
@@ -1382,48 +1424,48 @@ function updateEnemies(dt) {
         if (enemy.y + enemy.h >= enemy.floorY) {
           enemy.y = enemy.floorY - enemy.h; enemy.vx = enemy.vy = 0; enemy.onGround = true; setEnemyState(enemy, 'recover', .56);
         }
-      } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
-        enemy.cooldown = 1.1; setEnemyState(enemy, 'idle', 0);
+      } else if (enemy.state === 'recover' && enemy.stateFrames <= 0) {
+        enemy.cooldownFrames = secondsToFrames(1.1); setEnemyState(enemy, 'idle', 0);
       }
     } else if (enemy.type === 'guardian') {
       if (enemy.state === 'idle') {
         enemy.vx = Math.abs(dx) > 150 ? enemy.facing * conf.enemySpeed * .38 : 0;
         moveGroundEnemy(enemy, dt);
-        if (enemy.cooldown <= 0 && Math.abs(dx) < 470) {
+        if (enemy.cooldownFrames <= 0 && Math.abs(dx) < 470) {
           enemy.vx = 0; enemy.targetX = player.x; enemy.targetY = player.y + player.h * .45; setEnemyState(enemy, 'telegraph', .58);
         }
-      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+      } else if (enemy.state === 'telegraph' && enemy.stateFrames <= 0) {
         fireEnemyVolley(enemy, [-.035, .035], 235); setEnemyState(enemy, 'attack', .18);
-      } else if (enemy.state === 'attack' && enemy.stateTimer <= 0) {
+      } else if (enemy.state === 'attack' && enemy.stateFrames <= 0) {
         setEnemyState(enemy, 'recover', .72);
-      } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
-        enemy.cooldown = 1.1; setEnemyState(enemy, 'idle', 0);
+      } else if (enemy.state === 'recover' && enemy.stateFrames <= 0) {
+        enemy.cooldownFrames = secondsToFrames(1.1); setEnemyState(enemy, 'idle', 0);
       }
     } else if (enemy.type === 'turret') {
-      if (enemy.state === 'idle' && enemy.cooldown <= 0 && Math.abs(dx) < 560) {
+      if (enemy.state === 'idle' && enemy.cooldownFrames <= 0 && Math.abs(dx) < 560) {
         enemy.targetX = player.x + player.w / 2; enemy.targetY = player.y + player.h / 2; setEnemyState(enemy, 'telegraph', .68);
-      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+      } else if (enemy.state === 'telegraph' && enemy.stateFrames <= 0) {
         fireEnemyVolley(enemy, [0], 315); setEnemyState(enemy, 'attack', .16);
-      } else if (enemy.state === 'attack' && enemy.stateTimer <= 0) {
+      } else if (enemy.state === 'attack' && enemy.stateFrames <= 0) {
         setEnemyState(enemy, 'recover', .92);
-      } else if (enemy.state === 'recover' && enemy.stateTimer <= 0) {
-        enemy.cooldown = .72; setEnemyState(enemy, 'idle', 0);
+      } else if (enemy.state === 'recover' && enemy.stateFrames <= 0) {
+        enemy.cooldownFrames = secondsToFrames(.72); setEnemyState(enemy, 'idle', 0);
       }
     } else if (enemy.type === 'drone') {
       if (enemy.state === 'idle') {
         enemy.y = enemy.baseY + Math.sin(Game.time * 2.2 + enemy.phase) * 28;
-        if (enemy.cooldown <= 0 && Math.abs(dx) < 480) {
+        if (enemy.cooldownFrames <= 0 && Math.abs(dx) < 480) {
           enemy.targetX = player.x + player.w / 2; enemy.targetY = Math.min(GROUND_Y - 20, player.y + player.h / 2);
           setEnemyState(enemy, 'telegraph', .52);
         }
-      } else if (enemy.state === 'telegraph' && enemy.stateTimer <= 0) {
+      } else if (enemy.state === 'telegraph' && enemy.stateFrames <= 0) {
         enemy.vx = (enemy.targetX - enemy.x) / .46; enemy.vy = (enemy.targetY - enemy.y) / .46; setEnemyState(enemy, 'attack', .46);
       } else if (enemy.state === 'attack') {
         enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
-        if (enemy.stateTimer <= 0) { enemy.vx = enemy.vy = 0; setEnemyState(enemy, 'recover', .72); }
+        if (enemy.stateFrames <= 0) { enemy.vx = enemy.vy = 0; setEnemyState(enemy, 'recover', .72); }
       } else if (enemy.state === 'recover') {
         enemy.x = approach(enemy.x, enemy.home, 180 * dt); enemy.y = approach(enemy.y, enemy.baseY, 220 * dt);
-        if (enemy.stateTimer <= 0) { enemy.cooldown = 1.15; setEnemyState(enemy, 'idle', 0); }
+        if (enemy.stateFrames <= 0) { enemy.cooldownFrames = secondsToFrames(1.15); setEnemyState(enemy, 'idle', 0); }
       }
     }
 
@@ -1458,7 +1500,7 @@ function updateReinforcements(dt) {
     }
     const enemy = makeEnemy(type, x, chunk.index);
     enemy.facing = behind ? 1 : -1;
-    enemy.cooldown = .18 + count * .12;
+    enemy.cooldownFrames = secondsToFrames(.18 + count * .12);
     enemy.range = 190;
     Game.enemies.push(enemy);
     chunk.reinforced = true;
@@ -1472,7 +1514,7 @@ function updateReinforcements(dt) {
   Game.reinforcementTimer -= dt;
   if (Game.reinforcementTimer > 0) return;
   const armed = Game.player.weapon !== 'normal' || Game.player.overdrive > 0;
-  Game.reinforcementTimer = clamp((5.6 - Game.wordsDone * .12 - (armed ? .7 : 0)) / conf.spawn, 2.5, 5.6) + Math.random();
+  Game.reinforcementTimer = clamp((5.6 - Game.wordsDone * .12 - (armed ? .7 : 0)) / conf.spawn, 2.5, 5.6) + gameRandom();
   if (Game.player.x < 900) return;
   const nearby = Game.enemies.filter((enemy) => !enemy.dead && enemy.type !== 'capsule' && enemy.x > Game.camera - 80 && enemy.x < Game.camera + VIEW_W + 120).length;
   if (nearby >= (Game.difficulty === 'hard' ? 6 : 5)) return;
@@ -1587,7 +1629,7 @@ function burst(x, y, color, count) {
       color: smoke ? 'rgba(27,38,34,.58)' : color,
     });
   }
-  if (Game.particles.length > 160) Game.particles.splice(0, Game.particles.length - 160);
+  if (Game.particles.length > PARTICLE_CAP) Game.particles.splice(0, Game.particles.length - PARTICLE_CAP);
 }
 
 function dust(x, y, count) {
@@ -1627,11 +1669,8 @@ function updateCamera() {
 function update(dt) {
   Game.frameDt = dt;
   worldGenBudget = 2;
-  Game.prevCamera = Game.camera;
-  Game.player.prevX = Game.player.x; Game.player.prevY = Game.player.y;
-  for (const enemy of Game.enemies) { enemy.prevX = enemy.x; enemy.prevY = enemy.y; }
-  for (const bullet of Game.bullets) { bullet.prevX = bullet.x; bullet.prevY = bullet.y; }
-  for (const bullet of Game.enemyBullets) { bullet.prevX = bullet.x; bullet.prevY = bullet.y; }
+  Game.logicFrame++;
+  Game.time = Game.logicFrame * FIXED_STEP;
   if (Game.hitStop > 0) {
     Game.hitStop = Math.max(0, Game.hitStop - dt);
     Game.shake = Math.max(0, Game.shake - dt);
@@ -1639,7 +1678,6 @@ function update(dt) {
     updateParticles(dt * .25);
     return;
   }
-  Game.time += dt;
   Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
   Game.hudTimer = Math.max(0, Game.hudTimer - dt);
   Game.shake = Math.max(0, Game.shake - dt);
@@ -1665,6 +1703,7 @@ function update(dt) {
   updateReinforcements(dt);
   updateEnemies(dt);
   updateProjectiles(dt);
+  updatePlayerAnimation();
   updateParticles(dt);
   Game.maxX = Math.max(Game.maxX, Game.player.x);
   Game.distance = Math.floor(Game.maxX / 10);
@@ -1969,7 +2008,9 @@ function drawAnchoredAtlasFrame(image, anchors, row, column, anchorX, anchorY, w
   const sourceH = image.naturalHeight / 4;
   const [originX, originY] = anchors[row][column];
   ctx.save();
-  ctx.translate(anchorX, anchorY);
+  // The ROM keeps sub-pixel physics but writes whole pixels to OAM. Snapping only
+  // at draw time preserves movement precision without letting atlas padding shimmer.
+  ctx.translate(Math.round(anchorX), Math.round(anchorY));
   ctx.scale(flip ? -1 : 1, 1);
   ctx.drawImage(image, column * sourceW, row * sourceH, sourceW, sourceH,
     -originX * width / sourceW, -originY * height / sourceH, width, height);
@@ -1987,8 +2028,8 @@ function enemyFrame(enemy) {
   if (enemy.type === 'leaper') return { idle: 0, telegraph: 1, attack: 2, recover: 3 }[enemy.state] ?? 0;
   if (enemy.state === 'telegraph') return 1;
   if (enemy.state === 'recover') return 3;
-  const rate = enemy.state === 'attack' ? 11 : 6;
-  return Math.floor(enemy.animTime * rate + (enemy.state === 'attack' ? 2 : enemy.phase / TAU * 4)) % 4;
+  const cadence = enemy.state === 'attack' ? 5 : 10;
+  return (Math.floor(enemy.animTicks / cadence) + (enemy.state === 'attack' ? 2 : Math.floor(enemy.phase / TAU * 4))) % 4;
 }
 
 function drawEnemyTelegraph(enemy) {
@@ -2111,10 +2152,7 @@ function drawEnemy(enemy) {
 function drawBossNodes() {
   const boss = Game.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead && enemy.bossPhase === 2);
   if (!boss) return;
-  const alpha = Game.renderAlpha;
   ctx.save();
-  ctx.translate((boss.prevX ?? boss.x) + (boss.x - (boss.prevX ?? boss.x)) * alpha - boss.x,
-    (boss.prevY ?? boss.y) + (boss.y - (boss.prevY ?? boss.y)) * alpha - boss.y);
   for (const node of Game.bossNodes) {
     if (!node.active) continue;
     const isCurrent = node.order === Game.bossNodeProgress;
@@ -2161,7 +2199,7 @@ function drawBullet(bullet, color) {
   const speed = Math.hypot(bullet.vx, bullet.vy);
   const trail = Math.min(24, speed * Math.min(.035, (bullet.age || .01) * .65));
   ctx.save();
-  ctx.translate(bullet.x + bullet.w / 2, bullet.y + bullet.h / 2);
+  ctx.translate(Math.round(bullet.x + bullet.w / 2), Math.round(bullet.y + bullet.h / 2));
   ctx.rotate(Math.atan2(bullet.vy, bullet.vx));
   ctx.globalAlpha = .12; ctx.fillStyle = color;
   ctx.beginPath(); ctx.roundRect(-trail, -4, trail + 7, 8, 4); ctx.fill();
@@ -2189,9 +2227,9 @@ function drawPlayer() {
     ctx.beginPath(); ctx.ellipse(player.x + player.w / 2, player.y + player.h / 2, 39, 49, 0, 0, TAU); ctx.stroke();
     ctx.restore();
   }
-  const invFlash = player.inv > 0 && Math.floor(Game.time * 14) % 2;
+  const invFlash = player.inv > 0 && Math.floor(Game.logicFrame / 4) % 2;
   let row = 0;
-  let column = Math.floor(Game.time * 3) % 4;
+  let column = player.animFrame % 4;
   let atlas = ASSETS.hero;
   const firing = player.recoil > 0;
   if (player.hurtTimer > 0) {
@@ -2213,9 +2251,9 @@ function drawPlayer() {
   } else if (!player.onGround) {
     row = 2; column = player.vy < 0 ? 0 : 1;
   } else if (firing) {
-    row = 3; column = Math.abs(player.vx) > 30 ? 2 + Math.floor(player.runCycle) % 2 : Math.floor(Game.time * 8) % 2;
+    row = 3; column = Math.abs(player.vx) > 30 ? 2 + player.animFrame % 2 : player.animFrame % 2;
   } else if (Math.abs(player.vx) > 30) {
-    row = 1; column = Math.floor(player.runCycle) % 4;
+    row = 1; column = player.animFrame % 4;
   }
   const recoilRatio = clamp(player.recoil / .09, 0, 1);
   const poseX = player.x + player.w / 2 - player.aimX * recoilRatio * 2;
@@ -2336,9 +2374,11 @@ function drawBossStatus() {
 }
 
 function render() {
+  Game.renderCount++;
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
-  const alpha = Game.renderAlpha;
-  const camera = (Game.prevCamera ?? Game.camera) + (Game.camera - (Game.prevCamera ?? Game.camera)) * alpha;
+  // Render the current 60 Hz logic frame. Backward interpolation displayed the
+  // previous frame at normal refresh rates, adding input latency and sprite drift.
+  const camera = Math.round(Game.camera);
   drawBackground(camera);
   ctx.save();
   const shakeClock = performance.now() * .05;
@@ -2351,33 +2391,11 @@ function render() {
   }
   drawPickups();
   drawPowerups();
-  for (const enemy of Game.enemies) {
-    ctx.save();
-    ctx.translate((enemy.prevX ?? enemy.x) + (enemy.x - (enemy.prevX ?? enemy.x)) * alpha - enemy.x,
-      (enemy.prevY ?? enemy.y) + (enemy.y - (enemy.prevY ?? enemy.y)) * alpha - enemy.y);
-    drawEnemy(enemy);
-    ctx.restore();
-  }
+  for (const enemy of Game.enemies) drawEnemy(enemy);
   drawBossNodes();
-  for (const bullet of Game.bullets) {
-    ctx.save();
-    ctx.translate((bullet.prevX ?? bullet.x) + (bullet.x - (bullet.prevX ?? bullet.x)) * alpha - bullet.x,
-      (bullet.prevY ?? bullet.y) + (bullet.y - (bullet.prevY ?? bullet.y)) * alpha - bullet.y);
-    drawBullet(bullet, bullet.color || '#ffe49a');
-    ctx.restore();
-  }
-  for (const bullet of Game.enemyBullets) {
-    ctx.save();
-    ctx.translate((bullet.prevX ?? bullet.x) + (bullet.x - (bullet.prevX ?? bullet.x)) * alpha - bullet.x,
-      (bullet.prevY ?? bullet.y) + (bullet.y - (bullet.prevY ?? bullet.y)) * alpha - bullet.y);
-    drawBullet(bullet, '#e9664c');
-    ctx.restore();
-  }
-  ctx.save();
-  ctx.translate((Game.player.prevX ?? Game.player.x) + (Game.player.x - (Game.player.prevX ?? Game.player.x)) * alpha - Game.player.x,
-    (Game.player.prevY ?? Game.player.y) + (Game.player.y - (Game.player.prevY ?? Game.player.y)) * alpha - Game.player.y);
+  for (const bullet of Game.bullets) drawBullet(bullet, bullet.color || '#ffe49a');
+  for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
   drawPlayer();
-  ctx.restore();
   for (const particle of Game.particles) {
     ctx.globalAlpha = clamp(particle.life * 3, 0, 1);
     ctx.fillStyle = particle.color;
@@ -2522,8 +2540,8 @@ $('auto-btn').addEventListener('click', () => {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
-window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', () => setTimeout(resize, 180));
+window.addEventListener('resize', () => { resize(); render(); });
+window.addEventListener('orientationchange', () => setTimeout(() => { resize(); render(); }, 180));
 
 resize();
 setMuteButton();
@@ -2539,20 +2557,23 @@ function ensureLoop() {
 }
 function frame(now) {
   rafId = 0;
+  Game.rafCount++;
   const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
   lastTime = now;
+  let advanced = false;
   if (Game.state === 'playing') {
     accumulator = Math.min(.1, accumulator + dt);
     while (accumulator >= FIXED_STEP && Game.state === 'playing') {
       update(FIXED_STEP);
       accumulator -= FIXED_STEP;
+      advanced = true;
     }
-    Game.renderAlpha = accumulator / FIXED_STEP;
   } else {
     accumulator = 0;
-    Game.renderAlpha = 1;
   }
-  render();
+  // High-refresh displays otherwise redraw an identical 60 Hz state 120–240
+  // times per second. The ROM renders once per advanced logic frame.
+  if (advanced || Game.state !== 'playing') render();
   if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
 
@@ -2564,6 +2585,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.difficulty = 'easy';
       startGame('mission');
       if (Game.mode !== 'mission' || FIXED_STEP !== 1 / 60) throw new Error('mission or fixed-step setup failed');
+      if (Game.logicFrame !== 0 || Game.player.action !== 'idle' || Game.player.animFrame !== 0) throw new Error('ROM frame state was not reset');
       const selectedMission = Game.missionLevel;
       for (let level = 0; level < MISSION_LEVELS.length; level++) {
         Game.missionLevel = level;
@@ -2605,12 +2627,16 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.camera = savedCamera;
       detonateBarrel(openingBarrel);
       if (!openingTarget.dead) throw new Error('barrel chain reaction failed');
+      Game.hitStop = Game.shake = 0;
       const startX = Game.player.x;
       input.right = true;
-      for (let i = 0; i < 40; i++) update(1 / 60);
+      for (let i = 0; i < 7; i++) update(1 / 60);
+      if (Game.player.action !== 'run' || Game.player.animFrame !== 0) throw new Error('run animation advanced before its authored frame');
+      update(1 / 60);
+      if (Game.player.animFrame !== 1) throw new Error('run animation ignored its eight-frame cadence');
+      for (let i = 0; i < 32; i++) update(1 / 60);
       input.right = false;
       if (!(Game.player.x > startX)) throw new Error('player did not move');
-      if (!(Game.player.runCycle > 0)) throw new Error('run animation did not follow distance');
       update(1 / 60);
       if (Math.abs(Game.player.vx) > .01) throw new Error('dry ground retained sliding velocity after release');
       const cameraProbe = { x: Game.player.x, camera: Game.camera };
@@ -2674,16 +2700,24 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       answerWordGate(Game.wordGate.word.en);
       if (Game.state !== 'playing' || !Game.recallResults.at(-1)?.correct || Game.player.overdrive <= 0) throw new Error('active recall reward failed');
       const turret = makeEnemy('turret', Game.player.x + 220, gateChunk.index);
-      turret.cooldown = 0;
+      turret.active = true;
+      turret.cooldownFrames = 0;
       Game.enemies = [turret];
       updateEnemies(FIXED_STEP);
       if (turret.state !== 'telegraph') throw new Error('enemy telegraph state failed');
+      const sleepingEnemy = makeEnemy('beetle', Game.camera + VIEW_W + 180, gateChunk.index);
+      Game.enemies = [sleepingEnemy];
+      updateEnemies(FIXED_STEP);
+      if (sleepingEnemy.active || sleepingEnemy.animTicks) throw new Error('offscreen enemy ran before activation');
+      sleepingEnemy.x = Game.camera + VIEW_W - 20;
+      updateEnemies(FIXED_STEP);
+      if (!sleepingEnemy.active || sleepingEnemy.activatedFrame !== Game.logicFrame) throw new Error('screen-edge enemy did not activate on entry');
       const poseProbe = makeEnemy('guardian', Game.player.x + 260, gateChunk.index);
       const poses = ['idle', 'telegraph', 'attack', 'recover'].map((state) => { poseProbe.state = state; return enemyFrame(poseProbe); });
       if (poses.join(',') !== '0,1,2,3') throw new Error('enemy animation ignored combat state');
-      poseProbe.animTime = 2;
+      poseProbe.animTicks = 12;
       setEnemyState(poseProbe, 'attack', .2);
-      if (poseProbe.animTime !== 0) throw new Error('enemy animation did not restart on state change');
+      if (poseProbe.animTicks !== 0) throw new Error('enemy animation did not restart on state change');
       const sweepTarget = makeEnemy('beetle', Game.player.x + 180, gateChunk.index);
       sweepTarget.hp = sweepTarget.maxHp = 2;
       Game.enemies = [sweepTarget];
@@ -2719,7 +2753,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         if (i % 151 === 0) input.down = true;
         if (i % 151 === 9) input.down = false;
         update(1 / 60);
-        if (Game.chunks.length > 12 || Game.enemies.length > 36 || Game.particles.length > 160) throw new Error('unbounded collections');
+        if (Game.chunks.length > 12 || Game.enemies.length > 36 || Game.particles.length > PARTICLE_CAP) throw new Error('unbounded collections');
       }
       input.right = input.fire = input.down = false;
       Game.autoFire = false;
@@ -2737,5 +2771,20 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.state = 'paused';
       console.error(error);
     }
+  });
+}
+
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    startGame('mission');
+    setTimeout(() => {
+      const duplicateRenders = Game.renderCount - Game.logicFrame;
+      const passed = Game.logicFrame >= 40 && duplicateRenders <= 3;
+      Game.state = 'paused';
+      document.title = passed
+        ? 'FRAME-BUDGET PASS · ' + Game.logicFrame + '/' + Game.renderCount
+        : 'FRAME-BUDGET FAIL · ' + Game.logicFrame + '/' + Game.renderCount;
+      document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+    }, 1200);
   });
 }
