@@ -6,7 +6,7 @@
  * 核心循环(经典耐玩设计):
  *   单屏网格 → 炸砖找字母 → 按序拼词 → 传送门开启 → 进入下一轮
  *   敌人逐轮增强; 道具成长(炸弹数/火力/速度/穿墙靴)
- *   8轮为一关, 关底敌人提速; 无限关卡挑战高分
+ *   每关4轮, 地形与敌人逐轮换型; 无限关卡挑战高分
  * ============================================================ */
 
 const $id = (x) => document.getElementById(x);
@@ -18,6 +18,8 @@ const CELL = 48;                     // 15*48=720, 11*48=528, 画布880x704留�
 const OX = (880 - COLS * CELL) / 2;  // 场地水平居中
 const OY = 704 - ROWS * CELL - 24;
 const TAU = Math.PI * 2;
+const FIXED_STEP = 1 / 60;
+const TEST_MODE = /[?&](selftest|frametest)/.test(location.search);
 
 const DIFFS = {
   easy:   { enemySpeed: 58, enemyCount: 2, fuse: 2.1, label: '初级' },
@@ -65,6 +67,7 @@ const Game = {
   player: null,
   exitTimer: 0,
   feedback: '', feedbackUntil: 0,
+  logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
 function newPlayer() {
@@ -198,9 +201,12 @@ function spawnEnemies() {
       tries++;
     } while (tries < 80 && (Game.grid[r][c] !== 0 || (c < 5 && r < 5)));
     if (Game.grid[r][c] !== 0) continue;
-    const kind = kinds[Math.floor(Math.random() * Math.min(kinds.length, 1 + Math.floor(Game.stage / 2) + (Game.round > 4 ? 1 : 0)))];
+    const unlockedKinds = Math.min(kinds.length, 1 + (Game.stage > 1 ? 1 : 0) + (Game.round > 2 ? 1 : 0));
+    const kind = kinds[Math.floor(Math.random() * unlockedKinds)];
     Game.enemies.push({
       col: c, row: r, kind,
+      px: OX + c * CELL + CELL / 2,
+      py: OY + r * CELL + CELL / 2,
       speed: conf.enemySpeed * (kind === 'runner' ? 1.35 : kind === 'ghost' ? .8 : 1) * (1 + (Game.stage - 1) * .06 + Game.round * .012),
       dir: null, moveT: 0, phase: Math.random() * TAU,
       dead: false,
@@ -225,6 +231,7 @@ function startRound() {
 function startGame() {
   Game.score = 0; Game.lives = 3; Game.stage = 1; Game.round = 1;
   Game.time = 0; Game.shake = 0; Game.flash = 0;
+  Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   Game.state = 'playing';
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
@@ -233,11 +240,15 @@ function startGame() {
   if (window.ChipMusic) ChipMusic.play('bomber-loop');
   if (window.ArcadeAudio) ArcadeAudio.start();
   startRound();
+  if (!TEST_MODE) {
+    accumulator = 0;
+    ensureLoop();
+  }
 }
 
 function roundClear() {
   Game.score += 500 + Game.stage * 100 + Game.round * 50;
-  if (Game.round % 4 === 0) { Game.round++; Game.stage++; }
+  if (Game.round >= 4) { Game.round = 1; Game.stage++; }
   else Game.round++;
   Game.player.inv = 1.5;
   startRound();
@@ -313,6 +324,8 @@ function togglePause() {
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
     $id('paused').classList.add('hidden');
+    accumulator = 0;
+    ensureLoop();
   }
 }
 function backToMenu() {
@@ -338,6 +351,7 @@ function dropBomb() {
 
 function explodeBomb(bomb) {
   const aliveBefore = Game.enemies.filter((enemy) => !enemy.dead).length;
+  let portalRevealed = false;
   const cells = [{ col: bomb.col, row: bomb.row, dir: 'c' }];
   const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   for (const [dc, dr] of dirs) {
@@ -366,8 +380,10 @@ function explodeBomb(bomb) {
     // 传送门砖被炸开
     if (Game.portal && Game.portal.hidden && Game.portal.col === cell.col && Game.portal.row === cell.row) {
       Game.portal.hidden = false;
+      portalRevealed = true;
     }
   }
+  if (portalRevealed && !maybeOpenPortal()) showFeedback('传送门已找到 · 还需拼词并清除敌人');
   const multiKill = aliveBefore - Game.enemies.filter((enemy) => !enemy.dead).length;
   if (multiKill >= 2) {
     const bonus = multiKill * 75;
@@ -389,6 +405,7 @@ function breakBrick(c, r) {
       life: rand(.3, .6), color: Math.random() < .5 ? '#b98a4a' : '#8a6435', size: rand(3, 6),
     });
   }
+  capParticles();
   // 道具掉落(12%概率)
   if (Math.random() < .14) {
     const kinds = ['bomb+', 'fire+', 'speed'];
@@ -406,14 +423,19 @@ function killEnemy(e) {
   for (let i = 0; i < 12; i++) {
     Game.particles.push({ x, y, vx: rand(-150, 150), vy: rand(-180, 40), life: rand(.3, .55), color: '#9be7ff', size: rand(2.5, 5) });
   }
+  capParticles();
   floatText('+100', x, y, '#9be7ff');
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .16, 1.35);
+  if (!maybeOpenPortal() && Game.enemies.every((enemy) => enemy.dead)) {
+    const lettersLeft = Game.word.en.length - Game.word.progress;
+    showFeedback(lettersLeft ? `敌人已清除 · 还差 ${lettersLeft} 个字母` : '敌人已清除 · 找出传送门');
+  }
 }
 
 /* ---------------- 更新 ---------------- */
-function cellBlocked(c, r, forEnemy, ghost) {
+function cellBlocked(c, r, ghost = false) {
   if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return true;
-  if (Game.grid[r][c] !== 0) return true;
+  if (Game.grid[r][c] === 1 || (Game.grid[r][c] === 2 && !ghost)) return true;
   if (!ghost && Game.bombs.some((b) => b.col === c && b.row === r)) return true;
   return false;
 }
@@ -432,7 +454,7 @@ function moveEntity(e, dc, dr, dist, isGhost) {
     e.py += Math.sign(cy - e.py) * Math.min(Math.abs(cy - e.py), dist);
     return false;
   }
-  if (cellBlocked(e.col + dc, e.row + dr, !isGhost ? false : false, isGhost)) return false;
+  if (cellBlocked(e.col + dc, e.row + dr, isGhost)) return false;
   e.col += dc; e.row += dr;
   e.px += dc * dist; e.py += dr * dist;
   return true;
@@ -505,8 +527,11 @@ function updatePlayer(dt) {
   // 走到传送门
   if (Game.portal && Game.portal.open && p.col === Game.portal.col && p.row === Game.portal.row) {
     const pcx = OX + Game.portal.col * CELL + CELL / 2, pcy = OY + Game.portal.row * CELL + CELL / 2;
-    if (Math.hypot(p.px - pcx, p.py - pcy) < CELL * .5) {
-      roundClear();
+    if (Game.exitTimer <= 0 && Math.hypot(p.px - pcx, p.py - pcy) < CELL * .5) {
+      Game.exitTimer = .7;
+      Game.player.inv = 1;
+      showFeedback('传送启动 · 前往下一轮');
+      burst(pcx, pcy, '#6ee7b7', 28);
       return;
     }
   }
@@ -552,7 +577,7 @@ function updateEnemies(dt) {
     if (atCenter) {
       // 选方向: blob=原版Balloom式"直行到底撞墙才转向"(可预判);
       // ghost/runner=偏向玩家追踪
-      let dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => !cellBlocked(e.col + dc, e.row + dr, false, e.kind === 'ghost'));
+      let dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => !cellBlocked(e.col + dc, e.row + dr, e.kind === 'ghost'));
       if (e.kind === 'blob' && dirs.length > 1 && !e.lastDir) {
         // 初始方向
         e.lastDir = dirs[Math.floor(Math.random() * dirs.length)];
@@ -563,7 +588,7 @@ function updateEnemies(dt) {
         const straight = cur && dirs.find(([dc, dr]) => dc === cur[0] && dr === cur[1]);
         dirs = (straight && Math.random() < .8) ? [straight]
              : dirs.filter(([dc, dr]) => !(cur && dc === -cur[0] && dr === -cur[1]));
-        if (!dirs.length) dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => !cellBlocked(e.col + dc, e.row + dr, false));
+        if (!dirs.length) dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => !cellBlocked(e.col + dc, e.row + dr));
       }
       if (dirs.length) {
         let pick = null;
@@ -647,19 +672,10 @@ function updateLetters(dt) {
       burst(x, y, '#86efac', 10);
       if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1 + w.progress * .06);
       updateHud();
-      if (w.progress >= w.en.length || Game.enemies.every((e) => e.dead)) {
-        // 原版双开门条件: 拼完单词 或 敌人全灭(任一达成)
-        if (Game.portal) {
-          Game.portal.open = true;
-          Game.portal.hidden = false;
-          Game.score += 200 + w.en.length * 30;
-          showFeedback('🎉 传送门开启！快进去！');
-          Game.flash = .35;
-          const px = OX + Game.portal.col * CELL + CELL / 2, py = OY + Game.portal.row * CELL + CELL / 2;
-          burst(px, py, '#fbbf24', 30);
-          burst(px, py, '#6ee7b7', 20);
-          floatText('⬅ PORTAL OPEN ➡', 440, OY + ROWS * CELL / 2 - 40, '#fbbf24');
-          if (window.ArcadeAudio) ArcadeAudio.play('confirm', .3, 1.3);
+      if (w.progress >= w.en.length) {
+        if (!maybeOpenPortal()) {
+          const enemiesLeft = Game.enemies.filter((enemy) => !enemy.dead).length;
+          showFeedback(enemiesLeft ? `单词完成 · 还剩 ${enemiesLeft} 个敌人` : '单词完成 · 找出传送门');
         }
         updateHud();
       }
@@ -667,16 +683,36 @@ function updateLetters(dt) {
   }
 }
 
+function maybeOpenPortal() {
+  if (!Game.portal || Game.portal.open || Game.portal.hidden || Game.word.progress < Game.word.en.length || Game.enemies.some((enemy) => !enemy.dead)) return false;
+  Game.portal.open = true;
+  Game.score += 200 + Game.word.en.length * 30;
+  showFeedback('🎉 三项目标完成 · 传送门开启！');
+  Game.flash = .35;
+  const px = OX + Game.portal.col * CELL + CELL / 2, py = OY + Game.portal.row * CELL + CELL / 2;
+  burst(px, py, '#fbbf24', 30);
+  burst(px, py, '#6ee7b7', 20);
+  floatText('⬅ PORTAL OPEN ➡', 440, OY + ROWS * CELL / 2 - 40, '#fbbf24');
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .3, 1.3);
+  return true;
+}
+
 function burst(x, y, color, n) {
   for (let i = 0; i < n; i++) {
     Game.particles.push({ x, y, vx: rand(-160, 160), vy: rand(-180, 60), life: rand(.25, .5), color, size: rand(2.5, 5) });
   }
+  capParticles();
+}
+function capParticles() {
+  if (Game.particles.length > 160) Game.particles.splice(0, Game.particles.length - 160);
 }
 function floatText(text, x, y, color) {
   Game.floaters.push({ text, x, y, color, life: .9 });
+  if (Game.floaters.length > 32) Game.floaters.splice(0, Game.floaters.length - 32);
 }
 
 function update(rawDt) {
+  Game.logicFrame++;
   if (hitStopTimer > 0) { hitStopTimer -= rawDt; return; }   // 命中停顿: 全局冻结
   const dt = rawDt;
   Game.time += dt;
@@ -702,6 +738,13 @@ function update(rawDt) {
     return;
   }
   if (Game.state !== 'playing') return;
+
+  if (Game.exitTimer > 0) {
+    Game.exitTimer -= dt;
+    updateParticles(dt);
+    if (Game.exitTimer <= 0) roundClear();
+    return;
+  }
 
   updatePlayer(dt);
   if (Game.state !== 'playing') return;   // loseLife可能改变状态
@@ -1053,6 +1096,7 @@ function drawParticles() {
 }
 
 function render() {
+  Game.renderCount++;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   // 背景
   ctx.fillStyle = '#0b1220';
@@ -1149,28 +1193,54 @@ document.addEventListener('visibilitychange', () => {
 });
 
 let lastTime = performance.now();
-function frame(now) {
-  const dt = Math.min(.04, (now - lastTime) / 1000 || .016);
-  lastTime = now;
-  if (Game.state === 'playing' || Game.state === 'dying') update(dt);
-  render();
-  requestAnimationFrame(frame);
+let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+function frame(now) {
+  rafId = 0;
+  Game.rafCount++;
+  const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
+  lastTime = now;
+  let advanced = false;
+  if (Game.state === 'playing' || Game.state === 'dying') {
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator >= FIXED_STEP && (Game.state === 'playing' || Game.state === 'dying')) {
+      update(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+      advanced = true;
+    }
+  } else accumulator = 0;
+  if (advanced || (Game.state !== 'playing' && Game.state !== 'dying')) render();
+  if (Game.state === 'playing' || Game.state === 'dying') rafId = requestAnimationFrame(frame);
+}
+render();
 
 /* ---------------- 自检 ---------------- */
+window.__wordBomber = Game;
+
 if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
   requestAnimationFrame(() => {
     try {
       Game.difficulty = 'easy';
       startGame();
-      if (Game.state !== 'playing') throw new Error('start failed');
+      if (Game.state !== 'playing' || FIXED_STEP !== 1 / 60) throw new Error('start failed');
+      if (Game.logicFrame || Game.renderCount || Game.rafCount) throw new Error('frame counters were not reset');
       if (Game.letters.length !== Game.word.en.length) throw new Error('letters count mismatch');
+      if (!Game.enemies.length || Game.enemies.some((enemy) => !Number.isFinite(enemy.px) || !Number.isFinite(enemy.py))) throw new Error('enemy spawn position failed');
+      const brick = Game.letters[0];
+      if (!brick || !cellBlocked(brick.col, brick.row) || cellBlocked(brick.col, brick.row, true)) throw new Error('ghost brick traversal failed');
       // 模拟按序收词
       const order = Game.letters.slice().sort((a, b) => a.index - b.index);
       for (const L of order) { L.hidden = false; Game.player.col = L.col; Game.player.row = L.row; Game.player.px = OX + L.col * CELL + CELL / 2; Game.player.py = OY + L.row * CELL + CELL / 2; updateLetters(0); }
       if (Game.word.progress !== Game.word.en.length) throw new Error('word progress failed');
-      if (!Game.portal || !Game.portal.open) throw new Error('portal did not open');
+      if (!Game.portal || Game.portal.open) throw new Error('portal bypassed enemy or discovery objective');
+      Game.portal.hidden = false;
+      for (const enemy of Game.enemies) enemy.dead = true;
+      if (!maybeOpenPortal() || !Game.portal.open) throw new Error('three-part portal objective failed');
       // 炸弹逻辑
       Game.player.col = 1; Game.player.row = 3; Game.player.px = OX + 1 * CELL + CELL / 2; Game.player.py = OY + 3 * CELL + CELL / 2;
       Game.bombMax0 = Game.player.bombMax;
@@ -1187,10 +1257,34 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       // 敌人更新不崩溃
       updateEnemies(0.016);
       if (Game.score <= 0) throw new Error('score not increasing');
+      if (Game.particles.length > 160) throw new Error('particle cap failed');
+      Game.stage = 1; Game.round = 4;
+      roundClear();
+      if (Game.stage !== 2 || Game.round !== 1) throw new Error('stage round numbering failed');
       document.title = 'SELFTEST-OK';
+      document.documentElement.dataset.selftest = 'pass';
+      Game.state = 'paused';
     } catch (e) {
       document.title = 'SELFTEST-FAIL: ' + e.message;
+      document.documentElement.dataset.selftest = 'fail';
+      Game.state = 'paused';
       console.error(e);
     }
+  });
+}
+
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    startGame();
+    ensureLoop();
+    setTimeout(() => {
+      const duplicateRenders = Game.renderCount - Game.logicFrame;
+      const passed = Game.logicFrame >= 40 && duplicateRenders <= 3 && Game.particles.length <= 160;
+      Game.state = 'paused';
+      document.title = passed
+        ? `FRAME-BUDGET PASS · ${Game.logicFrame}/${Game.renderCount}`
+        : `FRAME-BUDGET FAIL · ${Game.logicFrame}/${Game.renderCount}`;
+      document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+    }, 1200);
   });
 }
