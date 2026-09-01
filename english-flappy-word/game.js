@@ -12,6 +12,7 @@ const $id = (x) => document.getElementById(x);
 const canvas = $id('game');
 const ctx = canvas.getContext('2d');
 const TAU = Math.PI * 2;
+const FIXED_STEP = 1 / 60;
 
 let W = 420;             // 桌面基准逻辑尺寸，手机按视口重算
 let H = 660;
@@ -61,6 +62,7 @@ const Game = {
   nextX: 0, patternIdx: 0, bubbleNextX: 0,
   word: null, question: null, lastWord: '',
   hintUntil: 0, feedback: '', feedbackUntil: 0, flash: 0, shake: 0,
+  logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
 const D = () => DIFFS[Game.difficulty];
@@ -68,6 +70,12 @@ const now = () => Game.time;
 
 /* ---------------- 素材加载（品红底色自动抠透明） ---------------- */
 const Assets = { bird: null, birdSheet: null, pipe: null, bg: null };
+const BIRD_FRAMES = [
+  { sx: 30, sy: 23, sw: 250, sh: 264, ax: 137, ay: 158 },
+  { sx: 302, sy: 73, sw: 255, sh: 214, ax: 133, ay: 108 },
+  { sx: 577, sy: 73, sw: 239, sh: 228, ax: 127, ay: 110 },
+  { sx: 837, sy: 73, sw: 237, sh: 214, ax: 125, ay: 108 },
+];
 let pendingAssets = 3;
 function assetDone() { pendingAssets = Math.max(0, pendingAssets - 1); }
 
@@ -408,6 +416,7 @@ function burst(x, y, color, n) {
 
 /* ---------------- 每帧更新 ---------------- */
 function step(dt) {
+  Game.logicFrame++;
   Game.time += dt;
   if (Game.state === 'ready') {
     Game.bird.y = H * 0.42 + Math.sin(Game.time * 2.6) * 9;
@@ -432,6 +441,7 @@ function step(dt) {
 
   for (const p of Game.particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 500 * dt; }
   Game.particles = Game.particles.filter((p) => p.t < p.max);
+  if (Game.particles.length > 120) Game.particles.splice(0, Game.particles.length - 120);
   for (const t of Game.texts) { t.t -= dt; t.y -= 26 * dt; }
   Game.texts = Game.texts.filter((t) => t.t > 0);
 }
@@ -650,7 +660,6 @@ function drawBubbles() {
 
 function drawBird() {
   const b = Game.bird;
-  const s = 70;
   ctx.save();
   ctx.translate(b.x, b.y);
   ctx.rotate(b.rot);
@@ -663,9 +672,10 @@ function drawBird() {
     const flapRate = b.vy < 0 ? 15 : 8;
     const cycle = [0, 1, 2, 3, 2, 1];
     const frame = cycle[Math.floor(Game.time * flapRate) % cycle.length];
-    const sw = Assets.birdSheet.width / 4;
-    ctx.drawImage(Assets.birdSheet, frame * sw, 0, sw, Assets.birdSheet.height, -s / 2, -s / 2, s, s);
+    const f = BIRD_FRAMES[frame], scale = .27;
+    ctx.drawImage(Assets.birdSheet, f.sx, f.sy, f.sw, f.sh, -f.ax * scale, -f.ay * scale, f.sw * scale, f.sh * scale);
   } else if (Assets.bird && Assets.bird.width && Assets.bird.height) {
+    const s = 70;
     const sq = 1 + Math.sin(Game.time * 18) * 0.045;
     ctx.scale(sq, 2 - sq);
     ctx.drawImage(Assets.bird, -s / 2, -s / 2, s, s);
@@ -714,6 +724,7 @@ function drawTexts() {
 }
 
 function render() {
+  Game.renderCount++;
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   ctx.clearRect(0, 0, W, H);
   ctx.save();
@@ -793,15 +804,20 @@ function startGame() {
   Game.wordsDone = 0; Game.correctLetters = 0; Game.correctAnswers = 0;
   Game.dist = 0; Game.time = 0; Game.speed = baseSpeed();
   Game.pipes = []; Game.walls = []; Game.bubbles = []; Game.particles = []; Game.texts = [];
-  Game.nextX = W + 260; Game.patternIdx = 0; Game.bubbleNextX = W + 180;
+  Game.nextX = W + 40; Game.patternIdx = 0; Game.bubbleNextX = W;
   Game.bird.x = BIRD_X; Game.bird.y = H * 0.42; Game.bird.vy = 0; Game.bird.rot = 0; Game.bird.inv = 0;
   Game.flash = 0; Game.shake = 0; Game.hintUntil = 0; Game.feedback = ''; Game.feedbackUntil = 0;
+  Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   if (Game.mode === 'spell') newWord(); else newQuestion();
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
   $id('paused').classList.add('hidden');
   $id('hud').classList.remove('hidden');
   updateHUD();
+  if (!TEST_MODE) {
+    accumulator = 0;
+    ensureLoop();
+  }
 }
 
 function backToMenu() {
@@ -825,7 +841,12 @@ function flap() {
 
 function togglePause() {
   if (Game.state === 'playing') { Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
-  else if (Game.state === 'paused') { Game.state = 'playing'; $id('paused').classList.add('hidden'); }
+  else if (Game.state === 'paused') {
+    Game.state = 'playing';
+    $id('paused').classList.add('hidden');
+    accumulator = 0;
+    ensureLoop();
+  }
 }
 
 function useHint() {
@@ -914,6 +935,7 @@ function resize() {
   canvas.height = Math.max(1, Math.round(ch * dpr));
   canvas.style.width = cw + 'px';
   canvas.style.height = ch + 'px';
+  if (!['ready', 'playing'].includes(Game.state)) render();
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));
@@ -921,16 +943,34 @@ new ResizeObserver(resize).observe($id('game-wrap'));
 resize();
 
 /* ---------------- 主循环 ---------------- */
-let lastT = 0;
+let lastT = performance.now();
+let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  lastT = performance.now();
+  rafId = requestAnimationFrame(loop);
+}
 function loop(t) {
-  const dt = Math.min(0.033, (t - lastT) / 1000 || 0.016);
+  rafId = 0;
+  Game.rafCount++;
+  const dt = Math.min(.1, (t - lastT) / 1000 || FIXED_STEP);
   lastT = t;
-  step(dt);
-  render();
-  requestAnimationFrame(loop);
+  let advanced = false;
+  if (['ready', 'playing'].includes(Game.state)) {
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator >= FIXED_STEP && ['ready', 'playing'].includes(Game.state)) {
+      step(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+      advanced = true;
+    }
+  } else accumulator = 0;
+  if (advanced || !['ready', 'playing'].includes(Game.state)) render();
+  if (['ready', 'playing'].includes(Game.state)) rafId = requestAnimationFrame(loop);
 }
 
-const TEST_MODE = /[?&](selftest|fuzz|probe)/.test(location.search);
+const TEST_MODE = /[?&](selftest|fuzz|probe|frametest)/.test(location.search);
+window.__flappyWords = Game;
 
 /* ---------------- 自检（仅 ?selftest 触发，供无头测试） ---------------- */
 if (/[?&]selftest/.test(location.search)) {
@@ -957,6 +997,9 @@ if (/[?&]selftest/.test(location.search)) {
     // 2. 拼单词模式：按顺序收集字母完成一个词
     Game.mode = 'spell'; Game.difficulty = 'easy';
     startGame();
+    chk('step1a', FIXED_STEP === 1 / 60 && BIRD_FRAMES.length === 4);
+    chk('step1b', Game.logicFrame === 0 && Game.renderCount === 0 && Game.rafCount === 0);
+    chk('step1c', Game.nextX <= W + 40 && Game.bubbleNextX <= W);
     Game.state = 'playing';
     const w0 = Game.word;
     if (!w0 || !w0.en) fail('拼单词模式未生成单词');
@@ -1022,8 +1065,12 @@ if (/[?&]selftest/.test(location.search)) {
 
     document.title = ok ? 'SELFTEST-OK'
       : 'SELFTEST-FAIL@' + why + ' W=' + Game.wordsDone + ' S=' + Game.score + ' L=' + Game.lives + ' LV=' + Game.level + dbg;
+    document.documentElement.dataset.selftest = ok ? 'pass' : 'fail';
+    Game.state = 'paused';
   } catch (err) {
     document.title = 'SELFTEST-ERR:' + err.message;
+    document.documentElement.dataset.selftest = 'fail';
+    Game.state = 'paused';
   }
 }
 
@@ -1107,4 +1154,16 @@ if (/[?&]probe/.test(location.search)) {
 
 /* ---------------- 启动 ---------------- */
 $id('hs-value').textContent = loadHS();
-if (!TEST_MODE) requestAnimationFrame(loop);
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  startGame();
+  ensureLoop();
+  setTimeout(() => {
+    const duplicateRenders = Game.renderCount - Game.logicFrame;
+    const passed = Game.logicFrame >= 40 && duplicateRenders <= 3 && Game.particles.length <= 120;
+    Game.state = 'paused';
+    document.title = passed
+      ? `FRAME-BUDGET PASS · ${Game.logicFrame}/${Game.renderCount}`
+      : `FRAME-BUDGET FAIL · ${Game.logicFrame}/${Game.renderCount}`;
+    document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+  }, 1200);
+}
