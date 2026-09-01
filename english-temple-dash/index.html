@@ -11,12 +11,12 @@
 <main id="game-wrap" aria-label="遗迹词途跑酷游戏区">
   <canvas id="game"></canvas>
 
-  <section id="hud" class="hidden" aria-live="polite">
+  <section id="hud" class="hidden">
     <div id="mission">
       <span class="eyebrow">本段单词</span>
       <strong id="word-meaning">准备出发</strong>
       <span id="word-progress">_ _ _</span>
-      <small id="feedback">收集道路上的目标字母</small>
+      <small id="feedback" aria-live="polite">收集道路上的目标字母</small>
     </div>
     <div id="status">
       <span>分数 <b id="score">0</b></span>
@@ -45,7 +45,7 @@
       <p class="eyebrow">无限三线单词跑酷</p>
       <h1>遗迹词途</h1>
       <p class="english-title">TEMPLE DASH</p>
-      <p class="lead">甩开身后的追兵，预判转向门并利用冲刺破障；在四座遗迹中按顺序收齐项目词库单词。</p>
+      <p class="lead">遗迹巨像已经苏醒。甩开追兵、预判转向、收齐主题单词，在四座遗迹中依次激活词印。</p>
       <a href="../" class="hub-link">返回游戏合集</a>
     </div>
     <div class="menu-actions">
@@ -91,6 +91,6 @@
 <script src="../shared/chip-music.js?v=4"></script>
 <script src="../english-thunder-fighter/data.js?v=20260814c"></script>
 <script src="../shared/vocabulary.js?v=20260820a"></script>
-<script src="game.js?v=20260901a"></script>
+<script src="game.js?v=20260901b"></script>
 </body>
 </html>

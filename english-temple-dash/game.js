@@ -22,10 +22,14 @@ const DIFFICULTIES = {
 };
 
 const BIOMES = [
-  { name: '日升神庙', road: '#5b604d', shoulder: '#20372b', edge: '#e4bd63', gravity: 1260, laneRate: 14, jump: 545, jumpType: 'log', blockType: 'root' },
-  { name: '悬桥峡谷', road: '#75533c', shoulder: '#4a3021', edge: '#efc36f', gravity: 1320, laneRate: 13.5, jump: 560, jumpType: 'pit', blockType: 'pillar' },
-  { name: '暴雨古城', road: '#355d64', shoulder: '#17383e', edge: '#a7d8d4', gravity: 1280, laneRate: 12.5, jump: 530, jumpType: 'arch', blockType: 'puddle' },
-  { name: '月晶遗迹', road: '#3b4c72', shoulder: '#202944', edge: '#e1bd68', gravity: 780, laneRate: 13, jump: 470, jumpType: 'beam', blockType: 'crystal' },
+  { name: '日升神庙', seal: '晨曦词印', road: '#5b604d', shoulder: '#20372b', edge: '#e4bd63', gravity: 1260, laneRate: 14, jump: 545, jumpType: 'log', blockType: 'root',
+    themeWords: ['forest', 'tree', 'bridge', 'protect', 'brave', 'save', 'enemy', 'fight', 'leaf', 'mission', 'nature', 'wild', 'jungle', 'signal', 'supplies', 'target'] },
+  { name: '悬桥峡谷', seal: '风行词印', road: '#75533c', shoulder: '#4a3021', edge: '#efc36f', gravity: 1320, laneRate: 13.5, jump: 560, jumpType: 'pit', blockType: 'pillar',
+    themeWords: ['air', 'bridge', 'dangerous', 'fly', 'jump', 'mountain', 'weather', 'windy', 'danger', 'rise', 'rock', 'sand', 'storm', 'wind', 'pursue', 'resilience', 'route', 'sandstorm', 'survival', 'valley'] },
+  { name: '暴雨古城', seal: '雨幕词印', road: '#355d64', shoulder: '#17383e', edge: '#a7d8d4', gravity: 1280, laneRate: 12.5, jump: 530, jumpType: 'arch', blockType: 'puddle',
+    themeWords: ['city', 'light', 'rain', 'rainy', 'street', 'water', 'ancient', 'building', 'history', 'lightning', 'storm', 'thunder', 'watchtower', 'wet', 'laser', 'megacity', 'night', 'restore', 'ruin', 'temple'] },
+  { name: '月晶遗迹', seal: '月晶词印', road: '#3b4c72', shoulder: '#202944', edge: '#e1bd68', gravity: 780, laneRate: 13, jump: 470, jumpType: 'beam', blockType: 'crystal',
+    themeWords: ['energy', 'future', 'high', 'jump', 'light', 'moon', 'sky', 'star', 'flight', 'gravity', 'interplanetary', 'planet', 'solar', 'spacecraft', 'alien', 'prism', 'relic', 'satellite', 'twilight'] },
 ];
 
 const ASSETS = {};
@@ -58,8 +62,10 @@ const lerp = (a, b, amount) => a + (b - a) * amount;
 const input = { pointerX: 0, pointerY: 0, pointerId: null };
 
 const Game = {
-  state: 'menu', difficulty: 'easy', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0, bestCombo: 0,
+  state: 'menu', difficulty: 'easy', score: 0, distance: 0, relics: 0, seals: 0, biomeWords: 0, hp: 3, wordsDone: 0, bestCombo: 0,
   time: 0, travel: 0, speed: 29, speedScale: 1, biome: 0, spawnTimer: 18, pattern: 0,
+  patternBag: [], lastPattern: -1, activePatternId: 0, activePatternIndex: -1, patternSerial: 0, lastClearKey: '',
+  logicFrame: 0, rafCount: 0, renderCount: 0,
   feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null, objects: [], particles: [],
   shake: 0, slowTimer: 0, flash: 0, chase: .48, turnCue: 0, turnCommit: 0, turnVisual: 0,
   player: {
@@ -75,8 +81,11 @@ function wordBank() {
 
 function nextWord(initial = false) {
   const bank = wordBank();
-  let item = bank[Math.floor(Math.random() * bank.length)];
-  if (bank.length > 1 && item.en === Game.lastWord) item = bank[(bank.indexOf(item) + 1) % bank.length];
+  const theme = new Set(BIOMES[Game.biome].themeWords);
+  const source = bank.filter((item) => theme.has(item.en));
+  const pool = source.length ? source : bank;
+  let item = pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length > 1 && item.en === Game.lastWord) item = pool[(pool.indexOf(item) + 1) % pool.length];
   Game.lastWord = item.en;
   Game.currentWord = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   showFeedback(initial ? '目标字母已进入路线' : '新单词已投放');
@@ -94,9 +103,11 @@ function startGame() {
   if (window.ChipMusic) ChipMusic.play('temple-loop');
   const conf = DIFFICULTIES[Game.difficulty];
   Object.assign(Game, {
-    state: 'playing', score: 0, distance: 0, relics: 0, hp: 3, wordsDone: 0, bestCombo: 0,
+    state: 'playing', score: 0, distance: 0, relics: 0, seals: 0, biomeWords: 0, hp: 3, wordsDone: 0, bestCombo: 0,
     time: 0, travel: 0, speed: conf.speed * Game.speedScale, biome: 0,
     spawnTimer: 18, pattern: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null,
+    patternBag: [], lastPattern: -1, activePatternId: 0, activePatternIndex: -1, patternSerial: 0, lastClearKey: '',
+    logicFrame: 0, rafCount: 0, renderCount: 0,
     shake: 0, slowTimer: 0, flash: 0, chase: .48, turnCue: 0, turnCommit: 0, turnVisual: 0,
   });
   Game.objects.length = 0;
@@ -157,6 +168,7 @@ function gameOver() {
     '<div><span>本局得分</span><b>' + Game.score + '</b></div>' +
     '<div><span>推进里程</span><b>' + Math.floor(Game.distance) + ' m</b></div>' +
     '<div><span>完成单词</span><b>' + Game.wordsDone + '</b></div>' +
+    '<div><span>激活词印</span><b>' + Game.seals + '</b></div>' +
     '<div><span>收集遗物</span><b>' + Game.relics + '</b></div>' +
     '<div><span>最高连击</span><b>×' + Game.bestCombo + '</b></div>' +
     '<div><span>最高纪录</span><b>' + high + '</b></div>';
@@ -183,7 +195,7 @@ function updateHud() {
   if (word) {
     $('word-meaning').textContent = word.zh;
     $('word-progress').textContent = [...word.en].map((letter, index) => index < word.progress ? letter : '_').join(' ');
-    if (Game.feedbackTimer <= 0) $('feedback').textContent = '左右换道 · 上跳 · 下滑';
+    if (Game.feedbackTimer <= 0) $('feedback').textContent = '逃亡目标 · 激活' + BIOMES[Game.biome].seal;
   }
 }
 
@@ -218,7 +230,8 @@ function slide() {
 }
 
 function addObject(type, lane, z, extra = {}) {
-  Game.objects.push({ type, lane, z, passed: false, taken: false, phase: Math.random() * TAU, ...extra });
+  Game.objects.push({ type, lane, z, spawnZ: z, patternId: Game.activePatternId, patternIndex: Game.activePatternIndex,
+    passed: false, taken: false, phase: Math.random() * TAU, ...extra });
 }
 
 function spawnRelicTrail(lane, z) {
@@ -227,7 +240,19 @@ function spawnRelicTrail(lane, z) {
 
 function spawnPattern() {
   const biome = BIOMES[Game.biome];
-  const pattern = Game.pattern++ % 12;
+  if (!Game.patternBag.length) {
+    Game.patternBag = Array.from({ length: 12 }, (_, index) => index);
+    for (let i = Game.patternBag.length - 1; i > 0; i--) {
+      const pick = Math.floor(Math.random() * (i + 1));
+      [Game.patternBag[i], Game.patternBag[pick]] = [Game.patternBag[pick], Game.patternBag[i]];
+    }
+    if (Game.patternBag.at(-1) === Game.lastPattern) [Game.patternBag[0], Game.patternBag[Game.patternBag.length - 1]] = [Game.patternBag.at(-1), Game.patternBag[0]];
+  }
+  const pattern = Game.patternBag.pop();
+  Game.lastPattern = pattern;
+  Game.pattern++;
+  Game.activePatternId = ++Game.patternSerial;
+  Game.activePatternIndex = pattern;
   const lane = Math.floor(Math.random() * 3) - 1;
   const other = lane === -1 ? 1 : -1;
   let safeLane = other;
@@ -296,12 +321,16 @@ function spawnPattern() {
     spawnRelicTrail(other, MAX_Z + 4);
   }
 
-  if (Game.pattern % 2 === 0 && Game.currentWord) {
-    addObject('letter', safeLane, MAX_Z + 11, { letter: Game.currentWord.en[Game.currentWord.progress] });
+  if (Game.currentWord) {
+    const target = Game.currentWord.en[Game.currentWord.progress];
+    const pending = Game.objects.some((object) => object.type === 'letter' && !object.taken && object.letter === target);
+    if (!pending) addObject('letter', safeLane, MAX_Z + 11, { letter: target });
   }
   if (Game.pattern % 7 === 0) addObject('turn', 0, MAX_Z + 22, { direction: Game.pattern % 14 === 0 ? -1 : 1 });
   if (Game.pattern % 10 === 0) addObject('boost', safeLane, MAX_Z + 14);
   else if (Game.pattern % 13 === 0) addObject(Game.pattern % 26 === 0 ? 'magnet' : 'shield', safeLane, MAX_Z + 18);
+  Game.activePatternId = 0;
+  Game.activePatternIndex = -1;
 }
 
 function burst(x, y, color, count) {
@@ -328,6 +357,7 @@ function collectObject(object) {
     if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2);
     if (word.progress === word.en.length) {
       Game.wordsDone++;
+      Game.biomeWords++;
       Game.score += 500 + word.en.length * 35;
       Game.player.magnet = 4;
       if (Game.wordsDone % 4 === 0 && Game.hp < 3) Game.hp++;
@@ -382,8 +412,11 @@ function hit() {
   updateHud();
 }
 
-function clearedObstacle() {
+function clearedObstacle(object) {
   const player = Game.player;
+  const clearKey = object?.patternId ? object.patternId + ':' + object.spawnZ : '';
+  if (clearKey && clearKey === Game.lastClearKey) return;
+  if (clearKey) Game.lastClearKey = clearKey;
   // 无限连击: 不再封顶12, 高连击有里程碑奖励(每5连击回血/护盾)
   player.combo = player.comboTimer > 0 ? player.combo + 1 : 1;
   player.comboTimer = 3.2;
@@ -434,7 +467,7 @@ function updateObjects(dt) {
         Game.score += 250;
         Game.chase = Math.max(.08, Game.chase - .12);
         showFeedback(object.direction < 0 ? '漂亮左转 +250' : '漂亮右转 +250');
-        clearedObstacle();
+        clearedObstacle(object);
       } else hit();
       Game.turnCue = Game.turnCommit = 0;
       continue;
@@ -445,13 +478,13 @@ function updateObjects(dt) {
       continue;
     }
     if (!sameLane) {
-      clearedObstacle();
+      clearedObstacle(object);
     } else if (object.type === 'puddle') {
       Game.slowTimer = Math.max(Game.slowTimer, .75);
       player.combo = player.comboTimer = player.comboPulse = 0;
       showFeedback('踩入水洼：连击中断');
     } else if (player.boost > 0 || obstacleCleared(object)) {
-      clearedObstacle();
+      clearedObstacle(object);
     } else {
       hit();
     }
@@ -498,7 +531,23 @@ function updateParticles(dt) {
   }
 }
 
+function enterBiome(nextBiome) {
+  const previous = BIOMES[Game.biome];
+  if (Game.biomeWords > 0) {
+    Game.seals++;
+    Game.score += 700;
+    Game.chase = Math.max(.08, Game.chase - .14);
+    showFeedback(previous.seal + '激活 · 追兵距离拉开');
+  } else {
+    Game.chase = Math.min(1, Game.chase + .1);
+    showFeedback(previous.seal + '未激活 · 追兵逼近');
+  }
+  Game.biome = nextBiome;
+  Game.biomeWords = 0;
+}
+
 function update(dt) {
+  Game.logicFrame++;
   Game.time += dt;
   Game.feedbackTimer = Math.max(0, Game.feedbackTimer - dt);
   Game.hudTimer = Math.max(0, Game.hudTimer - dt);
@@ -518,10 +567,7 @@ function update(dt) {
   Game.travel += Game.speed * dt;
   Game.distance += Game.speed * dt * .78;
   const nextBiome = Math.floor(Game.distance / 420) % BIOMES.length;
-  if (nextBiome !== Game.biome) {
-    Game.biome = nextBiome;
-    showFeedback('进入：' + BIOMES[nextBiome].name);
-  }
+  if (nextBiome !== Game.biome) enterBiome(nextBiome);
   updatePlayer(dt);
   Game.spawnTimer -= Game.speed * dt;
   if (Game.spawnTimer <= 0) {
@@ -540,8 +586,8 @@ function roadCenter(z) {
 }
 
 function project(lane, z) {
-  const depth = 1 - clamp(z / MAX_Z, 0, 1);
-  const eased = depth * depth;
+  const depth = 1 - Math.min(1, z / MAX_Z);
+  const eased = depth * (.72 + depth * .28);
   const y = lerp(HORIZON_Y, PLAYER_GROUND_Y, eased);
   const halfRoad = lerp(42, VIEW_W * .48, eased);
   return { x: roadCenter(z) + lane * halfRoad * .54, y, scale: lerp(.16, 1.2, eased), halfRoad };
@@ -555,7 +601,8 @@ function drawBackground() {
     const sourceH = ASSETS.biomes.naturalHeight / 4;
     const destH = 338;
     const sourceW = Math.min(ASSETS.biomes.naturalWidth, sourceH * VIEW_W / destH);
-    const drift = (Math.sin(Game.travel * .003) * .5 + .5) * (ASSETS.biomes.naturalWidth - sourceW);
+    const center = (ASSETS.biomes.naturalWidth - sourceW) / 2;
+    const drift = clamp(center + Math.sin(Game.travel * .002) * 32 + Game.turnVisual * 22, 0, ASSETS.biomes.naturalWidth - sourceW);
     ctx.drawImage(ASSETS.biomes, drift, sourceH * biome, sourceW, sourceH, 0, 0, VIEW_W, destH);
   } else {
     ctx.fillStyle = ['#a7834c', '#b58251', '#335863', '#273354'][biome];
@@ -572,15 +619,29 @@ function drawRoad() {
   const shoulderGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, VIEW_H);
   shoulderGrad.addColorStop(0, shadeColor(biome.shoulder, -.28));
   shoulderGrad.addColorStop(1, shadeColor(biome.shoulder, .06));
+  ctx.globalAlpha = .84;
   ctx.fillStyle = shoulderGrad;
   ctx.beginPath(); ctx.moveTo(farCenter - 55, HORIZON_Y); ctx.lineTo(farCenter + 55, HORIZON_Y); ctx.lineTo(VIEW_W + 80, VIEW_H); ctx.lineTo(-80, VIEW_H); ctx.closePath(); ctx.fill();
+  if (ASSETS.biomes.complete && ASSETS.biomes.naturalWidth) {
+    const sourceH = ASSETS.biomes.naturalHeight / 4;
+    const textureW = Math.min(220, ASSETS.biomes.naturalWidth);
+    const textureX = clamp((ASSETS.biomes.naturalWidth - textureW) / 2 + Math.sin(Game.travel * .002) * 18 + Game.turnVisual * 12, 0, ASSETS.biomes.naturalWidth - textureW);
+    ctx.save();
+    ctx.globalAlpha = .9;
+    ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.closePath(); ctx.clip();
+    ctx.drawImage(ASSETS.biomes, textureX, sourceH * Game.biome + sourceH * .55, textureW, sourceH * .45,
+      nearCenter - VIEW_W * .48, HORIZON_Y, VIEW_W * .96, VIEW_H - HORIZON_Y);
+    ctx.restore();
+  }
   // 路基渐变：远处压暗融入雾气，近处提亮，强化纵深（大气透视）
   const roadGrad = ctx.createLinearGradient(0, HORIZON_Y, 0, VIEW_H);
   roadGrad.addColorStop(0, shadeColor(biome.road, -.42));
   roadGrad.addColorStop(.55, shadeColor(biome.road, -.12));
   roadGrad.addColorStop(1, shadeColor(biome.road, .06));
+  ctx.globalAlpha = .3;
   ctx.fillStyle = roadGrad;
   ctx.beginPath(); ctx.moveTo(farCenter - 40, HORIZON_Y); ctx.lineTo(farCenter + 40, HORIZON_Y); ctx.lineTo(nearCenter + VIEW_W * .48, VIEW_H); ctx.lineTo(nearCenter - VIEW_W * .48, VIEW_H); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
   // 石板纹理: 世界锚定透视投影 —— 石板以固定世界间距(z轴)摆放,
   // 近处自然滑得快、远处滑得慢, 彻底消除"匀速刷屏"的频闪。
   // 明暗交替只做极轻微的暖色变化(不做高对比黑白), 保护眼睛。
@@ -640,10 +701,6 @@ function drawRoad() {
 
   const firstMarker = Math.floor(Game.travel / LANE_MARKER_WORLD) + 1;
   for (const boundary of [-.5, .5]) {
-    ctx.strokeStyle = 'rgba(238,226,185,.14)'; ctx.lineWidth = 1.5;
-    const far = project(boundary, MAX_Z);
-    const near = project(boundary, 0);
-    ctx.beginPath(); ctx.moveTo(far.x, far.y); ctx.lineTo(near.x, near.y); ctx.stroke();
     for (let i = 0; i < 10; i++) {
       const zFar = (firstMarker + i) * LANE_MARKER_WORLD - Game.travel;
       const zNear = zFar - LANE_MARKER_WORLD * .42;
@@ -677,7 +734,7 @@ function shadeColor(hex, amount) {
 const LETHAL_TYPES = new Set(['log', 'rock', 'pillar', 'root', 'arch', 'crystal', 'beam']);
 function drawObject(object) {
   if (object.z > MAX_Z + 30 || object.z < -8) return;
-  const point = project(object.lane, Math.max(0, object.z));
+  const point = project(object.lane, object.z);
   const s = point.scale;
   // 雾中淡入只作用于物体本身，不能再画贯穿屏幕的遮罩柱。
   const fogStartZ = MAX_Z * .55;
@@ -874,6 +931,7 @@ function drawWeather() {
 }
 
 function render() {
+  Game.renderCount++;
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
   ctx.clearRect(0, 0, VIEW_W, VIEW_H);
   // 屏幕震动限幅+平滑: 高频大幅抖动会破坏近景速度预估(用户实测反馈)
@@ -981,16 +1039,19 @@ function ensureLoop() {
 }
 function frame(now) {
   rafId = 0;
+  Game.rafCount++;
   const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
   lastTime = now;
+  let advanced = false;
   if (Game.state === 'playing') {
     accumulator = Math.min(.1, accumulator + dt);
     while (accumulator >= FIXED_STEP && Game.state === 'playing') {
       update(FIXED_STEP);
       accumulator -= FIXED_STEP;
+      advanced = true;
     }
   } else accumulator = 0;
-  render();
+  if (advanced || Game.state !== 'playing') render();
   if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
 
@@ -1003,6 +1064,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.speedScale = .8;
       startGame();
       if (FIXED_STEP !== 1 / 60 || canvas.width * canvas.height > MAX_CANVAS_PIXELS * 1.01) throw new Error('frame pacing or pixel budget failed');
+      if (Game.logicFrame || Game.renderCount || Game.rafCount) throw new Error('frame counters were not reset');
       if (Math.abs(Game.speed - DIFFICULTIES.easy.speed * .8) > .001) throw new Error('speed setting failed');
       Game.speedScale = 1;
       startGame();
@@ -1011,8 +1073,9 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (roadCenter(0) !== VIEW_W / 2 || roadCenter(MAX_Z) !== VIEW_W / 2) throw new Error('road lanes are not straight');
       Game.objects.length = 0; Game.pattern = 0;
       for (let i = 0; i < 12; i++) spawnPattern();
-      if (Game.pattern !== 12 || !Game.objects.some((object) => object.type === 'boost')) throw new Error('pattern variety failed');
+      if (Game.pattern !== 12 || new Set(Game.objects.map((object) => object.patternIndex)).size !== 12 || !Game.objects.some((object) => object.type === 'boost')) throw new Error('pattern shuffle bag failed');
       if (!Game.currentWord || !(window.PROJECT_VOCAB && PROJECT_VOCAB.easy.some((item) => item.en.toUpperCase() === Game.currentWord.en))) throw new Error('project vocabulary missing');
+      if (!BIOMES[0].themeWords.includes(Game.currentWord.en.toLowerCase())) throw new Error('biome vocabulary ignored the scene theme');
       moveLane(1); updatePlayer(.2);
       if (!(Game.player.lanePos > 0)) throw new Error('lane change failed');
       jump(); updatePlayer(.08);
@@ -1031,6 +1094,15 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       updateObjects(.01);
       if (Game.currentWord.progress !== progress + 1) throw new Error('letter collection failed');
       if (!Game.wordEcho || Game.wordEcho.progress !== progress + 1) throw new Error('word memory echo failed');
+      Game.lastClearKey = '';
+      Game.player.lane = Game.player.lanePos = 0;
+      Game.objects = [
+        { type: 'root', lane: -1, z: 7, spawnZ: 90, patternId: 99, passed: false, taken: false, phase: 0 },
+        { type: 'root', lane: 1, z: 7, spawnZ: 90, patternId: 99, passed: false, taken: false, phase: 0 },
+      ];
+      Game.player.combo = Game.player.comboTimer = 0;
+      updateObjects(0);
+      if (Game.player.combo !== 1) throw new Error('one obstacle row awarded multiple combo hits');
       Game.player.combo = Game.player.comboTimer = 0;
       clearedObstacle(); clearedObstacle();
       if (Game.player.combo !== 2 || Game.bestCombo < 2 || Game.player.comboTimer !== 3.2) throw new Error('combo chain failed');
@@ -1049,6 +1121,11 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (!Game.turnVisual || Game.turnCue || Game.turnCommit) throw new Error('turn resolution failed');
       collectObject({ type: 'boost', lane: 0, z: 7, taken: false });
       if (Game.player.boost <= 0) throw new Error('boost pickup failed');
+      const yAtPlayer = project(0, 0).y;
+      if (project(0, -8).y <= yAtPlayer || (yAtPlayer - project(0, 50).y) / (project(0, 50).y - project(0, 100).y) > 1.5) throw new Error('near-field projection still stalls');
+      Game.biome = 0; Game.biomeWords = 1; Game.seals = 0; Game.chase = .5;
+      enterBiome(1);
+      if (Game.seals !== 1 || Game.biome !== 1 || Game.chase >= .5) throw new Error('biome word seal did not affect the chase');
       Game.objects.length = 0;
       Game.hp = 999;
       Game.player.inv = 999; Game.chase = 0;
@@ -1071,5 +1148,20 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       document.documentElement.dataset.selftest = 'fail';
       console.error(error);
     }
+  });
+}
+
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    startGame();
+    setTimeout(() => {
+      const duplicateRenders = Game.renderCount - Game.logicFrame;
+      const passed = Game.logicFrame >= 40 && duplicateRenders <= 3;
+      Game.state = 'paused';
+      document.title = passed
+        ? 'FRAME-BUDGET PASS · ' + Game.logicFrame + '/' + Game.renderCount
+        : 'FRAME-BUDGET FAIL · ' + Game.logicFrame + '/' + Game.renderCount;
+      document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+    }, 1200);
   });
 }
