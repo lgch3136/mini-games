@@ -10,6 +10,10 @@ let W = 900, H = 640;
 const FIXED_STEP = 1 / 60;
 const MAX_CANVAS_PIXELS = 1200000;
 const FX_STAR_COUNT = 96;
+const MAX_ENEMY_BULLETS = 480;
+const MAX_PARTICLES = 360;
+const MAX_SHOCKWAVES = 40;
+const MAX_FLOATERS = 48;
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -617,11 +621,12 @@ function damagePlayer(amount) {
 function useBomb() {
   if (Game.state !== 'playing' || Game.bombs <= 0) return;
   Game.bombs--;
+  Game.player.invuln = Math.max(Game.player.invuln, 1.2);
   SFX.bomb();
   Game.shake = 0.7;
   for (let i = 0; i < 14; i++) {
     setTimeout(() => {
-      if (Game.state !== 'playing' && Game.state !== 'over') return;
+      if (Game.state !== 'playing') return;
       explode(rand(100, W - 100), rand(80, H - 80), '#ffd166', 30, 1.6);
     }, i * 45);
   }
@@ -630,11 +635,14 @@ function useBomb() {
   if (Game.phase === 'question' && Game.question) {
     for (const e of Game.enemies.slice()) killEnemy(e, false);
   } else if (Game.phase === 'boss') {
-    const rest = Game.enemies.slice();
-    Game.enemies.length = 0;
-    for (const e of rest) explode(e.x, e.y, '#ff6b6b', 40, 1.6);
-    Game.phase = 'transition';
-    Game.nextWaveTimer = 1.0;
+    const boss = Game.enemies.find((enemy) => enemy.boss);
+    if (boss) {
+      boss.hp -= Math.max(8, Math.ceil(boss.maxHp * .22));
+      boss.hitFlash = .28;
+      explode(boss.x, boss.y, '#ffd166', 42, 1.5);
+      toast('爆弹重创', '#ffe066', boss.x, boss.y + 62, 18);
+      if (boss.hp <= 0) killEnemy(boss, false);
+    }
   }
   updateHud();
 }
@@ -835,16 +843,27 @@ function explode(x, y, color, count, power) {
     });
   }
   Game.shockwaves.push({ x, y, r: 8, vr: 240 * power, t: 0, life: 0.38, color });
+  capCombatBudget();
 }
 
 function hitSparks(x, y, color) {
   for (let i = 0; i < 5; i++) {
     Game.particles.push({ x, y, vx: rand(-90, 90), vy: rand(-70, 80), r: rand(1, 2.8), color, t: 0, life: rand(.12, .26), drag: 4.2 });
   }
+  capCombatBudget();
 }
 
 function toast(text, color, x, y, size) {
   Game.floaters.push({ text, color, x: clamp(x, 60, W - 60), y, size: size || 16, t: 0, life: 1.1, vy: -42 });
+  capCombatBudget();
+}
+
+function capCombatBudget() {
+  const trim = (items, max) => { if (items.length > max) items.splice(0, items.length - max); };
+  trim(Game.enemyBullets, MAX_ENEMY_BULLETS);
+  trim(Game.particles, MAX_PARTICLES);
+  trim(Game.shockwaves, MAX_SHOCKWAVES);
+  trim(Game.floaters, MAX_FLOATERS);
 }
 
 function updateFx(dt) {
@@ -925,6 +944,7 @@ function update(dt) {
   updateEnemyBullets(dt);
   updatePowerups(dt);
   updateDirector(dt);
+  capCombatBudget();
 
   if (Game.nextWaveTimer !== null) {
     if (Game.nextWaveTimer > 0) Game.nextWaveTimer -= dt;
@@ -994,6 +1014,12 @@ function updateEnemies(dt) {
         e.x = W / 2 + Math.sin(e.t * 0.55) * Math.min(260, W / 2 - 80);
         bossDanmaku(e, dt);
         if (e.t > 32) e.leaving = true;
+      }
+      const p = Game.player;
+      if (!e.leaving && Math.hypot(e.x - p.x, e.y - p.y) < e.r + p.r) {
+        damagePlayer(28);
+        p.y = clamp(Math.max(p.y, e.y + e.r * 1.9 + 47), Math.min(Game._minY, H - 46), H - 46);
+        p.py = p.y;
       }
       continue;
     }
@@ -1686,6 +1712,7 @@ function backToMenu() {
   releaseTouchControls();
   Game.state = 'menu';
   if (window.ChipMusic) ChipMusic.stop();
+  SFX.ac?.suspend().catch(() => {});
   els.hud.classList.add('hidden');
   els.over.classList.add('hidden');
   els.paused.classList.add('hidden');
@@ -1703,6 +1730,7 @@ function gameOver() {
   explode(Game.player.x, Game.player.y, '#ffd166', 40, 1.8);
   SFX.bigBoom();
   SFX.gameover();
+  setTimeout(() => { if (Game.state === 'over') SFX.ac?.suspend().catch(() => {}); }, 1400);
   Game.shake = 0.9;
   const key = 'thunder-fighter-hs-' + Game.difficulty;
   const prev = Number(localStorage.getItem(key) || 0);
@@ -1868,7 +1896,23 @@ if (/[?&]selftest/.test(location.search)) {
     const fireReleased = !Game.fireHeld && movePointerId === 91 && firePointerId === null;
     canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 91, pointerType: 'touch' }));
     const inputOk = moveOnly && separateFire && fireReleased && movePointerId === null;
-    const passed = Game.score > 0 && Game.stats.correct === 1 && inputOk;
+    Game.enemies.length = 0; Game.enemyBullets.length = 0; Game.phase = 'boss'; Game.hp = 100; Game.shield = 0;
+    spawnBoss();
+    const boss = Game.enemies.find((enemy) => enemy.boss);
+    boss.entering = false; boss.x = Game.player.x = W / 2; boss.y = Game.player.y = 130; Game.player.py = 130; Game.player.invuln = 0;
+    const bossHp = boss.hp;
+    updateEnemies(0);
+    const collisionOk = Game.enemies.includes(boss) && boss.hp === bossHp && Game.hp === 72 && Game.player.y > boss.y;
+    Game.bombs = 1; Game.player.invuln = 0; useBomb();
+    const bombOk = Game.enemies.includes(boss) && boss.hp < bossHp && boss.hp > 0 && Game.player.invuln >= 1.2;
+    Game.enemyBullets.length = MAX_ENEMY_BULLETS + 10;
+    Game.particles.length = MAX_PARTICLES + 10;
+    Game.shockwaves.length = MAX_SHOCKWAVES + 10;
+    Game.floaters.length = MAX_FLOATERS + 10;
+    capCombatBudget();
+    const budgetOk = Game.enemyBullets.length === MAX_ENEMY_BULLETS && Game.particles.length === MAX_PARTICLES && Game.shockwaves.length === MAX_SHOCKWAVES && Game.floaters.length === MAX_FLOATERS;
+    Game.enemyBullets.length = 0; Game.particles.length = 0; Game.shockwaves.length = 0; Game.floaters.length = 0;
+    const passed = Game.score > 0 && Game.stats.correct === 1 && inputOk && collisionOk && bombOk && budgetOk;
     document.title = passed ? 'SELFTEST-OK' : 'SELFTEST-FAIL';
     document.documentElement.dataset.selftest = passed ? 'pass' : 'fail';
     Game.state = 'paused';
