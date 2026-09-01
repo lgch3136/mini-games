@@ -434,6 +434,7 @@ const Game = {
   particles: [], floaters: [],
   muted: false,
   bpm: 104,
+  logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
 function ensureAudioClock() {
@@ -736,6 +737,7 @@ function startGame() {
   Game.capsules = 0;
   Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   Game.level = 1; Game.wordsDone = 0; Game.time = 0; Game.section = 0; Game.currentSection = '';
+  Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   Game.flashLane.fill(0); Game.heldLane.fill(0); Game.judgement = null;
   Game.activeHolds.fill(null);
   Game.state = 'playing';
@@ -747,6 +749,7 @@ function startGame() {
   Game.audioStart = Game.actx.currentTime + .45;
   Game.backingStep = 0;
   Game.autoIndex = 0;
+  ensureLoop();
 }
 
 function nextChart() {
@@ -909,6 +912,7 @@ function scanMisses() {
 
 function gameOver() {
   Game.state = 'over';
+  Game.actx?.suspend().catch(() => {});
   Game.activeHolds.fill(null);
   $id('word-bar').classList.add('hidden');
   $id('over').classList.remove('hidden');
@@ -972,15 +976,19 @@ function togglePause() {
   if (Game.state === 'playing') {
     Game.state = 'paused';
     Game.pauseStartedAt = Game.actx.currentTime;
+    Game.actx.suspend().catch(() => {});
     $id('paused').classList.remove('hidden');
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
     Game.audioStart += Game.actx.currentTime - Game.pauseStartedAt;
+    ensureAudioClock();
     $id('paused').classList.add('hidden');
+    ensureLoop();
   }
 }
 function backToMenu() {
   Game.state = 'menu';
+  Game.actx?.suspend().catch(() => {});
   Game.activeHolds.fill(null);
   $id('paused').classList.add('hidden');
   $id('over').classList.add('hidden');
@@ -993,7 +1001,10 @@ function burst(x, y, color, n) {
   for (let i = 0; i < n; i++) Game.particles.push({ x, y, vx: rand(-140, 140), vy: rand(-180, 30), life: rand(.2, .5), color, size: rand(2, 4.5) });
   if (Game.particles.length > 180) Game.particles.splice(0, Game.particles.length - 180);
 }
-function floatText(text, x, y, color) { Game.floaters.push({ text: safe(text), x, y, color, life: .7 }); }
+function floatText(text, x, y, color) {
+  Game.floaters.push({ text: safe(text), x, y, color, life: .7 });
+  if (Game.floaters.length > 40) Game.floaters.splice(0, Game.floaters.length - 40);
+}
 function showFeedback(text) {
   Game.feedbackUntil = 2.4;
   const el = $id('feedback');
@@ -1035,6 +1046,7 @@ const laneX = (l) => 20 + l * laneW();
 function scrollSpeed() { return NOTE_SPEED_BASE * (Game.scrollMul || 1); }
 
 function render() {
+  Game.renderCount++;
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   if (StageBackground.complete && StageBackground.naturalWidth) {
     const sw = StageBackground.naturalHeight * W / H;
@@ -1407,10 +1419,19 @@ window.addEventListener('orientationchange', () => setTimeout(resize, 160));
 resize();
 
 let lastTime = performance.now();
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden || Game.state !== 'playing') return;
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(frame);
+}
 function frame(nowMs) {
+  rafId = 0;
+  Game.rafCount++;
   const dt = Math.min(.033, (nowMs - lastTime) / 1000 || .016);
   lastTime = nowMs;
   if (Game.state === 'playing') {
+    Game.logicFrame++;
     Game.time += dt;
     scheduleBackingBeat();
     updateHolds();
@@ -1433,9 +1454,9 @@ function frame(nowMs) {
     Game.shakeX *= Math.exp(-dt * 11);
   }
   render();
-  requestAnimationFrame(frame);
+  if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+render();
 
 window.__wordBeat = Game;
 
@@ -1616,5 +1637,22 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       document.title = 'SELFTEST-FAIL: ' + e.message;
       console.error(e);
     }
+  });
+}
+
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    Game.muted = true;
+    startGame();
+    setTimeout(() => {
+      const duplicateRenders = Game.renderCount - Game.logicFrame;
+      const passed = Game.logicFrame >= 40 && Math.abs(duplicateRenders) <= 3 && Game.floaters.length <= 40;
+      Game.state = 'paused';
+      Game.actx?.suspend().catch(() => {});
+      document.title = passed
+        ? `FRAME-BUDGET PASS · ${Game.logicFrame}/${Game.renderCount}`
+        : `FRAME-BUDGET FAIL · ${Game.logicFrame}/${Game.renderCount}`;
+      document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+    }, 1200);
   });
 }
