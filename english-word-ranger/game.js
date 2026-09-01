@@ -8,12 +8,15 @@ const wrap = $('game-wrap');
 let VIEW_W = 960;
 const VIEW_H = 540;
 const GROUND_Y = 478;
+const TERRAIN_WORLD_HEIGHT = 158;
 const CHUNK_W = 720;
 const TAU = Math.PI * 2;
 const PLAYER_H = 59.8;
 const CROUCH_H = 30;
 const BULLET_SPEED = 660;
 const FIXED_STEP = 1 / 60;
+const CAMERA_LINE = 120 / 256;
+const RENDER_PIXEL_BUDGET = 520000;
 const ENEMY_ACTIVATION_MARGIN = 64;
 const PARTICLE_CAP = 120;
 const POWERUP_LABELS = { spread: '散射', rapid: '连射', shield: '护盾' };
@@ -26,8 +29,8 @@ const AIM_OCTANTS = [
 ];
 // Contra stores a separate muzzle offset for every aim pose and for airborne poses.
 // Keeping the shot attached to the authored pose removes the "floating bullet" look.
-const GROUND_MUZZLE = [[0, -72], [37, -56], [52, -38], [39, -19], [52, -15], [-52, -15], [-39, -19], [-52, -38], [-37, -56], [0, -72], [0, 18]];
-const AIR_MUZZLE = [[0, -62], [34, -52], [46, -30], [34, -8], [42, -18], [-42, -18], [-34, -8], [-46, -30], [-34, -52], [0, -62], [0, 12]];
+const GROUND_MUZZLE = [[4, -86], [36, -65], [35, -25], [36, -18], [37, -29], [-37, -29], [-36, -18], [-35, -25], [-36, -65], [-4, -86], [0, 8]];
+const AIR_MUZZLE = [[19, -72], [24, -64], [24, -32], [36, -10], [24, -32], [-24, -32], [-36, -10], [-24, -32], [-24, -64], [-19, -72], [36, -10]];
 
 const DIFFICULTIES = {
   easy: { speed: 220, enemySpeed: 44, hp: 1, fireEvery: 3, spawn: .8, label: '初级' },
@@ -161,16 +164,16 @@ const ENEMY_SPECS = {
 
 const ASSETS = {};
 for (const [name, src] of Object.entries({
-  hero: 'assets/hero-sprites.webp',
-  actions: 'assets/hero-actions-v2.png',
-  enemies: 'assets/enemy-sprites.webp',
-  biomes: 'assets/biomes.webp',
-  hazards: 'assets/hazard-atlas-v2.webp',
-  terrain0: 'assets/terrain-forest-v1.webp',
-  terrain1: 'assets/terrain-canyon-v1.webp',
-  terrain2: 'assets/terrain-city-v1.webp',
-  terrain3: 'assets/terrain-crystal-v1.webp',
-  decor: 'assets/decor-atlas-v2.webp',
+  hero: 'assets/hero-fc-v3.png',
+  actions: 'assets/hero-actions-fc-v3.png',
+  enemies: 'assets/enemy-fc-v3.png',
+  biomes: 'assets/biomes-fc-v3.webp',
+  hazards: 'assets/hazard-fc-v3.png',
+  terrain0: 'assets/terrain-forest-fc-v3.webp',
+  terrain1: 'assets/terrain-canyon-fc-v3.webp',
+  terrain2: 'assets/terrain-city-fc-v3.webp',
+  terrain3: 'assets/terrain-crystal-fc-v3.webp',
+  decor: 'assets/decor-fc-v3.png',
 })) {
   const image = new Image();
   image.src = src;
@@ -180,22 +183,22 @@ for (const [name, src] of Object.entries({
 // Generated atlases do not share a consistent origin. These body/foot anchors keep
 // each pose attached to the collider instead of sliding with transparent padding.
 const HERO_ANCHORS = [
-  [[157, 312], [156, 312], [151, 314], [150, 312]],
-  [[170, 313], [172, 299], [175, 300], [172, 313]],
-  [[163, 313], [169, 313], [170, 313], [172, 313]],
-  [[151, 314], [150, 286], [164, 288], [171, 290]],
+  [[33, 64], [32, 64], [32, 64], [25.5, 64]],
+  [[33.5, 64], [32, 64], [31, 64], [27.5, 64]],
+  [[36, 54], [32, 54], [29, 48], [27.5, 63]],
+  [[32.5, 49], [34.5, 49], [31.5, 49], [29, 41]],
 ];
 const ACTION_ANCHORS = [
-  [[141, 256], [133, 256], [121, 256], [100, 256]],
-  [[161, 256], [138, 256], [124, 237], [101, 249]],
-  [[134, 256], [120, 256], [105, 233], [93, 256]],
-  [[125, 243], [119, 237], [102, 256], [88, 256]],
+  [[34.5, 64], [32, 64], [33, 64], [29, 64]],
+  [[36, 59], [36, 59], [34.5, 59], [35, 60]],
+  [[32.5, 55], [30.5, 54], [34, 58], [35.5, 57]],
+  [[36, 55], [32, 55], [30, 55], [29, 54]],
 ];
 const ENEMY_ANCHORS = [
-  [[177, 300], [170, 300], [166, 300], [168, 300]],
-  [[176, 300], [182, 300], [177, 300], [172, 300]],
-  [[179, 300], [204, 300], [164, 300], [173, 300]],
-  [[169, 300], [181, 274], [177, 300], [169, 300]],
+  [[30.5, 64], [30, 64], [29.5, 64], [28.5, 64]],
+  [[38, 64], [33, 64], [38, 64], [36, 64]],
+  [[34, 64], [36, 64], [32.5, 64], [34.5, 64]],
+  [[34.5, 54], [33.5, 55], [32.5, 54], [33.5, 56]],
 ];
 
 const HAZARD_SPRITES = {
@@ -222,6 +225,12 @@ const DECOR_SPECS = [
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+const enemyShotBox = (enemy) => {
+  const [padX, padTop] = {
+    beetle: [3, 15], leaper: [4, 18], drone: [4, 28], guardian: [5, 22], boss: [16, 8],
+  }[enemy.type] || [0, 0];
+  return { x: enemy.x - padX, y: enemy.y - padTop, w: enemy.w + padX * 2, h: enemy.h + padTop };
+};
 const secondsToFrames = (seconds) => Number.isFinite(seconds) ? Math.max(0, Math.round(seconds / FIXED_STEP)) : Infinity;
 const input = { left: false, right: false, up: false, down: false, fire: false, firePressed: false, jumpHeld: false, jumpBuffer: 0 };
 const mobileAssist = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
@@ -240,11 +249,11 @@ const Game = {
   chunks: [], pickups: [], powerups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
   player: {
     x: 70, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
-    vx: 0, vy: 0, facing: 1, onGround: true,
+    vx: 0, vy: 0, renderVx: 0, renderVy: 0, facing: 1, onGround: true,
     coyote: .1, inv: 0, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0,
     landingTimer: 0, skidTimer: 0, hurtTimer: 0,
-    action: 'idle', actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
+    action: 'idle', animationKey: 'idle', actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
     weapon: 'normal', weaponLevel: 0, weaponTimer: 0, shield: 0,
     overdrive: 0, combo: 0, comboTimer: 0,
   },
@@ -409,7 +418,7 @@ function makeEnemy(type, x, chunkIndex, floorY = GROUND_Y) {
   return {
     type, chunkIndex, x, home: x, floorY, baseY, y: baseY,
     w: spec.w, h: spec.h, hp, maxHp: hp, range: spec.range,
-    vx: 0, vy: 0, facing: -1, onGround: !spec.air,
+    vx: 0, vy: 0, renderVx: 0, renderVy: 0, facing: -1, onGround: !spec.air,
     active: false, activatedFrame: -1,
     state: 'idle', stateFrames: 0, animTicks: 0, cooldownFrames: secondsToFrames(.65 + gameRandom() * .8), attackIndex: 0,
     targetX: x, targetY: baseY, bossPhase: 1,
@@ -624,10 +633,10 @@ function nextWord(initial) {
 function resetPlayer(x) {
   const startX = x == null ? 70 : x;
   Object.assign(Game.player, {
-    x: startX, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
+    x: startX, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0, renderVx: 0, renderVy: 0,
     facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
-    action: 'idle', actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
+    action: 'idle', animationKey: 'idle', actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
     weapon: 'normal', weaponLevel: 0, weaponTimer: 0, shield: 0, overdrive: 0, combo: 0, comboTimer: 0,
   });
 }
@@ -798,13 +807,13 @@ function shoot() {
   const aim = shotDirection();
   const muzzleTable = player.onGround ? GROUND_MUZZLE : AIR_MUZZLE;
   const muzzleOffset = muzzleTable[aim.code] || muzzleTable[player.facing > 0 ? 2 : 7];
-  const muzzleX = player.x + player.w / 2 + muzzleOffset[0];
+  const muzzleX = player.x + player.w / 2 + (aim.code === 10 ? muzzleOffset[0] * player.facing : muzzleOffset[0]);
   const muzzleY = player.y + player.h + muzzleOffset[1];
   const level = Math.max(1, player.weaponLevel || 1);
   player.fireCooldown = player.overdrive > 0 ? .055 : player.weapon === 'rapid' ? [.085, .065, .05][level - 1] : .14;
   player.aimX = aim.x;
   player.aimY = aim.y;
-  player.recoil = .09;
+  player.recoil = FIXED_STEP * 1.5;
   player.muzzleFlash = .055;
   player.muzzleX = muzzleX;
   player.muzzleY = muzzleY;
@@ -911,9 +920,11 @@ function defeatEnemy(enemy, source) {
   if (enemy.type === 'barrel') { detonateBarrel(enemy); return; }
   enemy.dead = true;
   enemy.state = 'dead';
-  Game.hitStop = Math.max(Game.hitStop, enemy.type === 'boss' ? .09 : .028);
-  Game.shake = Math.max(Game.shake, enemy.type === 'boss' ? .3 : .055);
-  Game.shakeStrength = Math.max(Game.shakeStrength, enemy.type === 'boss' ? 6 : 1.5);
+  if (enemy.type === 'boss') {
+    Game.hitStop = Math.max(Game.hitStop, .09);
+    Game.shake = Math.max(Game.shake, .3);
+    Game.shakeStrength = Math.max(Game.shakeStrength, 6);
+  }
   if (enemy.type === 'capsule') {
     Game.score += 100;
     dropPowerup(enemy, enemy.dropType || 'spread');
@@ -936,6 +947,7 @@ function defeatEnemy(enemy, source) {
   burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#e9784f', enemy.type === 'boss' ? 42 : 18);
   if (source === 'stomp') {
     player.vy = -430;
+    player.renderVy = -430;
     player.onGround = false;
   }
   if (enemy.type === 'boss') {
@@ -996,7 +1008,7 @@ function hurt(fell = false) {
     showFeedback('受到攻击，短暂无敌');
     setCrouching(false);
     Object.assign(player, {
-      vx: -player.facing * 180, vy: -260, onGround: false, inv: 1.15, hurtTimer: .32,
+      vx: -player.facing * 180, vy: -260, renderVx: -player.facing * 180, renderVy: -260, onGround: false, inv: 1.15, hurtTimer: .32,
       weapon: 'normal', weaponLevel: 0, weaponTimer: 0, overdrive: 0, combo: 0, comboTimer: 0,
     });
   }
@@ -1151,21 +1163,23 @@ function updatePlayerAnimation() {
   const player = Game.player;
   const moving = Math.abs(player.vx) > 30;
   const firing = player.recoil > 0;
-  const action = player.hurtTimer > 0 ? 'hurt'
+  const movement = player.hurtTimer > 0 ? 'hurt'
     : player.landingTimer > 0 ? 'land'
     : player.skidTimer > 0 && player.onGround ? 'skid'
-    : player.crouching ? (firing ? 'crouch-fire' : 'crouch')
-    : !player.onGround ? (firing ? 'air-fire' : 'air')
-    : moving ? (firing ? 'run-fire' : 'run')
-    : firing ? 'fire' : 'idle';
-  if (action !== player.action) {
-    player.action = action;
+    : player.crouching ? 'crouch'
+    : !player.onGround ? 'air'
+    : moving ? 'run' : 'idle';
+  player.action = firing && !['hurt', 'land', 'skid'].includes(movement)
+    ? (movement === 'idle' ? 'fire' : movement + '-fire') : movement;
+  // Gunfire is an upper-body event. It must not restart the leg/air cycle.
+  if (movement !== player.animationKey) {
+    player.animationKey = movement;
     player.actionTicks = 1;
   } else {
     player.actionTicks++;
   }
-  const cadence = action.startsWith('run') ? 8 : action.startsWith('air') ? 5 : action === 'idle' ? 18 : action.includes('fire') ? 4 : 60;
-  const count = action.startsWith('run') || action === 'idle' ? 4 : action.includes('fire') ? 2 : 1;
+  const cadence = movement === 'run' ? 8 : movement === 'air' ? 4 : movement === 'idle' ? 18 : 60;
+  const count = ['run', 'air', 'idle'].includes(movement) ? 4 : 1;
   player.animFrame = Math.floor(player.actionTicks / cadence) % count;
 }
 
@@ -1175,6 +1189,8 @@ function updatePlayer(dt) {
   const biomeIndex = biomeIndexAt(player.x);
   const biome = BIOMES[biomeIndex];
   const wasOnGround = player.onGround;
+  const frameStartX = player.x;
+  const frameStartY = player.y;
   input.jumpBuffer = Math.max(0, input.jumpBuffer - dt);
   player.fireCooldown = Math.max(0, player.fireCooldown - dt);
   player.inv = Math.max(0, player.inv - dt);
@@ -1261,6 +1277,8 @@ function updatePlayer(dt) {
   } else {
     player.stepTimer = 0;
   }
+  player.renderVx = (player.x - frameStartX) / dt;
+  player.renderVy = (player.y - frameStartY) / dt;
   const firePressed = input.firePressed;
   input.firePressed = false;
   if (firePressed || Game.autoFire || (input.fire && (player.weapon === 'rapid' || player.overdrive > 0))) shoot();
@@ -1294,10 +1312,12 @@ function updateHazards(dt) {
       if (!overlap(player, hazard)) continue;
       if (hazard.type === 'updraft' && !player.onGround) {
         player.vy = Math.max(-390, player.vy - 1180 * dt);
+        player.renderVy = player.vy;
       } else if (hazard.type === 'puddle') {
         // Inertia is applied once in updatePlayer; damping here made a puddle feel sticky.
       } else if (hazard.type === 'spring' && player.vy >= 0) {
         player.vy = -720;
+        player.renderVy = -720;
         player.onGround = false;
         burst(player.x + player.w / 2, GROUND_Y - 8, '#e7bd58', 12);
         if (window.ArcadeAudio) ArcadeAudio.play('jump', .18);
@@ -1318,11 +1338,14 @@ function setEnemyState(enemy, state, duration) {
 }
 
 function fireEnemyVolley(enemy, offsets, speed) {
-  const originX = enemy.x + enemy.w / 2;
-  const originY = enemy.y + enemy.h * .42;
+  const bodyX = enemy.x + enemy.w / 2;
+  const bodyY = enemy.y + enemy.h * .42;
   const targetX = enemy.targetX == null ? Game.player.x + Game.player.w / 2 : enemy.targetX;
   const targetY = enemy.targetY == null ? Game.player.y + Game.player.h / 2 : enemy.targetY;
-  const base = Math.atan2(targetY - originY, targetX - originX);
+  const base = Math.atan2(targetY - bodyY, targetX - bodyX);
+  const barrel = { drone: 14, guardian: 23, turret: 31, boss: 34 }[enemy.type] || 18;
+  const originX = bodyX + Math.cos(base) * barrel;
+  const originY = bodyY + Math.sin(base) * barrel;
   for (const offset of offsets) {
     const angle = base + offset;
     Game.enemyBullets.push({ x: originX - 5, y: originY - 4, w: 10, h: 8, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, age: 0 });
@@ -1443,6 +1466,8 @@ function updateEnemies(dt) {
     enemy.stun = Math.max(0, enemy.stun - dt);
     enemy.cooldownFrames = Math.max(0, enemy.cooldownFrames - 1);
     enemy.animTicks++;
+    const frameStartX = enemy.x;
+    const frameStartY = enemy.y;
     if (Number.isFinite(enemy.stateFrames)) enemy.stateFrames = Math.max(0, enemy.stateFrames - 1);
     const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
     const dy = player.y + player.h / 2 - (enemy.y + enemy.h / 2);
@@ -1450,6 +1475,8 @@ function updateEnemies(dt) {
     if (enemy.stun > 0) {
       enemy.x += (enemy.knockback || 0) * dt;
       enemy.knockback = approach(enemy.knockback || 0, 0, 900 * dt);
+      enemy.renderVx = (enemy.x - frameStartX) / dt;
+      enemy.renderVy = (enemy.y - frameStartY) / dt;
       continue;
     }
 
@@ -1533,6 +1560,8 @@ function updateEnemies(dt) {
       if ((enemy.type === 'beetle' || enemy.type === 'leaper') && player.vy > 100 && player.y + player.h < enemy.y + enemy.h * .62) defeatEnemy(enemy, 'stomp');
       else if (enemy.type !== 'capsule' && enemy.type !== 'barrel') hurt();
     }
+    enemy.renderVx = (enemy.x - frameStartX) / dt;
+    enemy.renderVy = (enemy.y - frameStartY) / dt;
   }
 }
 
@@ -1647,7 +1676,7 @@ function updateProjectiles(dt) {
         if (node) { hitBossNode(node, boss); hit = true; break; }
       }
       for (const enemy of Game.enemies) {
-        if (enemy.dead || !overlap(bullet, enemy)) continue;
+        if (enemy.dead || !overlap(bullet, enemyShotBox(enemy))) continue;
         damageEnemy(enemy, bullet);
         hit = true;
         break;
@@ -1723,7 +1752,7 @@ function cullWorld() {
 function updateCamera() {
   // Contra-style one-way dead zone: once the player reaches the scroll line, the
   // world advances by exactly the player's displacement and never eases after release.
-  Game.camera = Math.max(Game.camera, Game.player.x - VIEW_W * .38, 0);
+  Game.camera = Math.max(Game.camera, Game.player.x - VIEW_W * CAMERA_LINE, 0);
 }
 
 function update(dt) {
@@ -1806,9 +1835,11 @@ function drawBiomeLayer(index, alpha, progress) {
   const sourceH = ASSETS.biomes.naturalHeight / 4;
   const sourceW = Math.min(ASSETS.biomes.naturalWidth, sourceH * VIEW_W / VIEW_H);
   const sourceX = (ASSETS.biomes.naturalWidth - sourceW) * clamp(progress, 0, 1);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha = alpha;
   ctx.drawImage(ASSETS.biomes, sourceX, sourceH * index, sourceW, sourceH, 0, 0, VIEW_W, VIEW_H);
-  ctx.globalAlpha = 1;
+  ctx.restore();
 }
 
 function drawWeather(index) {
@@ -1873,18 +1904,24 @@ function drawTerrain(biomeIndex, x, y, width, height) {
   const crop = TERRAIN_CROPS[biomeIndex];
   const sourceY = image.naturalHeight * crop.y;
   const sourceH = image.naturalHeight * crop.h;
-  const scale = height / sourceH;
+  // Ground and platforms share one world-space texel scale. Cropping the top
+  // of the same strip for ledges prevents each platform looking like a resized sticker.
+  const scale = TERRAIN_WORLD_HEIGHT / sourceH;
+  const visibleSourceH = Math.min(sourceH, height / scale);
   let sourceX = ((x / scale) % image.naturalWidth + image.naturalWidth) % image.naturalWidth;
   let drawX = x;
   let remaining = width;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
   while (remaining > .1) {
     const sourceW = Math.min(image.naturalWidth - sourceX, remaining / scale);
     const drawW = Math.min(remaining, sourceW * scale);
-    ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, drawX, y, drawW, height);
+    ctx.drawImage(image, sourceX, sourceY, sourceW, visibleSourceH, drawX, y, drawW, visibleSourceH * scale);
     drawX += drawW;
     remaining -= drawW;
     sourceX = 0;
   }
+  ctx.restore();
   return true;
 }
 
@@ -1897,7 +1934,7 @@ function drawGround(chunk) {
     if (width > 0) {
       ctx.fillStyle = biome.ground;
       ctx.fillRect(x, GROUND_Y - 2, width, VIEW_H - GROUND_Y + 2);
-      if (!drawTerrain(chunk.biome, x, GROUND_Y - 3, width, 158)) {
+      if (!drawTerrain(chunk.biome, x, GROUND_Y - 3, width, TERRAIN_WORLD_HEIGHT)) {
         ctx.fillStyle = biome.edge;
         ctx.fillRect(x, GROUND_Y, width, 7);
       }
@@ -2066,6 +2103,7 @@ function drawAtlasFrame(image, row, column, x, y, width, height, flip = false, c
   const sourceW = image.naturalWidth / columns;
   const sourceH = image.naturalHeight / rows;
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
   ctx.translate(x + width / 2, y);
   ctx.scale(flip ? -1 : 1, 1);
   ctx.drawImage(image, column * sourceW, row * sourceH, sourceW, sourceH, -width / 2, 0, width, height);
@@ -2079,9 +2117,8 @@ function drawAnchoredAtlasFrame(image, anchors, row, column, anchorX, anchorY, w
   const sourceH = image.naturalHeight / 4;
   const [originX, originY] = anchors[row][column];
   ctx.save();
-  // The ROM keeps sub-pixel physics but writes whole pixels to OAM. Snapping only
-  // at draw time preserves movement precision without letting atlas padding shimmer.
-  ctx.translate(Math.round(anchorX), Math.round(anchorY));
+  ctx.imageSmoothingEnabled = false;
+  ctx.translate(anchorX, anchorY);
   ctx.scale(flip ? -1 : 1, 1);
   ctx.drawImage(image, column * sourceW, row * sourceH, sourceW, sourceH,
     -originX * width / sourceW, -originY * height / sourceH, width, height);
@@ -2267,30 +2304,18 @@ function drawBossNodes() {
 }
 
 function drawBullet(bullet, color) {
-  const speed = Math.hypot(bullet.vx, bullet.vy);
-  const trail = Math.min(24, speed * Math.min(.035, (bullet.age || .01) * .65));
   ctx.save();
-  ctx.translate(Math.round(bullet.x + bullet.w / 2), Math.round(bullet.y + bullet.h / 2));
+  ctx.translate(bullet.x + bullet.w / 2, bullet.y + bullet.h / 2);
   ctx.rotate(Math.atan2(bullet.vy, bullet.vx));
-  ctx.globalAlpha = .12; ctx.fillStyle = color;
-  ctx.beginPath(); ctx.roundRect(-trail, -4, trail + 7, 8, 4); ctx.fill();
-  ctx.globalAlpha = .32;
-  ctx.beginPath(); ctx.roundRect(-trail * .58, -2.5, trail * .58 + 8, 5, 3); ctx.fill();
+  ctx.globalAlpha = .34; ctx.fillStyle = color; ctx.fillRect(-7, -2, 4, 4);
   ctx.globalAlpha = 1;
   ctx.fillStyle = '#fff8d6';
-  ctx.beginPath(); ctx.ellipse(4, 0, 6, 3, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(-2, -3, 9, 6, 3); ctx.fill();
   ctx.restore();
 }
 
 function drawPlayer() {
   const player = Game.player;
-  ctx.save();
-  ctx.globalAlpha = player.onGround ? .38 : .18;
-  ctx.fillStyle = 'rgba(3,10,8,.74)';
-  ctx.beginPath();
-  ctx.ellipse(player.x + player.w / 2, Math.min(GROUND_Y - 2, player.y + player.h + 1), player.onGround ? 25 : 17, player.onGround ? 5 : 3, 0, 0, TAU);
-  ctx.fill();
-  ctx.restore();
   if (player.shield) {
     ctx.save();
     ctx.strokeStyle = 'rgba(244,211,122,.8)'; ctx.lineWidth = 3;
@@ -2304,37 +2329,33 @@ function drawPlayer() {
   let atlas = ASSETS.hero;
   const firing = player.recoil > 0;
   if (player.hurtTimer > 0) {
-    atlas = ASSETS.actions; row = 3; column = 3;
-  } else if (player.landingTimer > 0) {
-    atlas = ASSETS.actions; row = 3; column = 1;
-  } else if (player.skidTimer > 0 && player.onGround) {
     atlas = ASSETS.actions; row = 3; column = 2;
+  } else if (player.landingTimer > 0) {
+    row = 0; column = 0;
+  } else if (player.skidTimer > 0 && player.onGround) {
+    atlas = ASSETS.actions; row = 3; column = 1;
   } else if (player.crouching) {
     atlas = ASSETS.actions; row = 1; column = firing ? 1 : 0;
   } else if (player.aimY < -.45) {
     atlas = ASSETS.actions;
-    if (player.onGround) { row = 0; column = Math.abs(player.aimX) > .2 ? (firing ? 3 : 2) : (firing ? 1 : 0); }
-    else { row = 2; column = firing ? 1 : 0; }
+    if (player.onGround) { row = 0; column = (Math.abs(player.aimX) > .2 ? 2 : 0) + Number(firing); }
+    else { row = 2; column = Number(firing); }
   } else if (player.aimY > .45) {
     atlas = ASSETS.actions;
-    if (!player.onGround) { row = Math.abs(player.aimX) < .2 && firing ? 3 : 2; column = row === 3 ? 0 : (firing ? 3 : 2); }
-    else { row = 1; column = firing ? 3 : 2; }
+    row = player.onGround ? 1 : 2; column = firing ? 3 : 2;
   } else if (!player.onGround) {
-    row = 2; column = player.vy < 0 ? 0 : 1;
+    row = 2; column = player.animFrame % 4;
   } else if (firing) {
-    row = 3; column = Math.abs(player.vx) > 30 ? 2 + player.animFrame % 2 : player.animFrame % 2;
+    row = 3; column = Math.abs(player.vx) > 30 ? 1 : 0;
   } else if (Math.abs(player.vx) > 30) {
     row = 1; column = player.animFrame % 4;
   }
-  const recoilRatio = clamp(player.recoil / .09, 0, 1);
-  const poseX = player.x + player.w / 2 - player.aimX * recoilRatio * 2;
-  const poseY = player.y + player.h - player.aimY * recoilRatio * 1.5;
+  const poseX = player.x + player.w / 2;
+  const poseY = player.y + player.h;
   ctx.save();
   if (invFlash) ctx.globalAlpha = .38;
-  ctx.shadowColor = 'rgba(1,7,5,.92)';
-  ctx.shadowBlur = 5;
   if (!drawAnchoredAtlasFrame(atlas, atlas === ASSETS.hero ? HERO_ANCHORS : ACTION_ANCHORS,
-    row, column, poseX, poseY, 98, 100, player.facing < 0)) {
+    row, column, poseX, poseY, 88, 88, player.facing < 0)) {
     ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
   }
   ctx.restore();
@@ -2444,12 +2465,12 @@ function drawBossStatus() {
   ctx.restore();
 }
 
-function render() {
+function render(lead = 0) {
   Game.renderCount++;
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
-  // Render the current 60 Hz logic frame. Backward interpolation displayed the
-  // previous frame at normal refresh rates, adding input latency and sprite drift.
-  const camera = Math.round(Game.camera);
+  const camera = Math.max(Game.camera, Game.player.x + Game.player.renderVx * lead - VIEW_W * CAMERA_LINE, 0);
+  const logicTime = Game.time;
+  Game.time += lead;
   drawBackground(camera);
   ctx.save();
   const shakeClock = performance.now() * .05;
@@ -2462,11 +2483,17 @@ function render() {
   }
   drawPickups();
   drawPowerups();
-  for (const enemy of Game.enemies) drawEnemy(enemy);
+  for (const enemy of Game.enemies) {
+    ctx.save(); ctx.translate((enemy.renderVx ?? enemy.vx ?? 0) * lead, (enemy.renderVy ?? enemy.vy ?? 0) * lead); drawEnemy(enemy); ctx.restore();
+  }
   drawBossNodes();
-  for (const bullet of Game.bullets) drawBullet(bullet, bullet.color || '#ffe49a');
-  for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
-  drawPlayer();
+  for (const bullet of Game.bullets) {
+    ctx.save(); ctx.translate(bullet.vx * lead, bullet.vy * lead); drawBullet(bullet, bullet.color || '#ffe49a'); ctx.restore();
+  }
+  for (const bullet of Game.enemyBullets) {
+    ctx.save(); ctx.translate(bullet.vx * lead, bullet.vy * lead); drawBullet(bullet, '#e9664c'); ctx.restore();
+  }
+  ctx.save(); ctx.translate(Game.player.renderVx * lead, Game.player.renderVy * lead); drawPlayer(); ctx.restore();
   for (const particle of Game.particles) {
     ctx.globalAlpha = clamp(particle.life * 3, 0, 1);
     ctx.fillStyle = particle.color;
@@ -2481,6 +2508,7 @@ function render() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
+  Game.time = logicTime;
   drawCombo();
   drawBossStatus();
   drawWordEcho();
@@ -2494,8 +2522,8 @@ function render() {
 function resize() {
   const width = Math.max(1, wrap.clientWidth);
   const height = Math.max(1, wrap.clientHeight);
-  const pixelBudgetScale = Math.sqrt(1200000 / (width * height));
-  const dpr = Math.max(.5, Math.min(window.devicePixelRatio || 1, 1.25, pixelBudgetScale));
+  const pixelBudgetScale = Math.sqrt(RENDER_PIXEL_BUDGET / (width * height));
+  const dpr = Math.max(.25, Math.min(window.devicePixelRatio || 1, 1, pixelBudgetScale));
   VIEW_W = VIEW_H * width / height;
   canvas.width = Math.round(width * dpr);
   canvas.height = Math.round(height * dpr);
@@ -2636,20 +2664,18 @@ function frame(now) {
   Game.rafCount++;
   const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
   lastTime = now;
-  let advanced = false;
   if (Game.state === 'playing') {
     accumulator = Math.min(.1, accumulator + dt);
     while (accumulator >= FIXED_STEP && Game.state === 'playing') {
       update(FIXED_STEP);
       accumulator -= FIXED_STEP;
-      advanced = true;
     }
   } else {
     accumulator = 0;
   }
-  // High-refresh displays otherwise redraw an identical 60 Hz state 120–240
-  // times per second. The ROM renders once per advanced logic frame.
-  if (advanced || Game.state !== 'playing') render();
+  // Extrapolate only the visual transform between fixed 60 Hz states. This keeps
+  // input/collision deterministic while removing 120/144 Hz duplicate-frame judder.
+  render(Game.state === 'playing' ? accumulator : 0);
   if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
 
@@ -2715,18 +2741,25 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (Game.player.action !== 'run' || Game.player.animFrame !== 0) throw new Error('run animation advanced before its authored frame');
       update(1 / 60);
       if (Game.player.animFrame !== 1) throw new Error('run animation ignored its eight-frame cadence');
+      const runPhaseBeforeShot = Game.player.actionTicks;
+      Game.player.recoil = .09;
+      updatePlayerAnimation();
+      if (Game.player.actionTicks <= runPhaseBeforeShot) throw new Error('shooting reset the locomotion phase');
+      Game.player.recoil = 0;
       for (let i = 0; i < 32; i++) update(1 / 60);
       input.right = false;
       if (!(Game.player.x > startX)) throw new Error('player did not move');
       update(1 / 60);
       if (Math.abs(Game.player.vx) > .01) throw new Error('dry ground retained sliding velocity after release');
       const cameraProbe = { x: Game.player.x, camera: Game.camera };
-      Game.player.x = VIEW_W * .38 + 120;
+      Game.player.x = VIEW_W * CAMERA_LINE + 120;
       Game.camera = 0;
       updateCamera();
       const stoppedCamera = Game.camera;
       updateCamera();
       if (Math.abs(stoppedCamera - 120) > .01 || Game.camera !== stoppedCamera) throw new Error('camera eased after the player stopped');
+      if (CAMERA_LINE !== 120 / 256 || BULLET_SPEED / DIFFICULTIES.easy.speed !== 3) throw new Error('ROM motion ratios drifted');
+      if (Math.abs(GROUND_MUZZLE[2][0]) > 36 || GROUND_MUZZLE[2][1] < -32 || AIR_MUZZLE[2][1] < -34) throw new Error('horizontal shot detached from its firing pose');
       Game.player.x = cameraProbe.x;
       Game.camera = cameraProbe.camera;
       input.down = true;
@@ -2807,6 +2840,9 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       updateProjectiles(.05);
       if (sweepTarget.hp !== 1) throw new Error('swept bullet collision failed');
       if (Game.hitStop || Game.shake) throw new Error('ordinary bullet hit interrupted the game clock');
+      sweepTarget.hp = 1;
+      damageEnemy(sweepTarget, { damage: 1, vx: 400, x: sweepTarget.x, y: sweepTarget.y });
+      if (Game.hitStop || Game.shake) throw new Error('ordinary defeat interrupted the game clock');
       const boss = makeEnemy('boss', Game.player.x + 420, MISSION_BEATS.length - 1);
       Game.enemies = [boss];
       Game.completedWords = [{ en: 'BRIDGE', zh: '桥' }];
@@ -2859,8 +2895,9 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
   requestAnimationFrame(() => {
     startGame('mission');
     setTimeout(() => {
-      const duplicateRenders = Game.renderCount - Game.logicFrame;
-      const passed = Game.logicFrame >= 40 && duplicateRenders <= 3;
+      const pixels = canvas.width * canvas.height;
+      const passed = Game.logicFrame >= 40 && Math.abs(Game.renderCount - Game.rafCount) <= 3
+        && pixels <= RENDER_PIXEL_BUDGET * 1.02;
       Game.state = 'paused';
       document.title = passed
         ? 'FRAME-BUDGET PASS · ' + Game.logicFrame + '/' + Game.renderCount
