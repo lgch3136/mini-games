@@ -15,6 +15,17 @@ const CROUCH_H = 30;
 const BULLET_SPEED = 660;
 const FIXED_STEP = 1 / 60;
 const POWERUP_LABELS = { spread: '散射', rapid: '连射', shield: '护盾' };
+const PLAYER_BULLET_CAPS = { normal: 4, rapid: 6, spread: 10 };
+const AIM_OCTANTS = [
+  { x: 1, y: 0, code: 2 }, { x: Math.SQRT1_2, y: Math.SQRT1_2, code: 3 },
+  { x: 0, y: 1, code: 10 }, { x: -Math.SQRT1_2, y: Math.SQRT1_2, code: 6 },
+  { x: -1, y: 0, code: 7 }, { x: -Math.SQRT1_2, y: -Math.SQRT1_2, code: 8 },
+  { x: 0, y: -1, code: 0 }, { x: Math.SQRT1_2, y: -Math.SQRT1_2, code: 1 },
+];
+// Contra stores a separate muzzle offset for every aim pose and for airborne poses.
+// Keeping the shot attached to the authored pose removes the "floating bullet" look.
+const GROUND_MUZZLE = [[0, -72], [37, -56], [52, -38], [39, -19], [52, -15], [-52, -15], [-39, -19], [-52, -38], [-37, -56], [0, -72], [0, 18]];
+const AIR_MUZZLE = [[0, -62], [34, -52], [46, -30], [34, -8], [42, -18], [-42, -18], [-34, -8], [-46, -30], [-34, -52], [0, -62], [0, 12]];
 
 const DIFFICULTIES = {
   easy: { speed: 220, enemySpeed: 44, hp: 1, fireEvery: 3, spawn: .8, label: '初级' },
@@ -197,7 +208,7 @@ const DECOR_SPECS = [
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-const input = { left: false, right: false, up: false, down: false, fire: false, jumpHeld: false, jumpBuffer: 0 };
+const input = { left: false, right: false, up: false, down: false, fire: false, firePressed: false, jumpHeld: false, jumpBuffer: 0 };
 const mobileAssist = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
 
 const Game = {
@@ -223,19 +234,30 @@ const Game = {
   },
 };
 
-function aimDirection(source = input, player = Game.player) {
+function resolveAimPose(source = input, player = Game.player) {
   const horizontal = Number(Boolean(source.right)) - Number(Boolean(source.left));
-  let x = horizontal || player.facing || 1;
-  let y = 0;
+  const facing = horizontal || player.facing || 1;
   if (source.up) {
-    y = -1;
-    if (!horizontal) x = 0;
-  } else if (source.down && (!player.onGround || horizontal)) {
-    y = 1;
-    if (!horizontal) x = 0;
+    if (horizontal > 0) return AIM_OCTANTS[7];
+    if (horizontal < 0) return AIM_OCTANTS[5];
+    return { x: 0, y: -1, code: facing > 0 ? 0 : 9 };
   }
-  const length = Math.hypot(x, y) || 1;
-  return { x: x / length, y: y / length };
+  if (source.down) {
+    if (!player.onGround && !horizontal) return AIM_OCTANTS[2];
+    if (horizontal > 0) return AIM_OCTANTS[1];
+    if (horizontal < 0) return AIM_OCTANTS[3];
+    return { x: facing, y: 0, code: facing > 0 ? 4 : 5 };
+  }
+  return facing > 0 ? AIM_OCTANTS[0] : AIM_OCTANTS[4];
+}
+
+function aimDirection(source = input, player = Game.player) {
+  return resolveAimPose(source, player);
+}
+
+function quantizeAim(dx, dy) {
+  const octant = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8) + 8) % 8;
+  return AIM_OCTANTS[octant];
 }
 
 // 护盾阶段的辅助瞄准: up键即锁定应击节点(解决八方向瞄不到上方节点的死局)
@@ -256,12 +278,12 @@ function shotDirection() {
         const dx = rect.x + rect.w / 2 - ox;
         const dy = rect.y + rect.h / 2 - oy;
         const len = Math.hypot(dx, dy) || 1;
-        return { x: dx / len, y: dy / len };
+        return { x: dx / len, y: dy / len, code: quantizeAim(dx, dy).code };
       }
     }
     // 没有节点可瞄时退回普通斜射
     const dirX = input.right || playerFacingPositive() ? 1 : -1;
-    return { x: Math.cos(.5) * dirX, y: -Math.sin(.5) };
+    return { x: Math.cos(.5) * dirX, y: -Math.sin(.5), code: dirX > 0 ? 1 : 8 };
   }
   return baseAimShot();
 }
@@ -283,8 +305,7 @@ function baseAimShot() {
   if (!target) return manual;
   const dx = target.x - originX;
   const dy = target.y - originY;
-  const length = Math.hypot(dx, dy) || 1;
-  return { x: dx / length, y: dy / length };
+  return quantizeAim(dx, dy);
 }
 
 function setCrouching(enabled) {
@@ -302,7 +323,9 @@ function wordBank() {
 }
 
 function biomeIndexAt(x) {
-  return Game.mode === 'mission' ? 0 : Math.floor(Math.max(0, x) / (CHUNK_W * 3)) % BIOMES.length;
+  return Game.mode === 'mission'
+    ? (MISSION_LEVELS[Game.missionLevel] || MISSION_LEVELS[0]).biome
+    : Math.floor(Math.max(0, x) / (CHUNK_W * 3)) % BIOMES.length;
 }
 
 function chunkAt(x) {
@@ -363,7 +386,7 @@ function generateMissionChunk(index, start) {
   const chunk = {
     index, start, biome: MISSION_LEVELS[Game.missionLevel].biome, encounter: beat.name, tag: beat.tag, hint: beat.hint,
     lock: Boolean(beat.lock && (beat.tag === 'CLIMAX' || beat.tag === 'BOSS')),
-    wordGate: Boolean(beat.wordGate), checkpoint: Boolean(beat.checkpoint), reinforced: false,
+    wordGate: Boolean(beat.wordGate), checkpoint: Boolean(beat.checkpoint), reinforced: false, reinforcementCount: 0,
     gateUsed: false, cleared: false, gaps: [], platforms: [], hazards: [], decor: [],
   };
   for (const [offset, width] of beat.gaps || []) chunk.gaps.push({ x: start + offset, w: width });
@@ -598,6 +621,7 @@ function startGame(mode = Game.mode) {
 
 function resetInput() {
   input.left = input.right = input.up = input.down = input.fire = input.jumpHeld = false;
+  input.firePressed = false;
   input.jumpBuffer = 0;
   document.querySelectorAll('#touch-controls button').forEach((button) => button.classList.remove('active'));
 }
@@ -709,14 +733,21 @@ function queueJump() {
   input.jumpHeld = true;
 }
 
+function queueFire() {
+  if (Game.state === 'playing') input.firePressed = true;
+}
+
 function shoot() {
   const player = Game.player;
-  if (player.fireCooldown > 0 || Game.state !== 'playing') return;
+  if (player.fireCooldown > 0 || Game.state !== 'playing') return false;
+  const cap = PLAYER_BULLET_CAPS[player.weapon] || PLAYER_BULLET_CAPS.normal;
+  const available = cap - Game.bullets.length;
+  if (available <= 0) return false;
   const aim = shotDirection();
-  const centerX = player.x + player.w / 2;
-  const centerY = player.y + player.h * (player.crouching ? .38 : .43);
-  const muzzleX = centerX + aim.x * 28;
-  const muzzleY = centerY + aim.y * 28;
+  const muzzleTable = player.onGround ? GROUND_MUZZLE : AIR_MUZZLE;
+  const muzzleOffset = muzzleTable[aim.code] || muzzleTable[player.facing > 0 ? 2 : 7];
+  const muzzleX = player.x + player.w / 2 + muzzleOffset[0];
+  const muzzleY = player.y + player.h + muzzleOffset[1];
   const level = Math.max(1, player.weaponLevel || 1);
   player.fireCooldown = player.overdrive > 0 ? .055 : player.weapon === 'rapid' ? [.085, .065, .05][level - 1] : .14;
   player.aimX = aim.x;
@@ -726,9 +757,10 @@ function shoot() {
   player.muzzleX = muzzleX;
   player.muzzleY = muzzleY;
   const baseAngle = Math.atan2(aim.y, aim.x);
-  const offsets = player.weapon === 'spread'
+  const shotOffsets = player.weapon === 'spread'
     ? (level === 1 ? [-.18, 0, .18] : [-.3, -.15, 0, .15, .3])
     : player.weapon === 'rapid' && level >= 3 ? [-.025, .025] : [0];
+  const offsets = shotOffsets.slice().sort((a, b) => Math.abs(a) - Math.abs(b)).slice(0, available);
   for (const offset of offsets) {
     const angle = baseAngle + offset;
     Game.bullets.push({
@@ -741,6 +773,7 @@ function shoot() {
   burst(muzzleX, muzzleY, '#f4d37a', 3);
   // 射击不再全屏震动(用户反馈: 平时射击震屏干扰), 震动留给受击和爆炸
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .14, player.weapon === 'spread' ? .82 : player.weapon === 'rapid' ? 1.22 : 1);
+  return true;
 }
 
 function dropPowerup(enemy, type) {
@@ -1030,6 +1063,13 @@ function updateHud() {
   }
 }
 
+function playerOnPuddle(player) {
+  if (!player.onGround || Math.abs(player.y + player.h - GROUND_Y) > 3) return false;
+  const chunk = chunkAt(player.x + player.w / 2);
+  return Boolean(chunk && chunk.hazards.some((hazard) => hazard.type === 'puddle'
+    && player.x + player.w > hazard.x && player.x < hazard.x + hazard.w));
+}
+
 function updatePlayer(dt) {
   const conf = DIFFICULTIES[Game.difficulty];
   const player = Game.player;
@@ -1051,10 +1091,16 @@ function updatePlayer(dt) {
   player.coyote = player.onGround ? .11 : Math.max(0, player.coyote - dt);
 
   const move = Number(input.right) - Number(input.left);
+  const slippery = playerOnPuddle(player);
   setCrouching(Boolean(input.down && !move && player.onGround));
   if (move) player.facing = move;
-  if (move && Math.sign(player.vx) !== move && Math.abs(player.vx) > 105) player.skidTimer = .16;
-  player.vx = approach(player.vx, player.crouching ? 0 : move * conf.speed, (move ? 1500 : 2100) * biome.traction * dt);
+  if (move && Math.sign(player.vx) !== move && Math.abs(player.vx) > 105) player.skidTimer = slippery ? .16 : .07;
+  const targetSpeed = player.crouching ? 0 : move * conf.speed;
+  // FC outdoor movement is recalculated from the pad every frame. Only the authored
+  // puddle rule keeps inertia; ordinary ground must stop on the release frame.
+  player.vx = slippery
+    ? approach(player.vx, targetSpeed, (move ? 620 : 190) * dt)
+    : targetSpeed;
   if (!player.onGround && biomeIndex === 1) player.vx += Math.sin(Game.time * 1.1) * 58 * dt;
   player.runCycle = (player.runCycle + Math.abs(player.vx) * dt / 30) % 4;
   const aim = aimDirection();
@@ -1117,7 +1163,9 @@ function updatePlayer(dt) {
   } else {
     player.stepTimer = 0;
   }
-  if (input.fire || Game.autoFire) shoot();
+  const firePressed = input.firePressed;
+  input.firePressed = false;
+  if (firePressed || Game.autoFire || (input.fire && (player.weapon === 'rapid' || player.overdrive > 0))) shoot();
 
   for (const pickup of Game.pickups) {
     if (!pickup.taken && overlap(player, pickup)) collectLetter(pickup);
@@ -1148,8 +1196,8 @@ function updateHazards(dt) {
       if (!overlap(player, hazard)) continue;
       if (hazard.type === 'updraft' && !player.onGround) {
         player.vy = Math.max(-390, player.vy - 1180 * dt);
-      } else if (hazard.type === 'puddle' && player.onGround) {
-        player.vx *= Math.max(0, 1 - 2.4 * dt);
+      } else if (hazard.type === 'puddle') {
+        // Inertia is applied once in updatePlayer; damping here made a puddle feel sticky.
       } else if (hazard.type === 'spring' && player.vy >= 0) {
         player.vy = -720;
         player.onGround = false;
@@ -1387,28 +1435,42 @@ function updateEnemies(dt) {
 }
 
 function updateReinforcements(dt) {
+  const conf = DIFFICULTIES[Game.difficulty];
   if (Game.mode === 'mission') {
     const chunk = chunkAt(Game.player.x + Game.player.w / 2);
     const ambush = chunk && ['COMBINE', 'TWIST', 'CLIMAX'].includes(chunk.tag);
-    if (!ambush || chunk.reinforced || Game.player.x < chunk.start + CHUNK_W * .42) return;
-    chunk.reinforced = true;
-    const behind = chunk.tag === 'COMBINE' || (chunk.tag === 'CLIMAX' && chunk.index % 2 === 0);
-    let type = chunk.tag === 'TWIST' ? 'drone' : chunk.tag === 'CLIMAX' ? 'leaper' : chunk.biome % 2 ? 'leaper' : 'beetle';
+    const count = chunk?.reinforcementCount || 0;
+    const limit = chunk?.tag === 'CLIMAX' ? 3 : 2;
+    if (!ambush || count >= limit || Game.player.x < chunk.start + CHUNK_W * .38) return;
+    Game.reinforcementTimer -= dt;
+    if (Game.reinforcementTimer > 0) return;
+    const nearby = Game.enemies.filter((enemy) => !enemy.dead && enemy.type !== 'capsule'
+      && enemy.x > Game.camera - 100 && enemy.x < Game.camera + VIEW_W + 140).length;
+    if (nearby >= 6) { Game.reinforcementTimer = .7; return; }
+    const pattern = (chunk.index * 3 + count * 5 + Game.missionLevel) % 7;
+    const firstLesson = Game.missionLevel === 0 && chunk.index < 2;
+    const behind = !firstLesson && Game.camera > 90 && ((Math.floor(Game.time / FIXED_STEP) + chunk.index + count) & 1) === 0;
+    let type = pattern === 5 ? 'drone' : pattern === 6 ? 'leaper' : 'beetle';
     let x = behind ? Game.camera - 64 : Game.camera + VIEW_W + 28;
     if (type !== 'drone') {
-      for (let i = 0; i < 8 && groundAt(x) === null; i++) x += 32;
+      for (let i = 0; i < 8 && groundAt(x) === null; i++) x += behind ? -32 : 32;
       if (groundAt(x) === null) type = 'drone';
     }
     const enemy = makeEnemy(type, x, chunk.index);
     enemy.facing = behind ? 1 : -1;
-    enemy.cooldown = .22;
+    enemy.cooldown = .18 + count * .12;
+    enemy.range = 190;
     Game.enemies.push(enemy);
-    showFeedback(behind ? '后方突袭：保持推进！' : '空降增援：注意上空！');
+    chunk.reinforced = true;
+    chunk.reinforcementCount = count + 1;
+    Game.reinforcementCount++;
+    const weaponStrength = Game.player.weapon === 'normal' ? 0 : Game.player.weaponLevel + 1;
+    Game.reinforcementTimer = clamp((4.8 - Game.missionLevel * .35 - weaponStrength * .25) / conf.spawn, 2.1, 4.8);
+    if (!count) showFeedback(behind ? '后方有动静：不要停步！' : '侦测到机动兵：注意边缘！');
     return;
   }
   Game.reinforcementTimer -= dt;
   if (Game.reinforcementTimer > 0) return;
-  const conf = DIFFICULTIES[Game.difficulty];
   const armed = Game.player.weapon !== 'normal' || Game.player.overdrive > 0;
   Game.reinforcementTimer = clamp((5.6 - Game.wordsDone * .12 - (armed ? .7 : 0)) / conf.spawn, 2.5, 5.6) + Math.random();
   if (Game.player.x < 900) return;
@@ -1556,6 +1618,12 @@ function cullWorld() {
   Game.powerups = Game.powerups.filter((powerup) => !powerup.taken && powerup.x + powerup.w > cutoff);
 }
 
+function updateCamera() {
+  // Contra-style one-way dead zone: once the player reaches the scroll line, the
+  // world advances by exactly the player's displacement and never eases after release.
+  Game.camera = Math.max(Game.camera, Game.player.x - VIEW_W * .38, 0);
+}
+
 function update(dt) {
   Game.frameDt = dt;
   worldGenBudget = 2;
@@ -1613,8 +1681,7 @@ function update(dt) {
       showFeedback('战况：' + entered.encounter);
     }
   }
-  const targetCamera = Math.max(0, Game.player.x - VIEW_W * .3);
-  Game.camera += (targetCamera - Game.camera) * (1 - Math.exp(-9 * dt));
+  updateCamera();
   if (Game.player.onGround && Game.player.x > Game.checkpoint + 480 && groundAt(Game.player.x + Game.player.w / 2) !== null) Game.checkpoint = Game.player.x;
   if (!Game.hudTimer) { Game.hudTimer = .1; updateHud(); }
   if (Math.floor(Game.time * 2) !== Math.floor((Game.time - dt) * 2)) cullWorld();
@@ -2377,7 +2444,7 @@ bindHold('right-btn', 'right');
 bindHold('up-btn', 'up');
 bindHold('down-btn', 'down');
 bindHold('fire-btn', 'fire');
-$('fire-btn').addEventListener('pointerdown', () => { if (Game.state === 'playing') shoot(); });
+$('fire-btn').addEventListener('pointerdown', queueFire);
 $('jump-btn').addEventListener('pointerdown', (event) => {
   event.preventDefault();
   event.currentTarget.setPointerCapture(event.pointerId);
@@ -2398,7 +2465,7 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'Space' && !event.repeat) queueJump();
   if (event.code === 'KeyJ' || event.code === 'KeyK' || event.code === 'KeyX') {
     input.fire = true;
-    if (!event.repeat && Game.state === 'playing') shoot();
+    if (!event.repeat) queueFire();
   }
   if ((event.code === 'KeyP' || event.code === 'Escape') && !event.repeat && (Game.state === 'playing' || Game.state === 'paused')) togglePause();
   if (event.code === 'KeyM' && !event.repeat) toggleMute();
@@ -2497,6 +2564,12 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.difficulty = 'easy';
       startGame('mission');
       if (Game.mode !== 'mission' || FIXED_STEP !== 1 / 60) throw new Error('mission or fixed-step setup failed');
+      const selectedMission = Game.missionLevel;
+      for (let level = 0; level < MISSION_LEVELS.length; level++) {
+        Game.missionLevel = level;
+        if (biomeIndexAt(0) !== MISSION_LEVELS[level].biome) throw new Error('mission rules did not follow the visible biome');
+      }
+      Game.missionLevel = selectedMission;
       if (Game.generatedTo < VIEW_W * 3) throw new Error('world did not generate ahead');
       ensureWorld(CHUNK_W * 4, Infinity);
       if (Game.chunks.slice(0, 4).map((chunk) => chunk.tag).join(',') !== 'TEACH,TEST,RECOVERY,TEACH') throw new Error('curated mission order failed');
@@ -2521,10 +2594,12 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       const enemyCount = Game.enemies.length;
       Game.player.x = flowChunk.start + CHUNK_W * .5;
       Game.camera = Math.max(0, Game.player.x - VIEW_W * .3);
+      flowChunk.reinforcementCount = 0;
+      Game.reinforcementTimer = 0;
       updateReinforcements(0);
       if (!flowChunk.reinforced || Game.enemies.length !== enemyCount + 1) throw new Error('scripted ambush did not enter from the screen edge');
       updateReinforcements(0);
-      if (Game.enemies.length !== enemyCount + 1) throw new Error('scripted ambush repeated like a wave');
+      if (Game.enemies.length !== enemyCount + 1 || Game.reinforcementTimer <= 0) throw new Error('reinforcements arrived as an instant wave');
       Game.enemies.splice(enemyCount);
       Game.player.x = savedX;
       Game.camera = savedCamera;
@@ -2536,6 +2611,17 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       input.right = false;
       if (!(Game.player.x > startX)) throw new Error('player did not move');
       if (!(Game.player.runCycle > 0)) throw new Error('run animation did not follow distance');
+      update(1 / 60);
+      if (Math.abs(Game.player.vx) > .01) throw new Error('dry ground retained sliding velocity after release');
+      const cameraProbe = { x: Game.player.x, camera: Game.camera };
+      Game.player.x = VIEW_W * .38 + 120;
+      Game.camera = 0;
+      updateCamera();
+      const stoppedCamera = Game.camera;
+      updateCamera();
+      if (Math.abs(stoppedCamera - 120) > .01 || Game.camera !== stoppedCamera) throw new Error('camera eased after the player stopped');
+      Game.player.x = cameraProbe.x;
+      Game.camera = cameraProbe.camera;
       input.down = true;
       update(1 / 60);
       if (!Game.player.crouching || Game.player.h !== CROUCH_H) throw new Error('crouch collider did not shrink');
@@ -2551,7 +2637,11 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       shoot();
       input.right = input.up = false;
       const shot = Game.bullets.pop();
-      if (!shot || Math.abs(Math.hypot(shot.vx, shot.vy) - BULLET_SPEED) > .01) throw new Error('diagonal shot speed changed');
+      if (!shot || Math.abs(Math.hypot(shot.vx, shot.vy) - BULLET_SPEED) > .01 || shot.x <= Game.player.x + Game.player.w / 2) throw new Error('pose-anchored diagonal shot failed');
+      Game.bullets.length = 0;
+      for (let i = 0; i < 7; i++) { Game.player.fireCooldown = 0; shoot(); }
+      if (Game.bullets.length !== PLAYER_BULLET_CAPS.normal) throw new Error('FC-style player bullet slots failed');
+      Game.bullets.length = 0;
       collectPowerup({ x: Game.player.x, y: Game.player.y, w: 34, h: 34, type: 'spread', taken: false });
       Game.bullets.length = 0;
       Game.player.fireCooldown = 0;
@@ -2619,6 +2709,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (!Game.enemies.some((enemy) => enemy.type === 'capsule')) throw new Error('supply capsules missing');
       startGame('arcade');
       Game.hp = 999;
+      Game.autoFire = true;
       input.right = input.fire = true;
       let jumpHold = 0;
       for (let i = 0; i < 12000; i++) {
@@ -2631,6 +2722,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
         if (Game.chunks.length > 12 || Game.enemies.length > 36 || Game.particles.length > 160) throw new Error('unbounded collections');
       }
       input.right = input.fire = input.down = false;
+      Game.autoFire = false;
       if (Game.distance < 1000 || new Set(Game.chunks.map((chunk) => chunk.biome)).size < 2) throw new Error('long-run biome progression failed');
       Game.camera = Game.generatedTo - VIEW_W;
       cullWorld();
