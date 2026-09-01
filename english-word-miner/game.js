@@ -15,6 +15,7 @@ const wrap = $id('game-wrap');
 
 let W = 720, H = 560;
 const TAU = Math.PI * 2;
+const FIXED_STEP = 1 / 60;
 
 const DIFFS = {
   easy:   { time: 75, retractMul: 1.15, label: '初级' },
@@ -25,14 +26,22 @@ const DIFFS = {
 const GameplayAtlas = new Image();
 GameplayAtlas.src = 'assets/gameplay-atlas-v3.webp';
 
+const ATLAS_RECTS = {
+  '0:0': [64, 0, 157, 268], '0:1': [309, 2, 217, 266], '0:2': [572, 43, 165, 226], '0:3': [776, 41, 155, 229],
+  '1:0': [25, 289, 212, 199], '1:1': [323, 296, 146, 204], '1:2': [529, 333, 243, 169], '1:3': [804, 303, 121, 201],
+  '2:0': [75, 581, 119, 99], '2:1': [271, 513, 216, 183], '2:2': [550, 551, 158, 132], '2:3': [771, 531, 184, 159],
+  '3:0': [66, 689, 131, 225], '3:1': [306, 734, 123, 164], '3:2': [529, 724, 186, 180], '3:3': [754, 718, 199, 190],
+};
+
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 
 function drawAtlasCell(row, column, x, y, width, height) {
   if (!GameplayAtlas.complete || !GameplayAtlas.naturalWidth) return false;
-  const sw = GameplayAtlas.naturalWidth / 4;
-  const sh = GameplayAtlas.naturalHeight / 4;
-  ctx.drawImage(GameplayAtlas, column * sw, row * sh, sw, sh, x - width / 2, y - height / 2, width, height);
+  const [sx, sy, sw, sh] = ATLAS_RECTS[`${row}:${column}`];
+  const scale = Math.min(width / sw, height / sh);
+  const dw = sw * scale, dh = sh * scale;
+  ctx.drawImage(GameplayAtlas, sx, sy, sw, sh, x - dw / 2, y - dh / 2, dw, dh);
   return true;
 }
 
@@ -50,10 +59,12 @@ const Game = {
   timeLeft: 0, time: 0, shake: 0,
   items: [], particles: [], floaters: [],
   word: null, lastWord: '',
-  quota: 0, levelScoreStart: 0, contracts: 0,
+  quota: 0, treasureEarned: 0, contracts: 0,
   strength: 0, luck: 0,
   hook: null,
   feedback: '', feedbackUntil: 0,
+  contractTimer: 0,
+  logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
 function newHook() {
@@ -206,8 +217,9 @@ function buildLevel(initial) {
   Game.lastWord = item.en;
   if (!initial) Game.score += 200;
   Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
-  Game.levelScoreStart = Game.score;
-  Game.quota = 520 + Game.level * 100 + Game.word.en.length * 55;
+  Game.treasureEarned = 0;
+  Game.contractTimer = 0;
+  Game.quota = 420 + Math.min(480, Game.level * 60);
   spawnItems();
   Game.hook = newHook();
   if (initial) Game.timeLeft = DIFFS[Game.difficulty].time;
@@ -220,6 +232,8 @@ function startGame() {
   Game.score = 0; Game.lives = 1; Game.level = 1; Game.contracts = 0;
   Game.strength = 0; Game.luck = 0; dynamiteCount = 1;
   Game.wordsDone = 0; Game.time = 0; Game.shake = 0;
+  Game.contractTimer = 0;
+  Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   Game.state = 'playing';
   $id('shop').classList.add('hidden');
   $id('menu').classList.add('hidden');
@@ -229,6 +243,8 @@ function startGame() {
   if (window.ChipMusic) ChipMusic.play('miner-loop');
   if (window.ArcadeAudio) ArcadeAudio.start();
   buildLevel(true);
+  accumulator = 0;
+  ensureLoop();
 }
 
 /* 雷管: 收回途中放弃当前抓住的物品(Gold Miner原版标志性机制)
@@ -262,22 +278,33 @@ function shootHook() {
 
 /* ---------------- 更新 ---------------- */
 function update(dt) {
+  Game.logicFrame++;
   Game.time += dt;
   Game.shake = Math.max(0, Game.shake - dt * 2);
   Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
   if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
 
   if (Game.state === 'playing') {
+    if (Game.contractTimer > 0) {
+      Game.contractTimer -= dt;
+      updateEffects(dt);
+      if (Game.contractTimer <= 0) openShop();
+      return;
+    }
     Game.timeLeft -= dt;
     updateHudTimer();
     if (Game.timeLeft <= 0) {
-      if (levelReady()) openShop();
+      if (levelReady()) queueShop();
       else { Game.lives = 0; gameOver(); }
       return;
     }
     updateHook(dt);
   }
 
+  updateEffects(dt);
+}
+
+function updateEffects(dt) {
   for (let i = Game.particles.length - 1; i >= 0; i--) {
     const pt = Game.particles[i];
     pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 260 * dt;
@@ -360,21 +387,25 @@ function deliverItem(it) {
     if (window.ArcadeAudio) ArcadeAudio.play('laser', .22, .5);
   } else if (it.kind === 'gold') {
     Game.score += it.value;
+    Game.treasureEarned += it.value;
     floatText('💰 +' + it.value, x, y, '#fde047');
     burst(x, y, '#fde047', 16);
     if (window.ArcadeAudio) ArcadeAudio.play('confirm', .24, 1.35);
   } else if (it.kind === 'diamond') {
     Game.score += it.value;
+    Game.treasureEarned += it.value;
     floatText('💎 +' + it.value, x, y, '#67e8f9');
     burst(x, y, '#67e8f9', 20);
     if (window.ArcadeAudio) ArcadeAudio.play('confirm', .26, 1.4);
   } else {
-    Game.score += Math.round(30 / it.weight * 10);
+    const value = Math.round(30 / it.weight * 10);
+    Game.score += value;
+    Game.treasureEarned += value;
     floatText('+石头', x, y, '#a8a29e');
     if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .7);
   }
   updateHud();
-  if (Game.state === 'playing' && levelReady()) openShop();
+  if (Game.state === 'playing' && levelReady()) queueShop();
 }
 
 function wordComplete() {
@@ -382,15 +413,22 @@ function wordComplete() {
   const bonus = 250 + Game.word.en.length * 35;
   Game.score += bonus;
   floatText('拼写完成 +' + bonus, W / 2, H / 2 - 30, '#fde68a');
-  showFeedback(levelReady() ? '拼写与金额目标均完成！' : `拼写完成 · 还差 ${Math.max(0, Game.quota - (Game.score - Game.levelScoreStart))} 金币`);
-  Game.shake = .3;
+  showFeedback(levelReady() ? '拼写与采矿目标均完成！' : `拼写完成 · 还差 ${Math.max(0, Game.quota - Game.treasureEarned)} 金币`);
+  Game.shake = .18;
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .32, 1.3);
   updateHud();
-  if (levelReady()) openShop();
+  if (levelReady()) queueShop();
 }
 
 function levelReady() {
-  return Game.word && Game.word.progress >= Game.word.en.length && Game.score - Game.levelScoreStart >= Game.quota;
+  return Game.word && Game.word.progress >= Game.word.en.length && Game.treasureEarned >= Game.quota;
+}
+
+function queueShop() {
+  if (Game.state !== 'playing' || !levelReady() || Game.contractTimer > 0) return;
+  Game.contractTimer = .9;
+  showFeedback('合约完成 · 收钩结算');
+  burst(W / 2, 120, '#fde68a', 24);
 }
 
 function openShop() {
@@ -437,6 +475,8 @@ function continueFromShop() {
   $id('shop').classList.add('hidden');
   $id('word-bar').classList.remove('hidden');
   buildLevel(false);
+  accumulator = 0;
+  ensureLoop();
 }
 
 function gameOver() {
@@ -478,7 +518,12 @@ $id('next-level-btn').addEventListener('click', continueFromShop);
 
 function togglePause() {
   if (Game.state === 'playing') { Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
-  else if (Game.state === 'paused') { Game.state = 'playing'; $id('paused').classList.add('hidden'); }
+  else if (Game.state === 'paused') {
+    Game.state = 'playing';
+    $id('paused').classList.add('hidden');
+    accumulator = 0;
+    ensureLoop();
+  }
 }
 function backToMenu() {
   Game.state = 'menu';
@@ -495,6 +540,7 @@ function burst(x, y, color, n) {
   for (let i = 0; i < n; i++) {
     Game.particles.push({ x, y, vx: rand(-140, 140), vy: rand(-170, 30), life: rand(.25, .55), color, size: rand(2.5, 5) });
   }
+  if (Game.particles.length > 160) Game.particles.splice(0, Game.particles.length - 160);
 }
 function floatText(text, x, y, color) {
   Game.floaters.push({ text, x, y, color, life: 1 });
@@ -513,8 +559,7 @@ function updateHudTimer() {
 function updateHud() {
   $id('score').textContent = Game.score;
   $id('level').textContent = Game.level;
-  const earned = Math.max(0, Game.score - Game.levelScoreStart);
-  $id('quota').textContent = Math.min(Game.quota, earned) + '/' + Game.quota;
+  $id('quota').textContent = Math.min(Game.quota, Game.treasureEarned) + '/' + Game.quota;
   updateDynamiteButton();
   const w = Game.word;
   if (w) {
@@ -536,6 +581,7 @@ function updateDynamiteButton() {
 
 /* ---------------- 渲染 ---------------- */
 function render() {
+  Game.renderCount++;
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   const bg = ctx.createLinearGradient(0, 90, 0, H);
   // 四层地层色: 表土→黏土→岩层→深矿
@@ -742,7 +788,7 @@ function drawItem(it) {
     : it.kind === 'diamond' ? [2, 2]
     : null;
   if (atlasCell) {
-    const size = it.kind === 'gold' ? it.r * 3.15 : it.kind === 'diamond' ? 52 : it.r * 3;
+    const size = it.kind === 'gold' ? it.r * 3.15 : it.kind === 'diamond' ? 52 : it.kind === 'bomb' ? 62 : it.r * 3;
     if (drawAtlasCell(atlasCell[0], atlasCell[1], 0, 0, size, size)) { ctx.restore(); return; }
   }
   if (it.kind === 'letter') {
@@ -904,50 +950,76 @@ function resize() {
   }
   canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
   lastW = cssW; lastH = cssH; lastDpr = dpr;
+  if (Game.state !== 'playing') render();
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 160));
 resize();
 
 let lastTime = performance.now();
+let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(frame);
+}
 function frame(now) {
-  const dt = Math.min(.033, (now - lastTime) / 1000 || .016);
+  rafId = 0;
+  Game.rafCount++;
+  const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
   lastTime = now;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   if (wrap.clientWidth !== lastW || wrap.clientHeight !== lastH || dpr !== lastDpr) resize();
-  if (Game.state === 'playing') update(dt);
-  render();
-  requestAnimationFrame(frame);
+  let advanced = false;
+  if (Game.state === 'playing') {
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+      update(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+      advanced = true;
+    }
+  } else accumulator = 0;
+  if (advanced || Game.state !== 'playing') render();
+  if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
 
 /* ---------------- 自检 ---------------- */
+window.__wordMiner = Game;
+
 if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
   requestAnimationFrame(() => {
     try {
       Game.difficulty = 'easy';
       startGame();
-      if (Game.state !== 'playing') throw new Error('start failed');
+      if (Game.state !== 'playing' || FIXED_STEP !== 1 / 60) throw new Error('start failed');
+      if (Object.keys(ATLAS_RECTS).length !== 16) throw new Error('atlas crop map incomplete');
+      if (Game.logicFrame || Game.renderCount || Game.rafCount) throw new Error('frame counters were not reset');
       const letterItems = Game.items.filter((i2) => i2.kind === 'letter');
       if (letterItems.length !== Game.word.en.length) throw new Error('letter count mismatch');
       const gold = Game.items.find((item) => item.kind === 'gold');
       if (!gold) throw new Error('gold missing');
       const scoreBeforeGold = Game.score;
+      const treasureBeforeGold = Game.treasureEarned;
       deliverItem(gold);
-      if (Game.score !== scoreBeforeGold + gold.value) throw new Error('gold score mismatch');
+      if (Game.score !== scoreBeforeGold + gold.value || Game.treasureEarned !== treasureBeforeGold + gold.value) throw new Error('gold score mismatch');
       Game.hook.state = 'retract'; Game.hook.grabbed = { kind: 'rock', x: 200, y: 200 };
       const dynamiteBefore = dynamiteCount;
       useDynamite();
       if (dynamiteCount !== dynamiteBefore - 1 || Game.hook.grabbed) throw new Error('dynamite failed');
-      Game.score = Game.levelScoreStart + Game.quota;
-      // 模拟按序送达字母
-      for (let i = 0; i < Game.word.en.length; i++) {
+      const firstLetter = Game.items.find((it) => it.kind === 'letter' && it.index === Game.word.progress);
+      const treasureBeforeLetter = Game.treasureEarned;
+      deliverItem(firstLetter);
+      if (Game.treasureEarned !== treasureBeforeLetter) throw new Error('letter reward counted as mining quota');
+      Game.treasureEarned = Game.quota;
+      // 模拟按序送达剩余字母
+      while (Game.word.progress < Game.word.en.length) {
         const target = Game.items.find((it) => it.kind === 'letter' && it.index === Game.word.progress);
-        if (!target) throw new Error('target letter missing at ' + i);
+        if (!target) throw new Error('target letter missing at ' + Game.word.progress);
         deliverItem(target);
-        if (!target.delivered && Game.items.includes(target) && target.index !== Game.word.progress - 1) {
-          // 错序会放回——但我们按序投递不应发生
-        }
       }
+      if (Game.state !== 'playing' || Game.contractTimer <= 0) throw new Error('contract clear presentation missing');
+      for (let i = 0; i < 60 && Game.state === 'playing'; i++) update(FIXED_STEP);
       if (Game.state !== 'shop') throw new Error('shop did not open');
       const strengthBefore = Game.strength;
       if (!buyUpgrade('strength') || Game.strength !== strengthBefore + 1) throw new Error('shop purchase failed');
@@ -957,12 +1029,30 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.hook.state = 'shoot';
       for (let i = 0; i < 400 && Game.hook.state === 'shoot'; i++) update(0.016);
       if (Game.hook.state !== 'retract' && Game.hook.state !== 'swing') throw new Error('hook state machine stuck');
+      if (Game.particles.length > 160) throw new Error('particle cap failed');
       document.title = 'SELFTEST-OK';
+      document.documentElement.dataset.selftest = 'pass';
+      Game.state = 'paused';
     } catch (e) {
       document.title = 'SELFTEST-FAIL: ' + e.message;
+      document.documentElement.dataset.selftest = 'fail';
+      Game.state = 'paused';
       console.error(e);
     }
   });
 }
 
-requestAnimationFrame(frame);
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    startGame();
+    setTimeout(() => {
+      const duplicateRenders = Game.renderCount - Game.logicFrame;
+      const passed = Game.logicFrame >= 40 && duplicateRenders <= 3;
+      Game.state = 'paused';
+      document.title = passed
+        ? `FRAME-BUDGET PASS · ${Game.logicFrame}/${Game.renderCount}`
+        : `FRAME-BUDGET FAIL · ${Game.logicFrame}/${Game.renderCount}`;
+      document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+    }, 1200);
+  });
+}
