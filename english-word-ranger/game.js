@@ -53,7 +53,7 @@ const STAGES = [
 ];
 
 const MISSION_LEVELS = [
-  { name: '第一关 · 曙光森林', biome: 0, bossName: '林地核心', music: 'ranger-stage',
+  { name: '第一关 · 曙光森林', biome: 0, bossName: '林地核心', music: 'ranger-stage', briefing: '潜入林地，夺回词核',
     beats: [
       { tag: 'TEACH', name: '空投接敌', hint: '击落 S 补给；走高台直射，或引爆油桶清场', platforms: [[330, 86, 138]], foes: [['capsule', 230], ['barrel', 420], ['beetle', 486]], lock: true, drop: 'spread' },
       { tag: 'TEST', name: '壕沟空袭', hint: '越过壕沟，引爆油桶后处理俯冲无人机', gaps: [[330, 105]], platforms: [[505, 82, 118]], foes: [['beetle', 300], ['barrel', 485], ['drone', 575]], lock: true },
@@ -70,7 +70,7 @@ const MISSION_LEVELS = [
       { tag: 'RECOVERY', name: '守卫前庭', hint: '补充火力，准备首领战', foes: [['capsule', 455]], wordGate: true, checkpoint: true, drop: 'rapid' },
       { tag: 'BOSS', name: '林地核心', hint: '观察预兆，击破单词护盾', foes: [['boss', 520]], lock: true },
     ] },
-  { name: '第二关 · 风蚀峡谷', biome: 1, bossName: '峡谷暴君', music: 'ranger-boss',
+  { name: '第二关 · 风蚀峡谷', biome: 1, bossName: '峡谷暴君', music: 'ranger-boss', briefing: '穿越风眼，追击暴君',
     beats: [
       { tag: 'TEACH', name: '峡谷风口', hint: '上升气流可以托住跳跃', gaps: [[335, 100]], hazards: [['updraft', 505, 255, 112]], foes: [['beetle', 240]], lock: true },
       { tag: 'TEST', name: '落石走廊', hint: '落石往返巡逻，看准节奏通过', hazards: [['rock', 345, 0, 40]], foes: [['beetle', 180], ['leaper', 540]], lock: true },
@@ -85,7 +85,7 @@ const MISSION_LEVELS = [
       { tag: 'RECOVERY', name: '暴君前厅', hint: '最后补给，准备首领战', foes: [['capsule', 460]], wordGate: true, checkpoint: true, drop: 'shield' },
       { tag: 'BOSS', name: '峡谷暴君', hint: '落石+冲锋交替，保持移动', foes: [['boss', 520]], lock: true },
     ] },
-  { name: '第三关 · 雨中古城', biome: 2, bossName: '古城主宰', music: 'ranger-stage',
+  { name: '第三关 · 雨中古城', biome: 2, bossName: '古城主宰', music: 'ranger-stage', briefing: '突入古城记忆中枢',
     beats: [
       { tag: 'TEACH', name: '湿滑石街', hint: '水洼会打滑，提前刹车', hazards: [['puddle', 180, 0, 115], ['puddle', 475, 0, 130]], foes: [['beetle', 300]], lock: true },
       { tag: 'TEST', name: '蒸汽管廊', hint: '蒸汽有喷射节奏', platforms: [[180, 105, 145]], hazards: [['steam', 350, 0, 40], ['steam', 625, 0, 40]], foes: [['leaper', 480]], lock: true },
@@ -100,7 +100,7 @@ const MISSION_LEVELS = [
       { tag: 'RECOVERY', name: '主宰王庭', hint: '最终补给', foes: [['capsule', 450]], wordGate: true, checkpoint: true, drop: 'shield' },
       { tag: 'BOSS', name: '古城主宰', hint: '三阶段狂暴，护盾口令是关键', foes: [['boss', 520]], lock: true },
     ] },
-  { name: '第四关 · 月晶遗迹', biome: 3, bossName: '月晶守卫', music: 'ranger-boss',
+  { name: '第四关 · 月晶遗迹', biome: 3, bossName: '月晶守卫', music: 'ranger-boss', briefing: '突破月晶最终防线',
     beats: [
       { tag: 'TEACH', name: '低重力训练', hint: '月球重力下跳得更高更飘', gaps: [[320, 150]], foes: [['beetle', 500]], lock: true },
       { tag: 'TEST', name: '晶簧起跳', hint: '弹簧把你送上高台', gaps: [[300, 145]], hazards: [['spring', 238, 0, 50]], platforms: [[325, 132, 96]], foes: [['drone', 480]], lock: true },
@@ -152,6 +152,27 @@ for (const [name, src] of Object.entries({
   ASSETS[name] = image;
 }
 
+// Generated atlases do not share a consistent origin. These body/foot anchors keep
+// each pose attached to the collider instead of sliding with transparent padding.
+const HERO_ANCHORS = [
+  [[157, 312], [156, 312], [151, 314], [150, 312]],
+  [[170, 313], [172, 299], [175, 300], [172, 313]],
+  [[163, 313], [169, 313], [170, 313], [172, 313]],
+  [[151, 314], [150, 286], [164, 288], [171, 290]],
+];
+const ACTION_ANCHORS = [
+  [[141, 256], [133, 256], [121, 256], [100, 256]],
+  [[161, 256], [138, 256], [124, 237], [101, 249]],
+  [[134, 256], [120, 256], [105, 233], [93, 256]],
+  [[125, 243], [119, 237], [102, 256], [88, 256]],
+];
+const ENEMY_ANCHORS = [
+  [[177, 300], [170, 300], [166, 300], [168, 300]],
+  [[176, 300], [182, 300], [177, 300], [172, 300]],
+  [[179, 300], [204, 300], [164, 300], [173, 300]],
+  [[169, 300], [181, 274], [177, 300], [169, 300]],
+];
+
 const HAZARD_SPRITES = {
   updraft: { row: 0, column: 0, w: 112, h: 132, baseline: 496 / 512 },
   rock: { row: 0, column: 1, w: 58, h: 58, baseline: 473 / 512 },
@@ -182,7 +203,7 @@ const mobileAssist = matchMedia('(pointer: coarse)').matches || navigator.maxTou
 const Game = {
   state: 'menu', mode: 'mission', difficulty: 'easy', score: 0, wordsDone: 0, hp: 3,
   missionLevel: 0,
-  distance: 0, maxX: 70, camera: 0, checkpoint: 70, time: 0,
+  distance: 0, maxX: 70, camera: 0, prevCamera: 0, renderAlpha: 1, checkpoint: 70, time: 0,
   feedbackTimer: 0, hudTimer: 0, lastWord: '', currentWord: null, wordEcho: null,
   generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
   reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
@@ -191,7 +212,7 @@ const Game = {
   bossNodes: [], bossNodeProgress: 0, bossGateDone: false, bossWord: null,
   chunks: [], pickups: [], powerups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
   player: {
-    x: 70, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
+    x: 70, y: GROUND_Y - PLAYER_H, prevX: 70, prevY: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
     vx: 0, vy: 0, facing: 1, onGround: true,
     coyote: .1, inv: 0, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0,
@@ -316,9 +337,9 @@ function makeEnemy(type, x, chunkIndex, floorY = GROUND_Y) {
     type, chunkIndex, x, home: x, floorY, baseY, y: baseY,
     w: spec.w, h: spec.h, hp, maxHp: hp, range: spec.range,
     vx: 0, vy: 0, facing: -1, onGround: !spec.air,
-    state: 'idle', stateTimer: 0, cooldown: .65 + Math.random() * .8, attackIndex: 0,
+    state: 'idle', stateTimer: 0, animTime: 0, cooldown: .65 + Math.random() * .8, attackIndex: 0,
     targetX: x, targetY: baseY, bossPhase: 1,
-    phase: Math.random() * TAU, dead: false, hit: 0, stun: 0, dropType: null,
+    phase: Math.random() * TAU, prevX: x, prevY: baseY, dead: false, hit: 0, stun: 0, dropType: null,
   };
 }
 
@@ -527,8 +548,9 @@ function nextWord(initial) {
 }
 
 function resetPlayer(x) {
+  const startX = x == null ? 70 : x;
   Object.assign(Game.player, {
-    x: x == null ? 70 : x, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
+    x: startX, y: GROUND_Y - PLAYER_H, prevX: startX, prevY: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
     facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
     runCycle: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
@@ -545,7 +567,7 @@ function startGame(mode = Game.mode) {
   MISSION_BEATS = MISSION_LEVELS[Game.missionLevel].beats;
   Object.assign(Game, {
     state: 'playing', score: 0, wordsDone: 0, hp: 3, distance: 0, maxX: 70,
-    camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '',
+    camera: 0, prevCamera: 0, renderAlpha: 1, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0, lastWord: '',
     currentWord: null, wordEcho: null, generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
     reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
     hitStop: 0, shake: 0, shakeStrength: 0, flash: 0, victoryTimer: 0,
@@ -660,7 +682,7 @@ function advanceLevel() {
         nextLv = Game.missionLevel;
   Object.assign(Game, {
     hp: Math.min(5, Game.hp + 1), distance: 0, maxX: 70,
-    camera: 0, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0,
+    camera: 0, prevCamera: 0, renderAlpha: 1, checkpoint: 70, time: 0, feedbackTimer: 0, hudTimer: 0,
     generatedTo: 0, nextChunkIndex: 0, enteredChunk: -1,
     reinforcementTimer: 4.5, reinforcementCount: 0, stageBanner: null,
     hitStop: 0, shake: 0, shakeStrength: 0, flash: 0, victoryTimer: 0,
@@ -713,7 +735,7 @@ function shoot() {
       x: muzzleX - 4, y: muzzleY - 4, w: 8, h: 8,
       vx: Math.cos(angle) * BULLET_SPEED, vy: Math.sin(angle) * BULLET_SPEED,
       damage: player.weapon === 'spread' && level >= 3 ? 2 : 1,
-      color: player.weapon === 'spread' ? '#ff8a64' : player.weapon === 'rapid' ? '#63e6d0' : '#ffe49a',
+      color: player.weapon === 'spread' ? '#ff8a64' : player.weapon === 'rapid' ? '#63e6d0' : '#ffe49a', age: 0,
     });
   }
   burst(muzzleX, muzzleY, '#f4d37a', 3);
@@ -1141,6 +1163,7 @@ function updateHazards(dt) {
 }
 
 function setEnemyState(enemy, state, duration) {
+  if (enemy.state !== state) enemy.animTime = 0;
   enemy.state = state;
   enemy.stateTimer = duration;
   if (state === 'telegraph' && enemy.x > Game.camera - 80 && enemy.x < Game.camera + VIEW_W + 80 && window.ArcadeAudio) {
@@ -1156,7 +1179,7 @@ function fireEnemyVolley(enemy, offsets, speed) {
   const base = Math.atan2(targetY - originY, targetX - originX);
   for (const offset of offsets) {
     const angle = base + offset;
-    Game.enemyBullets.push({ x: originX - 5, y: originY - 4, w: 10, h: 8, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed });
+    Game.enemyBullets.push({ x: originX - 5, y: originY - 4, w: 10, h: 8, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, age: 0 });
   }
   burst(originX, originY, '#ef835e', 5);
   if (window.ArcadeAudio) ArcadeAudio.play('laser', enemy.type === 'boss' ? .22 : .11, enemy.type === 'boss' ? .66 : .78);
@@ -1269,6 +1292,7 @@ function updateEnemies(dt) {
     enemy.hit = Math.max(0, enemy.hit - dt);
     enemy.stun = Math.max(0, enemy.stun - dt);
     enemy.cooldown -= dt;
+    enemy.animTime += dt;
     if (Number.isFinite(enemy.stateTimer)) enemy.stateTimer = Math.max(0, enemy.stateTimer - dt);
     const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
     const dy = player.y + player.h / 2 - (enemy.y + enemy.h / 2);
@@ -1444,6 +1468,7 @@ function damageEnemy(enemy, bullet) {
 function updateProjectiles(dt) {
   for (let i = Game.bullets.length - 1; i >= 0; i--) {
     const bullet = Game.bullets[i];
+    bullet.age = (bullet.age || 0) + dt;
     const steps = Math.max(1, Math.ceil(Math.hypot(bullet.vx, bullet.vy) * dt / 10));
     let hit = false;
     for (let step = 0; step < steps && !hit; step++) {
@@ -1469,6 +1494,7 @@ function updateProjectiles(dt) {
 
   for (let i = Game.enemyBullets.length - 1; i >= 0; i--) {
     const bullet = Game.enemyBullets[i];
+    bullet.age = (bullet.age || 0) + dt;
     const steps = Math.max(1, Math.ceil(Math.hypot(bullet.vx, bullet.vy) * dt / 10));
     let struck = false;
     for (let step = 0; step < steps && !struck; step++) {
@@ -1533,6 +1559,11 @@ function cullWorld() {
 function update(dt) {
   Game.frameDt = dt;
   worldGenBudget = 2;
+  Game.prevCamera = Game.camera;
+  Game.player.prevX = Game.player.x; Game.player.prevY = Game.player.y;
+  for (const enemy of Game.enemies) { enemy.prevX = enemy.x; enemy.prevY = enemy.y; }
+  for (const bullet of Game.bullets) { bullet.prevX = bullet.x; bullet.prevY = bullet.y; }
+  for (const bullet of Game.enemyBullets) { bullet.prevX = bullet.x; bullet.prevY = bullet.y; }
   if (Game.hitStop > 0) {
     Game.hitStop = Math.max(0, Game.hitStop - dt);
     Game.shake = Math.max(0, Game.shake - dt);
@@ -1573,7 +1604,8 @@ function update(dt) {
   const entered = chunkAt(Game.player.x + Game.player.w / 2);
   if (entered && entered.index !== Game.enteredChunk) {
     Game.enteredChunk = entered.index;
-    Game.stageBanner = { tag: entered.tag || 'TEST', name: entered.encounter, hint: entered.hint || '', timer: 1.75 };
+    const briefing = Game.mode === 'mission' && entered.index === 0 ? MISSION_LEVELS[Game.missionLevel].briefing + ' · ' : '';
+    Game.stageBanner = { tag: entered.tag || 'TEST', name: entered.encounter, hint: briefing + (entered.hint || ''), timer: briefing ? 2.8 : 1.75 };
     if (entered.checkpoint) Game.checkpoint = entered.start + 110;
     if (entered.wordGate && !entered.gateUsed) {
       entered.gateUsed = openWordGate(entered);
@@ -1626,11 +1658,11 @@ function drawWeather(index) {
   ctx.restore();
 }
 
-function drawBackground() {
+function drawBackground(camera = Game.camera) {
   const span = CHUNK_W * 3;
-  const group = Math.floor(Game.camera / span);
+  const group = Math.floor(camera / span);
   const index = Game.mode === 'mission' ? (MISSION_LEVELS[Game.missionLevel] || MISSION_LEVELS[0]).biome : group % BIOMES.length;
-  const local = (Game.camera % span) / span;
+  const local = (camera % span) / span;
   drawBiomeLayer(index, 1, local);
   if (Game.mode !== 'mission' && local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
   ctx.fillStyle = ['rgba(7,27,20,.22)', 'rgba(45,24,12,.18)', 'rgba(4,24,30,.3)', 'rgba(5,10,25,.34)'][index];
@@ -1664,11 +1696,18 @@ function drawTerrain(biomeIndex, x, y, width, height) {
   const crop = TERRAIN_CROPS[biomeIndex];
   const sourceY = image.naturalHeight * crop.y;
   const sourceH = image.naturalHeight * crop.h;
-  const sourceW = Math.min(image.naturalWidth, sourceH * width / height);
-  const sourceX = Math.max(0, image.naturalWidth - sourceW)
-    ? Math.abs(Math.floor(x * 1.37)) % (image.naturalWidth - sourceW)
-    : 0;
-  ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, x, y, width, height);
+  const scale = height / sourceH;
+  let sourceX = ((x / scale) % image.naturalWidth + image.naturalWidth) % image.naturalWidth;
+  let drawX = x;
+  let remaining = width;
+  while (remaining > .1) {
+    const sourceW = Math.min(image.naturalWidth - sourceX, remaining / scale);
+    const drawW = Math.min(remaining, sourceW * scale);
+    ctx.drawImage(image, sourceX, sourceY, sourceW, sourceH, drawX, y, drawW, height);
+    drawX += drawW;
+    remaining -= drawW;
+    sourceX = 0;
+  }
   return true;
 }
 
@@ -1857,6 +1896,34 @@ function drawAtlasFrame(image, row, column, x, y, width, height, flip = false, c
   return true;
 }
 
+function drawAnchoredAtlasFrame(image, anchors, row, column, anchorX, anchorY, width, height, flip = false) {
+  if (!image.complete || !image.naturalWidth) return false;
+  const sourceW = image.naturalWidth / 4;
+  const sourceH = image.naturalHeight / 4;
+  const [originX, originY] = anchors[row][column];
+  ctx.save();
+  ctx.translate(anchorX, anchorY);
+  ctx.scale(flip ? -1 : 1, 1);
+  ctx.drawImage(image, column * sourceW, row * sourceH, sourceW, sourceH,
+    -originX * width / sourceW, -originY * height / sourceH, width, height);
+  ctx.restore();
+  return true;
+}
+
+function enemyFrame(enemy) {
+  if (enemy.type === 'guardian') return { idle: 0, telegraph: 1, attack: 2, recover: 3 }[enemy.state] ?? 0;
+  if (enemy.type === 'boss') {
+    if (enemy.state === 'shield' || enemy.state === 'recover') return 3;
+    if (enemy.state === 'telegraph' || enemy.state === 'attack') return enemy.attackKind === 2 ? 2 : 1;
+    return 0;
+  }
+  if (enemy.type === 'leaper') return { idle: 0, telegraph: 1, attack: 2, recover: 3 }[enemy.state] ?? 0;
+  if (enemy.state === 'telegraph') return 1;
+  if (enemy.state === 'recover') return 3;
+  const rate = enemy.state === 'attack' ? 11 : 6;
+  return Math.floor(enemy.animTime * rate + (enemy.state === 'attack' ? 2 : enemy.phase / TAU * 4)) % 4;
+}
+
 function drawEnemyTelegraph(enemy) {
   if (enemy.state !== 'telegraph') return;
   const pulse = .55 + Math.sin(Game.time * 22) * .25;
@@ -1936,17 +2003,17 @@ function drawEnemy(enemy) {
     ctx.restore();
   } else {
     const spec = {
-      beetle: { row: 0, w: 68, h: 58, ox: -13, oy: -20 },
-      leaper: { row: 0, w: 78, h: 66, ox: -15, oy: -27 },
-      drone: { row: 1, w: 72, h: 72, ox: -15, oy: -16 },
-      guardian: { row: 2, w: 88, h: 86, ox: -17, oy: -20 },
-      boss: { row: 3, w: 122, h: 118, ox: -22, oy: -24 },
+      beetle: { row: 0, w: 68, h: 58 },
+      leaper: { row: 0, w: 78, h: 66 },
+      drone: { row: 1, w: 72, h: 72 },
+      guardian: { row: 2, w: 88, h: 86 },
+      boss: { row: 3, w: 122, h: 118 },
     }[enemy.type];
-    const frameRate = enemy.state === 'recover' ? 3 : enemy.type === 'boss' ? 4 : 7;
-    const frame = Math.floor(Game.time * frameRate + enemy.phase) % 4;
+    const frame = enemyFrame(enemy);
     ctx.save();
     if (enemy.hit > 0) ctx.filter = 'brightness(2.15) saturate(.55)';
-    if (!drawAtlasFrame(ASSETS.enemies, spec.row, frame, enemy.x + spec.ox, enemy.y + spec.oy, spec.w, spec.h, enemy.facing > 0)) {
+    if (!drawAnchoredAtlasFrame(ASSETS.enemies, ENEMY_ANCHORS, spec.row, frame,
+      enemy.x + enemy.w / 2, enemy.y + enemy.h, spec.w, spec.h, enemy.facing > 0)) {
       ctx.fillStyle = enemy.type === 'boss' ? '#6c4932' : '#365e52';
       ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
     }
@@ -1977,6 +2044,10 @@ function drawEnemy(enemy) {
 function drawBossNodes() {
   const boss = Game.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead && enemy.bossPhase === 2);
   if (!boss) return;
+  const alpha = Game.renderAlpha;
+  ctx.save();
+  ctx.translate((boss.prevX ?? boss.x) + (boss.x - (boss.prevX ?? boss.x)) * alpha - boss.x,
+    (boss.prevY ?? boss.y) + (boss.y - (boss.prevY ?? boss.y)) * alpha - boss.y);
   for (const node of Game.bossNodes) {
     if (!node.active) continue;
     const isCurrent = node.order === Game.bossNodeProgress;
@@ -2016,17 +2087,22 @@ function drawBossNodes() {
     }
     ctx.restore();
   }
+  ctx.restore();
 }
 
 function drawBullet(bullet, color) {
+  const speed = Math.hypot(bullet.vx, bullet.vy);
+  const trail = Math.min(24, speed * Math.min(.035, (bullet.age || .01) * .65));
   ctx.save();
   ctx.translate(bullet.x + bullet.w / 2, bullet.y + bullet.h / 2);
   ctx.rotate(Math.atan2(bullet.vy, bullet.vx));
-  ctx.globalAlpha = .24; ctx.fillStyle = color;
-  ctx.beginPath(); ctx.roundRect(-9, -4, 18, 8, 4); ctx.fill();
+  ctx.globalAlpha = .12; ctx.fillStyle = color;
+  ctx.beginPath(); ctx.roundRect(-trail, -4, trail + 7, 8, 4); ctx.fill();
+  ctx.globalAlpha = .32;
+  ctx.beginPath(); ctx.roundRect(-trail * .58, -2.5, trail * .58 + 8, 5, 3); ctx.fill();
   ctx.globalAlpha = 1;
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.roundRect(-7, -2.5, 14, 5, 3); ctx.fill();
+  ctx.fillStyle = '#fff8d6';
+  ctx.beginPath(); ctx.ellipse(4, 0, 6, 3, 0, 0, TAU); ctx.fill();
   ctx.restore();
 }
 
@@ -2074,17 +2150,15 @@ function drawPlayer() {
   } else if (Math.abs(player.vx) > 30) {
     row = 1; column = Math.floor(player.runCycle) % 4;
   }
-  const baselineOffset = atlas === ASSETS.hero && row === 1 ? [0, 4, 4, 0][column]
-    : atlas === ASSETS.hero && row === 3 ? [0, 7, 7, 6][column] : 0;
-  const drawY = player.y + player.h - 96 + baselineOffset + (atlas === ASSETS.actions ? (row === 1 ? 14 : 7) : 0);
   const recoilRatio = clamp(player.recoil / .09, 0, 1);
-  const poseX = player.x - player.aimX * recoilRatio * 2;
-  const poseY = drawY - player.aimY * recoilRatio * 1.5;
+  const poseX = player.x + player.w / 2 - player.aimX * recoilRatio * 2;
+  const poseY = player.y + player.h - player.aimY * recoilRatio * 1.5;
   ctx.save();
   if (invFlash) ctx.globalAlpha = .38;
   ctx.shadowColor = 'rgba(1,7,5,.92)';
   ctx.shadowBlur = 5;
-  if (!drawAtlasFrame(atlas, row, column, poseX - 34, poseY, 98, 100, player.facing < 0)) {
+  if (!drawAnchoredAtlasFrame(atlas, atlas === ASSETS.hero ? HERO_ANCHORS : ACTION_ANCHORS,
+    row, column, poseX, poseY, 98, 100, player.facing < 0)) {
     ctx.fillStyle = '#d18a32'; ctx.fillRect(player.x, player.y, player.w, player.h);
   }
   ctx.restore();
@@ -2196,23 +2270,47 @@ function drawBossStatus() {
 
 function render() {
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
-  drawBackground();
+  const alpha = Game.renderAlpha;
+  const camera = (Game.prevCamera ?? Game.camera) + (Game.camera - (Game.prevCamera ?? Game.camera)) * alpha;
+  drawBackground(camera);
   ctx.save();
   const shakeClock = performance.now() * .05;
   const shakeX = Game.shake > 0 ? Math.sin(shakeClock) * Game.shakeStrength : 0;
   const shakeY = Game.shake > 0 ? Math.cos(shakeClock * 1.17) * Game.shakeStrength * .55 : 0;
-  ctx.translate(-Game.camera + shakeX, shakeY);
+  ctx.translate(-camera + shakeX, shakeY);
   for (const chunk of Game.chunks) {
-    if (chunk.start > Game.camera + VIEW_W + CHUNK_W || chunk.start + CHUNK_W < Game.camera - CHUNK_W) continue;
+    if (chunk.start > camera + VIEW_W + CHUNK_W || chunk.start + CHUNK_W < camera - CHUNK_W) continue;
     drawDecor(chunk); drawGround(chunk); drawPlatforms(chunk); drawHazards(chunk); drawBarrier(chunk);
   }
   drawPickups();
   drawPowerups();
-  for (const enemy of Game.enemies) drawEnemy(enemy);
+  for (const enemy of Game.enemies) {
+    ctx.save();
+    ctx.translate((enemy.prevX ?? enemy.x) + (enemy.x - (enemy.prevX ?? enemy.x)) * alpha - enemy.x,
+      (enemy.prevY ?? enemy.y) + (enemy.y - (enemy.prevY ?? enemy.y)) * alpha - enemy.y);
+    drawEnemy(enemy);
+    ctx.restore();
+  }
   drawBossNodes();
-  for (const bullet of Game.bullets) drawBullet(bullet, bullet.color || '#ffe49a');
-  for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
+  for (const bullet of Game.bullets) {
+    ctx.save();
+    ctx.translate((bullet.prevX ?? bullet.x) + (bullet.x - (bullet.prevX ?? bullet.x)) * alpha - bullet.x,
+      (bullet.prevY ?? bullet.y) + (bullet.y - (bullet.prevY ?? bullet.y)) * alpha - bullet.y);
+    drawBullet(bullet, bullet.color || '#ffe49a');
+    ctx.restore();
+  }
+  for (const bullet of Game.enemyBullets) {
+    ctx.save();
+    ctx.translate((bullet.prevX ?? bullet.x) + (bullet.x - (bullet.prevX ?? bullet.x)) * alpha - bullet.x,
+      (bullet.prevY ?? bullet.y) + (bullet.y - (bullet.prevY ?? bullet.y)) * alpha - bullet.y);
+    drawBullet(bullet, '#e9664c');
+    ctx.restore();
+  }
+  ctx.save();
+  ctx.translate((Game.player.prevX ?? Game.player.x) + (Game.player.x - (Game.player.prevX ?? Game.player.x)) * alpha - Game.player.x,
+    (Game.player.prevY ?? Game.player.y) + (Game.player.y - (Game.player.prevY ?? Game.player.y)) * alpha - Game.player.y);
   drawPlayer();
+  ctx.restore();
   for (const particle of Game.particles) {
     ctx.globalAlpha = clamp(particle.life * 3, 0, 1);
     ctx.fillStyle = particle.color;
@@ -2382,8 +2480,10 @@ function frame(now) {
       update(FIXED_STEP);
       accumulator -= FIXED_STEP;
     }
+    Game.renderAlpha = accumulator / FIXED_STEP;
   } else {
     accumulator = 0;
+    Game.renderAlpha = 1;
   }
   render();
   if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
@@ -2488,6 +2588,12 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.enemies = [turret];
       updateEnemies(FIXED_STEP);
       if (turret.state !== 'telegraph') throw new Error('enemy telegraph state failed');
+      const poseProbe = makeEnemy('guardian', Game.player.x + 260, gateChunk.index);
+      const poses = ['idle', 'telegraph', 'attack', 'recover'].map((state) => { poseProbe.state = state; return enemyFrame(poseProbe); });
+      if (poses.join(',') !== '0,1,2,3') throw new Error('enemy animation ignored combat state');
+      poseProbe.animTime = 2;
+      setEnemyState(poseProbe, 'attack', .2);
+      if (poseProbe.animTime !== 0) throw new Error('enemy animation did not restart on state change');
       const sweepTarget = makeEnemy('beetle', Game.player.x + 180, gateChunk.index);
       sweepTarget.hp = sweepTarget.maxHp = 2;
       Game.enemies = [sweepTarget];

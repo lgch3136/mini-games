@@ -67,10 +67,10 @@ const ARENAS = [
 ];
 
 const OPPONENTS = [
-  { name: '赤绫', style: '迅击型', atlas: 'rival', speed: 1.08, damage: .92, guard: .94, aggression: .66 },
-  { name: '铁岳', style: '擒拿型', atlas: 'bruiser', speed: .86, damage: 1.22, guard: 1.18, aggression: .58 },
-  { name: '夜绫', style: '反击型', atlas: 'rival', speed: 1, damage: 1.04, guard: 1.18, aggression: .52, filter: 'hue-rotate(24deg) saturate(1.15)' },
-  { name: '震岳', style: '压制型', atlas: 'bruiser', speed: .94, damage: 1.3, guard: 1.28, aggression: .72, filter: 'hue-rotate(-18deg) saturate(1.12)' },
+  { name: '赤绫', style: '迅击型', plan: 'rush', intro: '赤绫守着第一道词印：别让她连成快攻', atlas: 'rival', speed: 1.08, damage: .92, guard: .94, aggression: .66 },
+  { name: '铁岳', style: '擒拿型', plan: 'grappler', intro: '铁岳逼近后会抓投：保持中距离', atlas: 'bruiser', speed: .86, damage: 1.22, guard: 1.18, aggression: .58 },
+  { name: '夜绫', style: '反击型', plan: 'counter', intro: '夜绫在等你先出招：用假动作骗出反击', atlas: 'rival', speed: 1, damage: 1.04, guard: 1.18, aggression: .52, filter: 'hue-rotate(24deg) saturate(1.15)' },
+  { name: '震岳', style: '压制型', plan: 'pressure', intro: '震岳擅长压制起身：防守取消是破局点', atlas: 'bruiser', speed: .94, damage: 1.3, guard: 1.28, aggression: .72, filter: 'hue-rotate(-18deg) saturate(1.12)' },
 ];
 
 // Timings are authored as 60 Hz frame data: startup/contact/total, matching the fixed simulation below.
@@ -123,15 +123,15 @@ const COMBAT_ROWS = { fireball: 0, exFireball: 0, super: 1, throw: 3 };
 
 // Frame-authored root offsets keep the waist and floor contact registered across generated cels.
 const FRAME_ANCHORS = {
-  motion: [[-15,1],[-10,1],[8,1],[26,1],[-3,2],[-9,1],[-19,10],[-31,14],[-1,9],[-1,-1],[4,10],[13,9],[4,30],[-2,27],[-29,-1],[6,27],[18,26],[10,30],[-12,26],[32,26],[22,26],[33,26],[37,27],[16,26]],
-  ground: Array.from({ length: 24 }, () => [0, 1]),
-  air: Array.from({ length: 24 }, () => [0, 10]),
-  specials: [[-39,-1],[-33,-1],[-13,-1],[-12,-1],[41,-1],[31,-1],[-40,-1],[-11,-1],[32,-1],[52,-1],[26,-1],[27,-1],[-32,35],[-26,35],[26,49],[63,34],[38,26],[25,25],[-40,53],[-6,72],[34,47],[-40,55],[-5,50],[27,47]],
-  attacks: [[-3,8],[-7,9],[-1,9],[-10,9],[-11,9],[-3,9],[-4,9],[-11,9],[-5,9],[-10,9],[-15,8],[0,8],[-5,9],[15,9],[55,9],[45,9],[27,9],[0,9],[-14,9],[15,9],[-1,9],[41,9],[54,9],[2,9]],
-  combat: [[-3,8],[16,8],[24,8],[27,8],[27,8],[-2,8],[-5,9],[10,9],[23,9],[7,9],[7,9],[-13,9],[-11,18],[-10,18],[-17,18],[-5,20],[-3,18],[-3,18],[-3,27],[6,27],[9,27],[43,28],[26,27],[-4,27]],
-  rival: [[-12,-1],[-7,-1],[-16,-1],[-28,-1],[-23,-1],[-3,18],[-15,-1],[-8,-1],[-18,-1],[-19,-1],[-36,-1],[-10,-1],[-14,1],[-49,3],[-22,2],[-36,8],[-82,1],[-31,2],[11,10],[-59,10],[-51,9],[-39,9],[-6,10],[-31,60]],
-  rivalMotion: Array.from({ length: 24 }, () => [0, 1]),
-  bruiser: [[-6,-1],[4,-1],[3,-1],[20,-1],[6,-1],[-6,1],[-7,-1],[1,-1],[14,-1],[-3,10],[-35,11],[-23,10],[-4,-1],[-14,-1],[16,-1],[26,-1],[-53,15],[-24,15],[6,33],[30,32],[-9,33],[-22,33],[6,37],[-55,40]],
+  motion: [[-12,2],[-3,2],[14,2],[37,2],[5,3],[-3,2],[-20,11],[-7,15],[-7,10],[0,0],[1,11],[9,10],[4,31],[-8,28],[-3,0],[8,28],[10,27],[12,31],[-7,27],[36,27],[28,27],[39,27],[44,28],[21,27]],
+  ground: [[-10,1],[-11,1],[8,1],[-1,1],[-12,1],[-10,1],[-10,1],[8,1],[20,1],[21,1],[16,1],[-9,1],[3,1],[28,1],[43,1],[48,0],[36,1],[3,1],[-10,1],[-7,1],[-2,1],[12,1],[18,1],[-11,1]],
+  air: [[-2,13],[-2,14],[-3,16],[-5,19],[-19,13],[1,13],[-5,12],[1,22],[-14,12],[-16,9],[-10,10],[8,11],[0,18],[6,14],[4,17],[3,20],[12,16],[6,17],[4,34],[12,27],[2,27],[26,32],[20,29],[10,34]],
+  specials: [[-40,0],[-26,0],[-22,0],[8,0],[41,0],[33,0],[-37,0],[-17,0],[11,0],[26,0],[12,0],[27,0],[-41,36],[-24,36],[-7,50],[45,35],[43,27],[26,26],[-38,54],[-21,73],[-4,48],[-19,56],[-3,51],[31,48]],
+  attacks: [[2,9],[-2,10],[2,10],[3,10],[-8,10],[1,10],[-4,10],[-7,10],[1,10],[-1,10],[-6,9],[4,9],[-2,10],[3,10],[27,10],[24,10],[10,10],[4,10],[-12,10],[2,10],[3,10],[31,10],[31,10],[6,10]],
+  combat: [[3,9],[9,9],[12,9],[-5,9],[-5,9],[3,9],[-1,10],[27,10],[20,10],[-13,10],[-18,10],[-3,10],[-6,19],[-8,19],[-10,19],[-9,21],[1,19],[2,19],[-4,28],[4,28],[7,28],[16,29],[22,28],[1,28]],
+  rival: [[-14,0],[-10,0],[-22,0],[-29,0],[-24,0],[5,19],[-16,0],[-11,0],[-23,0],[-20,0],[-35,0],[-17,0],[-3,2],[-17,4],[-16,3],[-46,9],[-35,2],[-12,3],[6,11],[-43,11],[-38,10],[-14,10],[-15,11],[18,61]],
+  rivalMotion: [[-13,1],[-11,1],[-6,1],[-11,1],[-7,1],[-10,1],[19,1],[24,1],[31,1],[19,1],[20,1],[23,1],[24,1],[7,1],[12,1],[19,1],[0,1],[9,1],[-8,1],[-6,1],[14,0],[16,1],[-10,1],[-7,0]],
+  bruiser: [[-2,0],[7,0],[7,0],[23,0],[8,0],[2,2],[-4,0],[0,0],[17,0],[1,11],[-27,12],[-20,11],[14,0],[12,0],[24,0],[18,0],[-31,16],[-17,16],[10,34],[4,33],[-16,34],[-5,34],[17,38],[11,41]],
 };
 
 function setPoseFrame(pose, row, phase, loop = false) {
@@ -261,7 +261,7 @@ function makeFighter(side, opponent = OPPONENTS[0]) {
     speed: (isPlayer ? 255 : 235 * opponent.speed) * (isPlayer ? 1 : conf.ai),
     damageScale: isPlayer ? 1 : opponent.damage * conf.enemyDamage,
     guardScale: isPlayer ? 1 : opponent.guard * conf.guard,
-    aggression: isPlayer ? 0 : opponent.aggression,
+    aggression: isPlayer ? 0 : opponent.aggression, plan: isPlayer ? 'player' : opponent.plan,
     action: null, queued: null, hitstun: 0, hitstunMax: 0, blockstun: 0, inv: 0, dash: 0, dashDir: 0, dashMax: 0, running: false, evade: 0, evadeDir: 0, moveVx: 0,
     knockdown: 0, wakeup: 0, landing: 0, groundImpact: 0, throwTech: 0, flash: 0, hitLow: false, jumpKind: '', jumpStarted: 0,
     blocking: false, crouching: false, guardLow: false, onGround: true, ko: false,
@@ -336,6 +336,7 @@ function startRound(first = false) {
   Game.comboTimer = 0;
   if (!Game.word || first) nextWord();
   Game.banner = { text: Game.round % 5 === 0 ? 'BOSS ROUND' : ARENAS[Game.stage].name, timer: 1.4, color: Game.round % 5 === 0 ? '#ff6b62' : '#ffe17e' };
+  showFeedback(opponent.intro);
   if (window.ChipMusic) ChipMusic.play('fighter-loop');
   FurySound.play('round');
   updateHud();
@@ -662,7 +663,7 @@ function updateAI(dt) {
     else { e.ai.blockFor = .24; e.blocking = true; }
     return;
   }
-  const preferred = e.atlas === 'bruiser' ? 82 : 118;
+  const preferred = { rush: 92, grappler: 68, counter: 142, pressure: 78 }[e.plan] || 110;
   if (distance > preferred + 115) {
     if (e.ai.attackCd <= 0 && e.power >= 100 && roll < .045 * conf.ai) commit('super', reaction * .65);
     else if (e.ai.attackCd <= 0 && roll < .24 * e.aggression) commit(e.power >= 50 && roll < .08 ? 'exFireball' : 'fireball');
@@ -676,7 +677,7 @@ function updateAI(dt) {
     else { e.intent = e.facing; e.ai.moveFor = rand(.16, .36); }
     return;
   }
-  if (distance < 68 && p.blocking && e.ai.attackCd <= 0 && roll < .42) commit('throw', reaction * .8);
+  if (distance < 76 && p.blocking && e.ai.attackCd <= 0 && roll < (e.plan === 'grappler' ? .72 : .42)) commit('throw', reaction * .8);
   else if (p.hitstun > .06 && e.ai.attackCd <= 0) commit(roll < .58 ? 'lightPunch' : roll < .82 ? 'heavyPunch' : 'heavyKick', reaction * .38);
   else if (e.ai.attackCd <= 0 && roll < .48 + e.aggression * .2) {
     if (roll < .16) { e.crouching = true; commit('lightKick'); }
@@ -764,7 +765,7 @@ function updateFighter(fighter, opponent, dt) {
     }
     if (action.spec.projectile && !action.spawned && action.t >= action.spec.active) {
       action.spawned = true;
-      Game.projectiles.push({ owner: fighter, x: fighter.x + fighter.facing * 48, y: fighter.y - (W < 560 ? 90 : 116), vx: fighter.facing * (action.spec.projectileSpeed || 410), life: 2.2, spec: action.spec, hit: false, radius: action.spec.super ? 42 : action.spec.ex ? 29 : 22 });
+      Game.projectiles.push({ owner: fighter, x: fighter.x + fighter.facing * 48, y: fighter.y - (W < 560 ? 90 : 116), vx: fighter.facing * (action.spec.projectileSpeed || 410), life: 2.2, age: 0, spec: action.spec, hit: false, radius: action.spec.super ? 42 : action.spec.ex ? 29 : 22 });
       burst(fighter.x + fighter.facing * 42, fighter.y - 112, fighter.side === 'player' ? '#6be4ff' : '#ff6f9d', 11, .7);
       FurySound.play(action.spec.super ? 'super' : 'projectile', fighter.x / W * 2 - 1);
     } else if (!action.spec.projectile && !action.hit && action.t >= action.spec.active && action.t <= activeEnd(action.spec)) {
@@ -1008,6 +1009,7 @@ function updateProjectiles(dt) {
     const p = Game.projectiles[i];
     p.prevX = p.x; p.prevY = p.y;
     p.x += p.vx * dt;
+    p.age = (p.age || 0) + dt;
     p.life -= dt;
     const clash = Game.projectiles.findIndex((other, index) => index !== i && other.owner !== p.owner && Math.abs(other.x - p.x) < (other.radius || 22) + (p.radius || 22));
     if (clash >= 0) {
@@ -1331,32 +1333,24 @@ function fighterVisual(fighter) {
         setPoseFrame(pose, 3, 2 + clamp(impact, 0, 1));
       } else setPoseFrame(pose, 3, fighter.vy < 0 ? 0 : 1, false);
     } else { pose.frame = 23; pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.dy = fighter.onGround ? 7 : 0;
   } else if (fighter.wakeup > 0) {
     if (hero) {
       pose.sheet = 'specials'; pose.fallbackFrame = fighter.wakeup > .18 ? 23 : 4;
       setPoseFrame(pose, 3, 3 + clamp((.3 - fighter.wakeup) / .3, 0, 1) * 2);
     } else { pose.frame = fighter.wakeup > .18 ? 23 : fighter.wakeup > .08 ? 4 : 0; pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.dy = fighter.wakeup > .18 ? 7 : 1;
   } else if (fighter.hitstun > 0) {
     if (hero) {
       pose.sheet = 'combat'; pose.fallbackFrame = fighter.hitLow ? 22 : 21;
       const progress = 1 - fighter.hitstun / Math.max(STEP, fighter.hitstunMax || fighter.hitstun);
       setPoseFrame(pose, 2, fighter.hitLow ? 3 + progress * 2 : progress * 5);
     } else { delete pose.sheet; pose.frame = fighter.hitLow ? 22 : 21; pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.sx = .97; pose.sy = 1.025;
   } else if (fighter.blocking) {
     if (hero) { pose.sheet = 'motion'; pose.fallbackFrame = 20; setPoseFrame(pose, 3, fighter.crouching ? 4 : 2, false); }
     else { pose.frame = 20; pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.dx = -fighter.facing * 2;
-    pose.sx = .985; pose.sy = 1.012;
   } else if (fighter.evade > 0) {
     const progress = 1 - fighter.evade / .42;
     if (hero) { pose.sheet = 'specials'; pose.fallbackFrame = progress < .52 ? 4 : 3; setPoseFrame(pose, 2, progress * 5); }
     else { pose.frame = progress < .52 ? 4 : 3; pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.rotate = -fighter.evadeDir * Math.sin(progress * Math.PI) * .08;
-    pose.dy = Math.sin(progress * Math.PI) * 5;
-    pose.sx = 1.025; pose.sy = .975;
   } else if (fighter.action) {
     const action = fighter.action, spec = action.spec;
     const contactEnd = activeEnd(spec);
@@ -1380,39 +1374,20 @@ function fighterVisual(fighter) {
       pose.nextFrame = undefined;
       pose.frameMix = 0;
     }
-    if (action.t < spec.start) {
-      const startup = clamp(action.t / Math.max(.001, spec.start), 0, 1);
-      pose.dx = -fighter.facing * easeOut(startup) * (spec.heavy ? 6 : 3);
-      pose.rotate = -fighter.facing * Math.sin(startup * Math.PI) * (spec.heavy ? .022 : .012);
-    } else if (action.t <= contactEnd) {
-      const contact = clamp((action.t - spec.start) / Math.max(.001, contactEnd - spec.start), 0, 1);
-      pose.dx = fighter.facing * easeOut(contact) * (spec.heavy ? 7 : 4);
-      pose.sx *= 1 + Math.sin(contact * Math.PI) * (spec.heavy ? .015 : .008);
-    } else {
-      const recovery = clamp((action.t - contactEnd) / Math.max(.001, spec.end - contactEnd), 0, 1);
-      pose.dx = fighter.facing * (1 - easeOut(recovery)) * (spec.heavy ? 5 : 2);
-      pose.rotate = fighter.facing * Math.sin(recovery * Math.PI) * .01;
-    }
-    if (action.name === 'uppercut' || action.name === 'exUppercut') pose.rotate += fighter.facing * .025;
-    if (action.name === 'sweep') { pose.dy = 5; pose.sx = 1.025; pose.sy = .98; }
   } else if (fighter.crouching) {
     if (fullMotion) { pose.sheet = 'motion'; pose.fallbackFrame = 4; setPoseFrame(pose, 3, hero ? 3 : 2 + (Game.time * 4 % 2), false); }
     else { pose.frame = 4; pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.dy = 2;
   } else if (fighter.landing > 0) {
     if (fullMotion) { pose.sheet = 'motion'; pose.fallbackFrame = 4; setPoseFrame(pose, hero ? 2 : 3, hero ? 5 : 4 + clamp(1 - fighter.landing / F(4), 0, 1), false); }
     else { pose.frame = 4; pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.dy = 2 + fighter.landing / F(4) * 2; pose.sx = 1.012; pose.sy = .988;
   } else if (!fighter.onGround) {
     if (fullMotion) {
       pose.sheet = 'motion'; pose.fallbackFrame = 5;
       setPoseFrame(pose, 2, (hero ? 1 : 0) + clamp((fighter.vy + 420) / 840, 0, 1) * (hero ? 3 : 5));
     } else { pose.frame = 5; pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.rotate = fighter.facing * clamp(fighter.vy / 2400, -.045, .055);
   } else if (fighter.dash > 0 || Math.abs(fighter.moveVx) > 18) {
     if (fullMotion) { pose.sheet = 'motion'; pose.fallbackFrame = 2 + Math.floor(fighter.runCycle % 2); setPoseFrame(pose, 1, fighter.runCycle % 6, true); }
     else { pose.frame = 2 + Math.floor(fighter.runCycle % 2); pose.nextFrame = undefined; pose.frameMix = 0; }
-    pose.rotate = fighter.facing * clamp(fighter.moveVx / 12000, -.018, .018);
   }
   return pose;
 }
@@ -1460,7 +1435,7 @@ function drawFighter(fighter) {
     const flashFilter = fighter.flash > 0 ? ' brightness(1.5) saturate(.82) contrast(1.06)' : '';
     ctx.filter = ((fighter.filter === 'none' ? '' : fighter.filter) + flashFilter).trim() || 'none';
     if (image.complete && image.naturalWidth) {
-      const anchorKey = pose.sheet === 'motion' && fighter.atlas === 'rival' ? 'rivalMotion' : pose.sheet || fighter.atlas;
+      const anchorKey = pose.sheet === 'motion' && fighter.atlas === 'rival' ? 'rivalMotion' : pose.sheet || (fighter.atlas === 'hero' ? 'motion' : fighter.atlas);
       const anchors = FRAME_ANCHORS[anchorKey] || [];
       paintSpriteCell(image, sourceW, sourceH, drawW, drawH, pose.frame, anchors[pose.frame] || [0, 0], alpha * flicker);
     } else {
@@ -1469,8 +1444,6 @@ function drawFighter(fighter) {
     }
     ctx.restore();
   };
-  if (fighter.dash > 0) paint(-fighter.dashDir * 22, .18);
-  if (fighter.evade > 0) paint(-fighter.evadeDir * 26, .22);
   if (fighter.maxMode > 0 && (fighter.action || Math.abs(fighter.moveVx) > 80)) paint(-fighter.facing * 13, .12);
   paint(0, 1);
   ctx.restore();
@@ -1480,13 +1453,14 @@ function drawProjectiles() {
   for (const p of Game.projectiles) {
     const color = p.owner === Game.player ? '#66e7ff' : '#ff6eaa';
     const x = lerp(p.prevX ?? p.x, p.x, renderAlpha), y = lerp(p.prevY ?? p.y, p.y, renderAlpha);
-    ctx.save(); ctx.translate(x, y); ctx.shadowColor = color; ctx.shadowBlur = 16;
+    const direction = Math.sign(p.vx) || 1;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin((p.age || 0) * 21) * .08); ctx.shadowColor = color; ctx.shadowBlur = 16;
     const radius = p.radius || 22;
     const gradient = ctx.createRadialGradient(0, 0, 2, 0, 0, radius);
     gradient.addColorStop(0, '#fff'); gradient.addColorStop(.28, color); gradient.addColorStop(1, 'rgba(40,80,255,0)');
-    ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(0, 0, radius, 0, TAU); ctx.fill();
+    ctx.fillStyle = gradient; ctx.beginPath(); ctx.ellipse(0, 0, radius * 1.18, radius * .82, 0, 0, TAU); ctx.fill();
     ctx.strokeStyle = color; ctx.lineWidth = 3;
-    for (let i = 0; i < (p.spec.super ? 6 : 3); i++) { ctx.beginPath(); ctx.moveTo(-p.owner.facing * (radius + i * 9), (i - (p.spec.super ? 2.5 : 1)) * 5); ctx.lineTo(0, 0); ctx.stroke(); }
+    for (let i = 0; i < (p.spec.super ? 6 : 3); i++) { ctx.beginPath(); ctx.moveTo(-direction * (radius + i * 9), (i - (p.spec.super ? 2.5 : 1)) * 5); ctx.lineTo(direction * radius * .35, 0); ctx.stroke(); }
     if (p.spec.super) {
       ctx.globalAlpha = .55; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(0, 0, radius * (1.15 + Math.sin(Game.time * 18) * .1), 0, TAU); ctx.stroke();
@@ -1779,6 +1753,9 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.player.action = { name: 'closeHK', spec: MOVES.closeHK, t: MOVES.closeHK.end - F(2), hit: false, spawned: false };
       const recoveryPose = fighterVisual(Game.player);
       if (GROUND_ROWS.overhead !== 3 || AIR_ROWS.airHK !== 3 || recoveryPose.sheet !== 'specials' || recoveryPose.frame % 6 !== 5) throw new Error('attack frame regression');
+      if (recoveryPose.dx || recoveryPose.dy || recoveryPose.rotate || recoveryPose.sx !== 1 || recoveryPose.sy !== 1) throw new Error('whole-sprite transform regression');
+      if (['ground', 'air', 'rivalMotion'].some((sheet) => new Set(FRAME_ANCHORS[sheet].map(String)).size < 4)) throw new Error('sprite roots lost per-frame registration');
+      if (new Set(OPPONENTS.map((opponent) => opponent.plan)).size !== OPPONENTS.length) throw new Error('opponent combat plans collapsed');
       Game.player.action = { name: 'crouchLK', spec: MOVES.crouchLK, t: MOVES.crouchLK.active, hit: false, spawned: false };
       const lowPose = fighterVisual(Game.player);
       Game.player.action = { name: 'airHK', spec: MOVES.airHK, t: MOVES.airHK.active, hit: false, spawned: false };
