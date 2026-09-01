@@ -66,7 +66,10 @@ const STAGES = [
 ];
 
 const MISSION_LEVELS = [
-  { name: '第一关 · 曙光森林', biome: 0, bossName: '林地核心', music: 'ranger-stage', briefing: '潜入林地，夺回词核',
+  { name: '第一关 · 曙光森林', biome: 0, bossName: '林地核心', music: 'ranger-stage',
+    objective: '夺回被林地核心劫持的词核，恢复前线词库',
+    story: ['哨站失联：先抢空投武器，切断林地防线', '干扰信号减半，林地核心正在向守卫前庭撤退', '目标锁定：用已学单词击穿林地核心的记忆盾', '首枚词核回收，敌方信号逃向风蚀峡谷'],
+    themeWords: ['forest', 'tree', 'bridge', 'protect', 'brave', 'save', 'enemy', 'fight', 'leaf', 'mission', 'nature', 'wild', 'jungle', 'signal', 'supplies', 'target'],
     beats: [
       { tag: 'TEACH', name: '空投接敌', hint: '击落 S 补给；走高台直射，或引爆油桶清场', platforms: [[330, 86, 138]], foes: [['capsule', 230], ['barrel', 420], ['beetle', 486]], lock: true, drop: 'spread' },
       { tag: 'TEST', name: '壕沟空袭', hint: '越过壕沟，引爆油桶后处理俯冲无人机', gaps: [[330, 105]], platforms: [[505, 82, 118]], foes: [['beetle', 300], ['barrel', 485], ['drone', 575]], lock: true },
@@ -83,7 +86,10 @@ const MISSION_LEVELS = [
       { tag: 'RECOVERY', name: '守卫前庭', hint: '补充火力，准备首领战', foes: [['capsule', 455]], wordGate: true, checkpoint: true, drop: 'rapid' },
       { tag: 'BOSS', name: '林地核心', hint: '观察预兆，击破单词护盾', foes: [['boss', 520]], lock: true },
     ] },
-  { name: '第二关 · 风蚀峡谷', biome: 1, bossName: '峡谷暴君', music: 'ranger-boss', briefing: '穿越风眼，追击暴君',
+  { name: '第二关 · 风蚀峡谷', biome: 1, bossName: '峡谷暴君', music: 'ranger-stage',
+    objective: '穿越风眼追上暴君，阻止被夺词核离开峡谷',
+    story: ['暴君借强风撤退：利用上升气流抄近路', '风眼即将关闭，必须从断桥前截住运输队', '峡谷出口封锁：击破暴君，夺回第二枚词核', '峡谷信标复明，运输坐标指向雨中古城'],
+    themeWords: ['air', 'bridge', 'dangerous', 'fly', 'jump', 'mountain', 'weather', 'windy', 'danger', 'rise', 'rock', 'sand', 'storm', 'wind', 'pursue', 'resilience', 'route', 'sandstorm', 'survival', 'valley'],
     beats: [
       { tag: 'TEACH', name: '峡谷风口', hint: '上升气流可以托住跳跃', gaps: [[335, 100]], hazards: [['updraft', 505, 255, 112]], foes: [['beetle', 240]], lock: true },
       { tag: 'TEST', name: '落石走廊', hint: '落石往返巡逻，看准节奏通过', hazards: [['rock', 345, 0, 40]], foes: [['beetle', 180], ['leaper', 540]], lock: true },
@@ -98,7 +104,10 @@ const MISSION_LEVELS = [
       { tag: 'RECOVERY', name: '暴君前厅', hint: '最后补给，准备首领战', foes: [['capsule', 460]], wordGate: true, checkpoint: true, drop: 'shield' },
       { tag: 'BOSS', name: '峡谷暴君', hint: '落石+冲锋交替，保持移动', foes: [['boss', 520]], lock: true },
     ] },
-  { name: '第三关 · 雨中古城', biome: 2, bossName: '古城主宰', music: 'ranger-stage', briefing: '突入古城记忆中枢',
+  { name: '第三关 · 雨中古城', biome: 2, bossName: '古城主宰', music: 'ranger-stage',
+    objective: '潜入记忆中枢，阻止主宰清空已回收的单词',
+    story: ['古城正在清洗词库：借雨幕潜入湿滑石街', '记忆中枢过载，蒸汽与激光防线全部启动', '主宰接管中枢：守住已学单词并关闭清洗程序', '古城记忆恢复，最终控制源藏在月晶遗迹'],
+    themeWords: ['city', 'light', 'rain', 'rainy', 'street', 'water', 'ancient', 'building', 'history', 'lightning', 'storm', 'thunder', 'watchtower', 'wet', 'laser', 'megacity', 'night', 'restore', 'ruin', 'temple'],
     beats: [
       { tag: 'TEACH', name: '湿滑石街', hint: '水洼会打滑，提前刹车', hazards: [['puddle', 180, 0, 115], ['puddle', 475, 0, 130]], foes: [['beetle', 300]], lock: true },
       { tag: 'TEST', name: '蒸汽管廊', hint: '蒸汽有喷射节奏', platforms: [[180, 105, 145]], hazards: [['steam', 350, 0, 40], ['steam', 625, 0, 40]], foes: [['leaper', 480]], lock: true },
@@ -113,7 +122,10 @@ const MISSION_LEVELS = [
       { tag: 'RECOVERY', name: '主宰王庭', hint: '最终补给', foes: [['capsule', 450]], wordGate: true, checkpoint: true, drop: 'shield' },
       { tag: 'BOSS', name: '古城主宰', hint: '三阶段狂暴，护盾口令是关键', foes: [['boss', 520]], lock: true },
     ] },
-  { name: '第四关 · 月晶遗迹', biome: 3, bossName: '月晶守卫', music: 'ranger-boss', briefing: '突破月晶最终防线',
+  { name: '第四关 · 月晶遗迹', biome: 3, bossName: '月晶守卫', music: 'ranger-stage',
+    objective: '摧毁月晶控制源，完整解放被封锁的英语词库',
+    story: ['控制源升空：适应低重力，穿过月晶外环', '三枚词核已经共振，最终防线正在重写重力', '月晶守卫现身：用全部记忆口令终止封锁', '控制源关闭，四枚词核让前线词库重新自由'],
+    themeWords: ['energy', 'future', 'high', 'jump', 'light', 'moon', 'sky', 'star', 'flight', 'gravity', 'interplanetary', 'planet', 'solar', 'spacecraft', 'alien', 'prism', 'relic', 'satellite', 'twilight'],
     beats: [
       { tag: 'TEACH', name: '低重力训练', hint: '月球重力下跳得更高更飘', gaps: [[320, 150]], foes: [['beetle', 500]], lock: true },
       { tag: 'TEST', name: '晶簧起跳', hint: '弹簧把你送上高台', gaps: [[300, 145]], hazards: [['spring', 238, 0, 50]], platforms: [[325, 132, 96]], foes: [['drone', 480]], lock: true },
@@ -245,6 +257,14 @@ function gameRandom() {
   return Game.rngState / 0x100000000;
 }
 
+function shuffleInPlace(list) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const pick = Math.floor(gameRandom() * (i + 1));
+    [list[i], list[pick]] = [list[pick], list[i]];
+  }
+  return list;
+}
+
 function resolveAimPose(source = input, player = Game.player) {
   const horizontal = Number(Boolean(source.right)) - Number(Boolean(source.left));
   const facing = horizontal || player.facing || 1;
@@ -352,9 +372,28 @@ function groundAt(x) {
   return chunk && !isGap(chunk, x) ? GROUND_Y : null;
 }
 
+function chunkHasCombatThreats(chunk) {
+  return Game.enemies.some((enemy) => !enemy.dead && enemy.type !== 'barrel' && enemy.type !== 'capsule' && enemy.chunkIndex === chunk.index);
+}
+
 function chunkHasThreats(chunk) {
   const openingLesson = Game.mode === 'mission' && Game.missionLevel === 0 && chunk.index === 0;
-  return Game.enemies.some((enemy) => !enemy.dead && enemy.type !== 'barrel' && (enemy.type !== 'capsule' || openingLesson) && enemy.chunkIndex === chunk.index);
+  return chunkHasCombatThreats(chunk) || openingLesson && Game.enemies.some((enemy) => !enemy.dead && enemy.type === 'capsule' && enemy.chunkIndex === chunk.index);
+}
+
+function challengeForBeat(beat) {
+  if (!beat || ['RECOVERY', 'WORD_GATE', 'BOSS'].includes(beat.tag)) return null;
+  const foes = (beat.foes || []).map(([type]) => type);
+  const hazards = (beat.hazards || []).map(([type]) => type);
+  if (foes.includes('barrel')) return { type: 'blast', label: '油桶连锁清场' };
+  if (beat.tag === 'CLIMAX') return { type: 'combo', label: '连续击破 ×3' };
+  if (beat.tag === 'TEACH' && (beat.gaps || []).length) return { type: 'air', label: '腾空击破' };
+  if (hazards.some((type) => type === 'spring' || type === 'updraft')) return { type: 'air', label: '腾空击破' };
+  if (foes.includes('guardian')) return { type: 'shield', label: '破盾反击' };
+  if (foes.includes('leaper')) return { type: 'stomp', label: '踩踏反击' };
+  if (hazards.length) return { type: 'untouched', label: '无伤穿越' };
+  if (beat.tag === 'TEST' || beat.tag === 'TWIST') return { type: 'speed', label: '10 秒肃清' };
+  return null;
 }
 
 function platformTop(platform) {
@@ -399,7 +438,9 @@ function generateMissionChunk(index, start) {
     index, start, biome: MISSION_LEVELS[Game.missionLevel].biome, encounter: beat.name, tag: beat.tag, hint: beat.hint,
     lock: Boolean(beat.lock && (beat.tag === 'CLIMAX' || beat.tag === 'BOSS')),
     wordGate: Boolean(beat.wordGate), checkpoint: Boolean(beat.checkpoint), reinforced: false, reinforcementCount: 0,
-    gateUsed: false, cleared: false, gaps: [], platforms: [], hazards: [], decor: [],
+    gateUsed: false, cleared: false, challenge: challengeForBeat(beat), challengeRewarded: false,
+    enteredFrame: -1, hpAtEntry: 0, tactics: { blast: false, air: false, shield: false, stomp: false },
+    gaps: [], platforms: [], hazards: [], decor: [],
   };
   for (const [offset, width] of beat.gaps || []) chunk.gaps.push({ x: start + offset, w: width });
   for (const [offset, rise, width] of beat.platforms || []) chunk.platforms.push({ x: start + offset, y: GROUND_Y - rise, w: width, move: 0, phase: 0 });
@@ -411,7 +452,6 @@ function generateMissionChunk(index, start) {
   populateDecor(chunk, (beat.foes || []).map(([, offset]) => start + offset));
   Game.chunks.push(chunk);
   Game.generatedTo += CHUNK_W;
-  maybeSwitchBossMusic(chunk);
   for (const [type, offset, rise = 0] of beat.foes || []) {
     const enemy = makeEnemy(type, start + offset, index, GROUND_Y - rise);
     if (type === 'capsule') enemy.dropType = beat.drop || 'shield';
@@ -419,7 +459,7 @@ function generateMissionChunk(index, start) {
   }
 }
 
-// 任务模式进入 Boss 节拍时切换战斗曲（在 chunk 生成时检测）
+// 地图会提前生成数屏；音乐必须等玩家真正进入首领区再切换。
 function maybeSwitchBossMusic(chunk) {
   if (!window.ChipMusic || Game.mode !== 'mission') return;
   if (chunk.tag === 'BOSS' && ChipMusic.playing !== 'ranger-boss') ChipMusic.play('ranger-boss');
@@ -559,11 +599,10 @@ function findSafeSpot(candidate) {
 function buildSessionWords() {
   const pool = wordBank().slice();
   const count = Math.min(8, pool.length);
-  for (let i = 0; i < count; i++) {
-    const pick = i + Math.floor(gameRandom() * (pool.length - i));
-    [pool[i], pool[pick]] = [pool[pick], pool[i]];
-  }
-  return pool.slice(0, count);
+  const theme = new Set(Game.mode === 'mission' ? MISSION_LEVELS[Game.missionLevel].themeWords : []);
+  const themed = shuffleInPlace(pool.filter((word) => theme.has(word.en)));
+  const rest = shuffleInPlace(pool.filter((word) => !theme.has(word.en)));
+  return themed.slice(0, Math.min(4, count)).concat(rest).slice(0, count);
 }
 
 function nextWord(initial) {
@@ -626,8 +665,7 @@ function startGame(mode = Game.mode) {
     ArcadeAudio.start();
     ArcadeAudio.stopBgm();   // 停掉旧ogg循环, 避免与ChipMusic双音乐
   }
-  // 芯片配乐：任务=丛林行动曲
-  if (window.ChipMusic) ChipMusic.play('ranger-stage');
+  if (window.ChipMusic) ChipMusic.play(MISSION_LEVELS[Game.missionLevel].music);
   updateHud();
   accumulator = 0;
   ensureLoop();
@@ -686,7 +724,7 @@ function finishRun(victory) {
   const lvName = (MISSION_LEVELS[Game.missionLevel] || MISSION_LEVELS[0]).name;
   if (victory) {
     const allClear = Game.missionLevel >= MISSION_LEVELS.length - 1;
-    $('over-kicker').textContent = allClear ? '全线告捷 · 三关通关' : lvName + ' 完成';
+    $('over-kicker').textContent = allClear ? '全线告捷 · 四关通关' : lvName + ' 完成';
     $('over-title').textContent = allClear ? '你是单词突击之王！' : MISSION_LEVELS[Game.missionLevel].bossName + ' 已被击败';
   } else {
     $('over-kicker').textContent = lvName;
@@ -736,7 +774,7 @@ function advanceLevel() {
   ensureWorld(VIEW_W * 3);
   nextWord(false);
   Game.state = 'playing';
-  Game.stageBanner = { tag: 'TEST', name: MISSION_LEVELS[nextLv].name, hint: '分数延续 · 士气如虹', timer: 1.8 };
+  Game.stageBanner = { tag: 'TEST', name: MISSION_LEVELS[nextLv].name, hint: MISSION_LEVELS[nextLv].objective, timer: 1.8 };
   if (window.ChipMusic) ChipMusic.play(MISSION_LEVELS[nextLv].music);
   updateHud();
 }
@@ -830,6 +868,8 @@ function detonateBarrel(barrel) {
   Game.shake = Math.max(Game.shake, .12);
   Game.shakeStrength = Math.max(Game.shakeStrength, 4);
   burst(cx, cy, '#ffb34f', 34);
+  const chunk = Game.chunks.find((item) => item.index === barrel.chunkIndex);
+  const hadReward = Boolean(chunk?.challengeRewarded);
   for (const enemy of Game.enemies) {
     if (enemy.dead || enemy === barrel || Math.hypot(enemy.x + enemy.w / 2 - cx, enemy.y + enemy.h / 2 - cy) > 132) continue;
     if (enemy.type === 'barrel') detonateBarrel(enemy);
@@ -841,9 +881,29 @@ function detonateBarrel(barrel) {
   }
   const player = Game.player;
   if (Math.hypot(player.x + player.w / 2 - cx, player.y + player.h / 2 - cy) < 72) hurt();
-  showFeedback('连锁爆破 · 清场奖励 +220');
+  if (!chunk?.challengeRewarded || hadReward) showFeedback('连锁爆破 · 清场奖励 +220');
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .28, .68);
   updateHud();
+}
+
+function resolveEncounter(chunk) {
+  if (Game.mode !== 'mission' || !chunk || chunk.cleared || chunkHasCombatThreats(chunk)) return false;
+  chunk.cleared = true;
+  if (chunk.tag === 'BOSS' || !chunk.challenge) return false;
+  const elapsed = Game.logicFrame - chunk.enteredFrame;
+  const passed = chunk.challenge.type === 'combo' ? Game.player.combo >= 3
+    : chunk.challenge.type === 'untouched' ? chunk.enteredFrame >= 0 && Game.hp === chunk.hpAtEntry
+    : chunk.challenge.type === 'speed' ? chunk.enteredFrame >= 0 && elapsed <= secondsToFrames(10)
+    : Boolean(chunk.tactics[chunk.challenge.type]);
+  if (!passed) {
+    if (chunk.lock) showFeedback('封锁解除：' + chunk.encounter);
+    return false;
+  }
+  chunk.challengeRewarded = true;
+  Game.score += 300;
+  Game.player.overdrive = Math.max(Game.player.overdrive, 3);
+  showFeedback('战术达成 · ' + chunk.challenge.label + ' · 火力爆发');
+  return true;
 }
 
 function defeatEnemy(enemy, source) {
@@ -862,6 +922,13 @@ function defeatEnemy(enemy, source) {
     return;
   }
   const player = Game.player;
+  const chunk = Game.chunks.find((item) => item.index === enemy.chunkIndex);
+  if (chunk?.tactics) {
+    if (source === 'barrel') chunk.tactics.blast = true;
+    if (source === 'stomp') chunk.tactics.stomp = chunk.tactics.air = true;
+    if (source === 'shot' && !player.onGround) chunk.tactics.air = true;
+    if (source === 'shot' && enemy.type === 'guardian') chunk.tactics.shield = true;
+  }
   player.combo = player.comboTimer > 0 ? Math.min(9, player.combo + 1) : 1;
   player.comboTimer = 2.4;
   const base = enemy.type === 'boss' ? 1500 : enemy.type === 'guardian' ? 260 : 130;
@@ -876,8 +943,8 @@ function defeatEnemy(enemy, source) {
       const isLast = Game.missionLevel >= MISSION_LEVELS.length - 1;
       Game.victoryTimer = 1.6;
       Game.victoryNextLevel = !isLast;
-      showFeedback(isLast ? MISSION_LEVELS[Game.missionLevel].bossName + ' 崩解，全线告捷！'
-                          : MISSION_LEVELS[Game.missionLevel].bossName + ' 已败！进军下一关');
+      const story = MISSION_LEVELS[Game.missionLevel].story[3];
+      showFeedback(isLast ? story : story + ' · 进军下一关');
       if (window.ChipMusic) ChipMusic.play('victory');
     } else {
       dropPowerup(enemy, 'shield');
@@ -886,11 +953,7 @@ function defeatEnemy(enemy, source) {
   } else if (player.combo >= 3) {
     showFeedback('连续击破 ×' + player.combo);
   }
-  const chunk = Game.chunks.find((item) => item.index === enemy.chunkIndex);
-  if (chunk?.lock && !chunkHasThreats(chunk)) {
-    chunk.cleared = true;
-    if (enemy.type !== 'boss') showFeedback('封锁解除：' + chunk.encounter);
-  }
+  resolveEncounter(chunk);
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', enemy.type === 'boss' ? .38 : .14, enemy.type === 'boss' ? .62 : 1.35);
   updateHud();
 }
@@ -1005,10 +1068,7 @@ function openWordGate(chunk) {
   if (!word) return false;
   const distractors = Game.sessionWords.map((item) => item.en.toUpperCase()).filter((item) => item !== word.en).slice(0, 2);
   const options = [word.en, ...distractors];
-  for (let i = options.length - 1; i > 0; i--) {
-    const pick = Math.floor(gameRandom() * (i + 1));
-    [options[i], options[pick]] = [options[pick], options[i]];
-  }
+  shuffleInPlace(options);
   Game.state = 'word-gate';
   Game.wordGate = { word, chunkIndex: chunk.index, options, startedAt: performance.now() };
   resetInput();
@@ -1073,7 +1133,10 @@ function updateHud() {
   if (word) {
     $('word-meaning').textContent = word.zh;
     $('word-progress').textContent = [...word.en].map((letter, index) => index < word.progress ? letter : '_').join(' ');
-    if (Game.feedbackTimer <= 0) $('feedback').textContent = Game.mode === 'mission' ? '观察预兆 · 选择解法 · 记住单词' : '按顺序收集字母 · 射击清理道路';
+    if (Game.feedbackTimer <= 0) {
+      const tactical = Game.mode === 'mission' && chunk?.challenge && !chunk.cleared ? '战术 · ' + chunk.challenge.label : '';
+      $('feedback').textContent = tactical || (Game.mode === 'mission' ? '任务 · ' + MISSION_LEVELS[Game.missionLevel].objective : '按顺序收集字母 · 射击清理道路');
+    }
   }
 }
 
@@ -1288,10 +1351,7 @@ function startBossShield(boss) {
   const entries = indices.map((item, order) => ({ letter: item.letter, order }));
   const distractor = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find((letter) => !letters.includes(letter));
   entries.push({ letter: distractor, order: -1 });
-  for (let i = entries.length - 1; i > 0; i--) {
-    const pick = Math.floor(gameRandom() * (i + 1));
-    [entries[i], entries[pick]] = [entries[pick], entries[i]];
-  }
+  shuffleInPlace(entries);
   const positions = [{ ox: -126, oy: -62 }, { ox: -44, oy: -112 }, { ox: 44, oy: -112 }, { ox: 126, oy: -62 }];
   Game.bossWord = { en: word.en, zh: word.zh };
   Game.bossNodes = entries.map((entry, index) => ({ ...entry, ...positions[index], active: true, phase: index * 1.7 }));
@@ -1711,11 +1771,22 @@ function update(dt) {
   const entered = chunkAt(Game.player.x + Game.player.w / 2);
   if (entered && entered.index !== Game.enteredChunk) {
     Game.enteredChunk = entered.index;
-    const briefing = Game.mode === 'mission' && entered.index === 0 ? MISSION_LEVELS[Game.missionLevel].briefing + ' · ' : '';
-    Game.stageBanner = { tag: entered.tag || 'TEST', name: entered.encounter, hint: briefing + (entered.hint || ''), timer: briefing ? 2.8 : 1.75 };
+    entered.enteredFrame = Game.logicFrame;
+    entered.hpAtEntry = Game.hp;
+    maybeSwitchBossMusic(entered);
+    const mission = Game.mode === 'mission' ? MISSION_LEVELS[Game.missionLevel] : null;
+    const challenge = entered.challenge ? ' · 战术：' + entered.challenge.label : '';
+    const important = entered.index === 0 || ['TEACH', 'TWIST', 'CLIMAX', 'BOSS'].includes(entered.tag);
+    Game.stageBanner = important ? { tag: entered.tag || 'TEST', name: entered.encounter, hint: (entered.hint || '') + challenge, timer: entered.index === 0 ? 2.4 : 1.6 } : null;
     if (entered.checkpoint) Game.checkpoint = entered.start + 110;
+    const midpoint = Math.floor(MISSION_BEATS.length / 2);
+    const story = !mission ? '' : entered.index === 0 ? mission.story[0] : entered.index === midpoint ? mission.story[1] : entered.tag === 'BOSS' ? mission.story[2] : '';
     if (entered.wordGate && !entered.gateUsed) {
       entered.gateUsed = openWordGate(entered);
+    } else if (story) {
+      showFeedback(story);
+    } else if (entered.challenge) {
+      showFeedback('战术挑战：' + entered.challenge.label);
     } else if (entered.index > 0) {
       showFeedback('战况：' + entered.encounter);
     }
@@ -2364,7 +2435,7 @@ function drawBossStatus() {
   ctx.save();
   ctx.fillStyle = 'rgba(8,24,21,.86)'; ctx.strokeStyle = 'rgba(239,112,78,.65)';
   ctx.beginPath(); ctx.roundRect(x, y, width, 40, 11); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#e8daca'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('林地核心 · 阶段 ' + boss.bossPhase, x + 12, y + 16);
+  ctx.fillStyle = '#e8daca'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(MISSION_LEVELS[Game.missionLevel].bossName + ' · 阶段 ' + boss.bossPhase, x + 12, y + 16);
   ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.roundRect(x + 12, y + 25, width - 24, 5, 3); ctx.fill();
   ctx.fillStyle = boss.bossPhase === 2 ? '#f4d37a' : '#ef704e'; ctx.beginPath(); ctx.roundRect(x + 12, y + 25, (width - 24) * boss.hp / boss.maxHp, 5, 3); ctx.fill();
   if (boss.bossPhase === 2 && Game.bossWord) {
@@ -2510,14 +2581,19 @@ document.querySelectorAll('.difficulty').forEach((button) => button.addEventList
   Game.difficulty = button.dataset.difficulty;
 }));
 // 关卡选择(解锁制: 最高到达关+1可选; 也允许自由选, 单机游戏不必卡)
-document.querySelectorAll('.level-btn').forEach((b) => b.addEventListener('click', () => {
+function selectMissionLevel(level) {
+  Game.selectedLevel = clamp(level, 0, MISSION_LEVELS.length - 1);
+  const mission = MISSION_LEVELS[Game.selectedLevel];
   document.querySelectorAll('.level-btn').forEach((x) => x.classList.remove('selected'));
-  b.classList.add('selected');
-  Game.selectedLevel = Number(b.dataset.level);
-  const names = ['曙光森林', '风蚀峡谷', '雨中古城', '月晶遗迹'];
-  $('start-btn').textContent = '开始任务 · ' + names[Game.selectedLevel];
-}));
-Game.selectedLevel = 0;
+  document.querySelector('.level-btn[data-level="' + Game.selectedLevel + '"]').classList.add('selected');
+  $('menu-mission').textContent = 'WORD RANGER · MISSION 0' + (Game.selectedLevel + 1);
+  $('mission-brief').textContent = mission.objective;
+  $('start-btn').textContent = '开始任务 · ' + mission.name.split(' · ')[1];
+  document.title = '单词突击队 · ' + mission.name.split(' · ')[1];
+}
+
+document.querySelectorAll('.level-btn').forEach((button) => button.addEventListener('click', () => selectMissionLevel(Number(button.dataset.level))));
+selectMissionLevel(0);
 
 $('start-btn').addEventListener('click', () => startGame('mission'));
 $('arcade-start-btn').addEventListener('click', () => startGame('arcade'));
@@ -2586,6 +2662,9 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       startGame('mission');
       if (Game.mode !== 'mission' || FIXED_STEP !== 1 / 60) throw new Error('mission or fixed-step setup failed');
       if (Game.logicFrame !== 0 || Game.player.action !== 'idle' || Game.player.animFrame !== 0) throw new Error('ROM frame state was not reset');
+      if (MISSION_LEVELS.some((level) => !level.objective || level.story.length !== 4 || level.themeWords.length < 8)) throw new Error('mission story arc is incomplete');
+      const theme = new Set(MISSION_LEVELS[0].themeWords);
+      if (Game.sessionWords.filter((word) => theme.has(word.en)).length < 4) throw new Error('mission vocabulary ignored the stage theme');
       const selectedMission = Game.missionLevel;
       for (let level = 0; level < MISSION_LEVELS.length; level++) {
         Game.missionLevel = level;
@@ -2607,6 +2686,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       if (chunkHasThreats({ index: -1 })) throw new Error('optional barrel blocked encounter gate');
       lockProbe.dead = true;
       ensureWorld(CHUNK_W * MISSION_BEATS.length, Infinity);
+      if (window.ChipMusic && ChipMusic.playing === 'ranger-boss') throw new Error('boss music started before entering the boss arena');
       const flowChunk = Game.chunks.find((chunk) => chunk.tag === 'COMBINE');
       const lockedTags = new Set(Game.chunks.filter((chunk) => chunk.lock).map((chunk) => chunk.tag));
       if (!flowChunk || flowChunk.lock || !lockedTags.has('CLIMAX') || !lockedTags.has('BOSS')
@@ -2627,6 +2707,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.camera = savedCamera;
       detonateBarrel(openingBarrel);
       if (!openingTarget.dead) throw new Error('barrel chain reaction failed');
+      if (!Game.chunks[0].challengeRewarded || Game.player.overdrive < 3) throw new Error('authored tactical solution was not rewarded');
       Game.hitStop = Game.shake = 0;
       const startX = Game.player.x;
       input.right = true;
