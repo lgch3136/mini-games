@@ -15,6 +15,9 @@ const PLAYER_H = 59.8;
 const CROUCH_H = 30;
 const BULLET_SPEED = 660;
 const FIXED_STEP = 1 / 60;
+const LOGICAL_HEIGHT = 270;
+const PIXEL_GRID = VIEW_H / LOGICAL_HEIGHT;
+const RUN_FRAME_DISTANCE = 22;
 const CAMERA_LINE = 120 / 256;
 const RENDER_PIXEL_BUDGET = 520000;
 const ENEMY_ACTIVATION_MARGIN = 64;
@@ -43,6 +46,12 @@ const BIOMES = [
   { name: '风蚀峡谷', ground: '#3d2619', edge: '#f0b75d', weather: 'dust', gravity: 1450, traction: .9 },
   { name: '雨中古城', ground: '#0d2a30', edge: '#9bd8d0', weather: 'rain', gravity: 1500, traction: .46 },
   { name: '月晶遗迹', ground: '#111b31', edge: '#e7bd58', weather: 'glow', gravity: 840, traction: .82 },
+];
+const PIXEL_THEMES = [
+  { sky: '#6f9c85', far: '#476f5d', near: '#294a3d', sun: '#efd682', top: '#e3cf6f', rim: '#73924d', body: '#30472f', seam: '#1c3024' },
+  { sky: '#b77b56', far: '#875438', near: '#593725', sun: '#f1c66f', top: '#f0bc63', rim: '#a96836', body: '#633b25', seam: '#3d271e' },
+  { sky: '#527984', far: '#345963', near: '#203f49', sun: '#b7ded6', top: '#9cd8ce', rim: '#4d8584', body: '#24444b', seam: '#142e35' },
+  { sky: '#35496d', far: '#293b61', near: '#1a2948', sun: '#e8cf78', top: '#dec56e', rim: '#6578a0', body: '#283a62', seam: '#172442' },
 ];
 
 const STAGES = [
@@ -164,16 +173,10 @@ const ENEMY_SPECS = {
 
 const ASSETS = {};
 for (const [name, src] of Object.entries({
-  hero: 'assets/hero-fc-v3.png',
-  actions: 'assets/hero-actions-fc-v3.png',
-  enemies: 'assets/enemy-fc-v3.png',
-  biomes: 'assets/biomes-fc-v3.webp',
-  hazards: 'assets/hazard-fc-v3.png',
-  terrain0: 'assets/terrain-forest-fc-v3.webp',
-  terrain1: 'assets/terrain-canyon-fc-v3.webp',
-  terrain2: 'assets/terrain-city-fc-v3.webp',
-  terrain3: 'assets/terrain-crystal-fc-v3.webp',
-  decor: 'assets/decor-fc-v3.png',
+  hero: 'assets/hero-fc-v4.png',
+  actions: 'assets/hero-actions-fc-v4.png',
+  enemies: 'assets/enemy-fc-v4.png',
+  hazards: 'assets/hazard-fc-v4.png',
 })) {
   const image = new Image();
   image.src = src;
@@ -210,21 +213,10 @@ const HAZARD_SPRITES = {
   spring: { row: 1, column: 2, w: 70, h: 78, baseline: 459 / 512 },
 };
 
-// Generated terrain strips contain transparent staging space above the actual ledge.
-// Crop from the first opaque row so the art and collision surface share one baseline.
-const TERRAIN_CROPS = [
-  { y: .215, h: .565 }, { y: .195, h: .57 }, { y: .28, h: .52 }, { y: .305, h: .43 },
-];
-const DECOR_SPECS = [
-  [{ row: 0, column: 0, w: 132, h: 88 }, { row: 0, column: 1, w: 138, h: 86 }],
-  [{ row: 0, column: 2, w: 82, h: 108 }, { row: 0, column: 3, w: 110, h: 80 }],
-  [{ row: 1, column: 0, w: 68, h: 116 }, { row: 1, column: 1, w: 106, h: 104 }],
-  [{ row: 1, column: 2, w: 106, h: 102 }, { row: 1, column: 3, w: 82, h: 116 }],
-];
-
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+const snapPixel = (value) => Math.round(value / PIXEL_GRID) * PIXEL_GRID;
 const enemyShotBox = (enemy) => {
   const [padX, padTop] = {
     beetle: [3, 15], leaper: [4, 18], drone: [4, 28], guardian: [5, 22], boss: [16, 8],
@@ -249,11 +241,11 @@ const Game = {
   chunks: [], pickups: [], powerups: [], enemies: [], bullets: [], enemyBullets: [], particles: [],
   player: {
     x: 70, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H,
-    vx: 0, vy: 0, renderVx: 0, renderVy: 0, facing: 1, onGround: true,
+    vx: 0, vy: 0, facing: 1, onGround: true,
     coyote: .1, inv: 0, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0,
     landingTimer: 0, skidTimer: 0, hurtTimer: 0,
-    action: 'idle', animationKey: 'idle', actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
+    action: 'idle', animationKey: 'idle', animationDistance: 0, actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
     weapon: 'normal', weaponLevel: 0, weaponTimer: 0, shield: 0,
     overdrive: 0, combo: 0, comboTimer: 0,
   },
@@ -418,7 +410,7 @@ function makeEnemy(type, x, chunkIndex, floorY = GROUND_Y) {
   return {
     type, chunkIndex, x, home: x, floorY, baseY, y: baseY,
     w: spec.w, h: spec.h, hp, maxHp: hp, range: spec.range,
-    vx: 0, vy: 0, renderVx: 0, renderVy: 0, facing: -1, onGround: !spec.air,
+    vx: 0, vy: 0, facing: -1, onGround: !spec.air,
     active: false, activatedFrame: -1,
     state: 'idle', stateFrames: 0, animTicks: 0, cooldownFrames: secondsToFrames(.65 + gameRandom() * .8), attackIndex: 0,
     targetX: x, targetY: baseY, bossPhase: 1,
@@ -633,10 +625,10 @@ function nextWord(initial) {
 function resetPlayer(x) {
   const startX = x == null ? 70 : x;
   Object.assign(Game.player, {
-    x: startX, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0, renderVx: 0, renderVy: 0,
+    x: startX, y: GROUND_Y - PLAYER_H, w: 30, h: PLAYER_H, vx: 0, vy: 0,
     facing: 1, onGround: true, coyote: .1, inv: 1.15, fireCooldown: 0, dropTimer: 0,
     crouching: false, aimX: 1, aimY: 0, landingTimer: 0, skidTimer: 0, hurtTimer: 0,
-    action: 'idle', animationKey: 'idle', actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
+    action: 'idle', animationKey: 'idle', animationDistance: 0, actionTicks: 0, animFrame: 0, stepTimer: 0, recoil: 0, muzzleFlash: 0,
     weapon: 'normal', weaponLevel: 0, weaponTimer: 0, shield: 0, overdrive: 0, combo: 0, comboTimer: 0,
   });
 }
@@ -947,7 +939,6 @@ function defeatEnemy(enemy, source) {
   burst(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, '#e9784f', enemy.type === 'boss' ? 42 : 18);
   if (source === 'stomp') {
     player.vy = -430;
-    player.renderVy = -430;
     player.onGround = false;
   }
   if (enemy.type === 'boss') {
@@ -1008,7 +999,7 @@ function hurt(fell = false) {
     showFeedback('受到攻击，短暂无敌');
     setCrouching(false);
     Object.assign(player, {
-      vx: -player.facing * 180, vy: -260, renderVx: -player.facing * 180, renderVy: -260, onGround: false, inv: 1.15, hurtTimer: .32,
+      vx: -player.facing * 180, vy: -260, onGround: false, inv: 1.15, hurtTimer: .32,
       weapon: 'normal', weaponLevel: 0, weaponTimer: 0, overdrive: 0, combo: 0, comboTimer: 0,
     });
   }
@@ -1174,13 +1165,17 @@ function updatePlayerAnimation() {
   // Gunfire is an upper-body event. It must not restart the leg/air cycle.
   if (movement !== player.animationKey) {
     player.animationKey = movement;
+    player.animationDistance = 0;
     player.actionTicks = 1;
   } else {
     player.actionTicks++;
+    if (movement === 'run') player.animationDistance += Math.abs(player.vx) * FIXED_STEP;
   }
-  const cadence = movement === 'run' ? 8 : movement === 'air' ? 4 : movement === 'idle' ? 18 : 60;
+  const cadence = movement === 'air' ? 4 : movement === 'idle' ? 18 : 60;
   const count = ['run', 'air', 'idle'].includes(movement) ? 4 : 1;
-  player.animFrame = Math.floor(player.actionTicks / cadence) % count;
+  player.animFrame = movement === 'run'
+    ? Math.floor(player.animationDistance / RUN_FRAME_DISTANCE) % count
+    : Math.floor(player.actionTicks / cadence) % count;
 }
 
 function updatePlayer(dt) {
@@ -1189,8 +1184,6 @@ function updatePlayer(dt) {
   const biomeIndex = biomeIndexAt(player.x);
   const biome = BIOMES[biomeIndex];
   const wasOnGround = player.onGround;
-  const frameStartX = player.x;
-  const frameStartY = player.y;
   input.jumpBuffer = Math.max(0, input.jumpBuffer - dt);
   player.fireCooldown = Math.max(0, player.fireCooldown - dt);
   player.inv = Math.max(0, player.inv - dt);
@@ -1238,7 +1231,10 @@ function updatePlayer(dt) {
   player.x = Math.max(Math.max(0, Game.camera - 130), player.x);
   if (Game.mode === 'mission') {
     const locked = Game.chunks.find((chunk) => chunk.lock && !chunk.cleared && chunkHasThreats(chunk) && player.x >= chunk.start && player.x < chunk.start + CHUNK_W);
-    if (locked) player.x = Math.min(player.x, locked.start + CHUNK_W - 74);
+    if (locked) {
+      const limit = locked.start + CHUNK_W - 74;
+      if (player.x > limit) { player.x = limit; player.vx = 0; }
+    }
   }
   const previousBottom = player.y + player.h;
   player.vy += biome.gravity * dt;
@@ -1277,8 +1273,6 @@ function updatePlayer(dt) {
   } else {
     player.stepTimer = 0;
   }
-  player.renderVx = (player.x - frameStartX) / dt;
-  player.renderVy = (player.y - frameStartY) / dt;
   const firePressed = input.firePressed;
   input.firePressed = false;
   if (firePressed || Game.autoFire || (input.fire && (player.weapon === 'rapid' || player.overdrive > 0))) shoot();
@@ -1312,12 +1306,10 @@ function updateHazards(dt) {
       if (!overlap(player, hazard)) continue;
       if (hazard.type === 'updraft' && !player.onGround) {
         player.vy = Math.max(-390, player.vy - 1180 * dt);
-        player.renderVy = player.vy;
       } else if (hazard.type === 'puddle') {
         // Inertia is applied once in updatePlayer; damping here made a puddle feel sticky.
       } else if (hazard.type === 'spring' && player.vy >= 0) {
         player.vy = -720;
-        player.renderVy = -720;
         player.onGround = false;
         burst(player.x + player.w / 2, GROUND_Y - 8, '#e7bd58', 12);
         if (window.ArcadeAudio) ArcadeAudio.play('jump', .18);
@@ -1466,8 +1458,6 @@ function updateEnemies(dt) {
     enemy.stun = Math.max(0, enemy.stun - dt);
     enemy.cooldownFrames = Math.max(0, enemy.cooldownFrames - 1);
     enemy.animTicks++;
-    const frameStartX = enemy.x;
-    const frameStartY = enemy.y;
     if (Number.isFinite(enemy.stateFrames)) enemy.stateFrames = Math.max(0, enemy.stateFrames - 1);
     const dx = player.x + player.w / 2 - (enemy.x + enemy.w / 2);
     const dy = player.y + player.h / 2 - (enemy.y + enemy.h / 2);
@@ -1475,8 +1465,6 @@ function updateEnemies(dt) {
     if (enemy.stun > 0) {
       enemy.x += (enemy.knockback || 0) * dt;
       enemy.knockback = approach(enemy.knockback || 0, 0, 900 * dt);
-      enemy.renderVx = (enemy.x - frameStartX) / dt;
-      enemy.renderVy = (enemy.y - frameStartY) / dt;
       continue;
     }
 
@@ -1560,8 +1548,6 @@ function updateEnemies(dt) {
       if ((enemy.type === 'beetle' || enemy.type === 'leaper') && player.vy > 100 && player.y + player.h < enemy.y + enemy.h * .62) defeatEnemy(enemy, 'stomp');
       else if (enemy.type !== 'capsule' && enemy.type !== 'barrel') hurt();
     }
-    enemy.renderVx = (enemy.x - frameStartX) / dt;
-    enemy.renderVy = (enemy.y - frameStartY) / dt;
   }
 }
 
@@ -1827,18 +1813,32 @@ function update(dt) {
 }
 
 function drawBiomeLayer(index, alpha, progress) {
-  if (!ASSETS.biomes.complete || !ASSETS.biomes.naturalWidth) {
-    ctx.fillStyle = ['#6f9f8e', '#b68352', '#3f7380', '#263e58'][index];
-    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-    return;
-  }
-  const sourceH = ASSETS.biomes.naturalHeight / 4;
-  const sourceW = Math.min(ASSETS.biomes.naturalWidth, sourceH * VIEW_W / VIEW_H);
-  const sourceX = (ASSETS.biomes.naturalWidth - sourceW) * clamp(progress, 0, 1);
   ctx.save();
-  ctx.imageSmoothingEnabled = false;
   ctx.globalAlpha = alpha;
-  ctx.drawImage(ASSETS.biomes, sourceX, sourceH * index, sourceW, sourceH, 0, 0, VIEW_W, VIEW_H);
+  const theme = PIXEL_THEMES[index];
+  ctx.fillStyle = theme.sky;
+  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  const drift = progress * 180;
+  ctx.fillStyle = theme.sun;
+  ctx.fillRect(snapPixel(VIEW_W * .72 - drift * .08), 72, 58, 42);
+  ctx.fillStyle = theme.far;
+  for (let x = -260 - drift % 260; x < VIEW_W + 260; x += 260) {
+    ctx.beginPath();
+    ctx.moveTo(x, 390); ctx.lineTo(x + 64, 280); ctx.lineTo(x + 124, 344);
+    ctx.lineTo(x + 188, 245); ctx.lineTo(x + 260, 390); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = theme.near;
+  if (index === 2) {
+    for (let x = -80 - drift % 116; x < VIEW_W + 80; x += 116) {
+      const height = 62 + (Math.abs(Math.floor(x / 116)) % 3) * 34;
+      ctx.fillRect(x, 410 - height, 82, height);
+      ctx.fillStyle = theme.far; ctx.fillRect(x + 12, 368 - height, 8, 10); ctx.fillRect(x + 42, 368 - height, 8, 10); ctx.fillStyle = theme.near;
+    }
+  } else {
+    for (let x = -170 - (drift * .42) % 170; x < VIEW_W + 170; x += 170) {
+      ctx.beginPath(); ctx.moveTo(x, 430); ctx.lineTo(x + 48, 332); ctx.lineTo(x + 86, 365); ctx.lineTo(x + 126, 310); ctx.lineTo(x + 170, 430); ctx.closePath(); ctx.fill();
+    }
+  }
   ctx.restore();
 }
 
@@ -1848,7 +1848,7 @@ function drawWeather(index) {
   if (type === 'rain') {
     ctx.strokeStyle = 'rgba(184,224,232,.32)';
     ctx.lineWidth = 1.4;
-    for (let i = 0; i < 46; i++) {
+    for (let i = 0; i < 18; i++) {
       const x = (i * 83 + Game.time * 310) % (VIEW_W + 80) - 40;
       const y = (i * 47 + Game.time * 430) % VIEW_H;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 13, y + 28); ctx.stroke();
@@ -1856,7 +1856,7 @@ function drawWeather(index) {
   } else {
     const color = type === 'dust' ? 'rgba(239,193,112,.25)' : type === 'glow' ? 'rgba(244,211,122,.5)' : 'rgba(236,224,151,.32)';
     ctx.fillStyle = color;
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 8; i++) {
       const x = (i * 97 + Game.time * (type === 'dust' ? 54 : 16)) % VIEW_W;
       const y = 58 + (i * 61 + Math.sin(Game.time + i) * 28) % 250;
       const size = type === 'glow' ? 2 + (i % 3) : 1 + (i % 2);
@@ -1873,53 +1873,35 @@ function drawBackground(camera = Game.camera) {
   const local = (camera % span) / span;
   drawBiomeLayer(index, 1, local);
   if (Game.mode !== 'mission' && local > .84) drawBiomeLayer((index + 1) % BIOMES.length, (local - .84) / .16, 0);
-  ctx.fillStyle = ['rgba(7,27,20,.22)', 'rgba(45,24,12,.18)', 'rgba(4,24,30,.3)', 'rgba(5,10,25,.34)'][index];
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-  const shade = ctx.createLinearGradient(0, 0, 0, VIEW_H);
-  // 可读性纪律：背景整体压暗降饱和，把对比度留给玩法元素（魂斗罗/马里奥的前后景分离原则）
-  shade.addColorStop(0, 'rgba(6,16,15,.26)');
-  shade.addColorStop(.46, 'rgba(6,15,14,.38)');
-  shade.addColorStop(.7, 'rgba(5,13,12,.66)');
-  shade.addColorStop(1, 'rgba(4,10,9,.9)');
-  ctx.fillStyle = shade;
-  ctx.fillRect(0, 0, VIEW_W, VIEW_H);
   drawWeather(index);
 }
 
 function drawDecor(chunk) {
+  const theme = PIXEL_THEMES[chunk.biome];
   for (const item of chunk.decor) {
-    const spec = DECOR_SPECS[chunk.biome][item.variant || 0];
-    const width = spec.w * item.size;
-    const height = spec.h * item.size;
-    ctx.save();
-    ctx.globalAlpha = .72;
-    drawAtlasFrame(ASSETS.decor, spec.row, spec.column, item.x - width / 2, GROUND_Y - height + 4, width, height, false, 4, 2);
-    ctx.restore();
+    const x = snapPixel(item.x);
+    const height = snapPixel((44 + (item.variant || 0) * 18) * item.size);
+    ctx.fillStyle = theme.seam;
+    ctx.fillRect(x - 6, GROUND_Y - height, 12, height);
+    ctx.fillStyle = theme.near;
+    ctx.fillRect(x - 30, GROUND_Y - height - 8, 60, 18);
+    ctx.fillRect(x - 20, GROUND_Y - height - 20, 40, 14);
   }
 }
 
 function drawTerrain(biomeIndex, x, y, width, height) {
-  const image = ASSETS['terrain' + biomeIndex];
-  if (!image || !image.complete || !image.naturalWidth) return false;
-  const crop = TERRAIN_CROPS[biomeIndex];
-  const sourceY = image.naturalHeight * crop.y;
-  const sourceH = image.naturalHeight * crop.h;
-  // Ground and platforms share one world-space texel scale. Cropping the top
-  // of the same strip for ledges prevents each platform looking like a resized sticker.
-  const scale = TERRAIN_WORLD_HEIGHT / sourceH;
-  const visibleSourceH = Math.min(sourceH, height / scale);
-  let sourceX = ((x / scale) % image.naturalWidth + image.naturalWidth) % image.naturalWidth;
-  let drawX = x;
-  let remaining = width;
+  const theme = PIXEL_THEMES[biomeIndex];
   ctx.save();
-  ctx.imageSmoothingEnabled = false;
-  while (remaining > .1) {
-    const sourceW = Math.min(image.naturalWidth - sourceX, remaining / scale);
-    const drawW = Math.min(remaining, sourceW * scale);
-    ctx.drawImage(image, sourceX, sourceY, sourceW, visibleSourceH, drawX, y, drawW, visibleSourceH * scale);
-    drawX += drawW;
-    remaining -= drawW;
-    sourceX = 0;
+  ctx.beginPath(); ctx.rect(x, y, width, height); ctx.clip();
+  ctx.fillStyle = theme.body; ctx.fillRect(x, y, width, height);
+  ctx.fillStyle = theme.top; ctx.fillRect(x, y, width, 8);
+  ctx.fillStyle = theme.rim; ctx.fillRect(x, y + 8, width, 8);
+  for (let row = 0, lineY = y + 22; lineY < y + height; row++, lineY += 18) {
+    ctx.fillStyle = theme.seam; ctx.fillRect(x, lineY, width, 2);
+    const offset = row % 2 ? 16 : 0;
+    for (let lineX = Math.floor((x - offset) / 32) * 32 + offset; lineX < x + width; lineX += 32) {
+      ctx.fillRect(lineX, lineY - 16, 2, 16);
+    }
   }
   ctx.restore();
   return true;
@@ -2104,7 +2086,7 @@ function drawAtlasFrame(image, row, column, x, y, width, height, flip = false, c
   const sourceH = image.naturalHeight / rows;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  ctx.translate(x + width / 2, y);
+  ctx.translate(snapPixel(x + width / 2), snapPixel(y));
   ctx.scale(flip ? -1 : 1, 1);
   ctx.drawImage(image, column * sourceW, row * sourceH, sourceW, sourceH, -width / 2, 0, width, height);
   ctx.restore();
@@ -2118,7 +2100,7 @@ function drawAnchoredAtlasFrame(image, anchors, row, column, anchorX, anchorY, w
   const [originX, originY] = anchors[row][column];
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  ctx.translate(anchorX, anchorY);
+  ctx.translate(snapPixel(anchorX), snapPixel(anchorY));
   ctx.scale(flip ? -1 : 1, 1);
   ctx.drawImage(image, column * sourceW, row * sourceH, sourceW, sourceH,
     -originX * width / sourceW, -originY * height / sourceH, width, height);
@@ -2227,7 +2209,7 @@ function drawEnemy(enemy) {
     }[enemy.type];
     const frame = enemyFrame(enemy);
     ctx.save();
-    if (enemy.hit > 0) ctx.filter = 'brightness(2.15) saturate(.55)';
+    ctx.filter = enemy.hit > 0 ? 'brightness(2.15) saturate(.55)' : 'brightness(1.12) saturate(1.08)';
     if (!drawAnchoredAtlasFrame(ASSETS.enemies, ENEMY_ANCHORS, spec.row, frame,
       enemy.x + enemy.w / 2, enemy.y + enemy.h, spec.w, spec.h, enemy.facing > 0)) {
       ctx.fillStyle = enemy.type === 'boss' ? '#6c4932' : '#365e52';
@@ -2305,7 +2287,7 @@ function drawBossNodes() {
 
 function drawBullet(bullet, color) {
   ctx.save();
-  ctx.translate(bullet.x + bullet.w / 2, bullet.y + bullet.h / 2);
+  ctx.translate(snapPixel(bullet.x + bullet.w / 2), snapPixel(bullet.y + bullet.h / 2));
   ctx.rotate(Math.atan2(bullet.vy, bullet.vx));
   ctx.globalAlpha = .34; ctx.fillStyle = color; ctx.fillRect(-7, -2, 4, 4);
   ctx.globalAlpha = 1;
@@ -2353,6 +2335,7 @@ function drawPlayer() {
   const poseX = player.x + player.w / 2;
   const poseY = player.y + player.h;
   ctx.save();
+  ctx.filter = 'brightness(1.12) saturate(1.08)';
   if (invFlash) ctx.globalAlpha = .38;
   if (!drawAnchoredAtlasFrame(atlas, atlas === ASSETS.hero ? HERO_ANCHORS : ACTION_ANCHORS,
     row, column, poseX, poseY, 88, 88, player.facing < 0)) {
@@ -2411,7 +2394,7 @@ function drawWordEcho() {
   ctx.shadowColor = 'rgba(3,15,12,.62)'; ctx.shadowBlur = 16;
   ctx.beginPath(); ctx.roundRect(x, y, width, 62, 14); ctx.fill(); ctx.stroke();
   ctx.shadowBlur = 0;
-  ctx.fillStyle = echo.complete ? '#9de2bd' : '#d3ddd7'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = echo.complete ? '#9de2bd' : '#d3ddd7'; ctx.font = '800 16px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(echo.complete ? '拼写完成 · ' + echo.zh : '拼写记忆 · ' + echo.zh, VIEW_W / 2, y + 15);
   for (let i = 0; i < echo.en.length; i++) {
     const active = i < echo.progress;
@@ -2420,7 +2403,7 @@ function drawWordEcho() {
     ctx.fillStyle = active ? (latest ? '#f4d37a' : 'rgba(244,211,122,.82)') : 'rgba(255,255,255,.08)';
     ctx.strokeStyle = latest ? '#fff0b0' : 'rgba(255,255,255,.16)';
     ctx.beginPath(); ctx.roundRect(cx, y + 27, chip, 25, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = active ? '#173128' : 'rgba(220,230,224,.42)'; ctx.font = '900 14px ui-monospace, monospace';
+    ctx.fillStyle = active ? '#173128' : 'rgba(220,230,224,.42)'; ctx.font = '900 18px ui-monospace, monospace';
     ctx.fillText(active ? echo.en[i] : '·', cx + chip / 2, y + 40);
   }
   ctx.restore();
@@ -2439,11 +2422,9 @@ function drawStageBanner() {
   ctx.globalAlpha = clamp(banner.timer * 2, 0, 1);
   ctx.fillStyle = 'rgba(8,27,22,.72)'; ctx.strokeStyle = 'rgba(244,211,122,.48)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.roundRect(x, y, width, height, 11); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#f4d37a'; ctx.font = '900 9px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(BEAT_LABELS[banner.tag] || '战况', x + 12, y + 13);
-  ctx.fillStyle = '#f6f0dc'; ctx.font = '900 ' + (compact ? 15 : 17) + 'px system-ui, sans-serif'; ctx.fillText(banner.name, x + 12, y + 31);
-  ctx.fillStyle = '#bed2c8'; ctx.font = '600 10px system-ui, sans-serif';
-  ctx.fillText(banner.hint, x + 12, y + height - 9, width - 24);
+  ctx.fillStyle = '#f4d37a'; ctx.font = '900 14px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(BEAT_LABELS[banner.tag] || '战况', x + 12, y + 15);
+  ctx.fillStyle = '#f6f0dc'; ctx.font = '900 ' + (compact ? 20 : 22) + 'px system-ui, sans-serif'; ctx.fillText(banner.name, x + 12, y + height - 15);
   ctx.restore();
 }
 
@@ -2456,7 +2437,7 @@ function drawBossStatus() {
   ctx.save();
   ctx.fillStyle = 'rgba(8,24,21,.86)'; ctx.strokeStyle = 'rgba(239,112,78,.65)';
   ctx.beginPath(); ctx.roundRect(x, y, width, 40, 11); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#e8daca'; ctx.font = '800 11px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(MISSION_LEVELS[Game.missionLevel].bossName + ' · 阶段 ' + boss.bossPhase, x + 12, y + 16);
+  ctx.fillStyle = '#e8daca'; ctx.font = '800 15px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(MISSION_LEVELS[Game.missionLevel].bossName + ' · 阶段 ' + boss.bossPhase, x + 12, y + 16);
   ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.roundRect(x + 12, y + 25, width - 24, 5, 3); ctx.fill();
   ctx.fillStyle = boss.bossPhase === 2 ? '#f4d37a' : '#ef704e'; ctx.beginPath(); ctx.roundRect(x + 12, y + 25, (width - 24) * boss.hp / boss.maxHp, 5, 3); ctx.fill();
   if (boss.bossPhase === 2 && Game.bossWord) {
@@ -2465,17 +2446,14 @@ function drawBossStatus() {
   ctx.restore();
 }
 
-function render(lead = 0) {
+function render() {
   Game.renderCount++;
   ctx.setTransform(canvas.width / VIEW_W, 0, 0, canvas.height / VIEW_H, 0, 0);
-  const camera = Math.max(Game.camera, Game.player.x + Game.player.renderVx * lead - VIEW_W * CAMERA_LINE, 0);
-  const logicTime = Game.time;
-  Game.time += lead;
+  const camera = snapPixel(Game.camera);
   drawBackground(camera);
   ctx.save();
-  const shakeClock = performance.now() * .05;
-  const shakeX = Game.shake > 0 ? Math.sin(shakeClock) * Game.shakeStrength : 0;
-  const shakeY = Game.shake > 0 ? Math.cos(shakeClock * 1.17) * Game.shakeStrength * .55 : 0;
+  const shakeX = Game.shake > 0 ? (Game.logicFrame & 1 ? 1 : -1) * snapPixel(Game.shakeStrength) : 0;
+  const shakeY = Game.shake > 0 && (Game.logicFrame & 2) ? PIXEL_GRID : 0;
   ctx.translate(-camera + shakeX, shakeY);
   for (const chunk of Game.chunks) {
     if (chunk.start > camera + VIEW_W + CHUNK_W || chunk.start + CHUNK_W < camera - CHUNK_W) continue;
@@ -2483,17 +2461,11 @@ function render(lead = 0) {
   }
   drawPickups();
   drawPowerups();
-  for (const enemy of Game.enemies) {
-    ctx.save(); ctx.translate((enemy.renderVx ?? enemy.vx ?? 0) * lead, (enemy.renderVy ?? enemy.vy ?? 0) * lead); drawEnemy(enemy); ctx.restore();
-  }
+  for (const enemy of Game.enemies) drawEnemy(enemy);
   drawBossNodes();
-  for (const bullet of Game.bullets) {
-    ctx.save(); ctx.translate(bullet.vx * lead, bullet.vy * lead); drawBullet(bullet, bullet.color || '#ffe49a'); ctx.restore();
-  }
-  for (const bullet of Game.enemyBullets) {
-    ctx.save(); ctx.translate(bullet.vx * lead, bullet.vy * lead); drawBullet(bullet, '#e9664c'); ctx.restore();
-  }
-  ctx.save(); ctx.translate(Game.player.renderVx * lead, Game.player.renderVy * lead); drawPlayer(); ctx.restore();
+  for (const bullet of Game.bullets) drawBullet(bullet, bullet.color || '#ffe49a');
+  for (const bullet of Game.enemyBullets) drawBullet(bullet, '#e9664c');
+  drawPlayer();
   for (const particle of Game.particles) {
     ctx.globalAlpha = clamp(particle.life * 3, 0, 1);
     ctx.fillStyle = particle.color;
@@ -2508,11 +2480,9 @@ function render(lead = 0) {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
-  Game.time = logicTime;
   drawCombo();
   drawBossStatus();
   drawWordEcho();
-  drawStageBanner();
   if (Game.flash > 0) {
     ctx.fillStyle = 'rgba(239,103,76,' + clamp(Game.flash * 1.8, 0, .34) + ')';
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
@@ -2522,13 +2492,10 @@ function render(lead = 0) {
 function resize() {
   const width = Math.max(1, wrap.clientWidth);
   const height = Math.max(1, wrap.clientHeight);
-  const pixelBudgetScale = Math.sqrt(RENDER_PIXEL_BUDGET / (width * height));
-  const dpr = Math.max(.25, Math.min(window.devicePixelRatio || 1, 1, pixelBudgetScale));
   VIEW_W = VIEW_H * width / height;
-  canvas.width = Math.round(width * dpr);
-  canvas.height = Math.round(height * dpr);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
+  canvas.width = Math.max(1, Math.round(VIEW_W / PIXEL_GRID));
+  canvas.height = LOGICAL_HEIGHT;
+  ctx.imageSmoothingEnabled = false;
 }
 
 function setMuteButton() {
@@ -2673,9 +2640,7 @@ function frame(now) {
   } else {
     accumulator = 0;
   }
-  // Extrapolate only the visual transform between fixed 60 Hz states. This keeps
-  // input/collision deterministic while removing 120/144 Hz duplicate-frame judder.
-  render(Game.state === 'playing' ? accumulator : 0);
+  render();
   if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
 }
 
@@ -2687,6 +2652,7 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.difficulty = 'easy';
       startGame('mission');
       if (Game.mode !== 'mission' || FIXED_STEP !== 1 / 60) throw new Error('mission or fixed-step setup failed');
+      if (canvas.height !== 270 || ctx.imageSmoothingEnabled) throw new Error('rendering left the shared pixel grid');
       if (Game.logicFrame !== 0 || Game.player.action !== 'idle' || Game.player.animFrame !== 0) throw new Error('ROM frame state was not reset');
       if (MISSION_LEVELS.some((level) => !level.objective || level.story.length !== 4 || level.themeWords.length < 8)) throw new Error('mission story arc is incomplete');
       const theme = new Set(MISSION_LEVELS[0].themeWords);
@@ -2737,10 +2703,10 @@ if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
       Game.hitStop = Game.shake = 0;
       const startX = Game.player.x;
       input.right = true;
-      for (let i = 0; i < 7; i++) update(1 / 60);
+      for (let i = 0; i < 6; i++) update(1 / 60);
       if (Game.player.action !== 'run' || Game.player.animFrame !== 0) throw new Error('run animation advanced before its authored frame');
       update(1 / 60);
-      if (Game.player.animFrame !== 1) throw new Error('run animation ignored its eight-frame cadence');
+      if (Game.player.animFrame !== 1) throw new Error('run animation detached from travelled distance');
       const runPhaseBeforeShot = Game.player.actionTicks;
       Game.player.recoil = .09;
       updatePlayerAnimation();
