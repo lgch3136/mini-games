@@ -271,9 +271,10 @@ h2 {
   right: 5%;
   top: 24%;
   width: 165px;
-  padding: 18px 0 18px 17px;
+  padding: 18px 16px 18px 17px;
   border-left: 1px solid #c5d5aa80;
-  text-shadow: 0 1px 14px #113635;
+  border-radius: 0 5px 5px 0;
+  background: #17343cde;
   color: #e0e5b8;
 }
 .field-note > span {
@@ -288,7 +289,7 @@ h2 {
 .field-note p {
   font-size: 11px;
   line-height: 2;
-  color: #c0d1b0;
+  color: #d3dec3;
 }
 .field-line {
   height: 1px;

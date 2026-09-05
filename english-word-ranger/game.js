@@ -4,9 +4,9 @@ import {
   HEIGHT,
   OPERATIONS,
   clamp,
-} from "./engine.mjs?v=20260905-rebuild";
-import { Renderer } from "./render.js?v=20260905-rebuild";
-import { Soundtrack } from "./sound.js?v=20260905-rebuild";
+} from "./engine.mjs?v=20260905-dawn";
+import { Renderer } from "./render.js?v=20260905-dawn";
+import { Soundtrack } from "./sound.js?v=20260905-dawn";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game"),
@@ -670,7 +670,7 @@ const percentile = (values, ratio) => {
   return sorted[Math.floor((sorted.length - 1) * ratio)] || 0;
 };
 window.rangerDiagnostics = () => ({
-  build: "20260905-rebuild",
+  build: "20260905-dawn",
   screen,
   status: world.status,
   stage: world.stage,

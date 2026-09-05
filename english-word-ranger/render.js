@@ -1,4 +1,4 @@
-import { HEIGHT, clamp, rng, weaponPose } from "./engine.mjs";
+import { HEIGHT, clamp, rng, weaponPose } from "./engine.mjs?v=20260905-dawn";
 
 const mix = (a, b, t) => a + (b - a) * t;
 const TAU = Math.PI * 2;
