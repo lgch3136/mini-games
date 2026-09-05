@@ -8,7 +8,7 @@
 
 | 游戏 | 玩法 | 入口 |
 | --- | --- | --- |
-| 单词突击队 · WORD RANGER | 原创无限横版跑跳射击 × 拼单词，动态地形、天气、敌群与区域守卫循环升级 | [english-word-ranger](english-word-ranger/) |
+| 单词突击队 · WORD RANGER | 曙光行动重制：跑跳射击、实体掩体、移动平台、三条编排路线、部件首领战与连续远征，词核提供补给 | [english-word-ranger](english-word-ranger/) |
 | 🥊 单词斗魂 · WORD FURY | 原创街机格斗 × 单词连击，含破招、投技、格挡破防、斗气必杀与动态场地 | [english-word-fury](english-word-fury/) |
 | 💣 英语炸弹人 · WORD BOMBER | 炸砖、躲敌、按序收集字母并开启传送门，无限轮次与道具成长 | [english-word-bomber](english-word-bomber/) |
 | ⛏️ 英语挖金子 · WORD MINER | 摆动抓钩按序收字母，兼有石头、炸弹、钻石与限时挑战 | [english-word-miner](english-word-miner/) |
@@ -19,7 +19,9 @@
 | 🏃 遗迹词途 · TEMPLE DASH | 三线无限跑酷，直线预判换道，十二种机关编排与四座遗迹轮换 | [english-temple-dash](english-temple-dash/) |
 | 🎵 英语节奏大师 · WORD BEAT | 4/5/7 轨同步节拍音击，用判定与连击完成单词 | [english-word-beat](english-word-beat/) |
 
-十款游戏均支持初中高三档难度、键盘与触屏操作、音乐/音效和静音；共用词库从 `paul-learn-english` 导入并去重，现有初级 597、中级 790、高级 942 个单词。音频来源与许可证见 [AUDIO-LICENSES.md](AUDIO-LICENSES.md)。
+游戏提供键盘与触屏操作、音乐/音效和静音；共用词库从 `paul-learn-english` 导入并去重，现有初级 597、中级 790、高级 942 个单词。单词突击队的强度分为友好、标准、硬核，并从项目词库筛选适合战斗中收集的短词。音频来源与许可证见 [AUDIO-LICENSES.md](AUDIO-LICENSES.md)。
+
+2026-09-05：本轮仅重建了 **单词突击队** 的引擎、交互、场景和音频，其他游戏保留原版本。具体设计边界、复测方法与截图见 [重制验收记录](docs/ranger-dawn/README.md)。
 
 ## 目录结构
 
@@ -49,4 +51,18 @@ mini-games/
 
 ## 开发
 
-本地直接双击各游戏的 `index.html` 即可游玩；`?selftest` / `?fuzz` URL 参数可触发内置自检与模糊测试（供无头浏览器测试使用）。
+在仓库目录运行静态服务器：
+
+```sh
+python3 -m http.server 4173 --bind 127.0.0.1
+```
+
+访问 `http://127.0.0.1:4173/`。单词突击队使用原生 ES Modules，不能直接以 `file://` 双击运行，无需安装 npm 依赖。
+
+```sh
+node --test english-word-ranger/tests/engine.test.mjs
+node english-word-ranger/tests/playthrough.mjs 0 1 2 3 6 9
+RANGER_TEST_WIDTH=540 node english-word-ranger/tests/playthrough.mjs
+```
+
+浏览器检查入口：`english-word-ranger/tests/ui.html`（正式页面输入与资源释放）和 `english-word-ranger/tests/playback.html`（正常输入实时回放、暂停、单步）。后者不是正式游戏的自动游玩模式。检查结束后关闭测试标签页并停止服务器。其余旧游戏仍保留各自的 `?selftest` / `?fuzz` 参数，本轮未重新验收。

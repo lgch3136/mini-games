@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Word Ranger · 实时通关验证</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #112e36;
+        color: #dce8c8;
+        font: 13px system-ui;
+      }
+      header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 15px 22px;
+        flex-wrap: wrap;
+      }
+      button,
+      select {
+        background: #234650;
+        color: #dce8c8;
+        border: 1px solid #698f8044;
+        border-radius: 4px;
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+      canvas {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        display: block;
+        max-height: 75vh;
+      }
+      #stats {
+        padding: 14px 22px;
+        white-space: pre-wrap;
+        font:
+          12px ui-monospace,
+          monospace;
+      }
+      small {
+        color: #86ad9e;
+      }
+      a {
+        color: #c9e4b3;
+      }
+      label {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>实时通关验证</strong
+      ><select id="stage">
+        <option value="0">曙光行动</option>
+        <option value="1">悬桥穿越</option>
+        <option value="2">逆流突围</option></select
+      ><button id="start">开始回放</button
+      ><button id="pause" disabled>暂停</button
+      ><button id="step" disabled>前进一帧</button
+      ><label><input id="slow" type="checkbox" />半速观察动作</label
+      ><small>标准生命值 · 无瞬移 / 无无敌 / 无改血 · 只使用正常输入</small
+      ><a href="../">返回游戏</a>
+    </header>
+    <canvas id="game"></canvas>
+    <div id="stats">等待开始。暂停或离开页面后停止动画和音频。</div>
+    <script src="../../shared/vocabulary.js"></script>
+    <script type="module" src="playback.mjs"></script>
+  </body>
+</html>

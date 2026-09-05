@@ -1,103 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#10251f">
-<title>单词突击队 · 林地哨站</title>
-<link rel="stylesheet" href="style.css?v=20260903a">
-</head>
-<body>
-<main id="game-wrap" aria-label="单词突击队游戏区">
-  <canvas id="game" tabindex="0" aria-label="单词突击队横版战场"></canvas>
-
-  <section id="hud" class="hidden">
-    <div id="mission">
-      <span class="eyebrow">当前任务</span>
-      <strong id="word-meaning">准备出发</strong>
-      <span id="word-progress">_ _ _</span>
-      <small id="feedback" aria-live="polite">按顺序收集字母</small>
-    </div>
-    <div id="status">
-      <span>得分 <b id="score">0</b></span>
-      <span>单词 <b id="words">0</b></span>
-      <span>生命 <b id="lives">3</b></span>
-      <span>火力 <b id="weapon">标准</b></span>
-      <span class="secondary-stat">里程 <b id="distance">0m</b></span>
-      <span class="secondary-stat">区域 <b id="biome">曙光森林</b></span>
-    </div>
-    <div id="hud-actions">
-      <button id="mute-btn" type="button" aria-label="切换声音">声音</button>
-      <button id="pause-btn" type="button" aria-label="暂停游戏">暂停</button>
-    </div>
-  </section>
-
-  <section id="touch-controls" class="hidden" aria-label="触屏操作">
-    <div class="move-controls">
-      <button id="up-btn" type="button" aria-label="向上瞄准">上</button>
-      <button id="left-btn" type="button" aria-label="向左移动">左</button>
-      <button id="down-btn" type="button" aria-label="下蹲或向下瞄准">下</button>
-      <button id="right-btn" type="button" aria-label="向右移动">右</button>
-    </div>
-    <div class="action-controls">
-      <button id="jump-btn" type="button" aria-label="跳跃">跳</button>
-      <button id="fire-btn" type="button" aria-label="射击">射击</button>
-      <button id="auto-btn" type="button" aria-label="切换自动射击" aria-pressed="false">自动</button>
-    </div>
-  </section>
-
-  <section id="menu" class="overlay">
-    <img class="menu-cover" src="assets/cover.png" alt="单词突击队 WORD RANGER">
-    <div class="menu-title"><span id="menu-mission">WORD RANGER · MISSION 01</span><h1>单词突击队</h1><b>WORD RANGER</b></div>
-    <p class="lead" id="mission-brief">夺回被林地核心劫持的词核，恢复前线词库</p>
-    <div id="difficulty" aria-label="选择难度">
-      <button class="difficulty selected" data-difficulty="easy" type="button">初级<small>基础词汇 · 敌人较慢</small></button>
-      <button class="difficulty" data-difficulty="medium" type="button">中级<small>核心词汇 · 标准火力</small></button>
-      <button class="difficulty" data-difficulty="hard" type="button">高级<small>进阶词汇 · 快速攻势</small></button>
-    </div>
-    <div id="level-select" aria-label="选择关卡">
-      <button class="level-btn selected" data-level="0" type="button">第一关<small>曙光森林</small></button>
-      <button class="level-btn" data-level="1" type="button">第二关<small>风蚀峡谷</small></button>
-      <button class="level-btn" data-level="2" type="button">第三关<small>雨中古城</small></button>
-      <button class="level-btn" data-level="3" type="button">第四关<small>月晶遗迹</small></button>
-    </div>
-    <button class="primary" id="start-btn" type="button">开始任务 · 曙光森林</button>
-    <button class="secondary" id="arcade-start-btn" type="button">无限远征 · 街机模式</button>
-    <div class="howto">
-      <p>电脑：A/D 或左右键移动，W/S 或上下键瞄准/下蹲，空格跳跃，J/K/X 射击，P 暂停，M 静音。</p>
-      <p>手机：左手移动与下蹲，右手跳跃和射击；射击会辅助锁定前方目标，也可打开“自动”。橙色预兆出现时先躲避，再利用恢复窗口反击。</p>
-    </div>
-    <a href="../" class="hub-link">返回游戏合集</a>
-  </section>
-
-  <section id="paused" class="overlay compact hidden">
-    <h1>行动暂停</h1>
-    <p>按 P 或点击继续返回战场</p>
-    <button class="primary" id="resume-btn" type="button">继续</button>
-    <button class="secondary" id="pause-menu-btn" type="button">返回主菜单</button>
-  </section>
-
-  <section id="word-gate" class="overlay compact hidden" role="dialog" aria-modal="true" aria-labelledby="gate-meaning">
-    <p class="eyebrow">主动回忆 · 奖励门</p>
-    <h1 id="gate-meaning">桥</h1>
-    <p>只看中文，选出刚才学过的英文。答错不会扣血，但会出现增援。</p>
-    <div id="gate-options"></div>
-  </section>
-
-  <section id="over" class="overlay compact hidden">
-    <p class="eyebrow" id="over-kicker">行动结束</p>
-    <h1 id="over-title">再试一次</h1>
-    <div id="over-stats"></div>
-    <div id="over-recap" aria-label="本局单词回顾"></div>
-    <button class="primary" id="retry-btn" type="button">重新行动</button>
-    <button class="secondary" id="menu-btn" type="button">返回主菜单</button>
-  </section>
-</main>
-
-<script src="../shared/audio.js?v=20260821b"></script>
-<script src="../shared/chip-music.js?v=5"></script>
-<script src="../english-thunder-fighter/data.js?v=20260814c"></script>
-<script src="../shared/vocabulary.js?v=20260820a"></script>
-<script src="game.js?v=20260903a"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#142f36" />
+    <meta
+      name="description"
+      content="单词突击队：曙光行动。独立瞄准、分层路线、掩体战斗与重装首领；收集词核，为下一次突围补充能量。"
+    />
+    <title>单词突击队 · 曙光行动</title>
+    <link rel="stylesheet" href="style.css?v=20260905-rebuild" />
+  </head>
+  <body>
+    <main id="app">
+      <div id="viewport">
+        <canvas
+          id="game"
+          tabindex="0"
+          aria-label="单词突击队横版动作战场。A D 移动，空格跳跃，J 射击，L 手雷，Shift 滑铲。"
+        ></canvas>
+        <header id="hud" hidden>
+          <div class="hud-left">
+            <div class="mission-label">
+              <span class="live-dot"></span><span id="sector">林地入口</span
+              ><small id="run-number">01</small>
+            </div>
+            <div id="health" aria-label="生命"></div>
+          </div>
+          <div class="hud-center">
+            <span id="weapon-name">突击步枪</span><span class="divider">/</span
+            ><span id="grenades">手雷 × 3</span>
+          </div>
+          <div class="hud-actions">
+            <button
+              id="audio-btn"
+              class="icon-button"
+              aria-label="静音"
+              title="声音 (M)"
+            >
+              ♪</button
+            ><button
+              id="pause-btn"
+              class="icon-button"
+              aria-label="暂停游戏"
+              title="暂停 (P)"
+            >
+              Ⅱ
+            </button>
+          </div>
+        </header>
+        <div id="boss-hud" hidden>
+          <div>
+            <span>重装守卫 · ATLAS</span><b id="boss-state">正在接近</b>
+          </div>
+          <div class="boss-track"><span id="boss-health"></span></div>
+        </div>
+        <div id="notice" role="status" hidden>
+          <span id="notice-label"></span><strong id="notice-text"></strong>
+        </div>
+        <div id="combo" hidden><b id="combo-count">0</b><span>CHAIN</span></div>
+        <div id="word-strip" hidden>
+          <div><small>词核补给</small><span id="word-meaning"></span></div>
+          <strong id="word-letters"></strong
+          ><span class="word-reward">拼成 +生命 +手雷</span>
+        </div>
+        <div id="word-echo" aria-live="polite"></div>
+        <section id="menu" class="screen">
+          <div class="menu-shade"></div>
+          <a class="back-link" href="../">← 游戏合集</a>
+          <div class="menu-copy">
+            <div class="edition"><span></span> FIELD OPERATIONS / 01</div>
+            <h1>单词<span>突击队</span></h1>
+            <p class="english-title">WORD RANGER</p>
+            <div class="title-rule"></div>
+            <h2 id="operation-title">曙光行动</h2>
+            <p class="brief" id="operation-brief">
+              穿过林地哨站，切断重装守卫的信号。
+            </p>
+            <p class="menu-description">
+              跑跳、寻找掩护、抓住反击空档。<br />收集沿途词核，为下一次突围补给。
+            </p>
+            <div class="selection">
+              <span>行动</span>
+              <div id="operation-select" class="segments">
+                <button data-stage="0" class="selected" aria-pressed="true">
+                  曙光</button
+                ><button data-stage="1" aria-pressed="false">悬桥</button
+                ><button data-stage="2" aria-pressed="false">逆流</button>
+              </div>
+            </div>
+            <div class="selection">
+              <span>强度</span>
+              <div id="difficulty-select" class="segments">
+                <button data-difficulty="easy" aria-pressed="false">友好</button
+                ><button
+                  data-difficulty="normal"
+                  class="selected"
+                  aria-pressed="true"
+                >
+                  标准</button
+                ><button data-difficulty="hard" aria-pressed="false">
+                  硬核
+                </button>
+              </div>
+            </div>
+            <div class="menu-bottom">
+              <button id="start-btn" class="primary">
+                开始行动 <span>↗</span></button
+              ><label class="endless-option"
+                ><input type="checkbox" id="endless" /> 连续远征<small
+                  >通关后挑战下一行动</small
+                ></label
+              >
+            </div>
+            <p class="save-note" id="best-score">
+              原创动作关卡 · 项目词库 · 触屏双手操作
+            </p>
+          </div>
+          <aside class="field-note">
+            <span>行动手册</span>
+            <h3>不是站着对射。</h3>
+            <p>蹲下避开平射，<br />从上层绕过盾兵，<br />用手雷引爆油桶。</p>
+            <div class="field-line"></div>
+            <p>首领攻击结束后，<br />抓住核心亮起的窗口。</p>
+          </aside>
+          <div class="keyboard-guide">
+            <span><kbd>A</kbd><kbd>D</kbd> 移动</span
+            ><span><kbd>W</kbd><kbd>S</kbd> 瞄准 / 蹲</span
+            ><span><kbd>空格</kbd> 跳</span><span><kbd>J</kbd> 射击</span
+            ><span><kbd>L</kbd> 手雷</span><span><kbd>Shift</kbd> 滑铲</span>
+          </div>
+          <p class="mobile-guide">
+            左手摇杆移动 / 蹲下，右手射击；拖动射击键可独立瞄准。
+          </p>
+        </section>
+        <section id="pause-screen" class="screen dialog-screen" hidden>
+          <div class="dialog">
+            <span class="edition">TAKE A BREATH</span>
+            <h2>行动暂停</h2>
+            <p>地形会挡住子弹。找好位置，再出发。</p>
+            <button id="resume-btn" class="primary">
+              继续行动 <span>→</span></button
+            ><button id="restart-btn" class="secondary">从补给点重新开始</button
+            ><button class="text-button menu-button">返回行动选择</button>
+            <p class="dialog-hint">P / Esc 暂停 · M 声音 · 鼠标也可瞄准射击</p>
+          </div>
+        </section>
+        <section id="result-screen" class="screen dialog-screen" hidden>
+          <div class="dialog result-dialog">
+            <span class="edition" id="result-label">MISSION REPORT</span>
+            <h2 id="result-title">行动结束</h2>
+            <p id="result-description"></p>
+            <div id="result-stats"></div>
+            <div id="word-recap"></div>
+            <button id="result-primary" class="primary">
+              再试一次 <span>→</span></button
+            ><button class="text-button menu-button">返回行动选择</button>
+          </div>
+        </section>
+      </div>
+      <nav id="touch-controls" aria-label="双手触屏操作" hidden>
+        <div class="touch-left">
+          <div
+            id="joystick"
+            role="button"
+            tabindex="0"
+            aria-label="移动摇杆：拖动移动、瞄准或下蹲"
+          >
+            <span class="joy-axis horizontal"></span
+            ><span class="joy-axis vertical"></span><span id="joy-knob"></span
+            ><i>MOVE</i>
+          </div>
+          <button id="roll-touch" class="touch-small" aria-label="滑铲">
+            滑铲
+          </button>
+        </div>
+        <div class="touch-right">
+          <button id="grenade-touch" class="touch-small" aria-label="投掷手雷">
+            手雷</button
+          ><button id="jump-touch" class="touch-jump" aria-label="跳跃">
+            跳跃</button
+          ><button
+            id="fire-touch"
+            class="touch-fire"
+            aria-label="射击；按住拖动可瞄准"
+          >
+            <span>射击</span><small>拖动瞄准</small>
+          </button>
+        </div>
+      </nav>
+      <footer id="play-footer">
+        <span>曙光行动 / WORD RANGER</span
+        ><span>按住射击 · 松开跳跃可控制高度 · 随时暂停</span
+        ><span id="score-text">000000</span>
+      </footer>
+    </main>
+    <script src="../shared/vocabulary.js?v=20260820a"></script>
+    <script type="module" src="game.js?v=20260905-rebuild"></script>
+  </body>
 </html>
