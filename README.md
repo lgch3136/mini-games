@@ -9,7 +9,7 @@
 | 游戏 | 玩法 | 入口 |
 | --- | --- | --- |
 | 单词突击队 · WORD RANGER | 曙光行动重制：跑跳射击、实体掩体、移动平台、三条编排路线、部件首领战与连续远征，词核提供补给 | [english-word-ranger](english-word-ranger/) |
-| 🥊 单词斗魂 · WORD FURY | 原创街机格斗 × 单词连击，含破招、投技、格挡破防、斗气必杀与动态场地 | [english-word-fury](english-word-fury/) |
+| 🥊 单词斗魂 · 截风擂台 | Blender 角色 / 连续关节动作 / 四键轻重攻击 / 短跳与指令 / 命中确认 / 三局两胜 / 练习与双人 | [english-word-fury](english-word-fury/) |
 | 💣 英语炸弹人 · WORD BOMBER | 炸砖、躲敌、按序收集字母并开启传送门，无限轮次与道具成长 | [english-word-bomber](english-word-bomber/) |
 | ⛏️ 英语挖金子 · WORD MINER | 摆动抓钩按序收字母，兼有石头、炸弹、钻石与限时挑战 | [english-word-miner](english-word-miner/) |
 | 🧱 英语打砖块 · WORD BREAKER | 控制挡板弹球破砖，按序收字母，四种砖阵与每四砖必掉能力胶囊 | [english-word-breaker](english-word-breaker/) |

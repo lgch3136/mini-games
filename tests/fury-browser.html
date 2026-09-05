@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="UTF-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Fury real-input QA</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      background: #10232c;
+      color: #f7e7c5;
+      font: 12px system-ui;
+    }
+    header {
+      padding: 9px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      padding: 7px 12px;
+    }
+    iframe {
+      border: 0;
+      width: 100%;
+      height: calc(100dvh - 48px);
+      display: block;
+    }
+    body.clean iframe {
+      height: 100dvh;
+    }
+    body.clean header {
+      display: none;
+    }
+    pre {
+      max-height: 220px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    #report {
+      display: none;
+    }
+  </style>
+  <header>
+    <button id="suite">操作回归</button><button id="spar">60 秒交战</button
+    ><button id="stop">停止 / 释放</button
+    ><span id="status">真实页面与键盘/触屏事件，不直接写入战斗状态。</span>
+  </header>
+  <iframe
+    id="subject"
+    src="../english-word-fury/?qa=crosswind-2"
+    allow="autoplay; gamepad"
+  ></iframe>
+  <pre id="report"></pre>
+  <script type="module" src="fury-browser.mjs"></script>
+</html>
