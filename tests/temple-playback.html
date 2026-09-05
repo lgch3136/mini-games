@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>风行远征 · 正常输入实景回放</title
+  ><style>
+    body {
+      margin: 0;
+      background: #19333e;
+      color: #e9ddb8;
+      font: 12px system-ui;
+    }
+    header {
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button,
+    select {
+      padding: 8px 12px;
+    }
+    #view {
+      width: min(100%, calc((100dvh - 78px) * 1.6), 1152px);
+      aspect-ratio: 16/10;
+      position: relative;
+      margin: auto;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+    #label {
+      position: absolute;
+      top: 20px;
+      left: 22px;
+      font: 16px system-ui;
+      text-shadow: 0 2px 5px #234;
+    }
+    pre {
+      white-space: pre-wrap;
+      padding: 12px;
+      font-size: 10px;
+    }
+    body.clean header,
+    body.clean pre {
+      display: none;
+    }
+    body.clean #view {
+      width: 100%;
+      height: 100dvh;
+      aspect-ratio: auto;
+    }
+  </style>
+  <header>
+    <button id="start">开始 60 秒正常输入回放</button
+    ><button id="pause" disabled>暂停</button
+    ><button id="step" disabled>单步</button
+    ><label><input type="checkbox" id="slow" />半速观察</label
+    ><span>同一正式引擎 / 绘制器 / 音频 · 无加血、瞬移、无敌修改</span>
+  </header>
+  <div id="view">
+    <canvas id="game"></canvas>
+    <div id="label"></div>
+  </div>
+  <pre id="stats"></pre>
+  <script src="../shared/vocabulary.js"></script>
+  <script type="module" src="temple-playback.mjs"></script>
+</html>
