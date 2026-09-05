@@ -1,5 +1,11 @@
-import { Fight, ROSTER, MOVES, VERSION, clamp } from "./combat.mjs";
-import { ArenaView } from "./view.mjs";
+import {
+  Fight,
+  ROSTER,
+  MOVES,
+  VERSION,
+  clamp,
+} from "./combat.mjs?v=20260906-joints";
+import { ArenaView } from "./view.mjs?v=20260906-joints";
 import { FuryAudio } from "./sound.mjs";
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
@@ -537,6 +543,12 @@ $("dummy").addEventListener("change", () => {
 });
 $("boxes").addEventListener("change", () => {
   view.boxes = $("boxes").checked;
+});
+$("ambient").addEventListener("change", () => {
+  if (!view) return;
+  view.ambient = $("ambient").checked;
+  view.cinematic = view.ambient;
+  preview();
 });
 $("reset-btn").addEventListener("click", () => {
   game.resetPositions();

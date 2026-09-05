@@ -1,4 +1,4 @@
-import { clamp, lerp, total } from "./combat.mjs";
+import { clamp, lerp, total } from "./combat.mjs?v=20260906-joints";
 const PI = Math.PI;
 const smooth = (t) => {
   t = clamp(t, 0, 1);
@@ -8,18 +8,20 @@ const mix = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
 const add = (a, b) => a.map((v, i) => v + b[i]);
 export function ik(a, b, l1, l2, bend = 1) {
   const delta = b.map((v, i) => v - a[i]),
-    actual = Math.max(0.0001, Math.hypot(...delta)),
-    d = clamp(actual, 0.015, l1 + l2 - 0.001);
-  const u = delta.map((v) => v / actual),
+    actual = Math.hypot(...delta),
+    d = clamp(actual, Math.abs(l1 - l2) + 0.00001, l1 + l2 - 0.001);
+  const u = actual > 0.00001 ? delta.map((v) => v / actual) : [0, -1, 0],
     along = (l1 * l1 + d * d - l2 * l2) / (2 * d),
     height = Math.sqrt(Math.max(0, l1 * l1 - along * along));
-  const n = Math.max(0.0001, Math.hypot(u[0], u[1])),
-    perp = [-u[1] / n, u[0] / n, 0];
+  const n = Math.hypot(u[0], u[1]),
+    perp = n > 0.00001 ? [-u[1] / n, u[0] / n, 0] : [1, 0, 0];
   return a.map((v, i) => v + u[i] * along + perp[i] * height * bend);
 }
-function reach(a, b, length) {
+function reach(a, b, length, minimum = 0) {
   const d = Math.hypot(...b.map((v, i) => v - a[i]));
-  return d > length ? b.map((v, i) => a[i] + ((v - a[i]) * length) / d) : b;
+  if (d < 0.00001) return add(a, [0, -minimum, 0]);
+  const constrained = clamp(d, minimum, length);
+  return b.map((v, i) => a[i] + ((v - a[i]) * constrained) / d);
 }
 function stance(f, t) {
   const bob = Math.sin(t * 3.4) * 0.025;
@@ -35,6 +37,8 @@ function stance(f, t) {
     elbowB: -1,
     kneeF: 1,
     kneeB: 1,
+    footAngleF: 0,
+    footAngleB: 0,
     lean: 0,
   };
 }
@@ -79,12 +83,12 @@ export function pose(f, alpha = 1) {
     };
     const ff = foot(0),
       fb = foot(0.5),
-      bob = Math.sin(f.walkPhase * 2) * 0.04;
+      bob = Math.sin(f.walkPhase * 2) * (running ? 0.025 : 0.04);
     p.footF = [ff[0], ff[1], 0.19];
     p.footB = [fb[0], fb[1], -0.19];
-    p.hip = [running ? 0.1 : 0, 1.52 + bob, 0];
-    p.chest = [running ? 0.34 : 0.08, 2.5 + bob, 0];
-    p.head = [running ? 0.41 : 0.13, 2.79 + bob, 0];
+    p.hip = [running ? 0.1 : 0, (running ? 1.47 : 1.52) + bob, 0];
+    p.chest = [running ? 0.34 : 0.08, (running ? 2.45 : 2.5) + bob, 0];
+    p.head = [running ? 0.41 : 0.13, (running ? 2.74 : 2.79) + bob, 0];
     if (running) {
       const swing = Math.sin(f.walkPhase);
       p.handF = [0.15 + swing * 0.55, 2.04, 0.35];
@@ -248,7 +252,9 @@ export function pose(f, alpha = 1) {
     const q = clamp(f.stateFrame / 28, 0, 1),
       a = -q * 2 * PI,
       cx = 0,
-      cy = 0.9;
+      cy = 1.32,
+      upright = p,
+      tuck = smooth(q / 0.12) * smooth((1 - q) / 0.16);
     p = blendPose(
       p,
       {
@@ -278,27 +284,62 @@ export function pose(f, alpha = 1) {
         z,
       ];
     }
+    p = blendPose(upright, p, tuck);
+    p.footAngleF = p.footAngleB = Math.atan2(Math.sin(a), Math.cos(a)) * tuck;
   }
+  // Feet follow the roll continuously instead of snapping at an arbitrary height.
+  if (f.state !== "roll")
+    for (const s of ["F", "B"])
+      p["footAngle" + s] = -0.2 * smooth(p["foot" + s][1] / 0.7);
+  return solvePose(p);
+}
+
+export function ankle(p, side) {
+  const a = p["footAngle" + side] || 0;
+  return add(p["foot" + side], [-Math.sin(a) * 0.18, Math.cos(a) * 0.18, 0]);
+}
+
+export function solvePose(p) {
+  // Interpolate controls, then solve the fixed-length links; interpolating solved
+  // knees/elbows directly shrinks the links between ticks and opens mesh seams.
   const torsoDx = p.chest[0] - p.hip[0],
     torsoDy = p.chest[1] - p.hip[1],
     rot = Math.atan2(-torsoDx, torsoDy);
-  p.shoulderF = add(p.chest, [
-    0.08 * Math.cos(rot),
-    0.08 * Math.sin(rot),
-    0.25,
-  ]);
-  p.shoulderB = add(p.chest, [-0.15, 0.01, -0.25]);
-  p.hipF = add(p.hip, [0.05, 0, 0.18]);
-  p.hipB = add(p.hip, [-0.05, 0, -0.18]);
-  p.handF = reach(p.shoulderF, p.handF, 1.139);
-  p.handB = reach(p.shoulderB, p.handB, 1.139);
+  const rotate = ([x, y, z]) => [
+    x * Math.cos(rot) - y * Math.sin(rot),
+    x * Math.sin(rot) + y * Math.cos(rot),
+    z,
+  ];
+  p.shoulderF = add(p.chest, rotate([0.08, 0, 0.25]));
+  p.shoulderB = add(p.chest, rotate([-0.15, 0.01, -0.25]));
+  p.hipF = add(p.hip, rotate([0.05, 0, 0.18]));
+  p.hipB = add(p.hip, rotate([-0.05, 0, -0.18]));
+  p.handF = reach(p.shoulderF, p.handF, 1.139, 0.04001);
+  p.handB = reach(p.shoulderB, p.handB, 1.139, 0.04001);
   for (const s of ["F", "B"]) {
-    const ankle = reach(p["hip" + s], add(p["foot" + s], [0, 0.18, 0]), 1.539);
-    p["foot" + s] = add(ankle, [0, -0.18, 0]);
+    const target = ankle(p, s);
+    const constrained = reach(p["hip" + s], target, 1.539, 0.00001);
+    p["foot" + s] = add(
+      p["foot" + s],
+      constrained.map((v, i) => v - target[i]),
+    );
   }
   p.elbowFront = ik(p.shoulderF, p.handF, 0.59, 0.55, p.elbowF);
   p.elbowBack = ik(p.shoulderB, p.handB, 0.59, 0.55, p.elbowB);
-  p.kneeFront = ik(p.hipF, add(p.footF, [0, 0.18, 0]), 0.77, 0.77, -1);
-  p.kneeBack = ik(p.hipB, add(p.footB, [0, 0.18, 0]), 0.77, 0.77, -1);
+  p.kneeFront = ik(p.hipF, ankle(p, "F"), 0.77, 0.77, p.kneeF);
+  p.kneeBack = ik(p.hipB, ankle(p, "B"), 0.77, 0.77, p.kneeB);
   return p;
+}
+
+export function interpolatePose(old, current, alpha) {
+  const p = { ...current };
+  for (const k of ["hip", "chest", "head", "handF", "handB", "footF", "footB"])
+    p[k] = mix(old[k], current[k], alpha);
+  for (const s of ["F", "B"]) {
+    const k = "footAngle" + s,
+      a = old[k] || 0,
+      b = current[k] || 0;
+    p[k] = a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * alpha;
+  }
+  return solvePose(p);
 }

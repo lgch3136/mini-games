@@ -7,7 +7,12 @@ import {
   hurtbox,
   ROSTER,
 } from "../english-word-fury/combat.mjs";
-import { pose, ik } from "../english-word-fury/motion.mjs";
+import {
+  pose,
+  ik,
+  ankle,
+  interpolatePose,
+} from "../english-word-fury/motion.mjs";
 const ready = (distance = 1) => {
   const g = new Fight({ mode: "versus" });
   g.state = "fight";
@@ -368,6 +373,180 @@ test("IK preserves upper segment length", () => {
   ]) {
     const knee = ik([0, 0, 0], end, 0.77, 0.77);
     assert.ok(Math.abs(Math.hypot(knee[0], knee[1]) - 0.77) < 1e-8);
+  }
+});
+const distance = (a, b) => Math.hypot(...a.map((v, i) => v - b[i]));
+const bendSide = (a, joint, end) =>
+  (end[0] - a[0]) * (joint[1] - a[1]) - (end[1] - a[1]) * (joint[0] - a[0]);
+test("knees bend forwards and guarding elbows bend down/back in both facings", () => {
+  const g = ready();
+  for (const facing of [-1, 1])
+    for (const crouch of [false, true]) {
+      const f = { ...g.f[0], facing, crouch };
+      const p = pose(f);
+      const world = (a) => [a[0] * facing, a[1], a[2]];
+      for (const s of ["F", "B"]) {
+        const k = s === "F" ? "kneeFront" : "kneeBack";
+        assert.ok(
+          bendSide(world(p["hip" + s]), world(p[k]), world(ankle(p, s))) *
+            facing >
+            0.05,
+        );
+        const elbow = s === "F" ? "elbowFront" : "elbowBack";
+        assert.ok(
+          bendSide(
+            world(p["shoulder" + s]),
+            world(p[elbow]),
+            world(p["hand" + s]),
+          ) *
+            facing <
+            0,
+        );
+      }
+    }
+});
+test("IK handles folded unequal links, coincident targets and depth-axis targets", () => {
+  for (const end of [
+    [0, 0, 0],
+    [0, 0, 1],
+    [0.001, 0, 0],
+    [1, 1, 0.2],
+  ]) {
+    assert.ok(
+      Math.abs(distance([0, 0, 0], ik([0, 0, 0], end, 0.59, 0.55)) - 0.59) <
+        1e-8,
+    );
+  }
+});
+test("all eight limb links stay connected throughout fractional display frames", () => {
+  const f = ready().f[0];
+  const states = [
+    {},
+    { crouch: true },
+    { state: "roll", stateFrame: 7 },
+    { state: "roll", stateFrame: 14 },
+    { down: 40, stateFrame: 15 },
+  ];
+  for (const [name, spec] of Object.entries(MOVES))
+    for (
+      let frame = 0;
+      frame < spec.startup + spec.active + spec.recovery;
+      frame++
+    )
+      states.push({ action: { name, spec, frame } });
+  let old = pose(f, 0);
+  for (const state of states) {
+    const current = pose({ ...f, ...state }, 0);
+    for (const a of [0, 0.25, 0.5, 0.75, 1]) {
+      const p = interpolatePose(old, current, a);
+      for (const s of ["F", "B"]) {
+        const elbow = p[s === "F" ? "elbowFront" : "elbowBack"],
+          knee = p[s === "F" ? "kneeFront" : "kneeBack"];
+        for (const [start, end, length] of [
+          [p["shoulder" + s], elbow, 0.59],
+          [elbow, p["hand" + s], 0.55],
+          [p["hip" + s], knee, 0.77],
+          [knee, ankle(p, s), 0.77],
+        ])
+          assert.ok(
+            Math.abs(distance(start, end) - length) < 1e-7,
+            JSON.stringify({
+              state,
+              a,
+              s,
+              length,
+              actual: distance(start, end),
+            }),
+          );
+      }
+    }
+    old = current;
+  }
+});
+test("planted feet stay on the floor and do not skate when walking or running", () => {
+  for (const id of [0, 1, 2])
+    for (const run of [false, true])
+      for (const facing of [-1, 1])
+        for (const backward of [false, true]) {
+          if (run && backward) continue;
+          const g = ready(8),
+            f = g.f[0];
+          f.id = id;
+          f.c = ROSTER[id];
+          f.x = 0;
+          f.px = 0;
+          f.facing = facing;
+          g.f[1].x = facing * 6;
+          g.input(
+            0,
+            facing * (backward ? -1 : 1) === 1 ? "right" : "left",
+            true,
+          );
+          f.run = run;
+          let old;
+          for (let frame = 0; frame < 18; frame++) {
+            g.step();
+            const p = pose(f, 0),
+              phase = f.walkPhase / (2 * Math.PI);
+            for (const s of ["F", "B"]) {
+              const q = (phase + (s === "B" ? 0.5 : 0)) % 1;
+              if (q < 0.56) {
+                assert.ok(Math.abs(p["foot" + s][1]) < 1e-8);
+                if (old && old[s].q < q && old[s].q < 0.56)
+                  assert.ok(
+                    Math.abs(
+                      f.x + p["foot" + s][0] * facing * f.c.size - old[s].x,
+                    ) < 1e-7,
+                    JSON.stringify({
+                      id,
+                      run,
+                      facing,
+                      backward,
+                      frame,
+                      s,
+                      x: f.x,
+                      phase,
+                      q,
+                      old: old[s],
+                      foot: p["foot" + s],
+                    }),
+                  );
+              }
+            }
+            old = Object.fromEntries(
+              ["F", "B"].map((s) => [
+                s,
+                {
+                  q: (phase + (s === "B" ? 0.5 : 0)) % 1,
+                  x: f.x + p["foot" + s][0] * facing * f.c.size,
+                },
+              ]),
+            );
+          }
+        }
+});
+test("roll ankle offsets rotate with shoes instead of leaving a detached shin", () => {
+  const f = { ...ready().f[0], state: "roll", stateFrame: 7 };
+  const p = pose(f, 0),
+    a = ankle(p, "F");
+  assert.ok(Math.abs(a[0] - p.footF[0] - 0.18) < 1e-8);
+  assert.ok(Math.abs(a[1] - p.footF[1]) < 1e-8);
+});
+test("roll enters and exits through the standing pose without an endpoint snap", () => {
+  const f = ready().f[0];
+  for (const frame of [0, 28]) {
+    const baseline = pose({ ...f, stateFrame: frame }, 0),
+      rolling = pose({ ...f, state: "roll", stateFrame: frame }, 0);
+    for (const key of [
+      "hip",
+      "chest",
+      "head",
+      "footF",
+      "footB",
+      "handF",
+      "handB",
+    ])
+      assert.ok(distance(baseline[key], rolling[key]) < 1e-7);
   }
 });
 test("attack boxes use the same fighter size as hurtboxes", () => {

@@ -94,8 +94,15 @@ async function suite() {
     await launch();
     check(
       "Blender GLB meshes loaded",
-      diag().view.models === 2 && diag().view.triangles > 10000,
+      diag().view.models === 2 &&
+        diag().view.triangles > 10000 &&
+        diag().view.modelVersion === 3,
       diag().view,
+    );
+    check(
+      "Combat camera preserves world distance",
+      diag().view.cameraZoom === 1,
+      diag().view.cameraZoom,
     );
     check(
       "Fixed aspect and no horizontal overflow",
@@ -257,6 +264,16 @@ async function suite() {
         diag().audio.voices === 0 &&
         !diag().audio.timer,
       diag().audio,
+    );
+    click("ambient");
+    check(
+      "Atmosphere can be disabled without starting render loop",
+      !diag().view.ambient && !diag().view.activeLights && !diag().rafActive,
+    );
+    click("ambient");
+    check(
+      "Atmosphere restores without starting render loop",
+      diag().view.ambient && !diag().rafActive,
     );
     await launch("versus");
     const starts = diag().engine.fighters.map((f) => f.x);

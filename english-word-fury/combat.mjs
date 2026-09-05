@@ -1,5 +1,5 @@
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
-export const VERSION = "20260905-crosswind";
+export const VERSION = "20260906-joints";
 export const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const ROSTER = [
@@ -802,7 +802,6 @@ export class Fight {
       if (f.y === 0 && f.state !== "roll") f.vx *= 0.78;
     } else if (!f.action) f.x += f.vx;
     f.x = clamp(f.x, -6.45, 6.45);
-    f.walkPhase += Math.abs(f.x - f.px) * 4.2;
     if (!f.stun && !f.down && !f.action)
       f.guard = Math.min(100, f.guard + 0.16);
     if (!o.stun && !o.down && this.frame - f.lastHit > 25) {
@@ -937,6 +936,14 @@ export class Fight {
     a.x = clamp(a.x - sign * delta, -6.45, 6.45);
     b.x = clamp(b.x + sign * delta, -6.45, 6.45);
   }
+  advanceGait(f) {
+    // Use actual displacement after pushboxes, in the character's model scale.
+    // A planted foot then travels backwards exactly as far as the body advances.
+    if ((f.state === "walk" || f.state === "run") && f.y === 0)
+      f.walkPhase +=
+        ((f.x - f.px) * Math.sign(f.vx) * (2 * Math.PI * 0.56)) /
+        ((f.state === "run" ? 1.12 : 0.84) * f.c.size);
+  }
   step() {
     this.events = [];
     this.frame++;
@@ -955,7 +962,10 @@ export class Fight {
     if (this.state === "done") return;
     if (this.state === "roundEnd") {
       this.endWait--;
-      for (const f of this.f) this.updateFighter(f);
+      for (const f of this.f) {
+        this.updateFighter(f);
+        this.advanceGait(f);
+      }
       if (this.endWait <= 0) {
         if (this.roundWins.some((n) => n >= 2)) {
           this.state = "done";
@@ -967,6 +977,7 @@ export class Fight {
     this.ai();
     for (const f of this.f) this.updateFighter(f);
     this.push();
+    for (const f of this.f) this.advanceGait(f);
     const hits = [];
     for (const f of this.f) {
       const a = f.action,
