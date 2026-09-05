@@ -193,6 +193,51 @@ button.onclick = async () => {
       state().audio.voices === 0 && !state().audio.timer,
       "返回菜单音频资源归零",
     );
+    assert(
+      state().render.type === "webgl-orthographic",
+      "正式页面确实使用统一正交相机",
+    );
+    for (let i = 0; i < 12; i++) {
+      d.getElementById("start-btn").click();
+      await wait(35);
+      d.getElementById("pause-btn").click();
+      d.getElementById("pause-menu").click();
+    }
+    await wait(180);
+    assert(
+      state().render.geometries <= 8 &&
+        state().render.textures <= 37 &&
+        state().render.labels <= 12,
+      "反复重跑不新增几何体，字形纹理与标签池有界",
+      state().render,
+    );
+    const oldWidth = iframe.style.width,
+      oldHeight = iframe.style.height;
+    for (const [width, height] of [
+      [320, 568],
+      [375, 667],
+      [844, 390],
+    ]) {
+      iframe.style.width = width + "px";
+      iframe.style.height = height + "px";
+      await wait(160);
+      const rect = d.getElementById("game").getBoundingClientRect();
+      assert(
+        d.documentElement.scrollWidth <= width &&
+          rect.left >= 0 &&
+          rect.right <= width + 0.5 &&
+          rect.height <= height + 0.5,
+        `${width}×${height} 游戏画布无横向溢出且完整显示`,
+        { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      );
+      assert(
+        !state().rafActive && state().state === "menu",
+        "缩放菜单不会重新启动游戏循环",
+      );
+    }
+    iframe.style.width = oldWidth;
+    iframe.style.height = oldHeight;
+    await wait(160);
     d.getElementById("speed-select").value = "1";
     d.getElementById("speed-select").dispatchEvent(new w.Event("change"));
     report.textContent += `\n\n全部 ${results.length} 项通过。`;

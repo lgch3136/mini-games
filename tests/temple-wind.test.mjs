@@ -9,8 +9,21 @@ import {
   traversable,
   biomeAt,
   SPEEDS,
+  SPACE,
+  HAZARDS,
+  rowDepth,
+  cameraSpec,
 } from "../english-temple-dash/engine.mjs";
+import {
+  OrthographicCamera,
+  Vector3,
+} from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { createPilot } from "./temple-pilot.mjs";
+import {
+  runnerPose,
+  footPose,
+  GAIT_RATE,
+} from "../english-temple-dash/motion.mjs";
 const advance = (w, seconds, fn = () => []) => {
   for (let i = 0; i < Math.round(seconds / STEP) && w.status === "playing"; i++)
     w.step(fn(w));
@@ -25,7 +38,7 @@ const fixture = (layout, speed = 1) => {
       z: 18,
       layout,
       biome: 0,
-      length: layout.includes("O") ? 5.2 : 1.5,
+      length: rowDepth(layout),
       passed: false,
       hit: false,
     },
@@ -34,15 +47,114 @@ const fixture = (layout, speed = 1) => {
   w.nextRow = 10000;
   return w;
 };
+test("planted feet track the ground at every selected speed, with continuous swing endpoints", () => {
+  for (const scale of SPEEDS) {
+    const speed = 26 * scale,
+      dt = 1 / 120;
+    const a = footPose(0.65, -1),
+      b = footPose(0.65 + speed * GAIT_RATE * dt, -1);
+    assert.equal(a.y, 0);
+    assert.equal(b.y, 0);
+    assert.ok(Math.abs(b.z - a.z - speed * SPACE.depth * dt) < 1e-10);
+  }
+  for (const phase of [0, Math.PI, Math.PI * 2]) {
+    const a = footPose(phase - 1e-7, -1),
+      b = footPose(phase + 1e-7, -1);
+    assert.ok(Math.hypot(a.z - b.z, a.y - b.y) < 1e-5);
+  }
+  for (const cart of [0, 1])
+    for (let gait = 0; gait < 7; gait += 0.1) {
+      const pose = runnerPose(gait, 0, 1, cart);
+      assert.ok(
+        pose.head + 0.17 + 0.165 < HAZARDS.S.clearance,
+        "cap must fit below lintel while sliding",
+      );
+    }
+});
 test("linear road: equal metres are equal pixels at horizon and player, any aspect", () => {
   for (const width of [273, 333, 720, 1152, 1550]) {
     const p = projection(width, 720),
       diff = (z) => p(0, z - 10).y - p(0, z).y;
     assert.ok(Math.abs(diff(110) - diff(10)) < 1e-9);
-    assert.equal(p(0, 0).y, 720 * (width < 720 ? 0.785 : 0.815));
+    assert.equal(p(0, 0).y, 720 * cameraSpec(width, 720).foot);
     assert.equal(p(-1, 0).x + p(1, 0).x, width);
     assert.ok(p(-1, 0).x > 0 && p(1, 0).x < width);
   }
+});
+test("every 3D vertex keeps constant velocity AND size, including the last 30 metres", () => {
+  for (const [width, height] of [
+    [1152, 720],
+    [375, 667],
+    [320, 568],
+    [844, 390],
+  ]) {
+    const spec = cameraSpec(width, height),
+      p = projection(width, height);
+    const camera = new OrthographicCamera(
+      -spec.worldWidth / 2,
+      spec.worldWidth / 2,
+      spec.top,
+      spec.bottom,
+      0.1,
+      140,
+    );
+    camera.position.set(0, 30, 40);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const screen = (lane, z, h) => {
+      const v = new Vector3(lane * SPACE.lane, h, -z * SPACE.depth).project(
+        camera,
+      );
+      return { x: ((v.x + 1) * width) / 2, y: ((1 - v.y) * height) / 2 };
+    };
+    for (const z of [100, 70, 40, 20, 10, 0, -10])
+      for (const lane of [-1, 0, 1])
+        for (const h of [0, 0.8, 2.55]) {
+          const a = screen(lane, z, h),
+            b = p(lane, z, h),
+            c = screen(lane, z - 5, h);
+          assert.ok(Math.abs(a.x - b.x) < 1e-8 && Math.abs(a.y - b.y) < 1e-8);
+          assert.ok(
+            Math.abs(c.y - a.y - 5 * SPACE.depth * SPACE.sin * spec.pixels) <
+              1e-8,
+          );
+          assert.ok(Math.abs(c.x - a.x) < 1e-8);
+        }
+    const bounds = (z) => {
+      const points = [];
+      for (const lane of [-0.42, 0.42])
+        for (const h of [0, 2.35])
+          for (const dz of [-2.5, 2.5]) points.push(screen(lane, z + dz, h));
+      return [
+        Math.max(...points.map((p) => p.x)) -
+          Math.min(...points.map((p) => p.x)),
+        Math.max(...points.map((p) => p.y)) -
+          Math.min(...points.map((p) => p.y)),
+      ];
+    };
+    const distant = bounds(80);
+    for (const z of [50, 30, 20, 10, 0, -10])
+      bounds(z).forEach((value, i) =>
+        assert.ok(Math.abs(value - distant[i]) < 1e-8),
+      );
+  }
+});
+test("authored physical depths are shared with contact spans", () => {
+  for (const k of ["#", "J", "S", "O"])
+    assert.equal(fixture("." + k + ".").rows[0].length, HAZARDS[k].depth);
+});
+test("a treasure requires a real jump and awards a distinct skill reward", () => {
+  const ground = fixture("...");
+  ground.items = [{ id: 77, type: "relic", lane: 0, z: 1, h: 1.32 }];
+  advance(ground, 0.3);
+  assert.equal(ground.relics, 0);
+  const air = fixture("...");
+  air.items = [{ id: 77, type: "relic", lane: 0, z: 8, h: 1.32 }];
+  air.step(["jump"]);
+  advance(air, 0.35);
+  assert.equal(air.relics, 1);
+  assert.equal(air.charge, 22);
+  assert.ok(air.score > 350);
 });
 test("first tick responds; finite continuous lane change finishes within 150 ms", () => {
   const w = new World();
@@ -78,13 +190,14 @@ test("jump arc, landing and slide are simulation-driven, with an air dive", () =
   assert.equal(w.player.h, 0);
   assert.ok(w.player.slide > 0.4);
 });
-test("collision occurs at feet, not several metres before the visible object", () => {
+test("collision starts at the visible front face, not a distant shadow or row centre", () => {
   const w = fixture(".#.");
-  advance(w, 0.6);
+  advance(w, 0.55);
   assert.equal(w.hp, 3);
-  assert.ok(w.distance > 15);
+  assert.ok(w.distance > 14);
   const before = w.distance;
-  w.rows[0].z = w.distance + 0.96;
+  w.rows[0].z =
+    w.distance + HAZARDS["#"].depth / 2 + 0.2 + (w.speed * STEP) / 2;
   w.step();
   assert.equal(w.hp, 2);
   assert.ok(Math.abs(w.distance - before - w.speed * STEP) < 1e-10);
@@ -206,6 +319,17 @@ test("fork choice does not rewrite any already-visible hazard", () => {
       .map((r) => [r.id, r.layout, r.z]),
     before,
   );
+});
+test('route choices give their promised immediate rewards without changing speed',()=>{
+  for(const lane of [-1,0,1]) {
+    const w=new World();w.rows=[{id:700,kind:'fork',z:0,passed:false,layout:'...',length:0}];
+    w.items=[];w.hp=2;w.player.x=lane;w.player.lane=lane;
+    w.checkRows();w.checkItems();
+    assert.equal(w.speed,26);
+    if(lane===-1)assert.equal(w.magnet,6);
+    if(lane===0){assert.equal(w.hp,3);assert.equal(w.shield,1);}
+    if(lane===1)assert.equal(w.word.progress,1);
+  }
 });
 test("paused speed changes keep existing geometry stable and controls valid", () => {
   const w = new World({ speed: 0.7, seed: 904 });

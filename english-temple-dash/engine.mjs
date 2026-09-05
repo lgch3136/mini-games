@@ -1,6 +1,7 @@
 // Rendering-independent runner simulation. Forward distance is shared by drawing,
 // contact tests and generation; there is no separate eased "visual" distance.
 export const STEP = 1 / 120;
+export const GAIT_RATE = 0.4;
 export const SIGHT = 132;
 export const SECTOR_LENGTH = 480;
 export const LANES = [-1, 0, 1];
@@ -54,14 +55,19 @@ export const ROUTES = [
   {
     id: "relic",
     name: "寻宝线",
-    note: "更多遗物 · 路线更曲折",
+    note: "获得 6 秒磁力 · 更多宝箱与遗物",
     color: "#e7bd65",
   },
-  { id: "calm", name: "稳行线", note: "宽松路线 · 整理节奏", color: "#b8dcc9" },
+  {
+    id: "calm",
+    name: "稳行线",
+    note: "恢复一格生命 · 获得护符 · 宽松路线",
+    color: "#b8dcc9",
+  },
   {
     id: "word",
     name: "词印线",
-    note: "更多字母 · 连成单词补充护符",
+    note: "立即获得一枚词印 · 下一段更多字母",
     color: "#a2d7ee",
   },
 ];
@@ -72,22 +78,45 @@ const WORDS = [
   { en: "river", zh: "河流" },
 ];
 
-// The same linear mapping is used for scenery, path edges and contact geometry.
-// No perspective easing near the avatar: equal world steps -> equal screen steps.
+// Physical dimensions shared by the 3D scene, collision volumes and projection
+// tests. No distance-dependent scale: every vertex travels at the same velocity.
+export const SPACE = Object.freeze({
+  lane: 2.1,
+  depth: 0.17,
+  sin: 0.6,
+  cos: 0.8,
+});
+export const HAZARDS = Object.freeze({
+  "#": { depth: 5, height: 2.35 },
+  J: { depth: 3.6, height: 0.72 },
+  S: { depth: 3.6, height: 2.55, clearance: 1.05 },
+  O: { depth: 8, height: 0 },
+});
+export const rowDepth = (layout) =>
+  Math.max(0, ...[...layout].map((k) => HAZARDS[k]?.depth || 0));
+export function cameraSpec(width, height) {
+  const aspect = width / height;
+  const worldHeight = Math.max(11.5, 8.8 / aspect);
+  const foot = width < height ? 0.735 : 0.79;
+  return {
+    worldHeight,
+    worldWidth: worldHeight * aspect,
+    foot,
+    pixels: height / worldHeight,
+    top: worldHeight * foot,
+    bottom: -worldHeight * (1 - foot),
+  };
+}
 export function projection(width, height) {
-  const horizon = height * 0.255,
-    ground = height * (width < height ? 0.785 : 0.815);
-  const near = Math.min(width * 0.41, height * 0.6),
-    far = near * 0.1;
+  const { pixels, foot } = cameraSpec(width, height);
   return (lane, z, lift = 0) => {
-    const t = 1 - z / SIGHT;
-    const half = lerp(far, near, t);
-    const scale = lerp(0.12, 1, t);
     return {
-      x: width / 2 + lane * half * (2 / 3),
-      y: lerp(horizon, ground, t) - lift * height * 0.052 * scale,
-      half,
-      scale,
+      x: width / 2 + lane * SPACE.lane * pixels,
+      y:
+        height * foot -
+        (z * SPACE.depth * SPACE.sin + lift * SPACE.cos) * pixels,
+      half: SPACE.lane * 1.5 * pixels,
+      scale: pixels / 56,
     };
   };
 }
@@ -114,6 +143,41 @@ export const PATTERNS = [
   { name: "回声连跳", rows: ["JJJ", "JJJ", ".#."] },
   { name: "遗物小径", rows: ["...", ".#.", "...", "..#"] },
   { name: "三段试炼", rows: ["##J", "SS#", ".##", "..."] },
+  {
+    name: "庭院回旋",
+    rows: ["#..", ".#.", "..#", ".#.", "..."],
+    beats: [0.8, 0.8, 0.8, 1.5, 1.2],
+  },
+  {
+    name: "跃上宝藏",
+    rows: [".J.", "#S.", ".J.", "..."],
+    beats: [1, 1.05, 1.5, 1.1],
+    treasure: 0,
+  },
+  {
+    name: "双拍穿行",
+    rows: ["JJ.", "#JJ", "..."],
+    beats: [1.05, 1.65, 1.15],
+    treasure: 1,
+  },
+  {
+    name: "悬桥踏石",
+    rows: ["O.O", ".JO", "OO.", "..."],
+    beats: [1.1, 1.1, 1.6, 1.1],
+    treasure: 1,
+  },
+  {
+    name: "拱廊抉择",
+    rows: ["SJ.", "#SJ", "JS#", "..."],
+    beats: [1.05, 1.05, 1.6, 1.1],
+    treasure: 1,
+  },
+  {
+    name: "矿道折线",
+    rows: ["#S.", ".#J", "S.#", "..."],
+    beats: [0.9, 1.1, 1.6, 1.1],
+    treasure: 1,
+  },
 ];
 export const traversable = (pattern, lane, action = "run") => {
   const kind = pattern[lane + 1];
@@ -171,16 +235,18 @@ export class World {
     this.items = [];
     this.particles = [];
     this.nextId = 1;
-    this.nextRow = 105;
+    this.nextRow = 68;
     this.patternBag = [];
     this.patternQueue = [];
     this.lastPattern = -1;
     this.plannedLane = 0;
+    this.rowsSinceTurn = 0;
     this.generatedCount = 0;
     this.sector = 0;
-    this.branch = "calm";
+    this.branch = "balanced";
     this.routeSelections = 0;
     this.coins = 0;
+    this.relics = 0;
     this.combo = 0;
     this.bestCombo = 0;
     this.charge = 0;
@@ -300,7 +366,10 @@ export class World {
       }
     }
     p.pose += ((p.slide > 0 ? 1 : 0) - p.pose) * Math.min(1, STEP * 28);
-    if (p.h === 0 && !p.slide) p.gait += this.speed * STEP * 1.15;
+    // ~3.3 footsteps/s at standard pace, not the old 9.5-step "sewing machine".
+    if (p.h === 0 && !p.slide) p.gait += this.speed * STEP * GAIT_RATE;
+    if (Math.floor(p.gait / Math.PI) !== Math.floor(p.previousGait / Math.PI))
+      this.emit("footstep", { biome: biomeAt(this.distance) });
     this.flow = Math.max(0, this.flow - STEP);
     this.magnet = Math.max(0, this.magnet - STEP);
     this.score += this.speed * STEP * (this.flow > 0 ? 2 : 1);
@@ -333,10 +402,10 @@ export class World {
     if (!this.patternBag.length) {
       const list =
         biome === 0
-          ? [0, 1, 2, 3, 4, 5, 6, 7, 12, 16, 17]
+          ? [0, 1, 2, 3, 4, 5, 6, 7, 12, 16, 17, 18, 19, 20, 22]
           : biome === 1
-            ? [0, 4, 7, 8, 9, 10, 11, 16, 17]
-            : [0, 1, 3, 5, 12, 13, 14, 15, 17];
+            ? [0, 4, 7, 8, 9, 10, 11, 16, 17, 18, 20, 21]
+            : [0, 1, 3, 5, 12, 13, 14, 15, 17, 18, 20, 22, 23];
       this.patternBag = [...list];
       for (let i = this.patternBag.length - 1; i > 0; i--) {
         const j = Math.floor(this.random() * (i + 1));
@@ -351,10 +420,12 @@ export class World {
     const index = this.patternBag.pop();
     this.lastPattern = index;
     const flip = this.random() < 0.5;
-    return PATTERNS[index].rows.map((layout) => ({
+    return PATTERNS[index].rows.map((layout, beat) => ({
       layout: flip ? [...layout].reverse().join("") : layout,
       name: PATTERNS[index].name,
       pattern: index,
+      beat: PATTERNS[index].beats?.[beat] || 1,
+      treasure: PATTERNS[index].treasure === beat,
     }));
   }
   fill() {
@@ -396,8 +467,8 @@ export class World {
       }
       if (!this.patternQueue.length)
         this.patternQueue = this.pickPattern(biome);
-      let { layout, name, pattern } = this.patternQueue.shift();
-      const tutorial = [".#.", "#..", "..#", "JJJ", "...", "SSS"];
+      let { layout, name, pattern, beat, treasure } = this.patternQueue.shift();
+      const tutorial = [".#.", "#.#", ".##", "JJJ", "...", "SSS", "#.#", "##."];
       if (this.generatedCount < tutorial.length) {
         layout = tutorial[this.generatedCount];
         name = [
@@ -407,8 +478,12 @@ export class World {
           "跨过横木",
           "收集遗物",
           "从横梁下滑过",
+          "穿过中央石门",
+          "换到右侧古道",
         ][this.generatedCount];
         pattern = -1;
+        beat = 1;
+        treasure = false;
       }
       if (
         this.branch === "calm" &&
@@ -417,6 +492,20 @@ export class World {
       ) {
         const index = Math.floor(this.random() * 3);
         layout = layout.slice(0, index) + "." + layout.slice(index + 1);
+      }
+      // A run/jump/slide phrase needs a change of line too. Prevent long stretches
+      // that can be solved by camping in the middle, without spawning surprises.
+      if (
+        this.generatedCount >= tutorial.length &&
+        this.rowsSinceTurn >= 3 &&
+        layout !== "..."
+      ) {
+        const target =
+          this.plannedLane === 0 ? (this.random() < 0.5 ? -1 : 1) : 0;
+        const cells = [...layout];
+        cells[this.plannedLane + 1] = "#";
+        if (cells[target + 1] === "#") cells[target + 1] = ".";
+        layout = cells.join("");
       }
       // Pure row validator: a block-only wall is never accepted.
       if (
@@ -435,7 +524,7 @@ export class World {
         biome,
         passed: false,
         hit: false,
-        length: layout.includes("O") ? 5.2 : 1.5,
+        length: rowDepth(layout),
         bestAction: "run",
       };
       const options = LANES.flatMap((lane) =>
@@ -450,10 +539,31 @@ export class World {
       );
       options.sort((a, b) => a.cost - b.cost);
       const route = options[0];
+      this.rowsSinceTurn =
+        route.lane === this.plannedLane ? this.rowsSinceTurn + 1 : 0;
       this.plannedLane = route.lane;
       row.guideLane = route.lane;
       row.guideAction = route.action;
       this.rows.push(row);
+      // Optional skill line: jumping the hurdle wins a chest; the open lane
+      // remains a lower-risk alternative, not a single prescribed solution.
+      const risky = LANES.filter((lane) => layout[lane + 1] === "J");
+      if (
+        risky.length &&
+        (treasure ||
+          this.generatedCount % (this.branch === "relic" ? 2 : 4) === 1)
+      ) {
+        const bonusLane = risky[Math.floor(this.random() * risky.length)];
+        this.items.push({
+          id: this.nextId++,
+          type: "relic",
+          lane: bonusLane,
+          z: row.z,
+          h: 1.32,
+          taken: false,
+        });
+        row.bonusLane = bonusLane;
+      }
       this.addTrail(
         route.lane,
         row.z - 11,
@@ -487,8 +597,8 @@ export class World {
             ? 1.1
             : 1.38;
       this.nextRow +=
-        Math.max(34, this.speed * gapSeconds) +
-        this.random() * 6 +
+        Math.max(30, this.speed * Math.max(1.04, gapSeconds * beat)) +
+        this.random() * 3 +
         (layout.includes("O") ? 5 : 0);
     }
   }
@@ -520,6 +630,20 @@ export class World {
         const choice = ROUTES[clamp(Math.round(p.x) + 1, 0, 2)];
         this.branch = choice.id;
         this.routeSelections++;
+        if (choice.id === "relic") this.magnet = Math.max(6, this.magnet);
+        if (choice.id === "calm") {
+          this.hp = Math.min(this.maxHp, this.hp + 1);
+          this.shield = 1;
+        }
+        if (choice.id === "word")
+          this.items.push({
+            id: this.nextId++,
+            type: "letter",
+            lane: Math.round(p.x),
+            z: this.distance,
+            h: 0.75,
+            taken: false,
+          });
         this.emit("route", { ...choice });
         // Keep every already-visible row stable. The choice influences new rows.
         this.charge = clamp(this.charge + 12, 0, 100);
@@ -531,7 +655,9 @@ export class World {
       if (z < reach && before > -reach) {
         // Check the swept contact interval, not the target lane before its animation arrives.
         for (const lane of LANES) {
-          if (Math.abs(p.x - lane) >= 0.57) continue;
+          if (Math.abs(p.x - lane) >= 0.54) continue;
+          const contact = (HAZARDS[row.layout[lane + 1]]?.depth || 0) / 2 + 0.2;
+          if (z >= contact || before <= -contact) continue;
           if (!this.safe(row.layout[lane + 1])) {
             row.hit = true;
             this.hurt(row.layout[lane + 1]);
@@ -597,6 +723,7 @@ export class World {
       const magnet = this.magnet > 0 || this.flow > 0;
       if (Math.abs(p.x - item.lane) > (magnet ? 2.1 : 0.5)) continue;
       // Letters are forgiving vertically. Coins on a jump arc reward the jump.
+      if (item.type === "relic" && p.h < 0.82) continue;
       if (item.type === "coin" && item.h > 0.9 && p.h < 0.45 && !magnet)
         continue;
       item.taken = true;
@@ -604,6 +731,11 @@ export class World {
         this.coins++;
         this.score += this.flow > 0 ? 30 : 15;
         this.emit("coin");
+      } else if (item.type === "relic") {
+        this.relics++;
+        this.score += 350;
+        this.charge = Math.min(100, this.charge + 22);
+        this.emit("relic", { count: this.relics });
       } else if (item.type === "letter") {
         const letter = this.word.en[this.word.progress++];
         this.emit("letter", { letter });
@@ -653,6 +785,7 @@ export class World {
       items: this.items.length,
       particles: this.particles.length,
       words: this.completedWords,
+      relics: this.relics,
       word: { ...this.word },
       combo: this.combo,
       bestCombo: this.bestCombo,

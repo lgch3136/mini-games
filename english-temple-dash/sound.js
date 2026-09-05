@@ -136,7 +136,13 @@ export class WindScore extends Soundtrack {
     this.last[type] = t;
     const tone = (f, d, v, w = "sine", end = null, delay = 0) =>
       this.tone(f, t + delay, d, v, w, this.effects, end);
-    if (type === "lane") this.hiss(t, 0.055, 0.027, 850);
+    if (type === "footstep") {
+      if (data.biome === 2) tone(145, 0.035, 0.012, "triangle", 80);
+      else {
+        tone(data.biome === 1 ? 115 : 92, 0.045, 0.022, "sine", 48);
+        this.hiss(t, 0.026, 0.009, 430);
+      }
+    } else if (type === "lane") this.hiss(t, 0.055, 0.027, 850);
     else if (type === "jump") {
       tone(185, 0.14, 0.065, "triangle", 390);
       this.hiss(t, 0.08, 0.02, 1300);
@@ -154,7 +160,9 @@ export class WindScore extends Soundtrack {
     } else if (type === "clear" && data.perfect) {
       tone(1174.66, 0.08, 0.027);
     } else if (
-      ["word", "flow", "shield", "magnet", "sector", "route"].includes(type)
+      ["word", "flow", "shield", "magnet", "sector", "route", "relic"].includes(
+        type,
+      )
     ) {
       const notes =
         type === "word" || type === "flow"

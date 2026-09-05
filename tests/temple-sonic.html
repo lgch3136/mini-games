@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>音速远征 · 实际输入验收</title>
+  <style>
+    body {
+      margin: 0;
+      background: #203b47;
+      color: #eddfb6;
+      font: 13px system-ui;
+    }
+    header {
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button,
+    select {
+      padding: 9px 12px;
+    }
+    iframe {
+      width: 100%;
+      height: 720px;
+      border: 0;
+      display: block;
+    }
+    pre {
+      white-space: pre-wrap;
+      padding: 12px;
+      font-size: 11px;
+    }
+    .clean header,
+    .clean pre {
+      display: none;
+    }
+    .clean iframe {
+      height: 100dvh;
+    }
+  </style>
+  <header>
+    <button id="run">演奏整首 · 正常按键</button
+    ><button id="stop">停止与释放</button
+    ><button id="lifecycle">暂停 / 切速 / 静音回归</button
+    ><span id="status">不改时钟、位置、生命或谱面</span>
+  </header>
+  <iframe
+    id="subject"
+    src="../english-temple-dash/?mode=rhythm&sonic-test=1"
+  ></iframe>
+  <pre id="report">等待开始</pre>
+  <script type="module" src="temple-sonic.mjs"></script>
+</html>

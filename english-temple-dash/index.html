@@ -9,10 +9,10 @@
     <meta name="theme-color" content="#193942" />
     <meta
       name="description"
-      content="遗迹词途 · 风行远征。穿过晨光庭院、悬空水道与回声矿道，跳跃、滑行、收集词印，开启无限的远征。"
+      content="遗迹词途 · 音速远征。完整钢琴曲、按拍编排的 3D 轮滑古道，跳跃、闪避、组合键和长条，与音乐一同前进。另有自由跑酷模式。"
     />
-    <title>遗迹词途 · 风行远征</title>
-    <link rel="stylesheet" href="style.css?v=20260905-wind" />
+    <title>遗迹词途 · 音速远征</title>
+    <link rel="stylesheet" href="style.css?v=20260905-sonic" />
   </head>
   <body>
     <main id="app">
@@ -26,13 +26,13 @@
           <div class="menu-gradient"></div>
           <a class="back-link" href="../">↖ 游戏之庭</a>
           <div class="menu-copy">
-            <p class="eyebrow">THE WINDWARD EXPEDITION</p>
+            <p class="eyebrow">A JOURNEY IN RHYTHM</p>
             <h1>遗迹词途</h1>
             <p class="english-title">TEMPLE DASH</p>
             <div class="small-rule"></div>
-            <h2>把风，留在身后。</h2>
+            <h2>让脚步，落在音乐里。</h2>
             <p class="intro">
-              穿过云端的古道，跃上悬桥与矿车。<br />沿途拾起字母，让每次远征都有所收获。
+              踩着旋律，滑过庭院与悬桥。<br />闪避、跃起、俯身，让每个动作都有节拍。
             </p>
             <div class="preview-route">
               <span><small>01</small> 晨光庭院</span><i>→</i
@@ -41,14 +41,25 @@
             </div>
           </div>
           <div class="setup-panel">
-            <p class="panel-caption">准备这次远征</p>
+            <div class="segments mode-select" aria-label="选择玩法">
+              <button data-mode="rhythm" aria-pressed="true">♫ 节奏远征</button>
+              <button data-mode="free" aria-pressed="false">自由跑酷</button>
+            </div>
+            <div id="song-setup">
+              <label class="select-label" for="song-select">选择完整曲目</label>
+              <select id="song-select"></select>
+              <p id="song-detail"></p>
+            </div>
             <div id="difficulty" class="segments" aria-label="选择难度">
               <button data-level="easy" aria-pressed="false">探索</button>
               <button data-level="normal" aria-pressed="true">标准</button>
               <button data-level="hard" aria-pressed="false">挑战</button>
             </div>
             <label class="select-label" for="speed-select"
-              >奔跑速度 <small>匀速前进 · 暂停时可调整</small></label
+              >速度
+              <small id="speed-hint"
+                >音乐与滑行同步 · 全程线性匀速</small
+              ></label
             >
             <select id="speed-select">
               <option value="0.7">0.70× · 漫游</option>
@@ -63,11 +74,13 @@
             </button>
             <p id="best" class="best-note">载入项目词库</p>
             <div class="short-guide">
-              <span>← → 换道　↑ / 空格 跳跃　↓ 滑行</span
-              ><span>手机：向四个方向轻扫，也可点击操作键</span>
+              <span id="control-hint">箭头到金线时按键 · 长条按住</span
+              ><span id="touch-hint">手机：四键可双指组合</span>
             </div>
           </div>
-          <p class="menu-footer">没有终点。选好你的路，保持你的节奏。</p>
+          <p class="menu-footer">
+            完整曲目 · 组合动作 · 40 连击保护胶囊 · 项目词库
+          </p>
         </section>
         <div id="hud" hidden>
           <div class="hud-main">
@@ -78,7 +91,13 @@
           <div class="hud-actions">
             <button id="audio-btn" aria-label="关闭声音" title="声音">♪</button
             ><button id="pause-btn" aria-label="暂停游戏" title="暂停 / P">
-              Ⅱ
+              Ⅱ</button
+            ><button
+              id="end-btn"
+              aria-label="结束本局并查看成绩"
+              title="结束本局"
+            >
+              ↩
             </button>
           </div>
           <div class="hud-score">
@@ -93,6 +112,27 @@
             <span class="meter-track"><i id="flow-fill"></i></span>
           </div>
         </div>
+        <div id="rhythm-hud" hidden>
+          <div id="track-status">
+            <strong id="track-name"></strong
+            ><span><b id="rhythm-bpm"></b> · <b id="track-time"></b></span
+            ><i><em id="song-progress"></em></i>
+          </div>
+          <div id="accuracy-box">
+            <strong id="accuracy">100.0%</strong><small>准确率</small>
+          </div>
+          <div id="judge-group">
+            <strong id="judgement"></strong><small id="timing-error"></small>
+          </div>
+          <strong id="count-in" hidden></strong>
+          <button
+            id="boost-btn"
+            disabled
+            aria-label="连击爆发，能量满后按 Control 或点击"
+          >
+            0%
+          </button>
+        </div>
         <div id="notice" role="status" hidden>
           <span id="notice-label"></span><strong id="notice-text"></strong>
         </div>
@@ -102,7 +142,7 @@
             ><strong id="meaning"></strong>
           </div>
           <div id="letters"></div>
-          <small class="reward">成词 +生命 · +护符</small>
+          <small class="reward">词印记忆 · 成词奖励</small>
         </div>
         <div id="word-echo" aria-live="polite"></div>
         <div id="buffs" hidden></div>
@@ -123,6 +163,19 @@
             <p>调整节奏，下一步仍由你决定。</p>
             <label class="select-label" for="pause-speed">奔跑速度</label
             ><select id="pause-speed"></select>
+            <div id="calibration">
+              <label class="select-label" for="latency"
+                >节拍校准 <small id="latency-value">0 ms</small></label
+              ><input
+                id="latency"
+                type="range"
+                min="-150"
+                max="150"
+                step="10"
+                value="0"
+              />
+              <p>总是偏晚可向右调；总是偏早可向左调。蓝牙耳机建议先校准。</p>
+            </div>
             <button id="resume-btn" class="primary">继续远征 ↗</button
             ><button id="restart-btn" class="secondary">重跑这条路线</button
             ><button id="pause-menu" class="text-button">返回出发地</button>
@@ -143,11 +196,11 @@
         </section>
       </div>
       <footer id="frame-footer">
-        <span>风行远征 <i>/</i> TEMPLE DASH</span
-        ><span>方向键 / 轻扫 · P 暂停 · M 静音</span>
+        <span>音速远征 <i>/</i> TEMPLE DASH</span
+        ><span>方向键 / 轻扫 · Ctrl 爆发 · P 暂停 · M 静音</span>
       </footer>
     </main>
     <script src="../shared/vocabulary.js?v=20260820a"></script>
-    <script type="module" src="game.js?v=20260905-wind"></script>
+    <script type="module" src="game.js?v=20260905-sonic"></script>
   </body>
 </html>

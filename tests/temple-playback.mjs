@@ -3,14 +3,23 @@ import {
   STEP,
   BIOMES,
   biomeAt,
-} from "../english-temple-dash/engine.mjs?v=20260905-wind";
-import { Renderer } from "../english-temple-dash/render.js?v=20260905-wind";
+} from "../english-temple-dash/engine.mjs?v=20260905-sonic";
+import { Renderer } from "../english-temple-dash/render-linear.js?v=20260905-sonic";
 import { WindScore } from "../english-temple-dash/sound.js?v=20260905-wind";
 import { createPilot } from "./temple-pilot.mjs";
 const $ = (id) => document.getElementById(id),
   params = new URLSearchParams(location.search),
   renderer = new Renderer($("game")),
   audio = new WindScore();
+const capture = document.createElement("button");
+capture.id = "capture";
+capture.textContent = "保存实际画布";
+document.querySelector("header").append(capture);
+capture.onclick = () => {
+  renderer.render(world, 1);
+  window.playbackCapture = renderer.canvas.toDataURL("image/png");
+  capture.textContent = "画布已保存到测试报告";
+};
 let world = new World({ seed: 51 }),
   pilot = createPilot(),
   running = false,
@@ -34,6 +43,7 @@ function report() {
     voices: audio.voices.size,
     audioState: audio.ctx?.state,
     canvas: [renderer.canvas.width, renderer.canvas.height],
+    renderer: renderer.diagnostics(),
   };
   $("stats").textContent = JSON.stringify(window.playbackReport, null, 2);
   $("label").textContent =
@@ -71,7 +81,30 @@ function frame(now) {
   renderer.render(world, acc / STEP);
   work.push(performance.now() - began);
   if (world.tick % 12 < 3) report();
-  if (world.status !== "playing" || (pauseAt && world.time >= pauseAt)) {
+  const inspect = params.get("inspect");
+  const contact =
+    inspect &&
+    world.rows.some(
+      (r) =>
+        r.kind === "hazards" &&
+        Math.abs(r.z - world.distance) < 0.4 &&
+        (inspect === "slide"
+          ? r.layout.includes("S") && world.player.slide > 0.1
+          : inspect === "gap"
+            ? r.layout.includes("O") && world.player.h > 1
+            : inspect === "jump"
+              ? r.layout.includes("J") && world.player.h > 1
+              : inspect === "cart-slide"
+                ? biomeAt(world.distance) === 2 &&
+                  r.layout.includes("S") &&
+                  world.player.slide > 0.1
+                : false),
+    );
+  if (
+    world.status !== "playing" ||
+    contact ||
+    (pauseAt && world.time >= pauseAt)
+  ) {
     pauseAt = 0;
     stop();
     return;
@@ -115,9 +148,12 @@ new ResizeObserver(() => {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) stop();
 });
-window.addEventListener("pagehide", () => {
+window.addEventListener("pagehide", (event) => {
   stop();
-  audio.destroy();
+  if (!event.persisted) {
+    audio.destroy();
+    renderer.dispose();
+  }
 });
 await renderer.load();
 renderer.resize();
