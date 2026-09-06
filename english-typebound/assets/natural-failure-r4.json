@@ -1,0 +1,531 @@
+{
+  "test": "自然受伤与重试",
+  "startedAt": "2026-09-06T08:15:32.061Z",
+  "checks": [
+    {
+      "name": "普通输入后由敌人自然攻击至失败",
+      "pass": true
+    },
+    {
+      "name": "失败页停止动画与音频",
+      "pass": true
+    },
+    {
+      "name": "失败页含重试与回到开始按钮",
+      "pass": true
+    },
+    {
+      "name": "重试从满生命的新地图开始",
+      "pass": true
+    },
+    {
+      "name": "标题返回菜单并释放资源",
+      "pass": true
+    },
+    {
+      "name": "返回菜单恢复完整背景取景",
+      "pass": true
+    }
+  ],
+  "version": "20260906-type-r4",
+  "defeat": {
+    "version": "20260906-type-r4",
+    "ready": true,
+    "mode": "defeat",
+    "raf": false,
+    "game": {
+      "phase": "defeat",
+      "depth": 0,
+      "chapter": {
+        "name": "雾林来信",
+        "en": "THE LETTERWOOD",
+        "color": "#a9dac6",
+        "story": "旧书页在雾中醒来。用完整的单词，点亮通往遗迹的路。"
+      },
+      "mode": "journey",
+      "level": "easy",
+      "pace": "swift",
+      "hp": 0,
+      "maxHp": 100,
+      "shield": 0,
+      "energy": 0,
+      "time": 70.20833333333528,
+      "visualTime": 70.275000000002,
+      "roomStarted": true,
+      "roomId": 1,
+      "wordId": 1,
+      "word": {
+        "en": "christmas",
+        "zh": "圣诞节"
+      },
+      "upcoming": [
+        "exciting",
+        "pig",
+        "rainbow"
+      ],
+      "cursor": 1,
+      "expected": "h",
+      "cleanWord": true,
+      "combo": 0,
+      "score": 0,
+      "stats": {
+        "attempts": 1,
+        "correct": 1,
+        "errors": 0,
+        "committed": 0,
+        "words": 0,
+        "perfect": 0,
+        "bestCombo": 0,
+        "damage": 1.2999999999999972,
+        "guards": 0,
+        "rooms": 0
+      },
+      "wpm": 0,
+      "accuracy": 100,
+      "enemy": {
+        "name": "迷途书灵",
+        "en": "LOST WISP",
+        "detail": "打完整词，释放书页法术。",
+        "hp": 106.7,
+        "damage": 12,
+        "color": "#c9b5ef",
+        "kind": "wisp",
+        "maxHp": 108,
+        "charge": 0.001068376068348087,
+        "stagger": 0,
+        "hit": 0,
+        "attack": 0.7,
+        "enraged": false,
+        "dead": 0,
+        "period": 7.8
+      },
+      "routes": [
+        {
+          "id": "grove",
+          "name": "林间小径",
+          "kind": "wisp",
+          "desc": "循序渐进 · 标准敌人",
+          "elite": false
+        },
+        {
+          "id": "ruin",
+          "name": "遗迹险径",
+          "kind": "moth",
+          "desc": "更强敌人 · 额外一份遗物",
+          "elite": true
+        }
+      ],
+      "relics": {},
+      "passage": null,
+      "passageIndex": 0,
+      "history": [],
+      "mistakes": [],
+      "samples": [
+        {
+          "t": 0,
+          "wpm": 0
+        },
+        {
+          "t": 1,
+          "wpm": 0
+        },
+        {
+          "t": 2,
+          "wpm": 0
+        },
+        {
+          "t": 3,
+          "wpm": 0
+        },
+        {
+          "t": 4,
+          "wpm": 0
+        },
+        {
+          "t": 5,
+          "wpm": 0
+        },
+        {
+          "t": 6,
+          "wpm": 0
+        },
+        {
+          "t": 7,
+          "wpm": 0
+        },
+        {
+          "t": 8,
+          "wpm": 0
+        },
+        {
+          "t": 9.1,
+          "wpm": 0
+        },
+        {
+          "t": 10.1,
+          "wpm": 0
+        },
+        {
+          "t": 11.1,
+          "wpm": 0
+        },
+        {
+          "t": 12.1,
+          "wpm": 0
+        },
+        {
+          "t": 13.1,
+          "wpm": 0
+        },
+        {
+          "t": 14.1,
+          "wpm": 0
+        },
+        {
+          "t": 15.1,
+          "wpm": 0
+        },
+        {
+          "t": 16.1,
+          "wpm": 0
+        },
+        {
+          "t": 17.1,
+          "wpm": 0
+        },
+        {
+          "t": 18.1,
+          "wpm": 0
+        },
+        {
+          "t": 19.1,
+          "wpm": 0
+        },
+        {
+          "t": 20.1,
+          "wpm": 0
+        },
+        {
+          "t": 21.1,
+          "wpm": 0
+        },
+        {
+          "t": 22.2,
+          "wpm": 0
+        },
+        {
+          "t": 23.2,
+          "wpm": 0
+        },
+        {
+          "t": 24.2,
+          "wpm": 0
+        },
+        {
+          "t": 25.2,
+          "wpm": 0
+        },
+        {
+          "t": 26.2,
+          "wpm": 0
+        },
+        {
+          "t": 27.2,
+          "wpm": 0
+        },
+        {
+          "t": 28.2,
+          "wpm": 0
+        },
+        {
+          "t": 29.2,
+          "wpm": 0
+        },
+        {
+          "t": 30.2,
+          "wpm": 0
+        },
+        {
+          "t": 31.2,
+          "wpm": 0
+        },
+        {
+          "t": 32.2,
+          "wpm": 0
+        },
+        {
+          "t": 33.2,
+          "wpm": 0
+        },
+        {
+          "t": 34.3,
+          "wpm": 0
+        },
+        {
+          "t": 35.3,
+          "wpm": 0
+        },
+        {
+          "t": 36.3,
+          "wpm": 0
+        },
+        {
+          "t": 37.3,
+          "wpm": 0
+        },
+        {
+          "t": 38.3,
+          "wpm": 0
+        },
+        {
+          "t": 39.3,
+          "wpm": 0
+        },
+        {
+          "t": 40.3,
+          "wpm": 0
+        },
+        {
+          "t": 41.3,
+          "wpm": 0
+        },
+        {
+          "t": 42.3,
+          "wpm": 0
+        },
+        {
+          "t": 43.3,
+          "wpm": 0
+        },
+        {
+          "t": 44.3,
+          "wpm": 0
+        },
+        {
+          "t": 45.3,
+          "wpm": 0
+        },
+        {
+          "t": 46.4,
+          "wpm": 0
+        },
+        {
+          "t": 47.4,
+          "wpm": 0
+        },
+        {
+          "t": 48.4,
+          "wpm": 0
+        },
+        {
+          "t": 49.4,
+          "wpm": 0
+        },
+        {
+          "t": 50.4,
+          "wpm": 0
+        },
+        {
+          "t": 51.4,
+          "wpm": 0
+        },
+        {
+          "t": 52.4,
+          "wpm": 0
+        },
+        {
+          "t": 53.4,
+          "wpm": 0
+        },
+        {
+          "t": 54.4,
+          "wpm": 0
+        },
+        {
+          "t": 55.4,
+          "wpm": 0
+        },
+        {
+          "t": 56.4,
+          "wpm": 0
+        },
+        {
+          "t": 57.4,
+          "wpm": 0
+        },
+        {
+          "t": 58.5,
+          "wpm": 0
+        },
+        {
+          "t": 59.5,
+          "wpm": 0
+        },
+        {
+          "t": 60.5,
+          "wpm": 0
+        },
+        {
+          "t": 61.5,
+          "wpm": 0
+        },
+        {
+          "t": 62.5,
+          "wpm": 0
+        },
+        {
+          "t": 63.5,
+          "wpm": 0
+        },
+        {
+          "t": 64.5,
+          "wpm": 0
+        },
+        {
+          "t": 65.5,
+          "wpm": 0
+        },
+        {
+          "t": 66.5,
+          "wpm": 0
+        },
+        {
+          "t": 67.5,
+          "wpm": 0
+        },
+        {
+          "t": 68.5,
+          "wpm": 0
+        },
+        {
+          "t": 69.5,
+          "wpm": 0
+        }
+      ],
+      "victoryAge": 0,
+      "reviewTarget": 20
+    },
+    "reviewCount": 0,
+    "wordCounts": {
+      "easy": 597,
+      "medium": 790,
+      "hard": 942
+    },
+    "resources": {
+      "particles": 0,
+      "tokens": 0,
+      "rays": 0,
+      "rings": 0,
+      "voices": 0,
+      "audioState": "suspended",
+      "musicTimer": false,
+      "inputTimers": 0
+    },
+    "performance": {
+      "frames": 4212,
+      "medianFrameMs": 16.6,
+      "p95FrameMs": 18.3,
+      "p95WorkMs": 0.6,
+      "slowFrames": 1
+    },
+    "canvas": {
+      "width": 1880,
+      "height": 400
+    }
+  },
+  "final": {
+    "version": "20260906-type-r4",
+    "ready": true,
+    "mode": "menu",
+    "raf": false,
+    "game": {
+      "phase": "map",
+      "depth": 0,
+      "chapter": {
+        "name": "雾林来信",
+        "en": "THE LETTERWOOD",
+        "color": "#a9dac6",
+        "story": "旧书页在雾中醒来。用完整的单词，点亮通往遗迹的路。"
+      },
+      "mode": "journey",
+      "level": "easy",
+      "pace": "swift",
+      "hp": 100,
+      "maxHp": 100,
+      "shield": 0,
+      "energy": 0,
+      "time": 0,
+      "visualTime": 0,
+      "roomStarted": false,
+      "roomId": 0,
+      "wordId": 0,
+      "expected": " ",
+      "combo": 0,
+      "score": 0,
+      "stats": {
+        "attempts": 0,
+        "correct": 0,
+        "errors": 0,
+        "committed": 0,
+        "words": 0,
+        "perfect": 0,
+        "bestCombo": 0,
+        "damage": 0,
+        "guards": 0,
+        "rooms": 0
+      },
+      "wpm": 0,
+      "accuracy": 100,
+      "routes": [
+        {
+          "id": "grove",
+          "name": "林间小径",
+          "kind": "wisp",
+          "desc": "循序渐进 · 标准敌人",
+          "elite": false
+        },
+        {
+          "id": "ruin",
+          "name": "遗迹险径",
+          "kind": "moth",
+          "desc": "更强敌人 · 额外一份遗物",
+          "elite": true
+        }
+      ],
+      "relics": {},
+      "history": [],
+      "mistakes": [],
+      "samples": [],
+      "reviewTarget": 20
+    },
+    "reviewCount": 0,
+    "wordCounts": {
+      "easy": 597,
+      "medium": 790,
+      "hard": 942
+    },
+    "resources": {
+      "particles": 0,
+      "tokens": 0,
+      "rays": 0,
+      "rings": 0,
+      "voices": 0,
+      "audioState": "suspended",
+      "musicTimer": false,
+      "inputTimers": 0
+    },
+    "performance": {
+      "frames": 0,
+      "medianFrameMs": 0,
+      "p95FrameMs": 0,
+      "p95WorkMs": 0,
+      "slowFrames": 0
+    },
+    "canvas": {
+      "width": 1880,
+      "height": 400
+    }
+  },
+  "pass": true,
+  "finishedAt": "2026-09-06T08:16:42.546Z"
+}

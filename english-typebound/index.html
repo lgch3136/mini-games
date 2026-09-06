@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101b1b" />
+    <meta
+      name="description"
+      content="键旅 Typebound：每一次落键，都是一记法术。用英文单词打败书灵，选择遗物，在森林遗迹里练习打字。"
+    />
+    <title>键旅 · TYPEBOUND</title>
+    <link rel="stylesheet" href="style.css?v=20260906-type-r5" />
+    <link rel="preload" href="assets/letterwood.webp" as="image" />
+  </head>
+  <body>
+    <main id="app" data-view="menu">
+      <div class="landscape" aria-hidden="true"></div>
+      <header class="topbar">
+        <a class="back" href="../" aria-label="返回游戏合集"
+          >← <span>ARCADE</span></a
+        >
+        <a href="#" id="brand" aria-label="返回键旅开始界面"
+          >✧ <span>TYPEBOUND</span></a
+        >
+        <nav aria-label="游戏控制">
+          <button id="sound" aria-pressed="true" aria-label="切换声音">
+            声音 开</button
+          ><button id="pause" hidden>暂停</button
+          ><button id="exit" hidden>结束</button>
+        </nav>
+      </header>
+
+      <section id="menu" class="menu">
+        <div class="menu-copy">
+          <p class="eyebrow"><i></i> A KEYSTROKE. A LITTLE MAGIC.</p>
+          <h1>键旅<span>TYPEBOUND</span></h1>
+          <p class="headline">把单词写成法术，<br />把练习走成冒险。</p>
+          <p class="lead">
+            在林间遗迹里，找回失落的故事。<br />逐字落键、连词破阵，每一步都看得到成长。
+          </p>
+          <div class="setup">
+            <label
+              >英文词库<select id="level">
+                <option value="easy">初级 · 日常词汇</option>
+                <option value="medium">中级 · 进阶表达</option>
+                <option value="hard">高级 · 长词挑战</option></select
+              ><small id="word-count"></small
+            ></label>
+            <label
+              >战斗节奏<select id="pace">
+                <option value="gentle">舒缓 · 从容书写</option>
+                <option value="steady">标准 · 适度压力</option>
+                <option value="swift">疾风 · 快速输入</option></select
+              ><small>词库与战斗速度分别设置</small></label
+            >
+          </div>
+          <fieldset class="modes">
+            <legend class="sr-only">练习模式</legend>
+            <label
+              ><input type="radio" name="mode" value="journey" checked /><span
+                >冒险旅程<small>战斗 · 遗物 · 首领</small></span
+              ></label
+            ><label
+              ><input type="radio" name="mode" value="focus" /><span
+                >静心练习<small>无伤害 · 慢慢练</small></span
+              ></label
+            >
+          </fieldset>
+          <button class="primary" id="start">翻开旅程 <span>↗</span></button>
+          <div class="menu-foot">
+            <button id="review-start">
+              错词回练 <b id="review-count">0</b></button
+            ><span>无需注册 · 记录只存在本机</span>
+          </div>
+          <details id="settings">
+            <summary>操作与设置 <span>＋</span></summary>
+            <div class="settings-body">
+              <p>
+                逐字输入，打完一个词按空格施法。错字不推进，直接重打；Backspace
+                回退。完成 3 个词后，Enter 释放护盾；Esc 暂停。
+              </p>
+              <p>
+                字速 WPM = 已完成单词的字符数（含空格）÷ 5 ÷
+                实际战斗分钟。菜单、奖励、暂停时间均不计入。退格重打不会刷伤害。
+              </p>
+              <label
+                ><input id="meaning-toggle" type="checkbox" checked />
+                显示中文释义</label
+              ><label><input id="reduced" type="checkbox" /> 减弱动态效果</label
+              ><label
+                ><input id="energy-saving" type="checkbox" /> 节能渲染</label
+              >
+              <p class="credits">
+                原创场景与程序动画 ·
+                <a
+                  href="https://x.com/developedbyed/status/2096342406991843555"
+                  target="_blank"
+                  rel="noopener"
+                  >玩法与胜利演出参考 Dev Ed ↗</a
+                >
+              </p>
+            </div>
+          </details>
+        </div>
+        <div class="menu-scene" aria-hidden="true">
+          <div class="emblem">✧<span>THE LETTERWOOD</span></div>
+          <p>有些故事，<br />等你亲手写下。</p>
+          <div class="scene-caption">
+            <span>01 / 林间书庭</span><span>AN ORIGINAL TYPING ADVENTURE</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="map" class="map-screen" hidden aria-labelledby="map-title">
+        <div class="chapter-intro">
+          <p class="eyebrow" id="map-eyebrow">CHAPTER I</p>
+          <h2 id="map-title"></h2>
+          <p id="map-story"></p>
+        </div>
+        <div class="route-map" id="route-map" aria-label="旅程进度"></div>
+        <div class="map-bottom">
+          <div class="traveller">
+            <span class="traveller-icon">✧</span>
+            <div><b>执笔旅人</b><span id="map-health"></span></div>
+            <div id="map-relics"></div>
+          </div>
+          <p class="choose-note">
+            选择下一段路 <span>每条路，都是一次新的书写。</span>
+          </p>
+          <div class="routes" id="routes"></div>
+        </div>
+      </section>
+
+      <section id="battle" hidden aria-label="打字战斗">
+        <div class="battle-top">
+          <div class="chapter-label">
+            <span id="chapter-en"></span><b id="room-label"></b>
+          </div>
+          <div class="run-metrics">
+            <span><b id="wpm">0</b> WPM</span
+            ><span><b id="accuracy">100</b>% 准确率</span
+            ><span><b id="score">0</b> 星墨</span>
+          </div>
+        </div>
+        <div id="arena" class="arena">
+          <canvas id="stage" aria-label="旅人对抗书灵的实时战斗动画"></canvas>
+          <div class="health hero-health">
+            <span>执笔旅人 <b id="hero-hp"></b></span>
+            <div class="hp-track"><i id="hero-bar"></i></div>
+            <small id="shield-label"></small>
+          </div>
+          <div class="health enemy-health">
+            <span><b id="enemy-name"></b><em id="enemy-hp"></em></span>
+            <div class="hp-track"><i id="enemy-bar"></i></div>
+            <small id="enemy-rule"></small>
+          </div>
+          <div class="enemy-intent" id="intent">
+            <span id="intent-label">等待你的第一键</span>
+            <div><i id="intent-bar"></i></div>
+          </div>
+          <p id="arena-note" aria-live="polite"></p>
+        </div>
+        <div class="typing-dock">
+          <div class="typing-heading">
+            <span id="typing-label">书写即施法</span><b id="combo"></b
+            ><button id="guard" title="Enter 释放护盾">
+              <span id="charges">◇ ◇ ◇</span><span>护盾 <kbd>↵</kbd></span>
+            </button>
+          </div>
+          <div id="passage" hidden></div>
+          <div class="word-line">
+            <div id="word" aria-label="当前单词"></div>
+            <div class="space-mark" id="space-mark">␣</div>
+          </div>
+          <div class="word-meaning">
+            <span id="meaning"></span
+            ><span id="word-feedback" role="status" aria-live="polite"></span>
+          </div>
+          <div class="upcoming">
+            <span>接下来</span>
+            <div id="upcoming"></div>
+          </div>
+          <label class="sr-only" for="typing-input">英文逐字输入区</label
+          ><input
+            id="typing-input"
+            class="typing-input"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="none"
+            spellcheck="false"
+            placeholder="使用英文键盘逐字输入"
+            aria-describedby="input-help"
+          />
+          <p id="input-help">英文输入 · 空格施法 · Enter 护盾 · Esc 暂停</p>
+        </div>
+        <div class="keyboard-wrap">
+          <div id="keyboard" aria-label="屏幕英文键盘"></div>
+          <div class="keyboard-caption">
+            <span id="learned-line">每一次准确落键，都在靠近下一章。</span
+            ><button id="native-keyboard">使用系统键盘</button>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="victory"
+        class="overlay victory"
+        hidden
+        aria-labelledby="victory-title"
+      >
+        <div class="victory-panel">
+          <p class="eyebrow" id="victory-eyebrow">THE STORY CONTINUES</p>
+          <h2 id="victory-title">这一页，由你写成。</h2>
+          <div class="victory-word">VICTORY<span>✧</span></div>
+          <div class="victory-stats" id="victory-stats"></div>
+          <div class="chart-box">
+            <div><span>你的书写节奏</span><span>WPM · 本次旅程</span></div>
+            <svg
+              id="pace-chart"
+              viewBox="0 0 600 86"
+              aria-label="本次旅程字速曲线"
+              role="img"
+            ></svg>
+          </div>
+          <p class="relic-intro" id="relic-intro">
+            选一份遗物，带向下一段旅程。
+          </p>
+          <div class="relic-options" id="relic-options"></div>
+        </div>
+      </section>
+      <section
+        id="pause-screen"
+        class="overlay"
+        hidden
+        aria-labelledby="pause-title"
+      >
+        <div class="small-panel">
+          <p class="eyebrow">A MOMENT BETWEEN WORDS</p>
+          <h2 id="pause-title">故事，等你回来。</h2>
+          <p>计时、战斗和声音都已暂停。</p>
+          <button class="primary" id="resume">继续书写 <span>↗</span></button
+          ><button class="secondary" id="pause-exit">结束并查看记录</button>
+        </div>
+      </section>
+      <section
+        id="result"
+        class="overlay"
+        hidden
+        aria-labelledby="result-title"
+      >
+        <div class="result-panel">
+          <p class="eyebrow" id="result-eyebrow"></p>
+          <h2 id="result-title"></h2>
+          <p id="result-copy"></p>
+          <div class="victory-stats" id="result-stats"></div>
+          <div class="review-list">
+            <div class="list-heading">
+              <h3>带走这些单词</h3>
+              <span>错词优先 · 最多显示 8 个</span>
+            </div>
+            <div id="result-words"></div>
+          </div>
+          <div class="result-actions">
+            <button class="primary" id="again">再启一程 <span>↗</span></button
+            ><button class="secondary" id="continue" hidden>继续远征</button
+            ><button class="secondary" id="result-review">回练错词</button
+            ><button class="text-button" id="result-menu">返回开始界面</button>
+          </div>
+        </div>
+      </section>
+      <p id="toast" role="status" aria-live="polite" hidden></p>
+      <div id="error" class="overlay" hidden>
+        <div class="small-panel">
+          <h2>这一页暂未打开</h2>
+          <p id="error-text"></p>
+          <a href="../">返回游戏合集</a>
+        </div>
+      </div>
+    </main>
+    <script src="../shared/vocabulary.js?v=20260906-type-r5"></script>
+    <script type="module" src="app.mjs?v=20260906-type-r5"></script>
+  </body>
+</html>

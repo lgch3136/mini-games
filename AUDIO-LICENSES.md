@@ -10,6 +10,10 @@ All bundled audio below may be used and redistributed with the games.
 
 Attribution is not required by CC0, but the creators are credited here with thanks.
 
+## Typebound (2026-09-06)
+
+`english-typebound/audio.mjs` provides an original 86 BPM forest-library arrangement and pentatonic keystrokes, spell releases, enemy warnings, shields and victory phrases, synthesized locally with Web Audio. The bounded voice/lifecycle infrastructure is reused from Word Ranger, not its musical phrases. No reference-game audio, external samples or commercial recordings are copied. Pausing, hiding or leaving the page stops scheduling and active voices.
+
 ## Echo Ring (2026-09-06)
 
 `english-echo-ring/audio.mjs` contains an original 104 BPM, 16-bar instrumental loop and pentatonic impact notes, plus shot, rebound, graze, dash, damage and resonance sounds. All audio is synthesized locally with Web Audio. It reuses Word Ranger's bounded voice and lifecycle code, not its melodies. No dead_center / INKFALL audio, commercial recordings or external samples are used. Pausing, hiding or leaving the page stops music scheduling and active voices.

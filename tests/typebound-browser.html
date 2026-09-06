@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Typebound · 浏览器验收</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #14211c;
+        color: #d2e1c9;
+        font: 12px system-ui;
+      }
+      header {
+        height: 42px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+        overflow-x: auto;
+        padding: 5px 9px;
+      }
+      button {
+        background: #273b30;
+        color: #d2e1c9;
+        border: 1px solid #789178;
+        border-radius: 4px;
+        padding: 7px 10px;
+        font: inherit;
+        cursor: pointer;
+      }
+      iframe {
+        width: 100%;
+        height: calc(100svh - 42px);
+        border: 0;
+        display: block;
+      }
+      #status {
+        font:
+          11px ui-monospace,
+          monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="suite">输入与资源验收</button
+      ><button id="journey">完整九关回放</button
+      ><button id="long">90 秒连续输入</button
+      ><button id="failure">自然受伤与重试</button
+      ><button id="stop">停止并释放</button
+      ><span id="status">等待页面加载</span>
+    </header>
+    <iframe
+      id="subject"
+      src="../english-typebound/?qa=type-r4"
+      title="正式游戏页面"
+    ></iframe>
+    <script
+      type="module"
+      src="typebound-browser.mjs?v=20260906-type-r5-qa2"
+    ></script>
+  </body>
+</html>
