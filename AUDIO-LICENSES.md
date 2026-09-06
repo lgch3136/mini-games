@@ -10,6 +10,10 @@ All bundled audio below may be used and redistributed with the games.
 
 Attribution is not required by CC0, but the creators are credited here with thanks.
 
+## Echo Ring (2026-09-06)
+
+`english-echo-ring/audio.mjs` contains an original 104 BPM, 16-bar instrumental loop and pentatonic impact notes, plus shot, rebound, graze, dash, damage and resonance sounds. All audio is synthesized locally with Web Audio. It reuses Word Ranger's bounded voice and lifecycle code, not its melodies. No dead_center / INKFALL audio, commercial recordings or external samples are used. Pausing, hiding or leaving the page stops music scheduling and active voices.
+
 ## Moonblade (2026-09-06)
 
 `english-moonblade/audio.mjs` contains a new project-authored 32-bar, 138 BPM exploration score with a 150 BPM boss arrangement, plus blade, impact, jump, dash, shuriken, pickup and checkpoint sounds. All sound is synthesized through Web Audio; the bounded voice/scheduling infrastructure is reused from Word Ranger, not its musical phrases. No Ninja Gaiden music, commercial recordings, samples or ROM audio are used. There is no additional third-party recording license for these original synthesized sounds. Pausing, hiding or leaving the game stops its scheduler and active voices.

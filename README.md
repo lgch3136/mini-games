@@ -8,6 +8,7 @@
 
 | 游戏 | 玩法 | 入口 |
 | --- | --- | --- |
+| 回响边界 · ECHO RING | 极简向心射击：危险回弹、连续涟漪、穿行擦弹与连击共鸣 | [english-echo-ring](english-echo-ring/) |
 | 破晓疾驰 · APEX DRIVE | 第一人称驾驶舱竞速：三条赛道、五位对手、尾流与加速、两圈比赛 / 自由练习 | [english-apex-drive](english-apex-drive/) |
 | 零界突围 · SIGNAL STRIKE | 第一人称城市突围：双武器、掩体、突进、三座中继与核心守卫 | [english-signal-strike](english-signal-strike/) |
 | 月影忍途 · MOONBLADE | 原创单人 2.5D 忍者闯关：三章路线、贴墙蹬跃、三段连斩、疾步、忍术与两阶段首领 | [english-moonblade](english-moonblade/) |
@@ -24,6 +25,8 @@
 
 游戏提供键盘与触屏操作、音乐/音效和静音；共用词库从 `paul-learn-english` 导入并去重，现有初级 597、中级 790、高级 942 个单词。单词突击队的强度分为友好、标准、硬核，并从项目词库筛选适合战斗中收集的短词。音频来源与许可证见 [AUDIO-LICENSES.md](AUDIO-LICENSES.md)。
 
+2026-09-06：新增 **回响边界 / Echo Ring**，以简单向心射击与危险回弹为核心，使用轻量 Canvas 2D、连续波纹、穿行、擦弹与连击共鸣；不插入学习弹窗。设计与实机验收见 [回响边界](english-echo-ring/README.md)。
+
 2026-09-06：新增两款第一人称游戏 **破晓疾驰 / 零界突围**，使用 Three.js、原创 Blender 模型和 imagegen 环境材质，支持键鼠与多指触屏；验收入口和素材说明见 [First Light](docs/first-person/README.md)。
 
 2026-09-06：新增独立游戏 **月影忍途**，不替换原有游戏。设计边界、素材来源、操作和实机验收见 [月影忍途说明](english-moonblade/README.md)。
@@ -38,6 +41,7 @@ mini-games/
 ├── style.css
 ├── shared/                     # 共用 CC0 音频、播放器与 2329 词词库
 ├── scripts/                    # 词库导入脚本
+├── english-echo-ring/          # 回响边界 · 向心射击与波纹
 ├── english-apex-drive/         # 破晓疾驰 · 第一人称竞速
 ├── english-signal-strike/      # 零界突围 · 第一人称射击
 ├── english-moonblade/          # 月影忍途 · 单人 2.5D 忍者闯关

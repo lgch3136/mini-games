@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Echo Ring · 输入与资源验收</title
+  ><style>
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #07161b;
+      color: #d2e7d9;
+      font: 11px system-ui;
+    }
+    header {
+      height: 42px;
+      box-sizing: border-box;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 5px 9px;
+      overflow: auto;
+      white-space: nowrap;
+    }
+    button {
+      font: 10px system-ui;
+      border: 1px solid #639583;
+      background: #19352e;
+      color: #d4ebdc;
+      border-radius: 4px;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+    iframe {
+      display: block;
+      width: 100%;
+      height: calc(100% - 42px);
+      border: 0;
+    }
+    output {
+      position: fixed;
+      display: none;
+    }
+    #status {
+      color: #8ebea7;
+    }
+  </style>
+  <header>
+    <button id="suite">输入与资源检查</button
+    ><button id="play">90 秒正常输入回放</button
+    ><button id="capture">17 秒停帧</button><button id="stop">停止并释放</button
+    ><span id="status">就绪</span>
+  </header>
+  <iframe
+    id="subject"
+    src="../english-echo-ring/?qa=echo-r5"
+    title="正式游戏"
+  ></iframe
+  ><output id="report"></output>
+    <script type="module" src="echo-browser.mjs?v=20260906-echo-r5-qa2"></script>
+</html>

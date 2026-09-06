@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#08151c" />
+    <meta
+      name="description"
+      content="回响边界：只能向圆心开火的轻量街机游戏。躲开自己的回弹，让每一次碰撞化为涟漪。"
+    />
+    <title>回响边界 · Echo Ring</title>
+    <link rel="stylesheet" href="style.css?v=20260906-echo-r5" />
+  </head>
+  <body>
+    <main id="app">
+      <canvas
+        id="game"
+        tabindex="0"
+        aria-label="回响边界游戏场。WASD 或方向键移动，J 或空格射击，Shift 或 K 穿行。"
+      ></canvas>
+      <header class="topbar">
+        <a href="../" class="back" aria-label="返回游戏合集"
+          ><span>↗</span> ARCADE</a
+        >
+        <span class="edition">ECHO RING <i>/</i> 001</span>
+        <nav aria-label="游戏控制">
+          <button id="sound" aria-pressed="true">声音 开</button
+          ><button id="pause" hidden>暂停</button
+          ><button id="exit" hidden>退出</button>
+        </nav>
+      </header>
+
+      <section id="menu" aria-label="游戏开始界面">
+        <div class="copy">
+          <p class="eyebrow">
+            <span class="tiny-ring"></span> SMALL RULE. ENDLESS ECHO.
+          </p>
+          <h1>回响边界<span>ECHO / RING</span></h1>
+          <p class="intro">你的下一发，<br />可能就是下一次危险。</p>
+          <p class="description">
+            朝圆心开火。借回弹清场，也别被它追上。<br />在一圈涟漪里，找到自己的节奏。
+          </p>
+          <fieldset class="mode-choice">
+            <legend class="sr-only">游戏模式</legend>
+            <label
+              ><input type="radio" name="mode" value="flow" checked /><span
+                ><b>回响</b><small>3 格护盾 · 慢慢进入状态</small></span
+              ></label
+            >
+            <label
+              ><input type="radio" name="mode" value="edge" /><span
+                ><b>一线</b><small>一击结束 · 挑战极限</small></span
+              ></label
+            >
+          </fieldset>
+          <button id="start" class="primary">进入圆环 <span>↗</span></button>
+          <p class="best-line">
+            个人最佳 <b id="menu-best">0</b><span>只在本机保存</span>
+          </p>
+          <div class="control-note">
+            <span class="desktop-note"
+              >WASD / 方向键 移动 · J / 空格 开火<br />Shift / K 穿行 · P / Esc
+              暂停</span
+            ><span class="mobile-note"
+              >左手摇杆移动 · 右手开火<br />「穿行」可以短暂穿过危险</span
+            >
+          </div>
+          <details id="settings">
+            <summary>玩法细节与设置 <span>＋</span></summary>
+            <div class="settings-body">
+              <p>
+                出射的青光不会伤到你，碰壁后变成金色，便对双方都有威胁。每次击杀积攒共鸣；8
+                次击杀可清除回弹，4
+                秒内得分翻倍。贴近金色回弹擦身而过，也能增加共鸣。
+              </p>
+              <p>
+                圆形敌人会追踪，紫色敌人会绕行，菱形敌人会分裂。虚线圆是出场预告，此时不会碰撞。
+              </p>
+              <label
+                ><input
+                  id="reduced"
+                  type="checkbox"
+                />轻动效（减少涟漪幅度与粒子）</label
+              >
+              <label
+                >渲染<select id="quality">
+                  <option value="1.75">细腻 · 自适应</option>
+                  <option value="1">节能</option>
+                </select></label
+              >
+              <a
+                href="https://mors-games.itch.io/dead-center"
+                target="_blank"
+                rel="noopener"
+                >玩法灵感：Mors 的 dead_center ↗</a
+              >
+              <small>独立实现 · 原创矢量画面与程序合成音乐</small>
+            </div>
+          </details>
+        </div>
+        <div id="preview-space" aria-hidden="true">
+          <span class="preview-caption"
+            >每次碰撞，都留下回响。<small
+              >REAL-TIME CANVAS / NO VIDEO</small
+            ></span
+          >
+        </div>
+      </section>
+
+      <div id="play-space" aria-hidden="true" hidden></div>
+      <section id="hud" aria-label="游戏状态" hidden>
+        <div class="hud-top">
+          <div class="score-stat">
+            <small>SCORE</small><strong id="score">0</strong>
+          </div>
+          <div class="phase-stat">
+            <span id="phase">01 / 涟漪</span><small id="clock">00:00</small>
+          </div>
+          <div class="health-stat">
+            <small>护盾</small>
+            <div id="health" aria-label="3 格护盾">◇ ◇ ◇</div>
+          </div>
+        </div>
+        <div class="resonance-status">
+          <div class="charge-track"><i id="charge"></i></div>
+          <span id="charge-label">共鸣 0%</span><b id="combo"></b>
+        </div>
+        <p id="notice" role="status" aria-live="polite"></p>
+        <div class="bottom-strip">
+          <span><i class="dot cyan"></i>出射</span
+          ><span><i class="dot amber"></i>回弹会伤到你</span
+          ><span class="dash-status" id="dash-status">Shift 穿行就绪</span>
+        </div>
+        <p id="hint">移动即瞄准，松开开火也能为自己留一条路。</p>
+      </section>
+
+      <div id="touch" hidden>
+        <div class="stick-wrap">
+          <div id="stick" role="group" aria-label="左手移动摇杆">
+            <span class="stick-cross"></span><i></i>
+          </div>
+          <small>移动</small>
+        </div>
+        <div class="touch-actions">
+          <button id="dash-touch" aria-label="穿行，短暂无敌">
+            <span>◇</span><small>穿行</small></button
+          ><button id="fire-touch" aria-label="按住向圆心开火">
+            <span>◎</span><small>开火</small>
+          </button>
+        </div>
+      </div>
+
+      <section
+        id="pause-screen"
+        class="overlay"
+        hidden
+        aria-labelledby="pause-title"
+      >
+        <div class="panel">
+          <p class="eyebrow">TAKE A BREATH</p>
+          <h2 id="pause-title">涟漪，稍候。</h2>
+          <p>已暂停游戏与声音，不会在后台空转。</p>
+          <button id="resume" class="primary">继续游戏 <span>↗</span></button
+          ><button id="pause-menu" class="secondary">返回开始界面</button>
+        </div>
+      </section>
+      <section
+        id="result"
+        class="overlay"
+        hidden
+        aria-labelledby="result-title"
+      >
+        <div class="panel result-panel">
+          <p class="eyebrow" id="result-tag">ONE MORE ECHO</p>
+          <h2 id="result-title">这一圈，留下了回响。</h2>
+          <strong id="final-score">0</strong>
+          <p id="reason"></p>
+          <div class="result-stats">
+            <div><b id="final-time">00:00</b><span>坚持时间</span></div>
+            <div><b id="final-combo">0</b><span>最高连击</span></div>
+            <div><b id="final-return">0</b><span>回弹击杀</span></div>
+          </div>
+          <p id="result-tip"></p>
+          <button id="retry" class="primary">再来一圈 <span>↗</span></button
+          ><button id="result-menu" class="secondary">返回开始界面</button>
+        </div>
+      </section>
+      <div id="error" role="alert" hidden>
+        <h2>暂时未能启动</h2>
+        <p id="error-message"></p>
+        <a href="../">返回合集</a>
+      </div>
+    </main>
+    <script type="module" src="app.mjs?v=20260906-echo-r5"></script>
+  </body>
+</html>
