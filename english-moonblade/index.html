@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b1724" />
+    <title>月影忍途 · Moonblade</title>
+    <link rel="stylesheet" href="style.css?v=20260906-moonblade" />
+  </head>
+  <body>
+    <main id="shell">
+      <header class="topbar">
+        <a href="../">← 游戏合集</a
+        ><span class="brand">月影忍途 <small>MOONBLADE</small></span>
+        <nav>
+          <button id="help-btn">出招</button
+          ><button id="sound-btn">声音 开</button
+          ><button id="pause-btn" hidden>暂停</button
+          ><button id="exit-btn" hidden>退出</button>
+        </nav>
+      </header>
+      <div class="play-row">
+        <div id="arena">
+          <canvas id="game" aria-label="月影忍途实时动作画面"></canvas
+          ><canvas id="fx" aria-hidden="true"></canvas>
+          <section id="hud" hidden>
+            <div class="vitals">
+              <span class="chapter" id="chapter"></span>
+              <div class="hp"><i id="hp-fill"></i></div>
+              <div class="energy">
+                <span>忍力</span><b id="energy"></b><span id="score"></span>
+              </div>
+            </div>
+            <div id="combo"></div>
+            <div class="boss" id="boss" hidden>
+              <span>无明 · 寺门守卫</span>
+              <div><i id="boss-fill"></i></div>
+            </div>
+            <div id="words">
+              <small id="meaning"></small><strong id="letters"></strong>
+            </div>
+            <div id="hint"></div>
+            <div id="toast" role="status"></div>
+          </section>
+          <div id="loading">正在准备月夜、角色与刀光…</div>
+          <section id="menu" class="screen">
+            <div class="menu-copy">
+              <p class="eyebrow">一人，一刀，穿越长夜。</p>
+              <h1>月影<span>忍途</span></h1>
+              <p class="roman">MOONBLADE</p>
+              <p class="intro">
+                跃过屋脊，踏壁而上。<br />在刀锋落下前，找到下一次反击。
+              </p>
+              <div class="chapters">
+                <span>壹 · 雨城</span><span>贰 · 雾谷</span
+                ><span>叁 · 无明寺</span>
+              </div>
+              <label class="chapter-select"
+                >出发点<select id="chapter-select">
+                  <option value="0">雨城屋脊</option>
+                  <option value="1" disabled>雾谷山道 · 未解锁</option>
+                  <option value="2" disabled>无明寺门 · 未解锁</option>
+                </select></label
+              >
+              <div class="options">
+                <label><input type="checkbox" id="easy" />宽容模式</label
+                ><label
+                  ><input
+                    type="checkbox"
+                    id="learning"
+                    checked
+                  />沿途记词</label
+                ><label
+                  ><input type="checkbox" id="detail" checked />氛围光效</label
+                >
+              </div>
+              <button id="start-btn" class="primary" disabled>
+                准备角色中…
+              </button>
+              <p class="keys" id="control-note">
+                A D 移动 · 空格 / K 跳跃 · J 刀击 · L 疾步 · I 忍术
+              </p>
+            </div>
+            <span class="vertical" aria-hidden="true"
+              >踏影无声<br />刀过留月</span
+            >
+          </section>
+          <section id="panel" class="screen panel-screen" hidden>
+            <div class="panel">
+              <p id="panel-kicker" class="eyebrow"></p>
+              <h2 id="panel-title"></h2>
+              <p id="panel-text"></p>
+              <button id="primary-action" class="primary"></button
+              ><button id="menu-action">返回出发点</button>
+            </div>
+          </section>
+        </div>
+      </div>
+      <footer>
+        <span id="status">壹 · 雨城屋脊</span><span>单人闯关 · 自动检查点</span>
+      </footer>
+      <section id="touch" hidden aria-label="触屏操作">
+        <div class="dpad">
+          <button data-input="left" aria-label="向左移动">◀</button
+          ><button data-input="right" aria-label="向右移动">▶</button
+          ><button data-input="down" class="down" aria-label="下方向">↓</button>
+        </div>
+        <div class="actions">
+          <button data-input="dash" class="minor">疾步</button
+          ><button data-input="ninja" class="minor">忍术</button
+          ><button data-input="attack" class="attack">斩</button
+          ><button data-input="jump" class="jump">跳</button>
+        </div>
+      </section>
+      <dialog id="help">
+        <button id="close-help" aria-label="关闭出招表">×</button>
+        <p class="eyebrow">THE WAY OF MOONBLADE</p>
+        <h2>动起来，再出刀。</h2>
+        <dl>
+          <dt>移动 / 跳跃</dt>
+          <dd>A D 或 ← → 移动；空格、K 或 W 跳跃。长按跳得更高，轻点短跳。</dd>
+          <dt>贴墙 / 蹬墙</dt>
+          <dd>
+            空中靠住墙，缓缓下滑；再按跳跃蹬离墙面。迅速转回墙面可继续攀升。
+          </dd>
+          <dt>三段刀击</dt>
+          <dd>J 出刀，连续点按接三段。空中也能出刀；↓ + J 是下落斩。</dd>
+          <dt>疾步 / 忍术</dt>
+          <dd>
+            L 或 Shift 短距闪避，有冷却；I
+            投手里剑，每次消耗一格忍力。击倒敌人、探索高处可补充。
+          </dd>
+          <dt>检查点与暂停</dt>
+          <dd>
+            经过朱色小门会保存检查点并少量回血。P / Esc
+            暂停；离开窗口自动暂停。触屏建议横屏，左右手独立操作。
+          </dd>
+        </dl>
+        <p>原创三章动作游戏，参考经典忍者平台动作的规则，不是原版 ROM 移植。</p>
+      </dialog>
+    </main>
+    <script src="../shared/vocabulary.js?v=20260820a"></script>
+    <script type="module" src="main.mjs?v=20260906-moonblade"></script>
+  </body>
+</html>

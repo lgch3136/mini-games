@@ -8,6 +8,7 @@
 
 | 游戏 | 玩法 | 入口 |
 | --- | --- | --- |
+| 月影忍途 · MOONBLADE | 原创单人 2.5D 忍者闯关：三章路线、贴墙蹬跃、三段连斩、疾步、忍术与两阶段首领 | [english-moonblade](english-moonblade/) |
 | 单词突击队 · WORD RANGER | 曙光行动重制：跑跳射击、实体掩体、移动平台、三条编排路线、部件首领战与连续远征，词核提供补给 | [english-word-ranger](english-word-ranger/) |
 | 🥊 单词斗魂 · 截风擂台 | Blender 角色 / 连续关节动作 / 四键轻重攻击 / 短跳与指令 / 命中确认 / 三局两胜 / 练习与双人 | [english-word-fury](english-word-fury/) |
 | 💣 英语炸弹人 · WORD BOMBER | 炸砖、躲敌、按序收集字母并开启传送门，无限轮次与道具成长 | [english-word-bomber](english-word-bomber/) |
@@ -21,7 +22,9 @@
 
 游戏提供键盘与触屏操作、音乐/音效和静音；共用词库从 `paul-learn-english` 导入并去重，现有初级 597、中级 790、高级 942 个单词。单词突击队的强度分为友好、标准、硬核，并从项目词库筛选适合战斗中收集的短词。音频来源与许可证见 [AUDIO-LICENSES.md](AUDIO-LICENSES.md)。
 
-2026-09-05：本轮仅重建了 **单词突击队** 的引擎、交互、场景和音频，其他游戏保留原版本。具体设计边界、复测方法与截图见 [重制验收记录](docs/ranger-dawn/README.md)。
+2026-09-06：新增独立游戏 **月影忍途**，不替换原有游戏。设计边界、素材来源、操作和实机验收见 [月影忍途说明](english-moonblade/README.md)。
+
+2026-09-05：单词突击队的引擎、交互、场景和音频重建，具体设计边界、复测方法与截图见 [重制验收记录](docs/ranger-dawn/README.md)。
 
 ## 目录结构
 
@@ -31,6 +34,7 @@ mini-games/
 ├── style.css
 ├── shared/                     # 共用 CC0 音频、播放器与 2329 词词库
 ├── scripts/                    # 词库导入脚本
+├── english-moonblade/          # 月影忍途 · 单人 2.5D 忍者闯关
 ├── english-word-ranger/        # 单词突击队
 ├── english-word-fury/          # 单词斗魂
 ├── english-word-bomber/        # 英语炸弹人

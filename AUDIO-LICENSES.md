@@ -10,6 +10,10 @@ All bundled audio below may be used and redistributed with the games.
 
 Attribution is not required by CC0, but the creators are credited here with thanks.
 
+## Moonblade (2026-09-06)
+
+`english-moonblade/audio.mjs` contains a new project-authored 32-bar, 138 BPM exploration score with a 150 BPM boss arrangement, plus blade, impact, jump, dash, shuriken, pickup and checkpoint sounds. All sound is synthesized through Web Audio; the bounded voice/scheduling infrastructure is reused from Word Ranger, not its musical phrases. No Ninja Gaiden music, commercial recordings, samples or ROM audio are used. There is no additional third-party recording license for these original synthesized sounds. Pausing, hiding or leaving the game stops its scheduler and active voices.
+
 ## Word Ranger: Dawn Operations (2026-09-05 rebuild)
 
 `english-word-ranger/sound.js` synthesizes a new, project-authored 32-bar instrumental loop, boss variation, and action sounds with Web Audio. It does not load the shared recordings above, sample commercial game music, or extract ROM audio. The score uses a 126 BPM exploration arrangement and a 144 BPM boss arrangement. Oscillators and a reusable generated noise buffer supply the instruments and effects; no separate third-party recording license is required for these newly authored sounds.
