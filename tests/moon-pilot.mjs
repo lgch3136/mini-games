@@ -1,5 +1,6 @@
 // Test-only controller: chooses ordinary keys from diagnostic state. No state writes.
 import { STAGES } from "../english-moonblade/world.mjs";
+export const PILOT_VERSION = "ledge-aware-20260906-flow";
 export function pilot(state, memory) {
   const p = state.player,
     level = STAGES[state.stage],
@@ -19,8 +20,21 @@ export function pilot(state, memory) {
   const wall = level.platforms.some(
     (t) => !t.oneWay && t.x > p.x && t.x - p.x < 1.4 && t.y > p.y + 0.6,
   );
+  // A raised one-way ledge over a safe lower floor is not a pit. Jumping off
+  // every ledge can overshoot that floor and fall into the NEXT gap (e.g. the
+  // city ledge at x=82). This is route choice, not a production physics assist.
+  const safeDrop =
+    support?.oneWay &&
+    level.platforms.some(
+      (t) =>
+        !t.oneWay &&
+        t.y < p.y - 0.1 &&
+        t.x <= support.x + support.w &&
+        t.x + t.w >= support.x + support.w + 3.8,
+    );
   const gap =
     support &&
+    !safeDrop &&
     support.x + support.w - p.x < 1.4 &&
     !level.platforms.some(
       (t) =>
@@ -37,7 +51,7 @@ export function pilot(state, memory) {
   );
   if (
     p.ground &&
-    (gap || wall || spike || (foe && frame % 90 < 40)) &&
+    (gap || wall || spike || (!safeDrop && foe && frame % 90 < 40)) &&
     !memory.jump
   ) {
     memory.hold = 31;

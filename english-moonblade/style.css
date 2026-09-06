@@ -658,6 +658,14 @@ dialog > p:last-child {
   }
   .energy {
     font-size: 8px;
+    gap: 4px;
+  }
+  .energy span:first-child {
+    white-space: nowrap;
+    flex: none;
+  }
+  .energy #score {
+    display: none;
   }
   .vitals {
     width: 34%;

@@ -1,12 +1,7 @@
-import {
-  World,
-  STAGES,
-  DT,
-  VERSION,
-  clamp,
-} from "./world.mjs?v=20260906-moonblade";
-import { View } from "./view.mjs?v=20260906-moonblade";
+import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260906-silk";
+import { View } from "./view.mjs?v=20260906-silk";
 import { MoonAudio } from "./audio.mjs?v=20260906-moonblade";
+import { InputBuffer } from "./input.mjs?v=20260906-silk";
 const $ = (id) => document.getElementById(id),
   audio = new MoonAudio(),
   coarse = matchMedia("(pointer:coarse)");
@@ -23,8 +18,7 @@ let view,
   wordIndex = 0,
   letters = 0,
   unlocked = 0;
-const sources = new Map(),
-  latched = new Set(),
+const controls = new InputBuffer(),
   perf = { frames: [], work: [], longFrames: 0 };
 try {
   unlocked = clamp(+localStorage.getItem("moonblade-unlocked-v1") || 0, 0, 2);
@@ -72,8 +66,7 @@ function word() {
   );
 }
 function release() {
-  sources.clear();
-  latched.clear();
+  controls.clear();
   document.querySelectorAll(".held").forEach((e) => e.classList.remove("held"));
   if (world) world.player.held = {};
 }
@@ -86,13 +79,7 @@ function stop() {
   audio.pause();
 }
 function input() {
-  const state = {};
-  for (const v of sources.values()) state[v] = true;
-  for (const v of latched) {
-    state[v] = true;
-    state[v + "Pressed"] = true;
-  }
-  return state;
+  return controls.read();
 }
 const capture = () => ({
   player: {
@@ -116,6 +103,9 @@ function start() {
 }
 function begin() {
   mode = "playing";
+  perf.frames.length = perf.work.length = 0;
+  perf.longFrames = 0;
+  performanceCache = null;
   previous = null;
   view.build(world);
   document.body.classList.add("playing");
@@ -192,7 +182,7 @@ function tick(now) {
   while (acc >= DT && steps++ < 6 && world.state === "playing") {
     previous = capture();
     world.step(input());
-    latched.clear();
+    controls.consume();
     for (const e of world.events) event(e);
     acc -= DT;
   }
@@ -341,13 +331,16 @@ window.addEventListener("keydown", (e) => {
   const key = mapping[e.code];
   if (!key || mode !== "playing") return;
   e.preventDefault();
-  sources.set("key:" + e.code, key);
-  if (!e.repeat) latched.add(key);
+  controls.press("key:" + e.code, key);
 });
 window.addEventListener("keyup", (e) => {
   if (mapping[e.code]) e.preventDefault();
-  sources.delete("key:" + e.code);
+  controls.release("key:" + e.code);
 });
+function touchHighlight() {
+  for (const el of document.querySelectorAll("[data-input]"))
+    el.classList.toggle("held", controls.held(el.dataset.input));
+}
 for (const el of document.querySelectorAll("[data-input]")) {
   el.addEventListener("pointerdown", (e) => {
     if (mode !== "playing") return;
@@ -355,13 +348,27 @@ for (const el of document.querySelectorAll("[data-input]")) {
     try {
       el.setPointerCapture?.(e.pointerId);
     } catch {}
-    sources.set("touch:" + e.pointerId, el.dataset.input);
-    latched.add(el.dataset.input);
-    el.classList.add("held");
+    controls.press("touch:" + e.pointerId, el.dataset.input);
+    touchHighlight();
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (
+      mode !== "playing" ||
+      !controls.sources.has("touch:" + e.pointerId) ||
+      !["left", "right", "down"].includes(el.dataset.input)
+    )
+      return;
+    const target = document
+      .elementFromPoint(e.clientX, e.clientY)
+      ?.closest("[data-input]");
+    if (target && ["left", "right", "down"].includes(target.dataset.input)) {
+      controls.press("touch:" + e.pointerId, target.dataset.input);
+      touchHighlight();
+    }
   });
   const up = (e) => {
-    sources.delete("touch:" + e.pointerId);
-    el.classList.remove("held");
+    controls.release("touch:" + e.pointerId);
+    touchHighlight();
   };
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", up);
@@ -394,11 +401,34 @@ $("game").addEventListener("webglcontextlost", (e) => {
 });
 const pct = (a, p) =>
   a.length ? [...a].sort((x, y) => x - y)[Math.floor((a.length - 1) * p)] : 0;
+let performanceCache = null,
+  performanceCacheUntil = 0;
+function performanceSnapshot() {
+  const now = performance.now();
+  // Input playback reads diagnostics every tick. Sorting the full rolling
+  // buffers on every read used to add test-only stalls to the measured result.
+  if (
+    !performanceCache ||
+    now >= performanceCacheUntil ||
+    perf.frames.length < performanceCache.samples
+  ) {
+    performanceCache = {
+      samples: perf.frames.length,
+      median: pct(perf.frames, 0.5),
+      p95: pct(perf.frames, 0.95),
+      workP95: pct(perf.work, 0.95),
+      longFrames: perf.longFrames,
+    };
+    performanceCacheUntil = now + 250;
+  }
+  return { ...performanceCache };
+}
 window.moonDiagnostics = () => ({
   version: VERSION,
   mode,
   raf: !!raf,
   world: world.snapshot(),
+  input: controls.read(),
   view: view?.diagnostics(),
   audio: {
     running: audio.running,
@@ -406,13 +436,7 @@ window.moonDiagnostics = () => ({
     voices: audio.voices.size,
     state: audio.ctx?.state,
   },
-  performance: {
-    samples: perf.frames.length,
-    median: pct(perf.frames, 0.5),
-    p95: pct(perf.frames, 0.95),
-    workP95: pct(perf.work, 0.95),
-    longFrames: perf.longFrames,
-  },
+  performance: performanceSnapshot(),
   viewport: {
     width: innerWidth,
     height: innerHeight,

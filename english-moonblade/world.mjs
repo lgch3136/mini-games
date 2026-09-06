@@ -1,4 +1,4 @@
-export const VERSION = "20260906-moonblade";
+export const VERSION = "20260906-silk";
 export const DT = 1 / 60;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -192,6 +192,7 @@ export class World {
       h: 2,
       ground: true,
       facing: 1,
+      moveIntent: 0,
       hp: this.easy ? 12 : 8,
       maxHp: this.easy ? 12 : 8,
       energy: 6,
@@ -204,6 +205,8 @@ export class World {
       jumpBuffer: 0,
       dash: 0,
       dashCool: 0,
+      wallKick: 0,
+      attackBuffer: 0,
       attack: null,
       queue: false,
       run: 0,
@@ -277,6 +280,7 @@ export class World {
     const p = this.player;
     if (p.stun || p.dash > 0) return false;
     p.attack = { kind, chain, frame: 0, id: ++this.serial, hits: new Set() };
+    p.attackBuffer = 0;
     p.queue = false;
     this.emit("swing", { x: p.x, y: p.y + 1, chain });
     return true;
@@ -398,10 +402,25 @@ export class World {
       else p[k] = Math.max(0, p[k] - dt);
     if (!this.comboLife) this.combo = 0;
     p.jumpBuffer = edge("jump") ? 0.14 : Math.max(0, p.jumpBuffer - dt);
+    p.attackBuffer = edge("attack") ? 0.14 : Math.max(0, p.attackBuffer - dt);
     p.coyote = p.ground ? 0.1 : Math.max(0, p.coyote - dt);
     if (!input.jump && p.held.jump && p.vy > 5) p.vy *= 0.48;
-    let move = Number(!!input.right) - Number(!!input.left);
+    const move = Number.isFinite(input.moveX)
+      ? Math.sign(input.moveX)
+      : Number(!!input.right) - Number(!!input.left);
+    p.moveIntent = move;
+    const facingIntent = move || Math.sign(input.facingHint || 0);
     if (p.stun <= 0) {
+      // Resolve direction BEFORE creating an attack, projectile or dash. A turn
+      // cancels the previous slash instead of sliding backwards with its hitbox.
+      if (facingIntent && facingIntent !== p.facing && p.wallKick <= 0) {
+        p.facing = facingIntent;
+        if (p.attack?.kind === "slash") {
+          p.attack = null;
+          p.queue = false;
+        }
+        p.dash = 0;
+      }
       if (edge("dash") && p.dashCool <= 0) {
         p.dash = 0.17;
         p.dashCool = 0.6;
@@ -419,7 +438,7 @@ export class World {
         p.vx = wall ? -wall * 7.8 : p.vx;
         if (wall) {
           p.facing = -wall;
-          p.wallKick = 0.14;
+          p.wallKick = 0.1;
         }
         p.jumpBuffer = 0;
         p.coyote = 0;
@@ -427,9 +446,12 @@ export class World {
         p.ground = false;
         this.emit("jump", { x: p.x, y: p.y, wall: !!wall });
       }
-      if (edge("attack")) {
+      if (p.attackBuffer > 0 && p.dash <= 0) {
         if (p.attack) {
-          if (p.attack.frame >= 5) p.queue = true;
+          if (p.attack.frame >= 1) {
+            p.queue = true;
+            p.attackBuffer = 0;
+          }
         } else this.startAttack(input.down && !p.ground ? "dive" : "slash");
       }
       if (edge("ninja") && p.energy > 0) {
@@ -453,14 +475,18 @@ export class World {
         p.vy = 0;
       } else if (p.wallKick > 0) p.wallKick -= dt;
       else {
-        const speed = p.attack && p.ground ? 4.1 : 7.5;
-        p.vx = approach(p.vx, move * speed, (p.ground ? 90 : 56) * dt);
-        if (move && !p.attack) p.facing = move;
+        // Physics changes direction immediately; cosmetic pivot/weight transfer
+        // is animated independently. Slashing must not pulse running speed.
+        if (move && p.vx * move < 0)
+          p.vx = move * Math.min(Math.abs(p.vx) * 0.3, 2.25);
+        const acceleration = p.ground ? (move ? 165 : 270) : move ? 120 : 90;
+        p.vx = approach(p.vx, move * 7.5, acceleration * dt);
       }
     }
     if (p.dash <= 0) p.vy = Math.max(-20, p.vy - 32 * dt);
     if (p.attack?.kind === "dive") p.vy = -20;
-    const wasGround = p.ground;
+    const wasGround = p.ground,
+      landingSpeed = Math.abs(p.vy);
     this.moveBody(p, dt);
     if (!p.ground && p.wall && move === p.wall && p.vy <= 0) {
       p.lastWall = p.wall;
@@ -471,7 +497,7 @@ export class World {
       p.wallMemory = 0.08;
     }
     if (p.ground && !wasGround) {
-      this.emit("land", { x: p.x, y: p.y });
+      this.emit("land", { x: p.x, y: p.y, speed: landingSpeed });
       if (p.attack?.kind === "dive") {
         for (const e of this.enemies)
           if (!e.dead && Math.abs(e.x - p.x) < 2 && Math.abs(e.y - p.y) < 1)
@@ -754,6 +780,10 @@ export class World {
         energy: p.energy,
         ground: p.ground,
         wall: p.wall,
+        wallKick: p.wallKick,
+        facing: p.facing,
+        moveIntent: p.moveIntent,
+        attackBuffer: p.attackBuffer,
         attack: p.attack
           ? {
               kind: p.attack.kind,
@@ -776,6 +806,12 @@ export class World {
           active: e.active,
         })),
       projectiles: this.projectiles.length,
+      shots: this.projectiles.map((s) => ({
+        owner: s.owner,
+        x: s.x,
+        y: s.y,
+        vx: s.vx,
+      })),
       bossLocked: this.bossLocked,
       bossDefeated: this.bossDefeated,
     };

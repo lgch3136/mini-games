@@ -1,4 +1,4 @@
-import { pilot } from "./moon-pilot.mjs";
+import { pilot, PILOT_VERSION } from "./moon-pilot.mjs?v=20260906-silk";
 const iframe = document.querySelector("iframe"),
   $ = (id) => document.getElementById(id),
   win = () => iframe.contentWindow,
@@ -57,7 +57,14 @@ async function launch() {
 function begin(kind) {
   cancelled = false;
   runId++;
-  window.moonReport = { kind, running: true, checks: [] };
+  window.moonReport = {
+    kind,
+    controller: PILOT_VERSION,
+    running: true,
+    checks: [],
+  };
+  $("report").textContent = "";
+  $("status").textContent = "检测中 · " + kind;
   return runId;
 }
 function done() {
@@ -74,6 +81,13 @@ async function suite() {
     check(
       "Three real Blender models and textures load",
       d().view.triangles > 5000 && d().view.ready,
+      d().view,
+    );
+    check(
+      "Characters use one draw each without dropping Blender geometry",
+      d().view.characterDraws === 1 &&
+        d().view.originalCharacterDraws >= 18 &&
+        d().view.drawCalls < 25,
       d().view,
     );
     check(
@@ -100,6 +114,66 @@ async function suite() {
       d().world.player.x > start + 0.4 && d().world.player.vx === 0,
       d().world.player,
     );
+    key("KeyD", true);
+    await frames(6);
+    tap("KeyJ");
+    await frames(1);
+    const reverseX = d().world.player.x;
+    key("KeyA", true);
+    await frames(1);
+    check(
+      "Overlapping opposite keys reverse immediately during slash",
+      d().world.player.x < reverseX &&
+        d().world.player.facing === -1 &&
+        d().world.player.vx < 0,
+      d().world.player,
+    );
+    key("KeyD", true);
+    await frames(1);
+    check(
+      "Repeated keydown does not steal last-direction ownership",
+      d().world.player.facing === -1,
+    );
+    key("KeyA", false);
+    await frames(1);
+    check(
+      "Releasing newest direction restores the still-held key",
+      d().world.player.facing === 1 && d().world.player.vx > 0,
+    );
+    key("KeyD", false);
+    await frames(3);
+    check(
+      "Release settles within two simulation ticks",
+      d().world.player.vx === 0,
+    );
+    key("KeyD", true);
+    key("ArrowRight", true);
+    key("KeyD", false);
+    await frames(3);
+    check(
+      "Releasing a keyboard alias does not release the other binding",
+      d().world.player.vx > 0,
+    );
+    key("ArrowRight", false);
+    await frames(3);
+    key("KeyA", true);
+    tap("KeyI");
+    await frames(1);
+    check(
+      "Same-tick direction plus ninja shoots into the new direction",
+      d().world.shots.some((s) => s.owner === "player" && s.vx < 0) &&
+        d().world.player.facing === -1,
+      d().world.shots,
+    );
+    await frames(6);
+    check(
+      "Display pivot catches up without negative-scale flipping",
+      Math.cos(d().view.hero.yaw) < -0.999,
+      d().view.hero,
+    );
+    key("KeyA", false);
+    await frames(5);
+    const cameraY = d().view.camera.y;
     tap("Space");
     await frames(1);
     let short = 0;
@@ -109,9 +183,11 @@ async function suite() {
     }
     key("Space", true);
     await frames(1);
-    let full = 0;
+    let full = 0,
+      checkJumpCamera = false;
     while (!d().world.player.ground) {
       full = Math.max(full, d().world.player.y);
+      checkJumpCamera ||= Math.abs(d().view.camera.y - cameraY) > 0.0025;
       await frames(1);
     }
     key("Space", false);
@@ -119,6 +195,16 @@ async function suite() {
       short,
       full,
     });
+    check(
+      "Ordinary jump does not bob or zoom the camera",
+      !checkJumpCamera && Math.abs(d().view.camera.width - 24) < 0.01,
+      d().view.camera,
+    );
+    check(
+      "Lighting and sword-history pools stay bounded",
+      d().view.localLights === 2 && d().view.hero.trail <= 10,
+      d().view,
+    );
     const energy = d().world.player.energy;
     tap("KeyI");
     await frames(2);
@@ -158,6 +244,31 @@ async function suite() {
       pt(b, "pointerup", 72);
       await frames(7);
       check("Pointer cancel releases movement", d().world.player.vx === 0);
+      const left = doc().querySelector('[data-input="left"]'),
+        r = left.getBoundingClientRect();
+      pt(a, "pointerdown", 73);
+      await frames(3);
+      a.dispatchEvent(
+        new PointerEvent("pointermove", {
+          pointerId: 73,
+          pointerType: "touch",
+          clientX: r.x + r.width / 2,
+          clientY: r.y + r.height / 2,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      await frames(2);
+      check(
+        "One held finger can slide from right to left without lifting",
+        d().world.player.vx < 0 && d().world.player.facing === -1,
+      );
+      pt(a, "pointerup", 73);
+      await frames(4);
+      check(
+        "Sliding finger release leaves no stuck direction",
+        d().world.player.vx === 0,
+      );
     }
     click("pause-btn");
     const f = d().world.frame;
@@ -285,7 +396,182 @@ async function route() {
     done();
   }
 }
+async function motion() {
+  const run = begin("ordinary-input movement and camera playback"),
+    samples = [];
+  try {
+    await launch();
+    let dir = 1,
+      lastJump = -200,
+      lastSlash = -40,
+      lastNinja = -400;
+    const first = d().world.frame;
+    while (!cancelled && run === runId && d().world.frame - first < 1440) {
+      const diag = d(),
+        p = diag.world.player,
+        f = diag.world.frame;
+      if (diag.mode !== "playing")
+        throw Error("Playback stopped: " + diag.mode);
+      if (p.x > 6) dir = -1;
+      else if (p.x < 2) dir = 1;
+      // Intentionally overlap before releasing the old key, as a human does.
+      key(dir > 0 ? "KeyD" : "KeyA", true);
+      key(dir > 0 ? "KeyA" : "KeyD", false);
+      if (f - lastSlash > 30) {
+        tap("KeyJ");
+        lastSlash = f;
+      }
+      if (f - lastJump > 150 && p.ground) {
+        key("Space", true);
+        lastJump = f;
+      }
+      if (f - lastJump > 14) key("Space", false);
+      if (f - lastNinja > 350 && dir > 0) {
+        tap("KeyI");
+        lastNinja = f;
+      }
+      const sample = {
+        frame: f,
+        x: p.x,
+        y: p.y,
+        vx: p.vx,
+        facing: p.facing,
+        yaw: diag.view.hero.yaw,
+        camera: diag.view.camera,
+        drawCalls: diag.view.drawCalls,
+      };
+      samples.push(sample);
+      window.moonReport.latest = sample;
+      $("status").textContent =
+        `往返 / 空中转向 / 出刀 · ${Math.floor((f - first) / 60)} / 24 秒`;
+      await wait(16);
+    }
+    window.moonReport.samples = samples;
+    check(
+      "24-second move, slash, jump and reverse playback stays alive",
+      d().mode === "playing" && d().world.player.hp > 0,
+    );
+    window.moonReport.final = d();
+    click("exit-btn");
+    await wait(200);
+    check(
+      "Playback leaves no render or audio work running",
+      !d().raf && !d().audio.timer && !d().audio.voices,
+    );
+    window.moonReport.pass = true;
+  } catch (e) {
+    window.moonReport.error = e.message;
+    window.moonReport.pass = false;
+  } finally {
+    for (const code of ["KeyD", "KeyA", "Space", "KeyJ", "KeyI"])
+      key(code, false);
+    if (d().mode === "playing") click("pause-btn");
+    done();
+  }
+}
+async function terrain() {
+  begin("four ordinary jumps, pixel-level roof and wall stability");
+  const captures = [];
+  try {
+    await launch();
+    await frames(45);
+    const canvas = doc().getElementById("game"),
+      gl = canvas.getContext("webgl2"),
+      diag = d(),
+      [sx, sy] = diag.view.terrainProbe,
+      ratio = canvas.width / canvas.clientWidth,
+      width = 128,
+      height = 64,
+      x = Math.round(sx * ratio - width / 2),
+      y = Math.round(canvas.height - sy * ratio - height / 2);
+    const pixels = () =>
+      new Promise((resolve) =>
+        win().requestAnimationFrame(() => {
+          const data = new Uint8Array(width * height * 4);
+          gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+          resolve(data);
+        }),
+      );
+    const baseline = await pixels();
+    check(
+      "Roof probe reads actual rendered pixels, not a cleared framebuffer",
+      baseline.some((v, i) => i % 4 !== 3 && v > 20),
+    );
+    let maxMean = 0,
+      maxChanged = 0,
+      maxCamera = 0;
+    for (let jump = 0; jump < 4; jump++) {
+      key("Space", true);
+      await frames(1);
+      while (!d().world.player.ground) {
+        const data = await pixels();
+        let sum = 0,
+          changed = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          let delta = 0;
+          for (let k = 0; k < 3; k++)
+            delta += Math.abs(data[i + k] - baseline[i + k]);
+          sum += delta;
+          if (delta > 9) changed++;
+        }
+        const sample = {
+          mean: sum / (width * height * 3),
+          changed: changed / (width * height),
+          y: d().view.camera.y,
+        };
+        maxMean = Math.max(maxMean, sample.mean);
+        maxChanged = Math.max(maxChanged, sample.changed);
+        maxCamera = Math.max(
+          maxCamera,
+          Math.abs(sample.y - diag.view.camera.y),
+        );
+        captures.push(sample);
+      }
+      key("Space", false);
+      await frames(12);
+    }
+    check(
+      "Jumping does not make a static roof/wall patch flicker",
+      maxMean < 0.1 && maxChanged < 0.002,
+      {
+        samples: captures.length,
+        maxMean,
+        maxChanged,
+        maxCamera,
+        region: { x, y, width, height },
+      },
+    );
+    check(
+      "Ordinary takeoff and landing leave the camera floor fixed",
+      maxCamera < 0.0025,
+    );
+    window.moonReport.final = d();
+    click("exit-btn");
+    window.moonReport.pass = true;
+  } catch (e) {
+    window.moonReport.error = e.message;
+    window.moonReport.pass = false;
+  } finally {
+    key("Space", false);
+    if (d().mode === "playing") click("pause-btn");
+    done();
+  }
+}
 $("suite").addEventListener("click", suite);
+$("all").addEventListener("click", async () => {
+  window.moonBatch = { running: true, results: [] };
+  for (const run of [suite, terrain, motion, route]) {
+    await run();
+    window.moonBatch.results.push(window.moonReport);
+    if (!window.moonReport.pass) break;
+  }
+  window.moonBatch.pass =
+    window.moonBatch.results.length === 4 &&
+    window.moonBatch.results.every((r) => r.pass);
+  window.moonBatch.running = false;
+});
+$("motion").addEventListener("click", motion);
+$("terrain").addEventListener("click", terrain);
 $("route").addEventListener("click", route);
 $("stop").addEventListener("click", () => {
   cancelled = true;

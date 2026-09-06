@@ -17,6 +17,8 @@
       gap: 12px;
       align-items: center;
       padding: 0 10px;
+      overflow: auto;
+      white-space: nowrap;
     }
     button {
       padding: 7px 12px;
@@ -32,7 +34,9 @@
     }
   </style>
   <header>
-    <button id="suite">操作回归</button><button id="route">三章输入试打</button
+    <button id="all">全套回归</button><button id="suite">操作回归</button
+    ><button id="motion">动作回放</button><button id="terrain">地形闪动</button
+    ><button id="route">三章输入试打</button
     ><button id="stop">停止并释放</button
     ><span id="status">仅通过正式 UI 与键盘 / 触屏事件，读取诊断。</span>
   </header>
@@ -42,5 +46,5 @@
     allow="autoplay"
   ></iframe>
   <pre id="report"></pre>
-  <script type="module" src="moon-browser.mjs"></script>
+  <script type="module" src="moon-browser.mjs?v=20260906-silk"></script>
 </html>

@@ -1,7 +1,10 @@
 import * as T from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { ninjaPose, interpolatePose } from "./motion.mjs?v=20260906-moonblade";
-import { clamp, lerp } from "./world.mjs?v=20260906-moonblade";
+import { MotionTrack } from "./motion.mjs?v=20260906-silk";
+import { FollowCamera } from "./camera.mjs?v=20260906-silk";
+import { platformLayers } from "./terrain.mjs?v=20260906-silk";
+import { prepareRigidSkin, createRigidSkin } from "./rig.mjs?v=20260906-silk";
+import { clamp, lerp } from "./world.mjs?v=20260906-silk";
 const Y = new T.Vector3(0, 1, 0),
   vec = new T.Vector3(),
   quat = new T.Quaternion(),
@@ -20,7 +23,7 @@ export class View {
     this.renderer.setClearColor(0x091522);
     this.renderer.outputColorSpace = T.SRGBColorSpace;
     this.renderer.toneMapping = T.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.27;
+    this.renderer.toneMappingExposure = 1.12;
     this.scene = new T.Scene();
     this.camera = new T.OrthographicCamera(-12, 12, 6.75, -6.75, 0.1, 100);
     this.camera.position.set(0, 0, 30);
@@ -30,28 +33,47 @@ export class View {
     this.effects = [];
     this.actors = new Map();
     this.cache = new Map();
+    this.rigs = new Map();
     this.elapsed = 0;
+    this.follow = new FollowCamera();
     this.reduced = matchMedia("(prefers-reduced-motion:reduce)").matches;
     this.detail = true;
-    this.scene.add(new T.HemisphereLight(0xbed7ed, 0x142033, 2.0));
-    const key = new T.DirectionalLight(0xd9eaff, 2.2);
+    this.scene.add(new T.HemisphereLight(0xa8c9e8, 0x172232, 1.35));
+    const key = new T.DirectionalLight(0xc8e4ff, 2.4);
     key.position.set(-5, 7, 5);
     this.scene.add(key);
-    const rim = new T.DirectionalLight(0xffbb72, 2.3);
+    const rim = new T.DirectionalLight(0x92b9ec, 1.6);
     rim.position.set(4, 5, -4);
     this.scene.add(rim);
     this.light = new T.PointLight(0x9df8ff, 0, 5, 2);
     this.scene.add(this.light);
+    // One reused local light, not one shadow-map light per lantern. Light
+    // pools and halos use shared cached textures; no bloom/render-target pass.
+    this.lampLights = Array.from({ length: 1 }, () => {
+      const light = new T.PointLight(0xffac60, 0, 7, 2);
+      this.scene.add(light);
+      return { light, id: -1 };
+    });
     const sc = document.createElement("canvas");
-    sc.width = 128;
-    sc.height = 32;
+    sc.width = sc.height = 128;
     const c = sc.getContext("2d"),
-      g = c.createRadialGradient(64, 16, 2, 64, 16, 62);
+      g = c.createRadialGradient(64, 64, 3, 64, 64, 62);
     g.addColorStop(0, "rgba(1,7,14,.8)");
     g.addColorStop(1, "rgba(1,7,14,0)");
     c.fillStyle = g;
-    c.fillRect(0, 0, 128, 32);
+    c.fillRect(0, 0, 128, 128);
     this.shadowMap = new T.CanvasTexture(sc);
+    const glow = document.createElement("canvas");
+    glow.width = glow.height = 128;
+    const gc = glow.getContext("2d"),
+      gg = gc.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gg.addColorStop(0, "rgba(255,255,255,.8)");
+    gg.addColorStop(0.12, "rgba(255,255,255,.42)");
+    gg.addColorStop(0.4, "rgba(255,255,255,.12)");
+    gg.addColorStop(1, "rgba(255,255,255,0)");
+    gc.fillStyle = gg;
+    gc.fillRect(0, 0, 128, 128);
+    this.glowMap = new T.CanvasTexture(glow);
   }
   async preload() {
     const loader = new GLTFLoader(),
@@ -62,6 +84,7 @@ export class View {
           new URL(`./assets/${n}.glb`, import.meta.url).href,
         );
         this.cache.set(n, r.scene);
+        this.rigs.set(n, prepareRigidSkin(r.scene));
       }),
     );
     this.backgrounds = await Promise.all(
@@ -80,7 +103,11 @@ export class View {
     this.stone.wrapS = this.stone.wrapT = T.RepeatWrapping;
     this.bg = new T.Mesh(
       new T.PlaneGeometry(30, 16.875),
-      new T.MeshBasicMaterial({ map: this.backgrounds[0], toneMapped: false }),
+      new T.MeshBasicMaterial({
+        map: this.backgrounds[0],
+        color: 0xc9d8e9,
+        toneMapped: false,
+      }),
     );
     this.bg.position.z = -8;
     this.scene.add(this.bg);
@@ -128,6 +155,7 @@ export class View {
     }
     for (const a of this.actors.values()) {
       this.scene.remove(a.root);
+      a.skeleton.dispose();
       a.shadow.geometry.dispose();
       a.shadow.material.dispose();
       this.scene.remove(a.shadow);
@@ -146,22 +174,22 @@ export class View {
       lanterns = [];
     for (const p of world.level.platforms) {
       const depth = p.oneWay ? 0.7 : 2.6,
-        h = p.oneWay ? 0.35 : Math.min(5.5, p.h);
+        layers = platformLayers(p, city);
       blocks.push({
-        p: [p.x + p.w / 2, p.y - h / 2, -0.3],
-        s: [p.w, h, depth],
+        p: [p.x + p.w / 2, layers.wall.center, -0.3],
+        s: [p.w, layers.wall.height, depth],
         c: city ? 0x7d98b2 : 0x96aaa3,
       });
       caps.push({
-        p: [p.x + p.w / 2, p.y - 0.08, 0.0],
-        s: [p.w + 0.12, 0.16, depth + 0.12],
+        p: [p.x + p.w / 2, layers.cap.center, 0.0],
+        s: [p.w + 0.12, layers.cap.height, depth + 0.12],
         c: city ? 0x405565 : 0x647773,
       });
       if (!p.oneWay) {
         for (let x = p.x + 0.25; x < p.x + p.w; x += 0.52)
           for (let z = -1.27; z < 1.1; z += 0.52)
             tiles.push({
-              p: [x, p.y - 0.04, z],
+              p: [x, layers.tile.center, z],
               s: city ? [0.245, 0.08, 0.49] : [0.49, 0.08, 0.49],
               c: city ? 0x3c5265 : 0x647775,
             });
@@ -181,7 +209,7 @@ export class View {
           }
         }
         if (p.w > 7) {
-          const x = p.x + 2;
+          const x = p.x + Math.min(6, p.w * 0.25);
           lamps.push({
             p: [x, p.y + 1.25, -1.5],
             s: [0.1, 2.5, 0.1],
@@ -229,7 +257,9 @@ export class View {
           roughness: 0.85,
           metalness: 0.06,
         });
-    const stoneMat = material(0xffffff);
+    // Broad, rough masonry needs diffuse light, not a per-fragment metal BRDF.
+    // Keep PBR on characters, blades and roof tiles where highlights matter.
+    const stoneMat = new T.MeshLambertMaterial({ color: 0xffffff });
     stoneMat.map = this.stone;
     stoneMat.onBeforeCompile = (shader) => {
       shader.vertexShader = "varying vec2 vStoneWorld;\n" + shader.vertexShader;
@@ -276,6 +306,42 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       }),
       this.stageGroup,
     );
+    this.lanterns = lanterns.map((l, id) => ({
+      id,
+      x: l.p[0],
+      y: l.p[1],
+      z: l.p[2],
+      floor: l.p[1] - 2.15,
+    }));
+    const glowMaterial = (opacity) =>
+      new T.MeshBasicMaterial({
+        map: this.glowMap,
+        color: 0xffa957,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        blending: T.AdditiveBlending,
+        toneMapped: false,
+      });
+    this.halos = this.instanced(
+      lanterns.map((l) => ({ p: l.p, s: [2.5, 2.5, 1] })),
+      new T.PlaneGeometry(1, 1).rotateX(-Math.atan(5 / 30)),
+      glowMaterial(0.32),
+      this.stageGroup,
+    );
+    this.pools = this.instanced(
+      this.lanterns.map((l) => ({
+        p: [l.x, l.floor + 0.023, -0.25],
+        s: [5.2, 1, 2.6],
+      })),
+      new T.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+      glowMaterial(0.18),
+      this.stageGroup,
+    );
+    for (const lamp of this.lampLights) {
+      lamp.id = -1;
+      lamp.light.intensity = 0;
+    }
     cube.dispose();
     const spikes = [];
     for (const h of world.level.hazards)
@@ -336,27 +402,37 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.cx = clamp(world.player.x + 4, 12, world.level.length - 12);
     this.cy = world.player.y + 3.4;
     this.groundCamera = world.player.y;
+    this.follow.reset(world.player, world.level.length);
     this.effects = [];
     this.stage = world.stage;
   }
   makeActor(id, type) {
-    const root = this.cache.get(type).clone(true),
-      parts = {};
-    root.traverse((o) => {
-      if (o.name.includes("__") && !o.name.endsWith("_mesh"))
-        parts[o.name.split("__")[1]] = o;
-    });
+    const { root, parts, skin, skeleton } = createRigidSkin(
+      this.cache.get(type),
+      this.rigs.get(type),
+    );
     this.scene.add(root);
     const shadow = new T.Mesh(
-      new T.PlaneGeometry(1.5, 0.18),
+      new T.PlaneGeometry(1.65, 0.85),
       new T.MeshBasicMaterial({
         map: this.shadowMap,
         transparent: true,
         depthWrite: false,
       }),
     );
+    shadow.rotation.x = -Math.PI / 2;
     this.scene.add(shadow);
-    this.actors.set(id, { root, parts, shadow, trail: [] });
+    this.actors.set(id, {
+      root,
+      parts,
+      skin,
+      skeleton,
+      shadow,
+      trail: [],
+      bladeBase: new T.Vector3(),
+      bladeTip: new T.Vector3(),
+      motion: new MotionTrack(),
+    });
   }
   segment(parts, n, a, b) {
     const o = parts[n];
@@ -366,15 +442,26 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     quat.setFromUnitVectors(Y, vec);
     o.quaternion.copy(quat);
   }
-  actor(a, b, old, alpha, isHero) {
-    const current = ninjaPose(b, this.elapsed),
-      prior = old ? ninjaPose(old, this.elapsed - 1 / 60) : current,
-      p = interpolatePose(prior, current, alpha),
+  actor(a, b, old, alpha, isHero, dt, world) {
+    const rx = lerp(b.px, b.x, alpha),
+      ry = lerp(b.py, b.y, alpha);
+    let floor = -20;
+    for (const t of world.level.platforms)
+      if (rx >= t.x && rx <= t.x + t.w && t.y <= ry + 0.12)
+        floor = Math.max(floor, t.y);
+    const height = Math.max(0, ry - floor),
+      p = a.motion.sample(
+        { ...b, clearance: height },
+        old,
+        alpha,
+        dt,
+        this.elapsed,
+      ),
       s = isHero ? 0.64 : b.kind === "boss" ? 0.84 : 0.61;
     const { parts: r, root } = a;
-    const facing = b.wall && !b.ground ? b.wall : b.facing;
-    root.position.set(lerp(b.px, b.x, alpha), lerp(b.py, b.y, alpha), 0.9);
-    root.scale.set(s * facing, s, s);
+    root.position.set(rx, ry, 0.9);
+    root.scale.setScalar(s);
+    root.rotation.y = a.motion.yaw;
     a.pose = p;
     a.scale = s;
     this.segment(r, "torso", p.hip, p.chest);
@@ -399,11 +486,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       r["foot" + side].rotation.z = p["footAngle" + side];
     }
     r.sword.position.set(...p.handF);
-    r.sword.rotation.set(
-      0,
-      0,
-      lerp(prior.swordAngle, current.swordAngle, alpha),
-    );
+    r.sword.rotation.set(0, 0, p.swordAngle);
     const angle =
       -1.65 +
       Math.sin(this.elapsed * 8 - b.x) * 0.15 -
@@ -416,15 +499,34 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       -0.12,
     );
     r.scarfB.rotation.z = -angle + 0.25 * Math.sin(this.elapsed * 9);
-    a.shadow.position.set(
-      root.position.x,
-      b.ground
-        ? root.position.y - 0.025
-        : Math.min(b.baseY || 0, root.position.y),
-      0.06,
-    );
-    a.shadow.material.opacity = b.ground ? 0.64 : 0.26;
-    a.shadow.visible = root.visible && b.y > -3;
+    a.shadow.position.set(root.position.x, floor + 0.016, 0.65);
+    a.shadow.scale.setScalar(1 + Math.min(height, 4) * 0.12);
+    a.shadow.material.opacity = 0.46 / (1 + height * 0.55);
+    a.shadow.visible = root.visible && floor > -10 && height < 7;
+    if (isHero) {
+      r.sword.updateWorldMatrix(true, false);
+      a.bladeBase.set(0, 0.12, 0).applyMatrix4(r.sword.matrixWorld);
+      a.bladeTip.set(0.22, 1.28, 0).applyMatrix4(r.sword.matrixWorld);
+    }
+    if (isHero && dt > 0) {
+      if (a.lastFacing !== b.facing) a.trail.length = 0;
+      a.lastFacing = b.facing;
+      const attack = b.attack,
+        start = attack?.kind === "slash" ? [3, 4, 6][attack.chain] : 0,
+        active = attack?.kind === "slash" ? [5, 6, 7][attack.chain] : 0,
+        striking =
+          attack &&
+          (attack.kind === "dive" ||
+            (attack.frame >= start && attack.frame < start + active));
+      if (striking)
+        a.trail.push({
+          base: a.bladeBase.clone(),
+          tip: a.bladeTip.clone(),
+          age: 0,
+        });
+      for (const node of a.trail) node.age += dt;
+      a.trail = a.trail.filter((node) => node.age < 0.09).slice(-10);
+    }
     if (isHero && b.inv > 0)
       root.traverse((o) => {
         if (o.isMesh)
@@ -436,6 +538,8 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       });
   }
   event(e) {
+    if (e.type === "land" && this.detail && !this.reduced && e.speed > 17)
+      this.follow.land(Math.min(1, e.speed / 18));
     if (
       [
         "hit",
@@ -457,9 +561,33 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       if (this.effects.length > 48) this.effects.shift();
     }
   }
-  screen(x, y) {
-    vec.set(x, y, 0.9).project(this.camera);
+  screen(x, y, z = 0.9) {
+    vec.set(x, y, z).project(this.camera);
     return [(vec.x * 0.5 + 0.5) * this.w, (-vec.y * 0.5 + 0.5) * this.h];
+  }
+  updateLighting(px, py, dt) {
+    const candidates = this.lanterns
+      .filter((l) => Math.abs(l.x - px) < 8 && Math.abs(l.y - py) < 6)
+      .sort((a, b) => Math.abs(a.x - px) - Math.abs(b.x - px));
+    for (const slot of this.lampLights) {
+      let lamp = this.lanterns[slot.id];
+      if (!lamp || (slot.light.intensity < 0.02 && Math.abs(lamp.x - px) > 7)) {
+        lamp = candidates.find(
+          (l) => !this.lampLights.some((s) => s.id === l.id),
+        );
+        slot.id = lamp?.id ?? -1;
+      }
+      if (lamp) slot.light.position.set(lamp.x, lamp.y, lamp.z + 0.35);
+      const target =
+        this.detail && lamp
+          ? 9 * clamp((8 - Math.abs(lamp.x - px)) / 2, 0, 1)
+          : 0;
+      slot.light.intensity = dt
+        ? lerp(slot.light.intensity, target, 1 - Math.exp(-dt * 14))
+        : target;
+    }
+    if (this.halos) this.halos.visible = this.detail;
+    if (this.pools) this.pools.visible = this.detail;
   }
   render(world, previous, alpha, dt = 0) {
     if (!this.ready || !this.w) return;
@@ -467,18 +595,14 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     const p = world.player,
       px = lerp(p.px, p.x, alpha),
       py = lerp(p.py, p.y, alpha);
-    if (p.ground) this.groundCamera = p.y;
-    const tx = world.bossLocked
-        ? 94
-        : clamp(px + 3.2, 12, world.level.length - 12),
-      ty = world.bossLocked
-        ? 3.4
-        : clamp(Math.max(this.groundCamera + 3.4, py + 0.7), 3.4, 10.3);
-    const follow = 1 - Math.exp(-dt * 8);
-    if (dt) {
-      this.cx = lerp(this.cx, tx, follow);
-      this.cy = lerp(this.cy, ty, 1 - Math.exp(-dt * 5));
-    }
+    const camera = this.follow.advance(
+      { ...p, x: px, y: py, groundY: p.y },
+      world.level.length,
+      world.bossLocked,
+      dt,
+    );
+    this.cx = camera.x;
+    this.cy = camera.y;
     this.camera.position.set(this.cx, this.cy + 5, 30);
     this.camera.lookAt(this.cx, this.cy, 0);
     this.camera.updateMatrixWorld();
@@ -487,7 +611,15 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       this.cy * 0.91 + 0.3,
       -8,
     );
-    this.actor(this.actors.get("hero"), p, previous?.player, alpha, true);
+    this.actor(
+      this.actors.get("hero"),
+      p,
+      previous?.player,
+      alpha,
+      true,
+      dt,
+      world,
+    );
     for (const e of world.enemies) {
       if (e.kind === "bat") continue;
       const a = this.actors.get(e.id);
@@ -500,6 +632,8 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
           previous?.enemies.find((o) => o.id === e.id),
           alpha,
           false,
+          dt,
+          world,
         );
     }
     for (let i = 0; i < world.loot.length; i++) {
@@ -527,6 +661,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.lootMesh.instanceMatrix.needsUpdate = true;
     if (this.lootMesh.instanceColor)
       this.lootMesh.instanceColor.needsUpdate = true;
+    this.updateLighting(px, py, dt);
     const flash = this.effects.findLast(
       (e) => e.type === "hit" && e.age < 0.12,
     );
@@ -557,38 +692,44 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     }
     const p = world.player,
       a = this.actors.get("hero");
-    if (
-      p.attack &&
-      p.attack.kind === "slash" &&
-      p.attack.frame >= 2 &&
-      p.attack.frame < 13
-    ) {
-      const [x, y] = this.screen(
-          a.root.position.x + 0.4 * p.facing,
-          a.root.position.y + 1.1,
-        ),
-        q = clamp((p.attack.frame - 2) / 8, 0, 1);
+    // The ribbon is made from actual blade endpoints after the model's pose
+    // and 3D turn, rather than an unrelated circle painted ahead of the player.
+    if (a.trail.length > 1) {
       c.save();
-      c.translate(x, y);
-      c.scale(p.facing, 1);
-      c.beginPath();
-      c.arc(
-        0,
-        0,
-        unit * (p.attack.chain === 2 ? 1.7 : 1.42),
-        -0.95,
-        lerp(-0.8, 1.3, q),
-      );
-      c.strokeStyle = "#d8fbff";
-      c.lineWidth = unit * 0.055;
-      c.globalAlpha = 1 - q * 0.7;
-      c.stroke();
-      c.beginPath();
-      c.arc(0, 0, unit * 1.3, -0.95, lerp(-0.8, 1.3, q));
-      c.strokeStyle = "#6caad1";
-      c.lineWidth = unit * 0.16;
-      c.globalAlpha = 0.24;
-      c.stroke();
+      c.globalCompositeOperation = "lighter";
+      for (let i = 1; i < a.trail.length; i++) {
+        const prev = a.trail[i - 1],
+          cur = a.trail[i],
+          b0 = this.screen(
+            prev.base.x * 0.25 + prev.tip.x * 0.75,
+            prev.base.y * 0.25 + prev.tip.y * 0.75,
+            prev.base.z * 0.25 + prev.tip.z * 0.75,
+          ),
+          t0 = this.screen(...prev.tip.toArray()),
+          b1 = this.screen(
+            cur.base.x * 0.25 + cur.tip.x * 0.75,
+            cur.base.y * 0.25 + cur.tip.y * 0.75,
+            cur.base.z * 0.25 + cur.tip.z * 0.75,
+          ),
+          t1 = this.screen(...cur.tip.toArray());
+        c.globalAlpha =
+          clamp(1 - prev.age / 0.09, 0, 1) * (this.detail ? 0.24 : 0.14);
+        c.fillStyle = "#81dfff";
+        c.beginPath();
+        c.moveTo(...b0);
+        c.lineTo(...t0);
+        c.lineTo(...t1);
+        c.lineTo(...b1);
+        c.closePath();
+        c.fill();
+        c.globalAlpha *= 1.6;
+        c.strokeStyle = "#dfffff";
+        c.lineWidth = Math.max(1, unit * 0.035);
+        c.beginPath();
+        c.moveTo(...t0);
+        c.lineTo(...t1);
+        c.stroke();
+      }
       c.restore();
     }
     for (const e of world.enemies) {
@@ -639,6 +780,14 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     }
     for (const s of world.projectiles) {
       const [x, y] = this.screen(lerp(s.px, s.x, alpha), s.y);
+      const [tx, ty] = this.screen(lerp(s.px, s.x, alpha) - s.vx * 0.025, s.y);
+      c.strokeStyle =
+        s.owner === "player" ? "rgba(169,226,247,.42)" : "rgba(255,153,110,.5)";
+      c.lineWidth = unit * 0.045;
+      c.beginPath();
+      c.moveTo(tx, ty);
+      c.lineTo(x, y);
+      c.stroke();
       c.save();
       c.translate(x, y);
       c.rotate(s.owner === "player" ? this.elapsed * 24 : 0);
@@ -701,11 +850,29 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       geometries: this.renderer.info.memory.geometries,
       actors: this.actors.size,
       effects: this.effects.length,
-      camera: { x: this.cx, y: this.cy, width: 24 },
+      camera: {
+        x: this.cx,
+        y: this.cy,
+        width: this.camera.right - this.camera.left,
+        lead: this.follow.lead?.value,
+        impact: this.follow.impact,
+      },
+      hero: {
+        yaw: this.actors.get("hero")?.motion.yaw,
+        weights: { ...this.actors.get("hero")?.motion.weights },
+        position: this.actors.get("hero")?.root.position.toArray(),
+        bladeTip: this.actors.get("hero")?.bladeTip?.toArray(),
+        trail: this.actors.get("hero")?.trail.length,
+      },
+      localLights: this.lampLights.length + 1,
+      characterDraws: this.rigs.get("shinobi")?.materials.length,
+      originalCharacterDraws: this.rigs.get("shinobi")?.sourceDraws,
+      terrainProbe: this.screen(9, 0),
       dpr: this.dpr,
     };
   }
   dispose() {
+    for (const a of this.actors.values()) a.skeleton.dispose();
     this.scene.traverse((o) => {
       if (o.isMesh) {
         o.geometry.dispose();
@@ -716,7 +883,10 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.backgrounds?.forEach((t) => t.dispose());
     this.stone?.dispose();
     this.shadowMap.dispose();
+    this.glowMap.dispose();
     this.renderer.dispose();
     this.cache.clear();
+    for (const rig of this.rigs.values()) rig.geometry.dispose();
+    this.rigs.clear();
   }
 }
