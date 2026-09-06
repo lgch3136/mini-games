@@ -1,0 +1,330 @@
+:root {
+  --accent: #a6eee3;
+}
+#objective {
+  position: absolute;
+  right: 25px;
+  top: 76px;
+  text-align: right;
+  max-width: 330px;
+  text-shadow: 0 2px 9px #051522;
+}
+#objective small {
+  display: block;
+  color: #d9e9e39c;
+  font-size: 9px;
+  letter-spacing: 0.09em;
+}
+#objective b {
+  font-size: 12px;
+  line-height: 2.2;
+  font-weight: 500;
+}
+.progress {
+  height: 2px;
+  width: 130px;
+  margin-left: auto;
+  background: #ffffff1c;
+}
+.progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+#crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 1px 1px #0009);
+}
+#crosshair i {
+  background: #cbe5e3c9;
+  position: absolute;
+  width: 5px;
+  height: 1px;
+  top: 11px;
+}
+#crosshair i:nth-child(1) {
+  left: 0;
+}
+#crosshair i:nth-child(2) {
+  right: 0;
+}
+#crosshair i:nth-child(3) {
+  width: 1px;
+  height: 5px;
+  left: 11px;
+  top: 0;
+}
+#crosshair i:nth-child(4) {
+  width: 1px;
+  height: 5px;
+  left: 11px;
+  top: 18px;
+}
+#crosshair b {
+  width: 2px;
+  height: 2px;
+  position: absolute;
+  top: 11px;
+  left: 11px;
+  background: #fff;
+  border-radius: 50%;
+}
+#hitmarker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 25px;
+  height: 25px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  opacity: 0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 46%,
+      #ffe4b5 47%,
+      #ffe4b5 53%,
+      transparent 54%
+    ),
+    linear-gradient(transparent 46%, #ffe4b5 47%, #ffe4b5 53%, transparent 54%);
+  transition: opacity 0.08s;
+}
+.vitals {
+  position: absolute;
+  left: 27px;
+  bottom: 30px;
+  min-width: 175px;
+  text-shadow: 0 2px 9px #0008;
+}
+.vitals > small,
+.ammo > small {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #d4e3e3b3;
+}
+.vital-numbers {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 3px 0;
+}
+.vital-numbers b {
+  font-size: 33px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.vital-numbers em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--accent);
+}
+.vital-numbers span {
+  font-size: 19px;
+  color: var(--accent);
+}
+.hpbar,
+.shieldbar {
+  height: 3px;
+  background: #ffffff23;
+  margin: 5px 0;
+  width: 156px;
+}
+.hpbar i,
+.shieldbar i {
+  display: block;
+  background: #e9e2ca;
+  height: 100%;
+  transform-origin: left;
+}
+.shieldbar i {
+  background: var(--accent);
+}
+#dash-label {
+  font-size: 8px;
+  line-height: 2;
+  color: #abcbd0;
+}
+.ammo {
+  position: absolute;
+  right: 29px;
+  bottom: 30px;
+  text-align: right;
+  text-shadow: 0 2px 9px #0008;
+}
+.ammo b {
+  font-size: 42px;
+  font-weight: 400;
+  margin-right: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.ammo span {
+  font-size: 15px;
+  color: #cbdce0;
+}
+.ammo em {
+  display: block;
+  font-size: 9px;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+#combo {
+  position: absolute;
+  top: 40%;
+  left: 52%;
+  color: #ffe1ad;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+}
+#bossbar {
+  position: absolute;
+  left: 50%;
+  top: 17%;
+  transform: translateX(-50%);
+  width: 260px;
+  text-align: center;
+}
+#bossbar small {
+  font-size: 9px;
+  color: #ffc699;
+  letter-spacing: 0.15em;
+}
+#bossbar > div {
+  margin-top: 6px;
+  background: #1f344aaa;
+  height: 4px;
+}
+#boss-fill {
+  display: block;
+  height: 100%;
+  background: #efac74;
+  transform-origin: left;
+}
+.config input[type="range"] {
+  width: 66%;
+  accent-color: var(--accent);
+}
+@media (pointer: coarse) {
+  .vitals {
+    bottom: 150px;
+  }
+  .ammo {
+    bottom: 204px;
+    right: 22px;
+  }
+  .ammo b {
+    font-size: 28px;
+  }
+  .hpbar,
+  .shieldbar {
+    width: 105px;
+  }
+  .vitals {
+    min-width: 120px;
+  }
+  .vital-numbers b {
+    font-size: 24px;
+  }
+  .vital-numbers span {
+    font-size: 15px;
+  }
+  #word-hud {
+    bottom: 18px;
+  }
+  #objective {
+    max-width: 240px;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  #objective {
+    top: 50px;
+    right: 20px;
+  }
+  .vitals {
+    left: 19px;
+    bottom: 124px;
+  }
+  .vitals > small {
+    font-size: 8px;
+  }
+  .vital-numbers b {
+    font-size: 23px;
+  }
+  .ammo {
+    right: 24px;
+    bottom: 169px;
+  }
+  .ammo b {
+    font-size: 25px;
+  }
+  .ammo > small {
+    font-size: 8px;
+  }
+  .ammo em {
+    font-size: 8px;
+  }
+  .vitals .hpbar,
+  .vitals .shieldbar {
+    width: 100px;
+  }
+  #bossbar {
+    top: 25%;
+    width: 210px;
+  }
+  .hud-top .stat b {
+    font-size: 15px;
+  }
+  #objective b {
+    font-size: 11px;
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  #objective {
+    top: 122px;
+    right: 15px;
+    max-width: 230px;
+  }
+  .ammo {
+    bottom: 200px;
+  }
+  .vitals {
+    bottom: 160px;
+    left: 16px;
+  }
+  #bossbar {
+    top: 26%;
+    width: 220px;
+  }
+  #combo {
+    top: 42%;
+  }
+  .screen h1 {
+    font-size: 42px;
+  }
+  .intro {
+    font-size: 12px;
+  }
+}
+.fps-actions button[data-action="fire"] {
+  grid-column: 2 !important;
+  grid-row: 3;
+}
+.fps-actions button[data-action="jump"] {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: center;
+}
+:root #bossbar {
+  text-shadow: 0 1px 6px #172b3b;
+}
+#objective {
+  padding: 6px 10px;
+  background: linear-gradient(110deg, transparent, #0b243a60);
+  border-radius: 4px;
+}

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#152f3c" />
+    <title>零界突围 · Signal Strike</title>
+    <link
+      rel="stylesheet"
+      href="../shared/first-person/style.css?v=20260906-firstlight-r1"
+    />
+    <link rel="stylesheet" href="style.css?v=20260906-firstlight-r1" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "../shared/vendor/three-0.185.1/three.module.min.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="arena">
+      <canvas
+        id="game"
+        tabindex="0"
+        aria-label="零界突围，第一人称三维射击"
+      ></canvas>
+      <header class="topbar">
+        <a class="back" href="../">← 游戏合集</a
+        ><span class="brand">SIGNAL STRIKE / RECONNECT THE CITY</span>
+        <nav>
+          <button id="sound-btn">声音 开</button
+          ><button id="pause-btn" hidden>暂停</button
+          ><button id="exit-btn" hidden>退出</button>
+        </nav>
+      </header>
+      <section id="menu" class="screen">
+        <div class="copy">
+          <p class="eyebrow">城市失联。你是最后一道信号。</p>
+          <h1>零界突围</h1>
+          <p class="roman">S I G N A L S T R I K E</p>
+          <p class="intro">
+            穿越封锁线，重启三座中继。<br />听见预警，切入掩体。在守卫开火前完成反击。
+          </p>
+          <div class="features">
+            <span>自由移动 · 精准瞄准</span><span>双武器 · 突进</span
+            ><span>三段突围 · 核心守卫</span>
+          </div>
+          <div class="config">
+            <label
+              >行动难度<select id="difficulty">
+                <option value="normal">标准 · 保持移动与掩护</option>
+                <option value="easy">轻松 · 降低所受伤害</option>
+              </select></label
+            ><label
+              >画质<select id="quality">
+                <option value="1.25">均衡</option>
+                <option value="1">节能</option>
+                <option value="1.5">精细</option>
+              </select></label
+            ><label
+              >瞄准灵敏度<input
+                id="sensitivity"
+                type="range"
+                min="0.4"
+                max="2.0"
+                step="0.1"
+                value="1"
+            /></label>
+            <div class="checks">
+              <label><input id="comfort" type="checkbox" />舒适镜头</label
+              ><label><input id="learning" type="checkbox" />顺便学词</label>
+            </div>
+          </div>
+          <button class="primary" id="start" disabled>正在连接中继…</button>
+          <p class="controls-note">
+            WASD 移动 · 鼠标 瞄准 / 左键 射击 · R 换弹<br />Q / 1 / 2 切枪 ·
+            Shift 突进 · 空格 跳 · 按住 E 接入<br />点击画面锁定鼠标，Esc
+            释放并暂停。手机左手移动，右手按住开火并拖动瞄准。
+          </p>
+          <p class="quality-note">
+            也支持 ← → 转向 / J 射击 · 无鼠标锁时可拖动瞄准
+          </p>
+        </div>
+        <div class="menu-tag">
+          OPERATION ZERO LINE<b>03 RELAYS</b>HARBOR → ATRIUM → CORE
+        </div>
+      </section>
+      <section id="hud" hidden>
+        <div class="hud-top">
+          <div class="stat">
+            <small id="zone-label">01 / HARBOR</small
+            ><b id="zone-name">岸港接入</b>
+          </div>
+          <div class="stat">
+            <small>DEFENSE UNITS</small><b id="remaining">5</b>
+          </div>
+        </div>
+        <div id="objective">
+          <small>MISSION / 恢复三座中继</small
+          ><b id="objective-text">清除本区防御</b>
+          <div class="progress"><i id="relay-progress"></i></div>
+        </div>
+        <div id="crosshair"><i></i><i></i><i></i><i></i><b></b></div>
+        <div id="hitmarker"></div>
+        <div id="toast"></div>
+        <div class="vitals">
+          <small>VITALS / 生命与护盾</small>
+          <div class="vital-numbers">
+            <b id="hp">100</b><em>＋</em><span id="shield">50</span>
+          </div>
+          <div class="hpbar"><i id="hp-fill"></i></div>
+          <div class="shieldbar"><i id="shield-fill"></i></div>
+          <small id="dash-label">DASH READY</small>
+        </div>
+        <div class="ammo">
+          <small id="weapon-name">PULSE / 脉冲步枪</small>
+          <div><b id="ammo">28</b><span id="reserve">/ 168</span></div>
+          <em id="reload-label">R 换弹 · Q 切枪</em>
+        </div>
+        <div id="combo"></div>
+        <div id="bossbar" hidden>
+          <small>GATEKEEPER / 零界守卫</small>
+          <div><i id="boss-fill"></i></div>
+        </div>
+        <div id="word-hud" hidden></div>
+      </section>
+      <div id="damage" class="damage"></div>
+      <section id="touch" hidden>
+        <div class="touch-left">
+          <div class="pad" id="move-pad" aria-label="移动摇杆">
+            <i></i><span>移动</span>
+          </div>
+        </div>
+        <div class="touch-right">
+          <div class="pad" id="look-pad" aria-label="滑动瞄准区域">
+            <span>滑动瞄准</span>
+          </div>
+          <div class="fps-actions">
+            <button data-action="use">接入 E</button
+            ><button data-action="reload">换弹</button
+            ><button data-action="dash">突进</button
+            ><button data-action="swap">切枪</button
+            ><button data-action="jump">跳跃</button
+            ><button data-action="fire">开火</button>
+          </div>
+        </div>
+      </section>
+      <section id="panel" class="screen" hidden>
+        <div class="copy">
+          <p class="eyebrow">SIGNAL / OPERATIONS</p>
+          <h1 id="panel-title">稍作停留</h1>
+          <p id="result"></p>
+          <div class="panel-buttons">
+            <button class="primary" id="resume">继续行动</button
+            ><button id="restart">重新行动</button
+            ><button id="menu-btn">返回主界面</button>
+          </div>
+        </div>
+      </section>
+      <div id="loading">正在准备城市、装备与防御单位…</div>
+      <div id="fatal" hidden></div>
+    </main>
+    <script src="../shared/vocabulary.js"></script>
+    <script type="module" src="main.mjs?v=20260906-firstlight-r1"></script>
+  </body>
+</html>

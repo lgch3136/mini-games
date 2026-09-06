@@ -1,0 +1,728 @@
+:root {
+  color-scheme: dark;
+  --ink: #ecf3ee;
+  --muted: #aebdbe;
+  --accent: #f9c477;
+  --panel: rgba(12, 23, 28, 0.87);
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #09151d;
+  color: var(--ink);
+}
+button,
+select,
+input {
+  font: inherit;
+}
+button,
+a,
+select {
+  touch-action: manipulation;
+}
+button {
+  color: var(--ink);
+  background: #ffffff0b;
+  border: 1px solid #ffffff2a;
+  border-radius: 7px;
+  padding: 9px 13px;
+  cursor: pointer;
+}
+button:hover {
+  background: #ffffff1e;
+}
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button.primary {
+  background: var(--accent);
+  color: #152126;
+  border: 0;
+  font-weight: 800;
+  padding: 15px 25px;
+  min-width: 200px;
+}
+button.primary:hover {
+  filter: brightness(1.12);
+}
+[hidden] {
+  display: none !important;
+}
+#game {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: none;
+}
+#arena {
+  height: 100dvh;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.topbar {
+  position: absolute;
+  z-index: 12;
+  left: 0;
+  top: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: linear-gradient(#081522bd, transparent);
+  gap: 16px;
+  pointer-events: none;
+}
+.topbar > * {
+  pointer-events: auto;
+}
+.brand {
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  color: #ffffffae;
+}
+.topbar nav {
+  display: flex;
+  gap: 7px;
+}
+.topbar button {
+  background: #0d1a2594;
+  border-color: #ffffff26;
+  font-size: 12px;
+  padding: 7px 11px;
+}
+.back {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.screen {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 90px max(6vw, 24px) 45px;
+  background: linear-gradient(
+    90deg,
+    #06141deb 0%,
+    #071722a3 38%,
+    #07172214 78%
+  );
+  overflow: auto;
+}
+.copy {
+  max-width: 450px;
+}
+.eyebrow {
+  color: var(--accent);
+  letter-spacing: 0.3em;
+  font-size: 11px;
+  margin: 0 0 18px;
+}
+.screen h1 {
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  font-size: clamp(38px, 5.8vw, 76px);
+  line-height: 1.08;
+  margin: 0 0 7px;
+  text-shadow: 0 4px 25px #0003;
+}
+.roman {
+  letter-spacing: 0.36em;
+  font-size: 12px;
+  color: #d8e2e3a8;
+  margin: 0 0 26px;
+}
+.intro {
+  font-size: 14px;
+  line-height: 1.9;
+  color: #dce8e3d6;
+  margin: 0 0 24px;
+}
+.features {
+  display: flex;
+  gap: 20px;
+  margin: 18px 0 25px;
+  font-size: 11px;
+  color: #beced1;
+}
+.features span {
+  padding-top: 10px;
+  border-top: 1px solid #abc2ce4d;
+}
+.config {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+  max-width: 340px;
+}
+.config > label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #cddada;
+  gap: 12px;
+}
+.config select {
+  max-width: 240px;
+  width: 67%;
+  padding: 9px 10px;
+  background: #102630c9;
+  border: 1px solid #c2d0d330;
+  border-radius: 5px;
+  color: var(--ink);
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 11px;
+  color: #b8c8ce;
+}
+.checks label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.checks input {
+  accent-color: var(--accent);
+}
+.controls-note {
+  font-size: 11px;
+  color: #a9bec5;
+  line-height: 1.9;
+  max-width: 440px;
+  margin-top: 18px;
+}
+.menu-tag {
+  position: absolute;
+  right: 6%;
+  bottom: 12%;
+  text-align: right;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: #ffffff9c;
+}
+.menu-tag b {
+  display: block;
+  font-weight: 400;
+  font-size: clamp(24px, 4vw, 54px);
+  letter-spacing: -0.02em;
+  color: #ffffffdf;
+  margin-top: 7px;
+}
+#loading {
+  position: absolute;
+  z-index: 14;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #102028dc;
+  color: var(--accent);
+  border: 1px solid #ffffff28;
+  border-radius: 20px;
+  padding: 9px 16px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.hud-top {
+  position: absolute;
+  left: 24px;
+  top: 70px;
+  display: flex;
+  gap: 24px;
+  text-shadow: 0 2px 8px #000;
+}
+.stat small {
+  display: block;
+  font-size: 9px;
+  color: #c6d4d6;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+.stat b {
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 500;
+}
+.stat em {
+  font-size: 12px;
+  font-style: normal;
+  color: var(--accent);
+}
+.notice {
+  position: absolute;
+  top: 23%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  text-shadow: 0 2px 8px #000;
+  min-width: 240px;
+}
+.notice b {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+}
+.notice small {
+  display: block;
+  font-size: 11px;
+  line-height: 2;
+  color: #e5ece7;
+}
+.notice:empty {
+  display: none;
+}
+#toast {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: var(--accent);
+  text-shadow: 0 2px 10px #000;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1.7;
+}
+#countdown {
+  position: absolute;
+  left: 50%;
+  top: 37%;
+  transform: translate(-50%, -50%);
+  font-size: 88px;
+  font-weight: 700;
+  text-shadow: 0 0 30px #ffc16844;
+}
+#panel {
+  background: #05151dbd;
+  justify-content: center;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+#panel .copy {
+  max-width: 580px;
+}
+.panel-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+#result {
+  white-space: pre-line;
+  line-height: 1.9;
+  color: #c2d3d4;
+  font-variant-numeric: tabular-nums;
+}
+#word-hud {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  text-align: center;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 8px #000;
+}
+#word-hud strong {
+  color: var(--accent);
+  font-weight: 500;
+}
+#touch {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  pointer-events: none;
+  touch-action: none;
+}
+#touch button,
+#touch .pad {
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.touch-left,
+.touch-right {
+  position: absolute;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+.touch-left {
+  left: max(20px, env(safe-area-inset-left));
+}
+.touch-right {
+  right: max(20px, env(safe-area-inset-right));
+}
+#touch button {
+  padding: 0;
+  white-space: nowrap;
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  background: #0c1d275e;
+  border: 1px solid #dce8ed54;
+  color: #edf3efb5;
+  font-size: 12px;
+  backdrop-filter: blur(2px);
+}
+#touch button.held {
+  background: #f9c4776e;
+  color: white;
+  box-shadow: 0 0 20px #f7ca6a33;
+}
+.pad {
+  width: 110px;
+  height: 110px;
+  background: #0c1d2744;
+  border: 1px solid #dce8ed33;
+  border-radius: 50%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: #dce8ed88;
+}
+.pad i {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #b3d4e733;
+  border: 1px solid #dce8ed4d;
+}
+.pad span {
+  position: absolute;
+  bottom: 14px;
+  font-size: 9px;
+}
+.fps-actions {
+  display: grid;
+  grid-template-columns: 52px 74px;
+  gap: 8px;
+}
+.fps-actions button {
+  justify-self: center;
+  width: 52px !important;
+  height: 52px !important;
+  font-size: 10px !important;
+}
+.fps-actions button[data-action="fire"] {
+  grid-column: 1/3;
+  justify-self: end;
+  width: 74px !important;
+  height: 74px !important;
+  border-color: #ffcf8099 !important;
+  background: #e8ad533d !important;
+}
+#look-pad {
+  width: 110px;
+  height: 135px;
+  border: 0;
+  background: transparent;
+}
+.damage {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border: 0 solid transparent;
+  box-shadow: inset 0 0 85px #fa543777;
+  opacity: 0;
+}
+#fatal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 30px;
+  background: #0b202b;
+  z-index: 30;
+  text-align: center;
+  line-height: 2;
+}
+.quality-note {
+  color: #83a0aa;
+  font-size: 10px;
+  line-height: 1.8;
+  margin-top: 12px;
+}
+@media (max-width: 700px) {
+  .topbar {
+    padding: 12px 13px;
+  }
+  .brand {
+    display: none;
+  }
+  .screen {
+    padding: 74px 25px 25px;
+    background: linear-gradient(90deg, #06141deb, #07172270);
+  }
+  .copy {
+    max-width: 90%;
+  }
+  .intro {
+    font-size: 12px;
+  }
+  .features {
+    font-size: 10px;
+    margin: 12px 0 16px;
+  }
+  .roman {
+    margin-bottom: 19px;
+  }
+  .menu-tag {
+    display: none;
+  }
+  .hud-top {
+    left: 16px;
+    gap: 17px;
+    top: 58px;
+  }
+  .stat b {
+    font-size: 18px;
+  }
+  .touch-left,
+  .touch-right {
+    bottom: 20px;
+  }
+  .touch-left {
+    left: 14px;
+  }
+  .touch-right {
+    right: 14px;
+  }
+  #touch button {
+    width: 58px;
+    height: 58px;
+  }
+  .controls-note {
+    font-size: 10px;
+  }
+  .notice {
+    top: 22%;
+  }
+  .notice b {
+    font-size: 16px;
+  }
+  .config {
+    gap: 9px;
+  }
+  .pad {
+    width: 94px;
+    height: 94px;
+  }
+  #look-pad {
+    width: 70px;
+  }
+  #word-hud {
+    bottom: 14px;
+    font-size: 10px;
+    max-width: 42%;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .screen {
+    padding: 53px 5vw 15px;
+  }
+  .screen h1 {
+    font-size: 40px;
+  }
+  .eyebrow {
+    margin-bottom: 10px;
+  }
+  .roman {
+    margin-bottom: 12px;
+  }
+  .intro {
+    margin-bottom: 8px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .features {
+    display: none;
+  }
+  .config {
+    gap: 7px;
+    margin-bottom: 11px;
+  }
+  .config select {
+    padding: 6px 8px;
+  }
+  .controls-note {
+    margin-top: 10px;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .quality-note {
+    display: none;
+  }
+  button.primary {
+    padding: 11px 22px;
+  }
+  .copy {
+    max-width: 400px;
+  }
+  .topbar {
+    padding: 9px 16px;
+  }
+  .topbar button {
+    padding: 5px 9px;
+  }
+  .hud-top {
+    top: 49px;
+  }
+  .notice {
+    top: 21%;
+  }
+  .notice b {
+    font-size: 15px;
+  }
+  .touch-left,
+  .touch-right {
+    bottom: 14px;
+  }
+  .pad {
+    width: 88px;
+    height: 88px;
+  }
+  #touch button {
+    width: 54px;
+    height: 54px;
+  }
+  .fps-actions {
+    grid-template-columns: 44px 62px;
+    gap: 8px;
+  }
+  .fps-actions button {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .fps-actions button[data-action="fire"] {
+    width: 62px !important;
+    height: 62px !important;
+  }
+  #word-hud {
+    bottom: 16px;
+  }
+  .menu-tag {
+    display: block;
+    bottom: 12%;
+    right: 6%;
+  }
+  #countdown {
+    font-size: 64px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}
+/* Short landscape displays use a two-column setup, not a vertically clipped
+   desktop card. The 3D viewport and touch controls keep their full height. */
+@media (max-height: 520px) and (orientation: landscape) {
+  #menu {
+    align-items: center;
+    padding: 50px 5vw 14px;
+  }
+  #menu .copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 1fr);
+    column-gap: 6vw;
+    max-width: 900px;
+    width: 100%;
+    align-items: start;
+  }
+  #menu .eyebrow {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0 0 8px;
+    font-size: 9px;
+  }
+  #menu h1 {
+    grid-column: 1;
+    grid-row: 2;
+    margin-bottom: 6px;
+    font-size: 38px;
+  }
+  #menu .roman {
+    grid-column: 1;
+    grid-row: 3;
+    margin-bottom: 12px;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+  }
+  #menu .intro {
+    grid-column: 1;
+    grid-row: 4;
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+  #menu .controls-note {
+    grid-column: 1;
+    grid-row: 5;
+    margin: 6px 0 0;
+    font-size: 9px;
+    line-height: 1.65;
+  }
+  #menu .config {
+    grid-column: 2;
+    grid-row: 1/5;
+    max-width: none;
+    width: 100%;
+    gap: 10px;
+    margin: 0 0 10px;
+    align-self: center;
+  }
+  #menu .config > label {
+    font-size: 10px;
+  }
+  #menu .checks {
+    font-size: 9px;
+    gap: 10px;
+  }
+  #menu #start {
+    grid-column: 2;
+    grid-row: 5;
+    align-self: center;
+    min-width: 0;
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 13px;
+  }
+  #menu .menu-tag,
+  #menu .features {
+    display: none;
+  }
+}

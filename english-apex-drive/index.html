@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#112c38" />
+    <title>破晓疾驰 · Apex Drive</title>
+    <link
+      rel="stylesheet"
+      href="../shared/first-person/style.css?v=20260906-firstlight-r1"
+    />
+    <link rel="stylesheet" href="style.css?v=20260906-firstlight-r1" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "../shared/vendor/three-0.185.1/three.module.min.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="arena">
+      <canvas
+        id="game"
+        tabindex="0"
+        aria-label="破晓疾驰，第一人称驾驶舱竞速"
+      ></canvas>
+      <header class="topbar">
+        <a class="back" href="../">← 游戏合集</a
+        ><span class="brand">APEX DRIVE / GRAND TOUR</span>
+        <nav>
+          <button id="sound-btn">声音 开</button
+          ><button id="pause-btn" hidden>暂停</button
+          ><button id="exit-btn" hidden>退出</button
+          ><button
+            class="reset-car"
+            data-action="reset"
+            aria-label="回到当前赛道位置"
+          >
+            回正
+          </button>
+        </nav>
+      </header>
+      <section id="menu" class="screen">
+        <div class="copy">
+          <p class="eyebrow">追上光，驶向下一道弯。</p>
+          <h1>破晓疾驰</h1>
+          <p class="roman">A P E X D R I V E</p>
+          <p class="intro">
+            压住刹车，切进弯心。<br />跟上前车的尾流，把最后一段直道留给全速。
+          </p>
+          <div class="features">
+            <span>驾驶舱视角</span><span>真实转向 · 尾流加速</span
+            ><span>三条完整赛道</span>
+          </div>
+          <div class="config">
+            <label
+              >出发路线<select id="track">
+                <option value="0">蔚蓝海岸 · 高速巡航</option>
+                <option value="1">松岭回环 · 起伏山路</option>
+                <option value="2">港湾技术赛 · 连续复合弯</option>
+              </select></label
+            ><label
+              >模式<select id="mode">
+                <option value="race">大奖赛 · 两圈 / 5 位对手</option>
+                <option value="cruise">自由练习 · 不限圈数</option>
+              </select></label
+            ><label
+              >画质<select id="quality">
+                <option value="1.25">均衡</option>
+                <option value="1">节能</option>
+                <option value="1.5">精细</option>
+              </select></label
+            >
+            <div class="checks">
+              <label
+                ><input
+                  id="assist"
+                  type="checkbox"
+                  checked
+                />直线稳定辅助</label
+              ><label><input id="comfort" type="checkbox" />舒适镜头</label
+              ><label><input id="learning" type="checkbox" />顺便学词</label>
+            </div>
+          </div>
+          <button class="primary" id="start" disabled>正在准备赛道…</button>
+          <p class="controls-note">
+            W / ↑ 油门 · S / ↓ 刹车 · A D 转向<br />空格 加速 · Shift 手刹 · R
+            回正 · P 暂停<br />手机横屏：左手转向，右手油门、刹车与加速。
+          </p>
+          <p class="quality-note">
+            实机场景作为背景 · 无后台空转 · 原创音乐和模型
+          </p>
+        </div>
+        <div class="menu-tag">
+          FIRST LIGHT SERIES<b>06 : 24 AM</b>COASTLINE / OPEN ROAD
+        </div>
+      </section>
+      <section id="hud" hidden>
+        <div class="hud-top">
+          <div class="stat">
+            <small>POSITION</small><b id="rank">6</b><em> / 6</em>
+          </div>
+          <div class="stat"><small>LAP</small><b id="lap">1 / 2</b></div>
+          <div class="stat"><small>TIME</small><b id="timer">00:00.00</b></div>
+        </div>
+        <canvas
+          id="map"
+          width="160"
+          height="160"
+          aria-label="赛道小地图"
+        ></canvas>
+        <div id="notice" class="notice"></div>
+        <div id="countdown"></div>
+        <div id="toast"></div>
+        <div class="speedometer">
+          <small id="gear">N</small><b id="speed">0</b><span>KM/H</span>
+          <div class="boost-meter"><i id="boost-fill"></i></div>
+          <em id="draft">NITRO READY</em>
+        </div>
+        <div id="word-hud" hidden></div>
+      </section>
+      <div id="damage" class="damage"></div>
+      <section id="touch" hidden>
+        <div class="touch-left">
+          <button data-action="left" aria-label="向左转向">◀</button
+          ><button data-action="right" aria-label="向右转向">▶</button>
+        </div>
+        <div class="touch-right">
+          <button data-action="boost">加速</button
+          ><button data-action="brake">刹车</button
+          ><button data-action="gas">油门</button>
+        </div>
+      </section>
+      <section id="panel" class="screen" hidden>
+        <div class="copy">
+          <p class="eyebrow">APEX / PIT LANE</p>
+          <h1 id="panel-title">暂停</h1>
+          <p id="result"></p>
+          <div class="panel-buttons">
+            <button class="primary" id="resume">继续驾驶</button
+            ><button id="restart">重新发车</button
+            ><button id="menu-btn">返回选赛道</button>
+          </div>
+        </div>
+      </section>
+      <div id="loading">正在准备海岸、赛车与驾驶舱…</div>
+      <div id="fatal" hidden></div>
+    </main>
+    <script src="../shared/vocabulary.js"></script>
+    <script type="module" src="main.mjs?v=20260906-firstlight-r1"></script>
+  </body>
+</html>

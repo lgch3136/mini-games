@@ -1,0 +1,138 @@
+.speedometer {
+  position: absolute;
+  bottom: 11%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  min-width: 170px;
+  text-shadow: 0 2px 15px #051522aa;
+}
+.speedometer b {
+  font-size: 58px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.speedometer > small {
+  display: inline-block;
+  padding: 3px 5px;
+  margin-right: 8px;
+  color: var(--accent);
+  border: 1px solid #c5d1ce55;
+  border-radius: 3px;
+  font-size: 15px;
+}
+.speedometer > span {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  margin-left: 7px;
+}
+.boost-meter {
+  height: 3px;
+  background: #d9e3db2a;
+  margin: 10px auto 6px;
+  width: 140px;
+  overflow: hidden;
+}
+.boost-meter i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transition: none;
+}
+.speedometer em {
+  font-size: 9px;
+  letter-spacing: 0.17em;
+  color: #f5ce96;
+  font-style: normal;
+}
+#map {
+  position: absolute;
+  right: 24px;
+  top: 67px;
+  width: 130px;
+  height: 130px;
+  filter: drop-shadow(0 2px 4px #11202aaa);
+}
+#word-hud {
+  bottom: 5%;
+}
+.touch-right button[data-action="gas"] {
+  height: 85px !important;
+  border-radius: 18px !important;
+  border-color: #f9c47766 !important;
+}
+.touch-right button[data-action="brake"] {
+  border-radius: 15px !important;
+}
+.touch-right button[data-action="boost"] {
+  color: var(--accent) !important;
+}
+@media (max-height: 520px) {
+  .speedometer {
+    bottom: 8%;
+  }
+  .speedometer b {
+    font-size: 36px;
+  }
+  .speedometer > span {
+    font-size: 8px;
+  }
+  .boost-meter {
+    margin-top: 7px;
+    width: 100px;
+  }
+  #map {
+    top: 48px;
+    width: 95px;
+    height: 95px;
+    right: 18px;
+  }
+  #word-hud {
+    bottom: 3%;
+    max-width: 34%;
+  }
+  .touch-right button[data-action="gas"] {
+    height: 72px !important;
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .speedometer {
+    bottom: 25%;
+  }
+  .speedometer b {
+    font-size: 48px;
+  }
+  #map {
+    top: 113px;
+    width: 100px;
+    height: 100px;
+  }
+  .touch-right {
+    gap: 5px;
+  }
+  .touch-left {
+    gap: 5px;
+  }
+  #touch button {
+    width: 48px;
+    height: 54px;
+  }
+  .touch-right button[data-action="gas"] {
+    height: 75px !important;
+  }
+  #word-hud {
+    bottom: 16%;
+  }
+  .hud-top {
+    gap: 18px;
+  }
+}
+.reset-car {
+  display: none;
+}
+.playing .reset-car {
+  display: inline-block;
+}
