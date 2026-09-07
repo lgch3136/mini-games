@@ -36,7 +36,7 @@ export class Audio extends Soundtrack {
       this.step++;
     }
   }
-  motor(speed, throttle) {
+  motor(speed, throttle, drift = false, nitro = false) {
     if (!this.ctx || this.muted || !this.running) return;
     if (!this.engine) {
       const o = this.ctx.createOscillator(),
@@ -50,7 +50,20 @@ export class Audio extends Soundtrack {
       g.connect(this.effects);
       g.gain.value = 0.015;
       o.start();
-      this.engine = { o, g, f };
+      const road = this.ctx.createBufferSource(),
+        roadGain = this.ctx.createGain(),
+        roadFilter = this.ctx.createBiquadFilter();
+      road.buffer = this.noise;
+      road.loop = true;
+      roadFilter.type = "bandpass";
+      roadFilter.frequency.value = 950;
+      roadFilter.Q.value = 0.65;
+      roadGain.gain.value = 0;
+      road.connect(roadFilter);
+      roadFilter.connect(roadGain);
+      roadGain.connect(this.effects);
+      road.start();
+      this.engine = { o, g, f, road, roadGain, roadFilter };
     }
     const t = this.ctx.currentTime;
     this.engine.o.frequency.setTargetAtTime(
@@ -62,6 +75,16 @@ export class Audio extends Soundtrack {
       0.009 + (throttle ? 0.017 : 0.007) * Math.min(speed / 12, 1),
       t,
       0.1,
+    );
+    this.engine.roadGain.gain.setTargetAtTime(
+      drift ? 0.036 : nitro ? 0.021 : 0.003 * Math.min(speed / 45, 1),
+      t,
+      0.055,
+    );
+    this.engine.roadFilter.frequency.setTargetAtTime(
+      drift ? 1350 : 650,
+      t,
+      0.07,
     );
   }
   event(e) {
@@ -93,7 +116,29 @@ export class Audio extends Soundtrack {
         this.hiss(t, 0.2, 0.06, 2500);
         break;
       case "boost":
+      case "launch":
+      case "pad":
+      case "miniTurbo":
         tone(170, 0.32, 0.07, 480);
+        break;
+      case "driftStart":
+        this.hiss(t, 0.18, 0.028, 2100);
+        break;
+      case "driftTier":
+        tone(480 + e.tier * 160, 0.09, 0.04, 960);
+        break;
+      case "item":
+        tone(380, 0.22, 0.05, 800);
+        this.hiss(t, 0.08, 0.04, 1800);
+        break;
+      case "block":
+        tone(880, 0.18, 0.075, 1320);
+        break;
+      case "rivalHit":
+        tone(660, 0.1, 0.06, 1100);
+        break;
+      case "itemHit":
+        tone(140, 0.16, 0.065, 65);
         break;
       case "pickup":
       case "checkpoint":
@@ -121,6 +166,7 @@ export class Audio extends Soundtrack {
     super.pause();
     if (this.engine) {
       this.engine.o.stop();
+      this.engine.road.stop();
       for (const n of Object.values(this.engine)) n.disconnect();
       this.engine = null;
     }

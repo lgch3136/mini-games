@@ -142,6 +142,8 @@ async function launch(game) {
   }
   await until(() => win().firstPersonDiagnostics && d().ready, "assets");
   if (d().mode !== "menu") click("exit-btn");
+  // This older suite explicitly tests manual throttle and stopping after reset.
+  if (game === "race") doc().getElementById("auto-gas").checked = false;
   click("start");
   await until(() => d().mode === "playing", "start");
 }

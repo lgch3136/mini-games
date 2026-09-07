@@ -3,14 +3,21 @@ import {
   T,
   label,
   roadTexture,
-} from "../shared/first-person/scene.mjs?v=20260906-firstlight-r1";
+} from "../shared/first-person/scene.mjs?v=20260908-rally-r6";
 import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs";
+import { SectorBatch } from "./sector-batch.mjs?v=20260908-rally-r6";
 export class RaceView extends SceneKit {
   constructor(canvas) {
     super(canvas);
     this.fov = 68;
     this.reduced = false;
     this.carModels = [];
+    this.chase = true;
+    this.fx = [];
+    this.skids = [];
+    this.emitClock = 0;
+    this.dummy = new T.Object3D();
+    this.fxColor = new T.Color();
     this.cockpit = new T.Group();
     this.camera.add(this.cockpit);
     this.map = document.getElementById("map");
@@ -23,7 +30,39 @@ export class RaceView extends SceneKit {
     const m = this.mat("asphalt", 0xffffff, 0.95);
     m.map = this.asphalt;
     this.dashboard();
+    this.buildSky();
     this.permanent = new Set(this.geometries);
+  }
+  buildSky() {
+    // A direction-space sky has no panorama cut seam when the driver makes
+    // a full turn. Static cloud wisps cost one draw call and no image copies.
+    const geometry = new T.SphereGeometry(650, 32, 16);
+    const material = new T.ShaderMaterial({
+      side: T.BackSide,
+      depthWrite: false,
+      depthTest: false,
+      vertexShader: `varying vec3 ray; void main(){ray=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+      fragmentShader: `varying vec3 ray;
+      void main(){
+        vec3 d=normalize(ray);float h=clamp(d.y,0.,1.);
+        vec3 col=mix(vec3(.68,.79,.79),vec3(.18,.43,.65),pow(h,.55));
+        float cloud=sin(d.x*16.+d.z*8.)*.4+sin(d.z*32.-d.x*13.)*.2+sin(d.x*58.+d.z*21.)*.08;
+        cloud=smoothstep(.05,.49,cloud)*smoothstep(.03,.18,h)*(1.-smoothstep(.24,.58,h));
+        col=mix(col,vec3(.91,.88,.81),cloud*.48);
+        float sun=pow(max(0.,dot(d,normalize(vec3(-.65,.32,-.5)))),64.);
+        col+=vec3(.38,.25,.1)*sun;
+        gl_FragColor=vec4(col,1.);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    });
+    this.geometries.add(geometry);
+    this.materials.set("rally-sky", material);
+    this.sky = new T.Mesh(geometry, material);
+    this.sky.frustumCulled = false;
+    this.sky.renderOrder = -1000;
+    this.scene.background = null;
+    this.scene.add(this.sky);
   }
   dashboard() {
     const b = this.batch(),
@@ -76,13 +115,17 @@ export class RaceView extends SceneKit {
     display.rotation.x = -0.15;
   }
   build(world) {
+    this.releasePools();
     // Cockpit geometry is retained across races, so scene rebuild only replaces track meshes.
     for (const c of [...this.group.children]) this.group.remove(c);
     for (const g of this.geometries) if (!this.permanent.has(g)) g.dispose();
     this.geometries = new Set(this.permanent);
     this.carModels = [];
+    this.fx = [];
+    this.skids = [];
+    this.emitClock = 0;
     const track = world.track,
-      b = this.batch(),
+      b = new SectorBatch(this),
       sand = this.mat("sand", track.color),
       verge = this.mat("verge", 0xb8b695),
       asphalt = this.mat("asphalt", 0xffffff),
@@ -276,6 +319,123 @@ export class RaceView extends SceneKit {
       this.group.add(root);
       this.carModels.push(root);
     }
+    this.playerCar = this.model("apex-car");
+    this.playerCar.rotation.y = Math.PI;
+    this.playerRoot = new T.Group();
+    this.playerRoot.add(this.playerCar);
+    this.group.add(this.playerRoot);
+    const shadow = this.add(
+      new T.PlaneGeometry(3.1, 5.4),
+      this.contact(),
+      0,
+      0.023,
+      0,
+      this.playerRoot,
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    const shieldMat = this.mat("shield-surface", 0x76dcff, 0.23, 0.3);
+    shieldMat.transparent = true;
+    shieldMat.opacity = 0.23;
+    shieldMat.depthWrite = false;
+    this.shield = this.add(
+      new T.SphereGeometry(2.7, 18, 10),
+      shieldMat,
+      0,
+      1.15,
+      0,
+      this.playerRoot,
+    );
+    this.shield.scale.set(0.73, 0.68, 1.05);
+    this.shield.visible = false;
+    this.rivalShields = this.carModels.map((root) => {
+      const shield = this.add(
+        this.shield.geometry,
+        shieldMat,
+        0,
+        1.15,
+        0,
+        root,
+      );
+      shield.scale.copy(this.shield.scale);
+      shield.visible = false;
+      return shield;
+    });
+    this.pickupMeshes = [];
+    const glow = this.mat("supply-glow", 0x6bdfff, 0.3, 0.4);
+    glow.emissive.set(0x167caa);
+    glow.emissiveIntensity = 0.8;
+    const padmat = this.mat("turbo-pad", 0x62e8e2, 0.5, 0.1);
+    padmat.emissive.set(0x125452);
+    for (const f of world.features)
+      for (const offset of f.offsets) {
+        if (f.kind === "box" && world.mode !== "items") continue;
+        const q = track.at(f.s, offset),
+          root = new T.Group();
+        root.position.set(q.x, q.y, q.z);
+        root.rotation.y = q.yaw;
+        this.group.add(root);
+        if (f.kind === "box") {
+          const box = this.add(
+            new T.OctahedronGeometry(0.78),
+            glow,
+            0,
+            1.65,
+            0,
+            root,
+          );
+          const halo = this.add(
+            new T.TorusGeometry(0.95, 0.035, 6, 24),
+            glow,
+            0,
+            1.65,
+            0,
+            root,
+          );
+          halo.rotation.x = Math.PI / 2;
+          this.pickupMeshes.push({ root, box, f, base: 1.65 });
+        } else {
+          for (let j = 0; j < 4; j++) {
+            const plate = this.add(
+              new T.PlaneGeometry(2.65, 0.58),
+              padmat,
+              0,
+              0.047,
+              -1.5 + j,
+              root,
+            );
+            plate.rotation.x = -Math.PI / 2;
+          }
+        }
+      }
+    // Fixed-size instanced pools: tyre marks, sparks and game objects add a
+    // constant number of draw calls, not one mesh/allocation per effect.
+    this.sparkGeo = new T.SphereGeometry(0.065, 4, 3);
+    this.geometries.add(this.sparkGeo);
+    this.sparkMesh = new T.InstancedMesh(
+      this.sparkGeo,
+      new T.MeshBasicMaterial({ color: 0xffffff }),
+      96,
+    );
+    this.materials.get("spark-pool")?.dispose();
+    this.materials.set("spark-pool", this.sparkMesh.material);
+    this.sparkMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+    this.sparkMesh.frustumCulled = false;
+    this.group.add(this.sparkMesh);
+    const skidGeo = new T.PlaneGeometry(0.14, 1.2);
+    skidGeo.rotateX(-Math.PI / 2);
+    this.geometries.add(skidGeo);
+    this.skidMesh = new T.InstancedMesh(
+      skidGeo,
+      this.mat("skid-rubber", 0x243235),
+      180,
+    );
+    this.skidMesh.frustumCulled = false;
+    this.group.add(this.skidMesh);
+    const boltGeo = new T.OctahedronGeometry(0.48);
+    this.geometries.add(boltGeo);
+    this.itemMesh = new T.InstancedMesh(boltGeo, glow, 50);
+    this.itemMesh.frustumCulled = false;
+    this.group.add(this.itemMesh);
     this.camera.fov = 68;
     this.fov = 68;
     this.camera.updateProjectionMatrix();
@@ -334,9 +494,33 @@ export class RaceView extends SceneKit {
       z = lerp(old.z, p.z, a),
       y = lerp(old.y, p.y, a),
       yaw = mixAngle(old.yaw, p.yaw, a);
-    this.camera.position.set(x, y + 1.27, z);
+    const heading = mixAngle(old.heading ?? old.yaw, p.heading ?? p.yaw, a);
+    this.cockpit.visible = !this.chase;
+    this.playerRoot.visible = this.chase;
+    this.playerRoot.position.set(x, y, z);
+    this.playerRoot.rotation.set(0, yaw, this.reduced ? 0 : p.roll * 1.4);
+    this.shield.visible = p.shield > 0;
+    if (this.chase) {
+      this.camera.position.set(
+        x + Math.sin(heading) * 9,
+        y + 4.6,
+        z + Math.cos(heading) * 9,
+      );
+      this.camera.lookAt(
+        x - Math.sin(heading) * 12,
+        y + 1.1,
+        z - Math.cos(heading) * 12,
+      );
+    } else {
+      this.camera.position.set(x, y + 1.27, z);
+      this.camera.rotation.set(
+        -0.018,
+        mixAngle(yaw, heading, 0.65),
+        this.reduced ? 0 : p.roll,
+      );
+    }
     this.followLight(x, y, z);
-    this.camera.rotation.set(-0.018, yaw, this.reduced ? 0 : p.roll);
+    this.sky.position.copy(this.camera.position);
     this.fov = damp(
       this.fov,
       68 + (p.speed / 60) * 5 + (p.nitro ? 3 : 0),
@@ -353,6 +537,8 @@ export class RaceView extends SceneKit {
       : (Math.sin(w.time * 25) * 0.0015 * p.speed) / 60;
     this.carModels.forEach((m, i) => {
       const c = w.cars[i];
+      m.visible = !c.finishTime || w.time - c.finishTime < 5;
+      this.rivalShields[i].visible = c.shield > 0;
       const old = c.previous || c;
       m.position.set(
         lerp(old.x, c.x, a),
@@ -360,7 +546,124 @@ export class RaceView extends SceneKit {
         lerp(old.z, c.z, a),
       );
       m.rotation.y = mixAngle(old.yaw, c.yaw, a);
+      m.rotation.y +=
+        c.boostTime > 0
+          ? 0
+          : Math.sin(w.time * 3 + c.id) *
+            Math.abs(w.track.curvature(c.s)) *
+            0.6;
     });
+    this.pickupMeshes.forEach((o) => {
+      o.root.visible = p.pickups[o.f.id] !== w.laps;
+      o.box.position.y = o.base + Math.sin(w.time * 2 + o.f.id) * 0.18;
+      o.box.rotation.set(0.15, w.time * 0.9, Math.sin(w.time) * 0.13);
+    });
+    this.effects(w, dt, x, y, z, yaw);
     this.renderer.render(this.scene, this.camera);
+  }
+  effects(w, dt, x, y, z, yaw) {
+    const p = w.p;
+    this.emitClock += dt;
+    if (this.emitClock > 0.035 && dt > 0) {
+      this.emitClock = 0;
+      if (p.drift || p.nitro)
+        for (const side of [-1, 1]) {
+          const px = x + Math.sin(yaw) * 1.75 + Math.cos(yaw) * side * 0.86,
+            pz = z + Math.cos(yaw) * 1.75 - Math.sin(yaw) * side * 0.86;
+          if (p.drift && this.skids.length < 180)
+            this.skids.push({
+              x: px,
+              y: y + 0.029,
+              z: pz,
+              yaw: p.heading,
+              life: 5,
+            });
+          if (this.fx.length < 96)
+            this.fx.push({
+              x: px,
+              y: y + 0.22,
+              z: pz,
+              vx: Math.sin(yaw) * 5 + side,
+              vz: Math.cos(yaw) * 5,
+              vy: 1.4,
+              life: 0.48,
+              color: p.nitro
+                ? 0x86f3ff
+                : [0xb2ddea, 0x5ccbff, 0xffc55b, 0xea90ff][p.driftTier],
+            });
+        }
+      for (const c of w.cars)
+        if (c.boostTime > 0 && !c.finishTime && this.fx.length < 94) {
+          for (const side of [-1, 1])
+            this.fx.push({
+              x: c.x + Math.sin(c.yaw) * 1.8 + Math.cos(c.yaw) * side * 0.72,
+              y: c.y + 0.3,
+              z: c.z + Math.cos(c.yaw) * 1.8 - Math.sin(c.yaw) * side * 0.72,
+              vx: Math.sin(c.yaw) * 4,
+              vz: Math.cos(c.yaw) * 4,
+              vy: 0.4,
+              life: 0.36,
+              color: 0x8fe6ff,
+            });
+        }
+    }
+    for (const f of this.fx) {
+      f.life -= dt;
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.z += f.vz * dt;
+      f.vy -= 5 * dt;
+    }
+    for (const f of this.skids) f.life -= dt;
+    this.fx = this.fx.filter((f) => f.life > 0);
+    this.skids = this.skids.filter((f) => f.life > 0);
+    const d = this.dummy;
+    this.fx.forEach((f, i) => {
+      d.position.set(f.x, f.y, f.z);
+      d.rotation.set(0, 0, 0);
+      d.scale.setScalar(Math.max(0.15, f.life * 2));
+      d.updateMatrix();
+      this.sparkMesh.setMatrixAt(i, d.matrix);
+      this.sparkMesh.setColorAt(i, this.fxColor.setHex(f.color));
+    });
+    this.sparkMesh.count = this.fx.length;
+    this.sparkMesh.instanceMatrix.needsUpdate = true;
+    if (this.sparkMesh.instanceColor)
+      this.sparkMesh.instanceColor.needsUpdate = true;
+    this.skids.forEach((f, i) => {
+      d.position.set(f.x, f.y, f.z);
+      d.rotation.set(0, f.yaw, 0);
+      d.scale.set(1, 1, Math.min(1, f.life));
+      d.updateMatrix();
+      this.skidMesh.setMatrixAt(i, d.matrix);
+    });
+    this.skidMesh.count = this.skids.length;
+    this.skidMesh.instanceMatrix.needsUpdate = true;
+    let index = 0;
+    for (const item of [...w.missiles, ...w.mines]) {
+      const q = w.track.at(item.s, item.offset),
+        mine = item.owner !== undefined && item.target === undefined;
+      d.position.set(q.x, q.y + (mine ? 0.42 : 1.2), q.z);
+      d.rotation.set(mine ? 0 : w.time * 4, q.yaw, w.time);
+      d.scale.setScalar(mine ? 1.55 : 0.8);
+      d.updateMatrix();
+      this.itemMesh.setColorAt(
+        index,
+        this.fxColor.setHex(mine ? 0xff8eae : 0xffffff),
+      );
+      this.itemMesh.setMatrixAt(index++, d.matrix);
+    }
+    this.itemMesh.count = index;
+    this.itemMesh.instanceMatrix.needsUpdate = true;
+    if (this.itemMesh.instanceColor)
+      this.itemMesh.instanceColor.needsUpdate = true;
+  }
+  releasePools() {
+    for (const name of ["sparkMesh", "skidMesh", "itemMesh"])
+      this[name]?.dispose();
+  }
+  dispose() {
+    this.releasePools();
+    super.dispose();
   }
 }

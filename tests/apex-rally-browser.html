@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Apex Rally · 实跑验收</title
+  ><style>
+    body {
+      margin: 0;
+      background: #112c38;
+      color: #dff5f3;
+      font: 12px system-ui;
+    }
+    header {
+      height: 40px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 0 12px;
+      overflow: auto;
+      white-space: nowrap;
+    }
+    button,
+    select {
+      font: inherit;
+      padding: 5px 10px;
+    }
+    iframe {
+      width: 100%;
+      height: calc(100dvh - 40px);
+      border: 0;
+      display: block;
+    }
+    pre {
+      display: none;
+    }
+  </style>
+  <header>
+    <button id="race">竞速完整两圈</button
+    ><button id="items">道具完整两圈</button
+    ><button id="input">操作 / 释放回归</button
+    ><button id="stop">停止并释放</button
+    ><button id="baseline">空载帧基线</button
+    ><label
+      >路线
+      <select id="route">
+        <option value="0">海岸</option>
+        <option value="1">松岭</option>
+        <option value="2">港湾</option>
+      </select></label
+    ><span id="status">只发送正式按键 / 触摸事件，不修改游戏状态</span>
+  </header>
+  <iframe
+    id="subject"
+    src="../english-apex-drive/?qa=rally"
+    allow="autoplay; fullscreen"
+  ></iframe>
+  <pre id="report"></pre>
+  <script
+    type="module"
+    src="apex-rally-browser.mjs?v=20260908-rally-r6"
+  ></script>
+</html>

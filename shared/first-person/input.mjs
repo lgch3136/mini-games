@@ -51,6 +51,12 @@ export class Controls {
           ArrowRight: "right",
           Space: "boost",
           ShiftLeft: "drift",
+          ShiftRight: "drift",
+          KeyE: "item",
+          ControlLeft: "item",
+          ControlRight: "item",
+          KeyQ: "swap",
+          KeyC: "camera",
           KeyR: "reset",
         };
     addEventListener(

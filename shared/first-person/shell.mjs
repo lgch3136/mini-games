@@ -1,5 +1,5 @@
-import { Controls } from "./input.mjs?v=20260906-firstlight-r1";
-import { Audio } from "./audio.mjs?v=20260906-firstlight-r1";
+import { Controls } from "./input.mjs?v=20260908-rally-r6";
+import { Audio } from "./audio.mjs?v=20260908-rally-r6";
 export const $ = (id) => document.getElementById(id);
 export const text = (id, v) => {
   const e = $(id),
@@ -137,7 +137,8 @@ export class Shell {
         ];
     this.wordIndex = 0;
     window.firstPersonDiagnostics = () => ({
-      version: "20260906-firstlight-r1",
+      version:
+        this.kind === "race" ? "20260908-rally-r6" : "20260906-firstlight-r1",
       kind: this.kind,
       mode: this.mode,
       raf: !!this.raf,
@@ -285,7 +286,12 @@ export class Shell {
       this.onHUD?.(this);
       this.view.minimap?.(this.world);
       if (this.kind === "race")
-        this.audio.motor(this.world.p.speed, !!input.gas);
+        this.audio.motor(
+          this.world.p.speed,
+          !!(input.gas || this.world.autoGas) && !input.brake,
+          this.world.p.drift,
+          this.world.p.nitro,
+        );
     }
     this.work.push(performance.now() - start);
     if (this.frames.length > 1200) this.frames.shift();

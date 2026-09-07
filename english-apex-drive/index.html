@@ -10,9 +10,9 @@
     <title>破晓疾驰 · Apex Drive</title>
     <link
       rel="stylesheet"
-      href="../shared/first-person/style.css?v=20260906-firstlight-r1"
+      href="../shared/first-person/style.css?v=20260908-rally-r6"
     />
-    <link rel="stylesheet" href="style.css?v=20260906-firstlight-r1" />
+    <link rel="stylesheet" href="style.css?v=20260908-rally-r6" />
     <script type="importmap">
       {
         "imports": {
@@ -26,13 +26,14 @@
       <canvas
         id="game"
         tabindex="0"
-        aria-label="破晓疾驰，第一人称驾驶舱竞速"
+        aria-label="破晓疾驰，漂移竞速与道具对战"
       ></canvas>
       <header class="topbar">
         <a class="back" href="../">← 游戏合集</a
-        ><span class="brand">APEX DRIVE / GRAND TOUR</span>
+        ><span class="brand">APEX DRIVE / DRIFT RALLY</span>
         <nav>
           <button id="sound-btn">声音 开</button
+          ><button id="camera-toggle" data-action="camera">驾驶舱 C</button
           ><button id="pause-btn" hidden>暂停</button
           ><button id="exit-btn" hidden>退出</button
           ><button
@@ -50,11 +51,11 @@
           <h1>破晓疾驰</h1>
           <p class="roman">A P E X D R I V E</p>
           <p class="intro">
-            压住刹车，切进弯心。<br />跟上前车的尾流，把最后一段直道留给全速。
+            入弯漂移，出弯小喷。<br />攒住那一发氮气，把反超留在终点之前。
           </p>
           <div class="features">
-            <span>驾驶舱视角</span><span>真实转向 · 尾流加速</span
-            ><span>三条完整赛道</span>
+            <span>三阶漂移 · 松手小喷</span><span>竞速 / 道具双模式</span
+            ><span>跟车 / 驾驶舱</span>
           </div>
           <div class="config">
             <label
@@ -65,8 +66,15 @@
               </select></label
             ><label
               >模式<select id="mode">
-                <option value="race">大奖赛 · 两圈 / 5 位对手</option>
-                <option value="cruise">自由练习 · 不限圈数</option>
+                <option value="race">漂移竞速 · 两圈 / 5 位对手</option>
+                <option value="items">道具乱斗 · 光弹 / 护盾 / 陷阱</option>
+                <option value="cruise">漂移练习 · 无对手 / 不限圈数</option>
+              </select></label
+            ><label
+              >对手强度<select id="difficulty">
+                <option value="tour">休闲 · 熟悉路线</option>
+                <option value="club" selected>俱乐部 · 标准竞赛</option>
+                <option value="pro">专家 · 紧逼争冠</option>
               </select></label
             ><label
               >画质<select id="quality">
@@ -76,6 +84,9 @@
               </select></label
             >
             <div class="checks">
+              <label
+                ><input id="auto-gas" type="checkbox" checked />自动油门</label
+              >
               <label
                 ><input
                   id="assist"
@@ -88,21 +99,24 @@
           </div>
           <button class="primary" id="start" disabled>正在准备赛道…</button>
           <p class="controls-note">
-            W / ↑ 油门 · S / ↓ 刹车 · A D 转向<br />空格 加速 · Shift 手刹 · R
-            回正 · P 暂停<br />手机横屏：左手转向，右手油门、刹车与加速。
+            A D / ← → 转向 · Shift 漂移，松开小喷 · 空格 氮气<br />E / Ctrl 道具
+            · Q 换位 · C 镜头 · R 回正 · P 暂停<br />自动油门可关闭：W 加油 / S
+            刹车。倒计时末半秒轻按 W，完美起步。<br />手机横屏：左手转向，右手漂移
+            / 氮气 / 道具。
           </p>
           <p class="quality-note">
             实机场景作为背景 · 无后台空转 · 原创音乐和模型
           </p>
         </div>
         <div class="menu-tag">
-          FIRST LIGHT SERIES<b>06 : 24 AM</b>COASTLINE / OPEN ROAD
+          DRIFT RALLY<b>CHASE THE APEX</b>01 / DRIFT · 02 / RELEASE · 03 / BOOST
         </div>
       </section>
       <section id="hud" hidden>
         <div class="hud-top">
           <div class="stat">
-            <small>POSITION</small><b id="rank">6</b><em> / 6</em>
+            <small>POSITION</small><b id="rank">6</b
+            ><em id="rank-total"> / 6</em>
           </div>
           <div class="stat"><small>LAP</small><b id="lap">1 / 2</b></div>
           <div class="stat"><small>TIME</small><b id="timer">00:00.00</b></div>
@@ -116,6 +130,16 @@
         <div id="notice" class="notice"></div>
         <div id="countdown"></div>
         <div id="toast"></div>
+        <div id="incoming" hidden></div>
+        <div id="item-dock" hidden>
+          <b id="item-current"></b><span id="item-next"></span
+          ><small id="item-help"></small
+          ><em id="item-controls">E 使用 · Q 交换</em>
+        </div>
+        <div id="drift-gauge">
+          <i id="drift-fill"></i
+          ><small id="drift-label">Shift + 转向漂移 → 松开小喷</small>
+        </div>
         <div class="speedometer">
           <small id="gear">N</small><b id="speed">0</b><span>KM/H</span>
           <div class="boost-meter"><i id="boost-fill"></i></div>
@@ -130,7 +154,10 @@
           ><button data-action="right" aria-label="向右转向">▶</button>
         </div>
         <div class="touch-right">
-          <button data-action="boost">加速</button
+          <button data-action="drift" class="drift-key">漂移</button
+          ><button data-action="boost">氮气</button
+          ><button data-action="item">道具</button
+          ><button data-action="swap">换位</button
           ><button data-action="brake">刹车</button
           ><button data-action="gas">油门</button>
         </div>
@@ -151,6 +178,6 @@
       <div id="fatal" hidden></div>
     </main>
     <script src="../shared/vocabulary.js"></script>
-    <script type="module" src="main.mjs?v=20260906-firstlight-r1"></script>
+    <script type="module" src="main.mjs?v=20260908-rally-r6"></script>
   </body>
 </html>

@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 键旅 · TYPEBOUND | 英文打字施法：三章九关、路线与遗物、句子首领及错词回练 | [english-typebound](english-typebound/) |
 | 回响边界 · ECHO RING | 极简向心射击：危险回弹、连续涟漪、穿行擦弹与连击共鸣 | [english-echo-ring](english-echo-ring/) |
-| 破晓疾驰 · APEX DRIVE | 第一人称驾驶舱竞速：三条赛道、五位对手、尾流与加速、两圈比赛 / 自由练习 | [english-apex-drive](english-apex-drive/) |
+| 破晓疾驰 · APEX DRIVE | 三阶漂移、小喷与氮气、双槽道具攻防；三赛道、三档对手强度、跟车 / 驾驶舱双视角 | [english-apex-drive](english-apex-drive/) |
 | 零界突围 · SIGNAL STRIKE | 第一人称城市突围：双武器、掩体、突进、三座中继与核心守卫 | [english-signal-strike](english-signal-strike/) |
 | 月影忍途 · MOONBLADE | 原创单人 2.5D 忍者闯关：三章路线、贴墙蹬跃、三段连斩、疾步、忍术与两阶段首领 | [english-moonblade](english-moonblade/) |
 | 单词突击队 · WORD RANGER | 曙光行动重制：跑跳射击、实体掩体、移动平台、三条编排路线、部件首领战与连续远征，词核提供补给 | [english-word-ranger](english-word-ranger/) |
@@ -30,6 +30,8 @@
 
 2026-09-06：新增 **回响边界 / Echo Ring**，以简单向心射击与危险回弹为核心，使用轻量 Canvas 2D、连续波纹、穿行、擦弹与连击共鸣；不插入学习弹窗。设计与实机验收见 [回响边界](english-echo-ring/README.md)。
 
+2026-09-08：**破晓疾驰 · Drift Rally** 更新竞速 / 道具双模式、三阶漂移小喷、独立氮气、自动油门与双视角；设计对照和真实输入验收见 [Drift Rally](docs/first-person/RALLY-QA.md)。
+
 2026-09-06：新增两款第一人称游戏 **破晓疾驰 / 零界突围**，使用 Three.js、原创 Blender 模型和 imagegen 环境材质，支持键鼠与多指触屏；验收入口和素材说明见 [First Light](docs/first-person/README.md)。
 
 2026-09-06：新增独立游戏 **月影忍途**，不替换原有游戏。设计边界、素材来源、操作和实机验收见 [月影忍途说明](english-moonblade/README.md)。
@@ -46,7 +48,7 @@ mini-games/
 ├── scripts/                    # 词库导入脚本
 ├── english-typebound/          # 键旅 · 英文打字冒险
 ├── english-echo-ring/          # 回响边界 · 向心射击与波纹
-├── english-apex-drive/         # 破晓疾驰 · 第一人称竞速
+├── english-apex-drive/         # 破晓疾驰 · 漂移竞速 / 道具乱斗
 ├── english-signal-strike/      # 零界突围 · 第一人称射击
 ├── english-moonblade/          # 月影忍途 · 单人 2.5D 忍者闯关
 ├── english-word-ranger/        # 单词突击队
