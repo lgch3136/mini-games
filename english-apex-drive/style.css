@@ -377,7 +377,446 @@
   }
 }
 [data-auto-gas="true"] #touch [data-action="gas"] {
+  display: block;
+}
+/* Mochi art direction: the HUD, vehicles and environment share one palette. */
+:root {
+  color-scheme: light;
+  --ink: #3b4966;
+  --muted: #66798c;
+  --accent: #7bd6c5;
+  --panel: #fff8eefa;
+  font-family:
+    "Nunito", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+body {
+  background: #c4e9e3;
+}
+.topbar {
+  background: linear-gradient(#f4fff0c9, #f4fff000);
+}
+.topbar .brand {
+  color: #496b77;
+  font-weight: 800;
+}
+.topbar button {
+  color: #415670;
+  background: #fffaf0e6;
+  border-color: #ffffffc9;
+  border-radius: 16px;
+}
+button {
+  border-radius: 16px;
+  border-color: #7193a145;
+  background: #ffffffa6;
+}
+button:hover {
+  background: #f2ffe9;
+}
+button.primary {
+  background: #73d4bd;
+  color: #234d4a;
+  border-radius: 22px;
+  box-shadow: 0 5px 0 #45ab956b;
+}
+.screen {
+  background: linear-gradient(100deg, #fff9eee8, #fff9eeae 43%, #fff9ee15 80%);
+}
+.screen h1 {
+  color: #374b66;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+  text-shadow: 0 4px 0 #ffffffa8;
+}
+.title-dot {
+  color: #ef95ad;
+}
+.eyebrow {
+  color: #56837d;
+  font-weight: 800;
+}
+.roman {
+  color: #698991 !important;
+}
+.intro {
+  color: #4f657b !important;
+}
+.controls-note,
+.quality-note {
+  color: #5a7186 !important;
+}
+.features {
+  color: #518676;
+}
+.features span {
+  padding: 6px 9px;
+  background: #fcfff0b8;
+  border-radius: 20px;
+}
+#menu .config {
+  background: #fffcf0e6;
+  border: 2px solid #fff;
+  border-radius: 24px;
+  box-shadow: 0 10px 30px #779dae23;
+}
+.config > label {
+  color: #6b8190;
+}
+.config select {
+  background: #e6f3ed;
+  color: #354c60;
+  border: 1px solid #aacbc16b;
+  border-radius: 12px;
+}
+.checks {
+  color: #536e7c;
+}
+.checks input {
+  accent-color: #4dbca1;
+}
+.menu-tag {
+  color: #43877a;
+}
+.hud-top {
+  gap: 10px;
+}
+.stat {
+  border-radius: 17px;
+  padding: 7px 13px;
+  background: #fffbefd6;
+  box-shadow: 0 4px 0 #7193b029;
+  text-shadow: none;
+}
+.stat small {
+  color: #6e8292;
+  font-size: 8px;
+  font-weight: 800;
+}
+.stat b {
+  color: #3d536c;
+  font-weight: 850;
+}
+.stat em {
+  color: #6b8190;
+}
+#map {
+  background: #fff9eaba;
+  border-radius: 27px;
+  filter: none;
+  border: 2px solid #ffffff60;
+}
+.speedometer {
+  background: #fffaf0db;
+  border: 2px solid #ffffff90;
+  border-radius: 22px;
+  box-shadow: 0 5px 0 #4f6d9020;
+  text-shadow: none;
+}
+.speedometer b {
+  font-weight: 850;
+  color: #41576e;
+}
+.speedometer > small {
+  color: #528780;
+  border-color: #a2c8b9;
+  border-radius: 7px;
+}
+.speedometer em {
+  color: #51798c;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+.boost-meter {
+  background: #d9e3de;
+  height: 8px;
+}
+.boost-meter i {
+  background: linear-gradient(90deg, #7bcfb3, #70beda);
+}
+.boost-meter:after {
+  background: #fffbed;
+  width: 3px;
+}
+#drift-gauge {
+  bottom: 7%;
+  background: #fffaf0bf;
+  height: 8px;
+  width: 260px;
+  border-radius: 20px;
+  box-shadow: 0 2px 0 #66819b28;
+}
+#drift-gauge small {
+  color: #3b6371;
+  background: #fff9e6c9;
+  width: max-content;
+  max-width: 310px;
+  margin: 6px auto 0;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+#drift-fill {
+  border-radius: 20px;
+  box-shadow: none !important;
+}
+#drift-gauge[data-ready="true"] #drift-fill {
+  background: #ffc660;
+}
+#technique {
+  position: absolute;
+  bottom: 13%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #3f747a;
+  font-size: 23px;
+  font-weight: 950;
+  text-shadow:
+    0 2px 0 #fff9e7,
+    0 -2px 0 #fff9e7,
+    2px 0 #fff9e7,
+    -2px 0 #fff9e7;
+  pointer-events: none;
+}
+#technique.pop {
+  animation: mochi-pop 0.22s cubic-bezier(0.15, 0.7, 0.3, 1.25);
+}
+@keyframes mochi-pop {
+  from {
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+#input-strip {
+  position: absolute;
+  left: 24px;
+  bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#input-strip kbd {
+  padding: 7px;
+  border: 2px solid #fffdf4;
+  border-radius: 9px;
+  background: #fff7e5c9;
+  color: #799098;
+  font-size: 11px;
+  min-width: 26px;
+  text-align: center;
+}
+#input-strip kbd.on {
+  background: #76d3c1;
+  color: #204d4b;
+}
+#input-strip span {
+  color: #64848b;
+  font-size: 10px;
+}
+#item-dock {
+  background: #fff9e6e6;
+  border: 2px solid #ffffffb3;
+  border-radius: 21px;
+  box-shadow: 0 5px 0 #57749421;
+}
+#item-dock b {
+  color: #487587;
+}
+#item-next {
+  color: #947f9c;
+}
+#item-dock small {
+  color: #657c8a;
+}
+#item-dock em {
+  color: #be8550;
+}
+#incoming {
+  background: #fff1d9ed;
+  color: #a7664a;
+  border-color: #ecb09e;
+  box-shadow: 0 4px 0 #af766b20;
+}
+.notice b {
+  color: #527484;
+  background: #fff9e8d4;
+  padding: 7px 13px;
+  border-radius: 20px;
+  font-size: 15px;
+  text-shadow: none;
+}
+#toast {
+  color: #527783;
+  background: #fff9e6d4;
+  border-radius: 18px;
+  padding: 6px 14px;
+  font-weight: 700;
+  text-shadow: none;
+}
+#toast:empty {
   display: none;
+}
+#countdown {
+  color: #fff8db;
+  text-shadow:
+    0 5px 0 #6aa7a2,
+    0 8px 18px #68969050;
+  font-weight: 950;
+}
+#loading {
+  background: #edf5de;
+  color: #547d78;
+}
+#touch button {
+  color: #46687c;
+  border: 2px solid #fff7e9;
+  background: #fff7e6d9;
+  box-shadow: 0 4px 0 #506e9229;
+}
+#touch .touch-right button,
+#touch .touch-right .drift-key,
+#touch .touch-right button[data-action="gas"] {
+  height: 55px !important;
+  border-radius: 17px !important;
+  grid-row: auto;
+  font-weight: 800;
+}
+#touch .touch-right .drift-key {
+  color: #396e74;
+  background: #b4ece2ed;
+  border-color: #e1fff4;
+}
+#touch .touch-right button[data-action="gas"] {
+  color: #947747;
+  background: #fff3c5e0;
+}
+#touch .touch-right button[data-action="boost"] {
+  color: #598098 !important;
+  background: #c9e9f2e3;
+}
+#touch .touch-right button.ready {
+  background: #ffd276;
+  border-color: #fff9dc;
+  color: #7c5835;
+  box-shadow:
+    0 0 0 3px #ffd27566,
+    0 4px 0 #bd944946;
+}
+#touch button.held {
+  transform: translateY(2px);
+  background: #86d7c4;
+  box-shadow: none;
+}
+@media (pointer: coarse) {
+  #drift-gauge {
+    bottom: 23%;
+    width: 205px;
+  }
+  #technique {
+    bottom: 31%;
+    font-size: 19px;
+  }
+  #input-strip {
+    bottom: 37%;
+    left: 15px;
+  }
+  #input-strip span {
+    display: none;
+  }
+}
+@media (max-height: 520px) {
+  .stat {
+    padding: 4px 8px;
+    border-radius: 12px;
+  }
+  #drift-gauge {
+    bottom: 22%;
+    width: 190px;
+  }
+  #drift-gauge small {
+    font-size: 8px;
+  }
+  #technique {
+    bottom: 32%;
+    font-size: 18px;
+  }
+  #input-strip {
+    bottom: 37%;
+  }
+  #input-strip kbd {
+    padding: 4px;
+    font-size: 9px;
+  }
+  #toast {
+    top: 39%;
+    font-size: 10px;
+  }
+}
+@media (max-width: 699px) and (orientation: portrait) {
+  #drift-gauge {
+    bottom: 18%;
+    width: 230px;
+  }
+  #technique {
+    bottom: 24%;
+    font-size: 21px;
+  }
+  #input-strip {
+    bottom: auto;
+    top: 205px;
+  }
+  .stat {
+    padding: 5px 8px;
+  }
+  #touch .touch-right button,
+  #touch .touch-right .drift-key {
+    height: 51px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #technique.pop {
+    animation: none;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .speedometer {
+    left: auto;
+    right: 130px;
+    top: 48px;
+    bottom: auto;
+    transform: none;
+    width: 135px;
+    min-width: 0;
+    padding: 5px 7px;
+    border-radius: 15px;
+  }
+  .speedometer b {
+    font-size: 27px;
+  }
+  .speedometer em {
+    font-size: 7px;
+    letter-spacing: 0;
+  }
+  .speedometer .boost-meter {
+    width: 110px;
+    margin: 5px auto 3px;
+    height: 5px;
+  }
+  #drift-gauge {
+    bottom: 36px;
+    width: 180px;
+  }
+  #technique {
+    bottom: 85px;
+    font-size: 17px;
+  }
+  #word-hud {
+    bottom: 78px;
+  }
 }
 [data-auto-gas="false"] #touch .drift-key {
   grid-row: auto;

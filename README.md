@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 键旅 · TYPEBOUND | 英文打字施法：三章九关、路线与遗物、句子首领及错词回练 | [english-typebound](english-typebound/) |
 | 回响边界 · ECHO RING | 极简向心射击：危险回弹、连续涟漪、穿行擦弹与连击共鸣 | [english-echo-ring](english-echo-ring/) |
-| 破晓疾驰 · APEX DRIVE | 三阶漂移、小喷与氮气、双槽道具攻防；三赛道、三档对手强度、跟车 / 驾驶舱双视角 | [english-apex-drive](english-apex-drive/) |
+| 团团卡丁 · APEX DRIVE | 萌系兔兔卡丁车；Shift 时长控制轨迹、点油门小喷、连喷 / 断位、双槽道具；三赛道与五位对手 | [english-apex-drive](english-apex-drive/) |
 | 零界突围 · SIGNAL STRIKE | 第一人称城市突围：双武器、掩体、突进、三座中继与核心守卫 | [english-signal-strike](english-signal-strike/) |
 | 月影忍途 · MOONBLADE | 原创单人 2.5D 忍者闯关：三章路线、贴墙蹬跃、三段连斩、疾步、忍术与两阶段首领 | [english-moonblade](english-moonblade/) |
 | 单词突击队 · WORD RANGER | 曙光行动重制：跑跳射击、实体掩体、移动平台、三条编排路线、部件首领战与连续远征，词核提供补给 | [english-word-ranger](english-word-ranger/) |
@@ -48,7 +48,7 @@ mini-games/
 ├── scripts/                    # 词库导入脚本
 ├── english-typebound/          # 键旅 · 英文打字冒险
 ├── english-echo-ring/          # 回响边界 · 向心射击与波纹
-├── english-apex-drive/         # 破晓疾驰 · 漂移竞速 / 道具乱斗
+├── english-apex-drive/         # 团团卡丁 · 漂移连喷 / 道具乱斗
 ├── english-signal-strike/      # 零界突围 · 第一人称射击
 ├── english-moonblade/          # 月影忍途 · 单人 2.5D 忍者闯关
 ├── english-word-ranger/        # 单词突击队

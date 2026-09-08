@@ -7,12 +7,12 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <meta name="theme-color" content="#112c38" />
-    <title>破晓疾驰 · Apex Drive</title>
+    <title>团团卡丁 · Apex Drive</title>
     <link
       rel="stylesheet"
-      href="../shared/first-person/style.css?v=20260908-rally-r6"
+      href="../shared/first-person/style.css?v=20260908-mochi-r1"
     />
-    <link rel="stylesheet" href="style.css?v=20260908-rally-r6" />
+    <link rel="stylesheet" href="style.css?v=20260908-mochi-r1" />
     <script type="importmap">
       {
         "imports": {
@@ -26,11 +26,11 @@
       <canvas
         id="game"
         tabindex="0"
-        aria-label="破晓疾驰，漂移竞速与道具对战"
+        aria-label="团团卡丁，漂移连喷与道具对战"
       ></canvas>
       <header class="topbar">
         <a class="back" href="../">← 游戏合集</a
-        ><span class="brand">APEX DRIVE / DRIFT RALLY</span>
+        ><span class="brand">MOCHI RALLY / APEX DRIVE</span>
         <nav>
           <button id="sound-btn">声音 开</button
           ><button id="camera-toggle" data-action="camera">驾驶舱 C</button
@@ -47,22 +47,22 @@
       </header>
       <section id="menu" class="screen">
         <div class="copy">
-          <p class="eyebrow">追上光，驶向下一道弯。</p>
-          <h1>破晓疾驰</h1>
-          <p class="roman">A P E X D R I V E</p>
+          <p class="eyebrow">小小赛车，弯弯大冒险。</p>
+          <h1>团团卡丁<span class="title-dot">.</span></h1>
+          <p class="roman">M O C H I R A L L Y</p>
           <p class="intro">
-            入弯漂移，出弯小喷。<br />攒住那一发氮气，把反超留在终点之前。
+            带上兔兔，甩一个漂亮的弯。<br />松漂、点油门，再接一喷——把对手留在彩虹后面。
           </p>
           <div class="features">
-            <span>三阶漂移 · 松手小喷</span><span>竞速 / 道具双模式</span
-            ><span>跟车 / 驾驶舱</span>
+            <span>短漂 / 深漂 / 断位</span><span>点按小喷 · 连喷衔接</span
+            ><span>竞速 / 道具 / 练习</span>
           </div>
           <div class="config">
             <label
               >出发路线<select id="track">
-                <option value="0">蔚蓝海岸 · 高速巡航</option>
-                <option value="1">松岭回环 · 起伏山路</option>
-                <option value="2">港湾技术赛 · 连续复合弯</option>
+                <option value="0">奶油海岸 · 高速巡航</option>
+                <option value="1">糖果松岭 · 起伏山路</option>
+                <option value="2">蜜桃港湾 · 连续复合弯</option>
               </select></label
             ><label
               >模式<select id="mode">
@@ -99,17 +99,18 @@
           </div>
           <button class="primary" id="start" disabled>正在准备赛道…</button>
           <p class="controls-note">
-            A D / ← → 转向 · Shift 漂移，松开小喷 · 空格 氮气<br />E / Ctrl 道具
-            · Q 换位 · C 镜头 · R 回正 · P 暂停<br />自动油门可关闭：W 加油 / S
-            刹车。倒计时末半秒轻按 W，完美起步。<br />手机横屏：左手转向，右手漂移
-            / 氮气 / 道具。
+            A D / ← → 转向 · Shift 按得越久，甩尾越深<br />松 Shift 反打回正 →
+            松开再点 W / ↑ 小喷<br />空格 氮气 · E 道具 · Q 换位 · C 镜头 · P
+            暂停<br />手机：左手方向，右手漂移 / 小喷。自动油门不自动小喷。
           </p>
           <p class="quality-note">
-            实机场景作为背景 · 无后台空转 · 原创音乐和模型
+            连喷：回正时同向轻点 Shift 再漂 → 两次点 W。断位：松 Shift
+            后反向轻点 Shift 拉正。
           </p>
         </div>
         <div class="menu-tag">
-          DRIFT RALLY<b>CHASE THE APEX</b>01 / DRIFT · 02 / RELEASE · 03 / BOOST
+          SUNNY SIDE CIRCUIT<b>LET'S ROLL!</b>01 / DRIFT · 02 / COUNTER · 03 /
+          TAP
         </div>
       </section>
       <section id="hud" hidden>
@@ -138,7 +139,13 @@
         </div>
         <div id="drift-gauge">
           <i id="drift-fill"></i
-          ><small id="drift-label">Shift + 转向漂移 → 松开小喷</small>
+          ><small id="drift-label">Shift + 转向 → 回正 → 点 W 小喷</small>
+        </div>
+        <div id="technique" hidden></div>
+        <div id="input-strip" hidden>
+          <kbd id="input-gas">W ↑</kbd><kbd id="input-left">←</kbd
+          ><kbd id="input-right">→</kbd><kbd id="input-drift">Shift</kbd
+          ><span>练习输入</span>
         </div>
         <div class="speedometer">
           <small id="gear">N</small><b id="speed">0</b><span>KM/H</span>
@@ -155,16 +162,16 @@
         </div>
         <div class="touch-right">
           <button data-action="drift" class="drift-key">漂移</button
+          ><button data-action="gas" id="mini-key">小喷</button
           ><button data-action="boost">氮气</button
           ><button data-action="item">道具</button
           ><button data-action="swap">换位</button
-          ><button data-action="brake">刹车</button
-          ><button data-action="gas">油门</button>
+          ><button data-action="brake">刹车</button>
         </div>
       </section>
       <section id="panel" class="screen" hidden>
         <div class="copy">
-          <p class="eyebrow">APEX / PIT LANE</p>
+          <p class="eyebrow">MOCHI / PIT STOP</p>
           <h1 id="panel-title">暂停</h1>
           <p id="result"></p>
           <div class="panel-buttons">
@@ -174,10 +181,10 @@
           </div>
         </div>
       </section>
-      <div id="loading">正在准备海岸、赛车与驾驶舱…</div>
+      <div id="loading">兔兔正在系好安全带…</div>
       <div id="fatal" hidden></div>
     </main>
     <script src="../shared/vocabulary.js"></script>
-    <script type="module" src="main.mjs?v=20260908-rally-r6"></script>
+    <script type="module" src="main.mjs?v=20260908-mochi-r1"></script>
   </body>
 </html>

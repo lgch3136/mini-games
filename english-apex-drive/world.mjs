@@ -7,8 +7,16 @@ import {
   hypot,
   random,
 } from "../shared/first-person/math.mjs";
-export const VERSION = "20260908-rally-r6",
+import {
+  stepKart,
+  motionState,
+  cancelDrift,
+} from "./kart-motion.mjs?v=20260908-mochi-r1";
+export const VERSION = "20260908-mochi-r1",
   DT = 1 / 120;
+// Includes the visible tyre shoulders and front/rear rounded bumpers.
+export const KART_BOUNDS = Object.freeze({ halfWidth: 1.16, halfLength: 1.49 });
+export const GUARDRAIL = Object.freeze({ offset: 4.2, halfWidth: 0.25 });
 export const ITEMS = {
   bolt: { name: "追踪光弹", icon: "↗", help: "攻击前方一名对手 · 有飞行预警" },
   shield: { name: "脉冲护盾", icon: "◇", help: "持续 5 秒 · 抵挡一次攻击" },
@@ -17,7 +25,7 @@ export const ITEMS = {
 };
 export const TRACKS = [
   {
-    name: "蔚蓝海岸",
+    name: "奶油海岸",
     sub: "COASTLINE / 02 LAPS",
     width: 14,
     color: 0xb7c8a2,
@@ -37,7 +45,7 @@ export const TRACKS = [
     height: 2,
   },
   {
-    name: "松岭回环",
+    name: "糖果松岭",
     sub: "HIGHLAND / 02 LAPS",
     width: 13,
     color: 0x78958b,
@@ -57,7 +65,7 @@ export const TRACKS = [
     height: 7,
   },
   {
-    name: "港湾技术赛",
+    name: "蜜桃港湾",
     sub: "HARBOR / 02 LAPS",
     width: 12,
     color: 0xa0afa2,
@@ -108,6 +116,22 @@ export class Track {
       b = this.nodes.at(-1);
     this.length += hypot(a.x - b.x, a.z - b.z);
     this.nodes.push({ ...a, s: this.length });
+    // Track geometry is immutable. Avoid repeated atan2 / hypot work and
+    // hundreds of temporary "best so far" objects in every physics step.
+    this.segments = this.nodes.slice(0, -1).map((a, i) => {
+      const b = this.nodes[i + 1],
+        dx = b.x - a.x,
+        dz = b.z - a.z;
+      return {
+        a,
+        b,
+        dx,
+        dz,
+        lengthSq: dx * dx + dz * dz,
+        length: hypot(dx, dz),
+        yaw: Math.atan2(-dx, -dz),
+      };
+    });
   }
   at(s, offset = 0) {
     s = ((s % this.length) + this.length) % this.length;
@@ -118,51 +142,49 @@ export class Track {
       if (this.nodes[m].s > s) hi = m;
       else lo = m;
     }
-    const a = this.nodes[lo],
-      b = this.nodes[hi],
+    const { a, b, yaw } = this.segments[lo],
       t = (s - a.s) / (b.s - a.s),
-      dx = b.x - a.x,
-      dz = b.z - a.z,
-      l = hypot(dx, dz),
-      yaw = Math.atan2(-dx, -dz);
+      rightX = Math.cos(yaw),
+      rightZ = -Math.sin(yaw);
     return {
-      x: lerp(a.x, b.x, t) + Math.cos(yaw) * offset,
+      x: lerp(a.x, b.x, t) + rightX * offset,
       y: lerp(a.y, b.y, t),
-      z: lerp(a.z, b.z, t) - Math.sin(yaw) * offset,
+      z: lerp(a.z, b.z, t) + rightZ * offset,
       yaw,
       s,
     };
   }
   nearest(x, z) {
     let best = Infinity,
-      out;
-    for (let i = 0; i < this.nodes.length - 1; i++) {
-      const a = this.nodes[i],
-        b = this.nodes[i + 1],
-        dx = b.x - a.x,
-        dz = b.z - a.z,
-        t = clamp(
-          ((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz),
-          0,
-          1,
-        ),
+      bestSegment,
+      bestT = 0,
+      bestX = 0,
+      bestZ = 0;
+    for (const segment of this.segments) {
+      const { a, dx, dz } = segment,
+        t = clamp(((x - a.x) * dx + (z - a.z) * dz) / segment.lengthSq, 0, 1),
         px = a.x + dx * t,
         pz = a.z + dz * t,
-        d = hypot(x - px, z - pz);
-      if (d < best) {
-        best = d;
-        out = {
-          s: lerp(a.s, b.s, t),
-          x: px,
-          z: pz,
-          y: lerp(a.y, b.y, t),
-          distance: d,
-          side: ((x - px) * -dz + (z - pz) * dx) / hypot(dx, dz),
-          yaw: Math.atan2(-dx, -dz),
-        };
+        d2 = (x - px) ** 2 + (z - pz) ** 2;
+      if (d2 < best) {
+        best = d2;
+        bestSegment = segment;
+        bestT = t;
+        bestX = px;
+        bestZ = pz;
       }
     }
-    return out;
+    if (!bestSegment) return;
+    const { a, b, dx, dz, length, yaw } = bestSegment;
+    return {
+      s: lerp(a.s, b.s, bestT),
+      x: bestX,
+      z: bestZ,
+      y: lerp(a.y, b.y, bestT),
+      distance: Math.sqrt(best),
+      side: ((x - bestX) * -dz + (z - bestZ) * dx) / length,
+      yaw,
+    };
   }
   curvature(s) {
     return angle(this.at(s + 20).yaw - this.at(s).yaw) / 20;
@@ -193,6 +215,8 @@ export class Race {
       hits: 0,
       blocks: 0,
       pads: 0,
+      cutDrifts: 0,
+      bestChain: 0,
     };
     this.missiles = [];
     this.mines = [];
@@ -253,6 +277,7 @@ export class Race {
       pickups: {},
       incoming: 0,
       mini: false,
+      ...motionState(),
     };
     this.prev = { ...this.p };
     this.cars = Array.from({ length: 5 }, (_, i) => ({
@@ -324,27 +349,7 @@ export class Race {
     p.y = damp(p.y, n.y, 18, dt);
     p.offroad = n.distance > t.width * 0.52;
     p.brake = !!input.brake;
-    const gas = !!(input.gas || input.boost || this.autoGas),
-      brake = !!input.brake;
-    const steer = clamp(input.steer || 0, -1, 1);
-    p.steer = damp(p.steer, steer, 23, dt);
-    const driftEdge = input.driftTap || (!!input.drift && !p.driftHeld);
-    if (
-      driftEdge &&
-      p.speed > 13 &&
-      Math.abs(steer) > 0.25 &&
-      !p.offroad &&
-      !p.stun
-    ) {
-      p.drift = true;
-      p.driftSide = Math.sign(steer);
-      p.driftCharge = 0;
-      p.driftTier = 0;
-      this.events.push({ type: "driftStart" });
-    }
-    if (p.drift && (!input.drift || p.offroad || p.speed < 10 || p.stun))
-      this.endDrift(!p.offroad && !p.stun);
-    p.driftHeld = !!input.drift;
+    const brake = !!input.brake;
     const drafting = this.cars.some((c) => {
       let d = (c.s - n.s + t.length) % t.length;
       return d > 4 && d < 34 && Math.abs(c.offset - n.side) < 2.1;
@@ -357,93 +362,35 @@ export class Race {
       this.events.push({ type: "boost" });
     }
     p.boostHeld = !!input.boost;
-    const nitro = (p.boostTime > 0 || p.turboTime > 0) && !brake && !p.stun;
-    p.nitro = nitro;
-    p.mini = p.turboTime > 0 && !p.boostTime;
     p.boost = clamp(p.boost + (drafting ? 0.035 : 0.004) * dt, 0, 1);
     p.drafting = drafting;
-    this.boostSound = nitro;
-    const top = nitro ? 77 : 61,
-      accel = gas
-        ? (nitro ? 36 : 16) * (1 - Math.pow(clamp(p.speed / top, 0, 1), 2))
-        : 0;
-    p.speed = clamp(
-      p.speed +
-        (accel -
-          (brake ? 26 : 1.2) -
-          p.speed * p.speed * 0.00055 -
-          (p.stun ? 33 : 0) -
-          (p.drift ? 1.4 : 0) -
-          (p.offroad ? 17 : 0)) *
-          dt,
-      0,
-      top,
+    const yawRate = stepKart(
+      p,
+      input,
+      {
+        time: this.time,
+        roadYaw: n.yaw,
+        onRoad: !p.offroad,
+        assist: this.assist,
+        autoGas: this.autoGas,
+      },
+      dt,
+      (e) => {
+        if (e.type === "driftComplete") this.stats.drifts++;
+        if (e.type === "cutDrift") this.stats.cutDrifts++;
+        if (e.type === "miniTurbo") {
+          this.stats.miniTurbos++;
+          this.stats.bestChain = Math.max(this.stats.bestChain, e.chain);
+        }
+        this.events.push(e);
+      },
     );
-    // Bicycle steering at low speed, speed-dependent steering lock at racing speed.
-    // No camera rail: the car has real world position and heading, and can turn around.
-    const lock = lerp(0.58, 0.085, clamp(p.speed / 64, 0, 1));
-    let yawRate = (-Math.tan(p.steer * lock) * p.speed) / 3.1;
-    // Digital keys still need a usable steering range. Limit lateral grip,
-    // rather than letting a full key turn the car ~190 degrees per second.
-    const gripYaw = clamp(30 / Math.max(p.speed, 6), 0.45, 1.6);
-    yawRate = clamp(yawRate, -gripYaw, gripYaw);
-    if (
-      this.assist &&
-      !p.drift &&
-      Math.abs(steer) < 0.05 &&
-      n.distance < t.width * 0.45
-    ) {
-      yawRate += clamp(angle(n.yaw - p.yaw) * 1.65, -0.2, 0.2);
-    }
-    if (p.drift)
-      yawRate =
-        (-p.driftSide * 0.33 - steer * 0.55) *
-        clamp(35 / Math.max(p.speed, 15), 0.66, 1.4);
-    p.heading = angle(p.yaw + p.slip);
-    p.yaw = angle(p.yaw + yawRate * dt);
-    // Body and travel heading are separate. Counter-steering tightens or opens
-    // the same drift; it never flips the stored drift side or teleports velocity.
-    if (!Number.isFinite(p.heading)) p.heading = p.yaw;
-    p.heading = mixAngle(
-      p.heading,
-      p.yaw,
-      1 - Math.exp(-(p.drift ? 2.8 : 16) * dt),
-    );
-    p.slip = angle(p.heading - p.yaw);
-    if (
-      p.drift &&
-      Math.abs(p.slip) > 0.065 &&
-      Math.cos(p.heading - n.yaw) > 0.45
-    ) {
-      p.driftCharge = Math.min(
-        3,
-        p.driftCharge + Math.abs(p.slip) * p.speed * 0.105 * dt,
-      );
-      p.boost = clamp(p.boost + Math.abs(p.slip) * p.speed * 0.04 * dt, 0, 1);
-      const tier =
-        p.driftCharge >= 1.2
-          ? 3
-          : p.driftCharge >= 0.65
-            ? 2
-            : p.driftCharge >= 0.25
-              ? 1
-              : 0;
-      if (tier > p.driftTier) this.events.push({ type: "driftTier", tier });
-      p.driftTier = tier;
-    }
-    const h = p.yaw + p.slip;
+    this.boostSound = p.nitro;
+    const h = p.heading;
     p.x -= Math.sin(h) * p.speed * dt;
     p.z -= Math.cos(h) * p.speed * dt;
     p.roll = damp(p.roll, -yawRate * p.speed * 0.0007, 8, dt);
     p.gear = Math.min(6, 1 + Math.floor(p.speed / 12));
-    let current = t.nearest(p.x, p.z);
-    if (current.distance > t.width * 0.5 + 5) {
-      const delta = current.distance - (t.width * 0.5 + 5);
-      p.x = lerp(p.x, current.x, delta / current.distance);
-      p.z = lerp(p.z, current.z, delta / current.distance);
-      if (p.speed > 7) this.crash();
-      p.speed *= Math.exp(-6 * dt);
-    }
     for (const c of this.cars) {
       c.previous = { x: c.x, y: c.y, z: c.z, yaw: c.yaw };
       // Opponents brake for the approaching curvature as a driver would;
@@ -557,13 +504,13 @@ export class Race {
         forward = dx * fx + dz * fz,
         relative = p.yaw - c.yaw,
         halfWidth =
-          0.96 +
-          0.96 * Math.abs(Math.cos(relative)) +
-          2.05 * Math.abs(Math.sin(relative)),
+          KART_BOUNDS.halfWidth +
+          KART_BOUNDS.halfWidth * Math.abs(Math.cos(relative)) +
+          KART_BOUNDS.halfLength * Math.abs(Math.sin(relative)),
         halfLength =
-          2.05 +
-          2.05 * Math.abs(Math.cos(relative)) +
-          0.96 * Math.abs(Math.sin(relative)),
+          KART_BOUNDS.halfLength +
+          KART_BOUNDS.halfLength * Math.abs(Math.cos(relative)) +
+          KART_BOUNDS.halfWidth * Math.abs(Math.sin(relative)),
         overlapX = halfWidth - Math.abs(lateral),
         overlapZ = halfLength - Math.abs(forward);
       if (overlapX > 0 && overlapZ > 0) {
@@ -589,7 +536,39 @@ export class Race {
         else p.speed = Math.max(0, p.speed - 0.5 * dt);
       }
     }
-    current = t.nearest(p.x, p.z);
+    let current = t.nearest(p.x, p.z);
+    const relativeYaw = p.yaw - current.yaw;
+    const footprint =
+      KART_BOUNDS.halfWidth * Math.abs(Math.cos(relativeYaw)) +
+      KART_BOUNDS.halfLength * Math.abs(Math.sin(relativeYaw));
+    const edge =
+      t.width / 2 + GUARDRAIL.offset - GUARDRAIL.halfWidth - footprint;
+    if (current.distance > edge) {
+      // Resolve after rival contacts too. Match the drawn guardrail's inside
+      // face, including the kart's yaw-dependent footprint, not its centre.
+      const delta = (current.distance - edge) / current.distance;
+      p.x = lerp(p.x, current.x, delta);
+      p.z = lerp(p.z, current.z, delta);
+      const side = Math.sign(current.side),
+        nx = Math.cos(current.yaw) * side,
+        nz = -Math.sin(current.yaw) * side;
+      let vx = -Math.sin(p.heading) * p.speed,
+        vz = -Math.cos(p.heading) * p.speed;
+      const outward = vx * nx + vz * nz;
+      if (outward > 4.5) this.crash();
+      if (outward > 0) {
+        // Collision removes only the outward velocity; keep tangential motion
+        // so a glancing scrape slides along the rail instead of sticking to it.
+        const scale = p.speed / (Math.hypot(vx, vz) || 1);
+        vx = (vx - outward * nx) * scale;
+        vz = (vz - outward * nz) * scale;
+        p.speed = Math.hypot(vx, vz);
+        if (p.speed > 0.05) p.heading = Math.atan2(-vx, -vz);
+        p.slip = angle(p.heading - p.yaw);
+      }
+      current = t.nearest(p.x, p.z);
+    }
+    p.offroad = current.distance > t.width * 0.52;
     p.progress = current.s;
     const gateS = (this.nextGate * t.length) / this.gates;
     let diff =
@@ -638,7 +617,7 @@ export class Race {
     this.bend = Math.abs(bend) > 0.32 ? (bend > 0 ? "左弯" : "右弯") : "";
     this.bendSharp = Math.abs(bend) > 0.7;
     this.clean += dt;
-    this.score += p.speed * dt * (nitro ? 1.2 : 1);
+    this.score += p.speed * dt * (p.nitro ? 1.2 : 1);
     this.sampleClock += dt;
     if (this.sampleClock > 0.1) {
       this.sampleClock = 0;
@@ -659,20 +638,11 @@ export class Race {
     this.clean = 0;
     this.events.push({ type: "crash" });
     this.p.speed *= 0.8;
-    this.endDrift(false);
+    this.endDrift();
   }
-  endDrift(reward = true) {
-    const p = this.p;
-    if (!p.drift) return;
-    if (reward && p.driftTier > 0) {
-      p.turboTime = Math.max(p.turboTime, [0, 0.55, 0.95, 1.4][p.driftTier]);
-      this.stats.miniTurbos++;
-      this.stats.drifts++;
-      this.events.push({ type: "miniTurbo", tier: p.driftTier });
-    }
-    p.drift = false;
-    p.driftTier = 0;
-    p.driftCharge = 0;
+  endDrift() {
+    // Forced stops never award a spray. Natural recovery is handled by stepKart.
+    cancelDrift(this.p);
   }
   pickup(actor, id, s, offset) {
     if (actor.offroad) return;
@@ -789,7 +759,7 @@ export class Race {
     a.immune = 2.6;
     a.speed *= 0.58;
     if (id === -1) {
-      this.endDrift(false);
+      this.endDrift();
       this.events.push({ type: "itemHit" });
     }
     if (owner === -1) {
@@ -849,9 +819,10 @@ export class Race {
       heading: q.yaw,
       speed: 0,
       slip: 0,
+      yawRate: 0,
     });
     this.prev = { ...this.p };
-    this.endDrift(false);
+    this.endDrift();
     this.events.push({ type: "reset" });
   }
   snapshot() {

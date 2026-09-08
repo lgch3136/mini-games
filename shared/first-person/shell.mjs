@@ -1,5 +1,5 @@
-import { Controls } from "./input.mjs?v=20260908-rally-r6";
-import { Audio } from "./audio.mjs?v=20260908-rally-r6";
+import { Controls } from "./input.mjs?v=20260908-mochi-r1";
+import { Audio } from "./audio.mjs?v=20260908-mochi-r1";
 export const $ = (id) => document.getElementById(id);
 export const text = (id, v) => {
   const e = $(id),
@@ -136,9 +136,11 @@ export class Shell {
           { en: "signal", zh: "信号" },
         ];
     this.wordIndex = 0;
-    window.firstPersonDiagnostics = () => ({
+    // Automated input can sample the state frequently without sorting two
+    // 1200-frame percentile arrays on every read. Full reports opt in once.
+    window.firstPersonDiagnostics = ({ metrics = true } = {}) => ({
       version:
-        this.kind === "race" ? "20260908-rally-r6" : "20260906-firstlight-r1",
+        this.kind === "race" ? "20260908-mochi-r1" : "20260906-firstlight-r1",
       kind: this.kind,
       mode: this.mode,
       raf: !!this.raf,
@@ -149,7 +151,7 @@ export class Shell {
       triangles: view.renderer.info.render.triangles,
       geometries: view.renderer.info.memory.geometries,
       textures: view.renderer.info.memory.textures,
-      perf: this.metrics(),
+      perf: metrics ? this.metrics() : undefined,
       game: this.world?.snapshot(),
     });
   }

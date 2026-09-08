@@ -1,9 +1,13 @@
-import { rallyPilot } from "./apex-rally-pilot.mjs?v=20260908-rally-r6";
+import {
+  rallyPilot,
+  DOUBLE_SPRAY_STEPS,
+  CHAIN_SPRAY_STEPS,
+} from "./apex-rally-pilot.mjs?v=20260908-mochi-r1";
 const frame = document.getElementById("subject"),
   $ = (id) => document.getElementById(id);
 const win = () => frame.contentWindow,
   doc = () => frame.contentDocument;
-const d = () => win().firstPersonDiagnostics(),
+const d = (metrics = false) => win().firstPersonDiagnostics({ metrics }),
   wait = (ms) => new Promise((r) => setTimeout(r, ms));
 let held = new Set(),
   serial = 0;
@@ -71,7 +75,7 @@ function finish(error) {
   keys({});
   if (d().mode === "playing") click("pause-btn");
   window.rallyReport.running = false;
-  window.rallyReport.final = d();
+  window.rallyReport.final = d(true);
   if (error) window.rallyReport.error = error.message;
   $("status").textContent = error
     ? "未通过 · " + error.message
@@ -106,7 +110,11 @@ async function run(mode) {
     if (token !== serial) return;
     const s = d().game;
     check("正式输入完成两圈比赛", s.finished && s.laps === 2);
-    check("漂移实际产生小喷", s.stats.drifts >= 3, s.stats);
+    check(
+      "漂移实际产生小喷",
+      s.stats.drifts >= 3 && s.stats.miniTurbos >= 3,
+      s.stats,
+    );
     check("氮气实际消耗与补充", s.stats.nitros >= 2, s.stats);
     if (mode === "items")
       check("主动拾取补给箱", s.stats.pickups >= 3, s.stats);
@@ -145,7 +153,9 @@ async function input() {
     pointer("right", "pointerup", 73);
     pointer("drift", "pointerup", 72);
     await wait(100);
-    check("释放漂移不粘键", !d().game.p.drift);
+    check("释放漂移不粘键", !d().game.p.driftHeld);
+    await until(() => !d().game.p.drift, 1200);
+    check("漂移连续回正后结束", !d().game.p.drift);
     const camera = doc().getElementById("camera-toggle").textContent;
     tap("KeyC");
     await wait(100);
@@ -173,17 +183,20 @@ async function input() {
     await wait(150);
     check(
       "恢复时不会保留旧指针",
-      !d().game.p.drift && Math.abs(d().game.p.steer) < 0.08,
+      !d().game.p.driftHeld && Math.abs(d().game.p.steer) < 0.08,
     );
     click("exit-btn");
     await launch("items");
+    // Warm the race camera as well as the one-frame menu portrait before
+    // comparing GPU allocations. A newly started race has not drawn yet.
+    await until(() => (d(true).perf.frame?.samples || 0) >= 3);
     if (win().matchMedia("(pointer:coarse)").matches) {
       const rects = [...doc().querySelectorAll("#touch button")]
         .map((el) => el.getBoundingClientRect())
         .filter((r) => r.width && r.height);
       check(
         "手机动作键不越界",
-        rects.length === 7 &&
+        rects.length === 8 &&
           rects.every(
             (r) =>
               r.left >= 0 &&
@@ -205,12 +218,20 @@ async function input() {
           ),
         ),
       );
+      const speed = doc().querySelector(".speedometer").getBoundingClientRect();
+      check(
+        "速度表不挡住中央车身",
+        win().innerWidth > win().innerHeight
+          ? speed.bottom < win().innerHeight * 0.48
+          : speed.right < win().innerWidth * 0.5 &&
+              speed.bottom < win().innerHeight * 0.4,
+      );
     }
     click("exit-btn");
     const before = d();
     for (let i = 0; i < 8; i++) {
       click("start");
-      await wait(80);
+      await until(() => (d(true).perf.frame?.samples || 0) >= 3);
       click("exit-btn");
     }
     const after = d();
@@ -239,6 +260,132 @@ async function input() {
 $("race").onclick = () => run("race");
 $("items").onclick = () => run("items");
 $("input").onclick = input;
+$("techniques").onclick = async () => {
+  const token = ++serial;
+  window.rallyReport = {
+    running: true,
+    kind: "techniques",
+    checks: [],
+    traces: [],
+  };
+  async function segment(seconds, values) {
+    keys(values);
+    const end = d().game.time + seconds;
+    while (d().game.time < end) {
+      if (token !== serial) throw Error("已取消");
+      if (d().mode !== "playing") throw Error("序列被暂停");
+      const p = d().game.p;
+      window.rallyReport.traces.push({
+        t: d().game.time,
+        x: p.x,
+        z: p.z,
+        speed: p.speed,
+        phase: p.driftPhase,
+        ready: p.miniReady,
+        chain: p.miniChain,
+      });
+      await wait(8);
+    }
+  }
+  async function warm() {
+    await launch("cruise");
+    const memory = { nextDrift: 999 };
+    const deadline = performance.now() + 15000;
+    // Reach a centred racing line through steering, not by assigning position.
+    while (true) {
+      if (token !== serial) throw Error("已取消");
+      if (performance.now() > deadline) throw Error("未能正常驶入居中测试线路");
+      const s = d().game;
+      keys(rallyPilot(s, memory));
+      if (
+        !s.countdown &&
+        s.p.speed > 36 &&
+        memory.track.nearest(s.p.x, s.p.z).distance < 1.0
+      )
+        break;
+      await wait(8);
+    }
+  }
+  try {
+    $("status").textContent = "漂移手法验证：只发送实际按键，不赋值车辆状态";
+    await warm();
+    await segment(0.34, { KeyW: true, KeyD: true, ShiftLeft: true });
+    await segment(0.18, { KeyW: true, KeyA: true });
+    check(
+      "松 Shift 连续回正，不会自动小喷",
+      d().game.stats.miniTurbos === 0 && d().game.p.miniReady === 1,
+    );
+    await segment(0.05, { KeyA: true });
+    await segment(0.08, { KeyW: true, KeyA: true });
+    check("松开再点 W 确实触发一次小喷", d().game.stats.miniTurbos === 1);
+    await segment(0.25, { KeyW: true });
+    check("保持 W 不会重复小喷", d().game.stats.miniTurbos === 1);
+    await warm();
+    // The opening road bends left. Match the line instead of deliberately
+    // spraying two right drifts into its outside grass verge.
+    for (const [seconds, values] of DOUBLE_SPRAY_STEPS)
+      await segment(seconds, values);
+    check(
+      "两段漂移 + 两次油门点按完成双喷",
+      d().game.stats.bestChain >= 2 && d().game.stats.miniTurbos === 2,
+      d().game.stats,
+    );
+    await warm();
+    for (const [seconds, values] of CHAIN_SPRAY_STEPS)
+      await segment(seconds, values);
+    check(
+      "连续三段漂移可以衔接三连喷",
+      d().game.stats.bestChain >= 3,
+      d().game.stats,
+    );
+    await warm();
+    await segment(0.34, { KeyW: true, KeyD: true, ShiftLeft: true });
+    await segment(0.04, { KeyW: true, KeyD: true });
+    const slip = Math.abs(d().game.p.slip);
+    await segment(0.19, { KeyW: true, KeyA: true, ShiftLeft: true });
+    check(
+      "反方向重新点 Shift 触发断位并拉正",
+      d().game.stats.cutDrifts === 1 && Math.abs(d().game.p.slip) < slip * 0.6,
+      { before: slip, after: d().game.p.slip },
+    );
+    await segment(0.04, { KeyA: true });
+    await segment(0.08, { KeyW: true, KeyA: true });
+    check("断位可衔接点按小喷", d().game.stats.miniTurbos === 1);
+    if (win().matchMedia("(pointer:coarse)").matches) {
+      await warm();
+      keys({});
+      const button = doc().getElementById("mini-key").getBoundingClientRect();
+      check(
+        "自动油门时独立小喷键仍可触达",
+        button.width >= 44 && button.height >= 44,
+      );
+      pointer("left", "pointerdown", 83);
+      pointer("drift", "pointerdown", 84);
+      await segment(0.34, {});
+      pointer("left", "pointerup", 83);
+      pointer("drift", "pointerup", 84);
+      pointer("right", "pointerdown", 85);
+      await segment(0.18, {});
+      check(
+        "两指漂移松开后小喷亮起，未自动喷",
+        d().game.p.miniReady === 1 && d().game.stats.miniTurbos === 0,
+      );
+      pointer("gas", "pointerdown", 86);
+      await segment(0.08, {});
+      pointer("gas", "pointerup", 86);
+      pointer("right", "pointerup", 85);
+      check("触屏独立小喷键实际触发出弯加速", d().game.stats.miniTurbos === 1);
+    }
+    click("exit-btn");
+    check(
+      "手法验证结束后音频和 RAF 已停止",
+      !d().raf && d().voices === 0 && d().audio !== "running",
+    );
+    if (token === serial) finish();
+  } catch (e) {
+    if (token === serial) finish(e);
+  }
+};
 $("stop").onclick = () => {
   serial++;
   finish();

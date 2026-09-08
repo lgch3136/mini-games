@@ -96,6 +96,7 @@ test("side-by-side cars do not collide across an empty lane gap", () => {
   const w = new Race();
   w.countdown = 0;
   Object.assign(w.p, w.track.at(100, 0), { speed: 20 });
+  w.p.heading = w.p.yaw;
   const c = w.cars[1];
   Object.assign(c, w.track.at(100, 2.6), { s: 100, offset: 2.6, speed: 20 });
   w.cars = [c];
@@ -108,6 +109,7 @@ test("same-speed bodywork contact stays gentle but a rear impact is a crash", ()
     const w = new Race();
     w.countdown = 0;
     Object.assign(w.p, w.track.at(110, 0), { speed });
+    w.p.heading = w.p.yaw;
     const c = w.cars[1];
     Object.assign(c, w.track.at(110 + ahead, offset), {
       s: 110 + ahead,
@@ -121,7 +123,11 @@ test("same-speed bodywork contact stays gentle but a rear impact is a crash", ()
   rub.step({ gas: true });
   assert.equal(rub.crashes, 0);
   assert.ok(rub.p.speed > 19.9);
-  const impact = setup(0, 50, 3.5);
+  // A kart is shorter than the previous coupe: a 3.5 m gap is not contact.
+  const gap = setup(0, 50, 3.5);
+  gap.step({ gas: true });
+  assert.equal(gap.crashes, 0);
+  const impact = setup(0, 50, 2.6);
   impact.step({ gas: true });
   assert.equal(impact.crashes, 1);
   assert.ok(impact.p.speed < 42);

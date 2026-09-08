@@ -3,6 +3,28 @@
 import { Track } from "../english-apex-drive/world.mjs";
 import { angle, clamp } from "../shared/first-person/math.mjs";
 
+// Short, physical drifts following the coast opening's gentle left bend.
+// Shared between the real-browser input harness and timing-tolerance tests.
+export const DOUBLE_SPRAY_STEPS = [
+  [0.24, { KeyW: true, KeyA: true, ShiftLeft: true }],
+  [0.1, { KeyD: true }],
+  [0.21, { KeyA: true, ShiftLeft: true }],
+  [0.13, { KeyD: true }],
+  [0.04, { KeyW: true, KeyD: true }],
+  [0.1, { KeyD: true }],
+  [0.04, { KeyW: true, KeyD: true }],
+];
+export const CHAIN_SPRAY_STEPS = [-1, 1, -1].flatMap((side) => {
+  const turn = side > 0 ? "KeyD" : "KeyA",
+    counter = side > 0 ? "KeyA" : "KeyD";
+  return [
+    [0.29, { KeyW: true, [turn]: true, ShiftLeft: true }],
+    [0.15, { [counter]: true }],
+    [0.07, { KeyW: true, [counter]: true }],
+    [0.08, { KeyW: true, [counter]: true }],
+  ];
+});
+
 export function rallyPilot(s, m = {}) {
   const t = m.track || (m.track = new Track(s.track)),
     p = s.p;
@@ -75,6 +97,8 @@ export function rallyPilot(s, m = {}) {
     keys.KeyA = bend > 0;
     keys.KeyD = bend < 0;
   }
+  // A real throttle release/repress is required now; auto-gas is not a tap.
+  if (p.miniReady) keys.KeyW = !p.gasHeld;
   if (
     !drift &&
     curve < 0.004 &&

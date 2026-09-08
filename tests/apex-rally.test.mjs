@@ -104,22 +104,25 @@ test("both drift directions have immediate response and countersteer keeps the c
     assert.ok(Math.abs(w.p.slip) > 0.03);
   }
 });
-test("release awards the earned mini turbo; crash and off-road cancel the reward", () => {
-  for (const reason of ["release", "crash", "offroad"]) {
+test("collision and off-road clear a pending spray without awarding an automatic turbo", () => {
+  for (const reason of ["crash", "offroad"]) {
     const w = fresh();
     w.p.drift = true;
+    w.p.driftPhase = "slide";
     w.p.driftTier = 2;
     w.p.driftCharge = 1.1;
     w.p.speed = 30;
+    w.p.miniQueue = [{ tier: 2, expires: 1 }];
     if (reason === "crash") w.crash();
     else if (reason === "offroad") {
       const q = w.track.at(8, 9);
       Object.assign(w.p, q);
       w.step({ gas: true, drift: true });
-    } else w.step({ gas: true });
+    }
     assert.equal(w.p.drift, false);
-    assert.equal(w.stats.miniTurbos, reason === "release" ? 1 : 0);
-    assert.equal(w.p.turboTime > 0, reason === "release");
+    assert.equal(w.stats.miniTurbos, 0);
+    assert.equal(w.p.miniReady, 0);
+    assert.equal(w.p.turboTime, 0);
   }
 });
 test("nitro uses one half charge per press and holding never retriggers", () => {
@@ -311,6 +314,10 @@ for (const mode of ["race", "items"]) {
       assert.equal(w.finished, true, "two full laps using ordinary inputs");
       assert.equal(w.laps, 2);
       assert.ok(w.stats.drifts >= 3, "several real charged drifts");
+      assert.ok(
+        w.stats.miniTurbos >= 3,
+        "fresh throttle presses actually trigger sprays",
+      );
       assert.ok(w.stats.nitros >= 2, "spend charges strategically");
       assert.ok(
         offroad / i < 0.08,

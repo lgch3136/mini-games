@@ -1,11 +1,11 @@
-import { Race, ITEMS } from "./world.mjs?v=20260908-rally-r6";
-import { RaceView } from "./view.mjs?v=20260908-rally-r6";
+import { Race, ITEMS } from "./world.mjs?v=20260908-mochi-r1";
+import { RaceView } from "./view.mjs?v=20260908-mochi-r1";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260908-rally-r6";
+} from "../shared/first-person/shell.mjs?v=20260908-mochi-r1";
 const app = new Shell({
   kind: "race",
   view: new RaceView($("game")),
@@ -21,6 +21,7 @@ const app = new Shell({
   hud(app) {
     const w = app.world;
     if (!w) return;
+    app.view.showroom = app.mode === "menu";
     const p = w.p,
       touch = app.coarse.matches;
     const useKey = touch ? "点道具" : "E",
@@ -39,31 +40,59 @@ const app = new Shell({
     $("boost-fill").style.transform = `scaleX(${p.boost})`;
     text(
       "draft",
-      p.drift
-        ? `DRIFT / ${["集气中", "蓝焰 · 松开小喷", "金焰 · 强力小喷", "紫焰 · 极限小喷"][p.driftTier]}`
-        : p.nitro
-          ? p.mini
-            ? "MINI TURBO / 出弯小喷"
-            : "NITRO / 氮气推进"
-          : p.drafting
-            ? "SLIPSTREAM / 尾流充能"
-            : `NITRO / ${Math.floor(p.boost * 2)} 发 · 漂移集气`,
+      p.miniReady
+        ? `小喷就绪 ${"●".repeat(p.miniReady)} · ${touch ? "点小喷" : "点 W / ↑"}`
+        : p.drift
+          ? `DRIFT / ${p.driftPhase === "cut" ? "断位回正" : p.driftPhase === "recover" ? "松漂回正" : "Shift " + p.driftHold.toFixed(2) + "s"}`
+          : p.nitro
+            ? p.mini
+              ? "MINI TURBO / 出弯小喷"
+              : "NITRO / 氮气推进"
+            : p.drafting
+              ? "SLIPSTREAM / 尾流充能"
+              : `NITRO / ${Math.floor(p.boost * 2)} 发 · 漂移集气`,
     );
     text(
       "countdown",
       w.countdown > 0 ? Math.ceil(w.countdown) : w.time < 0.7 ? "GO!" : "",
     );
     $("drift-fill").style.transform =
-      `scaleX(${Math.min(1, p.driftCharge / 1.2)})`;
+      `scaleX(${p.miniReady ? Math.min(1, p.miniWindow / 0.8) : p.drift ? Math.min(1, p.driftCharge / 0.9) : 0})`;
     $("drift-gauge").dataset.tier = p.driftTier;
-    $("drift-gauge").classList.toggle("active", p.drift);
+    $("drift-gauge").dataset.ready = p.miniReady > 0;
+    $("drift-gauge").classList.toggle("active", p.drift || p.miniReady > 0);
+    $("mini-key").classList.toggle("ready", p.miniReady > 0);
+    text(
+      "mini-key",
+      w.autoGas
+        ? p.miniReady
+          ? `小喷 ${p.miniReady}`
+          : "小喷"
+        : "油门 / 小喷",
+    );
+    $("technique").hidden = !p.techniqueTime;
+    text("technique", p.technique);
+    $("input-strip").hidden = w.mode !== "cruise";
+    for (const [id, action] of [
+      ["input-gas", "gas"],
+      ["input-left", "left"],
+      ["input-right", "right"],
+      ["input-drift", "drift"],
+    ])
+      $(id).classList.toggle("on", app.controls.held(action));
     text(
       "drift-label",
-      p.drift
-        ? `稳住方向 · 松开${touch ? "漂移键" : " Shift"}小喷`
-        : touch
-          ? "转向 + 漂移 → 松开小喷"
-          : "Shift + 转向漂移 → 松开小喷",
+      p.miniReady
+        ? `小喷窗口 · ${touch ? "点按小喷键" : "松开再点 W / ↑"} ${"●".repeat(p.miniReady)}`
+        : p.drift
+          ? p.driftPhase === "cut"
+            ? "断位拉车头 · 点油门衔接"
+            : p.driftPhase === "recover"
+              ? "回正中 · 准备点按油门"
+              : "短按浅漂 / 长按深漂 · 反打回正"
+          : touch
+            ? "转向 + 漂移 → 松漂 → 点小喷"
+            : "Shift + 转向 → 松漂回正 → 点 W / ↑",
     );
     $("item-dock").hidden = w.mode !== "items";
     $("incoming").hidden = !p.incoming;
@@ -121,11 +150,11 @@ const app = new Shell({
   event(e, app) {
     if (e.type === "camera") app.view.chase = !app.view.chase;
     if (e.type === "launch") app.toast("完美起步 · 抢先一拍", 1.3);
-    if (e.type === "miniTurbo")
-      app.toast(
-        ["", "蓝焰小喷", "金焰小喷", "紫焰小喷"][e.tier] + " · 出弯加速",
-        1.2,
-      );
+    if (e.type === "miniTurbo" || e.type === "cutDrift") {
+      $("technique").classList.remove("pop");
+      void $("technique").offsetWidth;
+      $("technique").classList.add("pop");
+    }
     if (e.type === "pickup")
       app.toast(
         `获得 ${ITEMS[e.item].name} · ${app.coarse.matches ? "道具 / 换位" : "E 使用 / Q 换位"}`,
@@ -149,14 +178,14 @@ const app = new Shell({
     const w = app.world;
     let best = null;
     try {
-      const key = `apex-best-rally-${w.mode}-${w.track.id}`;
+      const key = `apex-best-mochi-${w.mode}-${w.track.id}-${w.difficulty}`;
       best = +localStorage.getItem(key) || Infinity;
       if (w.best < best) localStorage.setItem(key, String(w.best));
     } catch {}
     text("panel-title", w.rank === 1 ? "领先冲线" : "旅程完成");
     text(
       "result",
-      `第 ${w.rank} 名 / 6 位车手\n总用时 ${clock(w.time)} · 最快圈 ${clock(w.best)}\n${w.stats.drifts} 次有效漂移 · ${w.stats.nitros} 次氮气 · ${w.stats.hits} 次道具命中\n${w.crashes} 次擦碰${w.best < best ? " · 刷新本地最快圈" : ""}`,
+      `第 ${w.rank} 名 / 6 位车手\n总用时 ${clock(w.time)} · 最快圈 ${clock(w.best)}\n${w.stats.miniTurbos} 次小喷 · 最佳 ${w.stats.bestChain} 连喷 · ${w.stats.cutDrifts} 次断位\n${w.stats.nitros} 次氮气 · ${w.crashes} 次擦碰${w.best < best ? " · 刷新本地最快圈" : ""}`,
     );
     text("restart", "再次挑战");
   },

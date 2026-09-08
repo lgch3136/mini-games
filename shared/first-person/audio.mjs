@@ -118,8 +118,17 @@ export class Audio extends Soundtrack {
       case "boost":
       case "launch":
       case "pad":
-      case "miniTurbo":
         tone(170, 0.32, 0.07, 480);
+        break;
+      case "miniTurbo":
+        tone(240 + Math.min(e.chain || 1, 6) * 42, 0.18, 0.065, 660);
+        this.hiss(t, 0.14, 0.045, 2400);
+        break;
+      case "cutDrift":
+        this.hiss(t, 0.09, 0.035, 1300);
+        break;
+      case "driftComplete":
+        tone(820, 0.07, 0.032, 1040);
         break;
       case "driftStart":
         this.hiss(t, 0.18, 0.028, 2100);
