@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>Snake Garden · 实际输入验收</title>
+  <style>
+    body {
+      margin: 0;
+      background: #1f3026;
+      color: #edf3df;
+      font: 13px system-ui;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 8px 12px;
+    }
+    iframe {
+      border: 0;
+      display: block;
+      width: 100%;
+      height: calc(100dvh - 65px);
+      background: #e9efdf;
+    }
+    pre {
+      white-space: pre-wrap;
+      max-height: 50vh;
+      overflow: auto;
+      padding: 16px;
+      margin: 0;
+      font: 11px monospace;
+    }
+    details {
+      position: fixed;
+      right: 12px;
+      bottom: 8px;
+      width: min(520px, 90vw);
+      background: #10271eee;
+      border-radius: 12px;
+      padding: 10px;
+      max-height: 60vh;
+      overflow: auto;
+    }
+  </style>
+  <header>
+    <b>Snake Garden 输入验收</b><button id="spell">拼词实玩 65 秒</button
+    ><button id="choose">语法实玩 40 秒</button
+    ><button id="mobile">手机操作与布局</button
+    ><button id="stop">停止并释放</button><span id="status">等待开始</span>
+  </header>
+  <iframe id="subject" title="贪吃蛇真实游戏"></iframe>
+  <details>
+    <summary>只读验收报告</summary>
+    <pre id="report"></pre>
+  </details>
+  <script type="module" src="snake-browser.mjs?v=20260912-garden-r4"></script>
+</html>

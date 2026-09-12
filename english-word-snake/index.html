@@ -1,94 +1,198 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#03100b">
-<title>贪吃蛇背单词 · WORD SNAKE</title>
-<link rel="stylesheet" href="style.css?v=20260815f">
-</head>
-<body>
-<div id="game-wrap">
-  <canvas id="game"></canvas>
-
-  <!-- 游戏 HUD -->
-  <div id="hud" class="hidden">
-    <div id="question-bar">
-      <div id="q-top">
-        <span id="q-kind">拼单词</span>
-        <span id="q-target">?</span>
-      </div>
-      <div id="q-bottom">
-        <span id="q-progress"></span>
-        <span id="q-feedback"></span>
-      </div>
-    </div>
-    <div id="hud-top">
-      <div class="left">
-        <div class="stat-chip">⭐ <span id="score">0</span></div>
-        <div class="stat-chip hidden" id="combo-box">🔥 连击 x<span id="combo">0</span></div>
-        <div class="stat-chip">关卡 <span id="level">1</span></div>
-        <div class="stat-chip" id="hearts">❤️❤️❤️</div>
-      </div>
-      <div class="right">
-        <button class="hud-btn" id="hint-btn" title="提示：显示单词并高亮下一个字母 (H，扣20分)">💡</button>
-        <button class="hud-btn" id="mute-btn" title="静音 (M)">🔊</button>
-        <button class="hud-btn" id="pause-btn" title="暂停 (P)">⏸</button>
-      </div>
-    </div>
-    <div id="hint-bar">⬆⬇⬅➡ / WASD / 滑动·点按 转向 · 按顺序吃字母拼单词 · 撞墙/撞自己扣血 · 💡 H 提示</div>
-  </div>
-
-  <!-- 主菜单 -->
-  <div id="menu" class="overlay">
-    <img id="logo-img" class="menu-cover" src="assets/cover.png" alt="WORD SNAKE">
-    <h1>贪吃蛇背单词</h1>
-    <h2>WORD SNAKE</h2>
-    <p class="sub">蛇形走位 · 吃掉字母 · 拼出单词 · 攻克语法</p>
-    <div id="mode-select">
-      <button class="mode-btn selected" data-mode="spell">🔤 拼单词<br><small>看中文释义，按顺序吃字母拼单词</small></button>
-      <button class="mode-btn" data-mode="choose">✅ 选词填空<br><small>看题目，吃掉正确选项（语法+词义）</small></button>
-    </div>
-    <div id="diff-select">
-      <button class="diff-btn selected" data-diff="easy">🟢 初级<br><small>小学词汇 · 基础语法</small></button>
-      <button class="diff-btn" data-diff="medium">🟡 中级<br><small>初中词汇 · 核心语法</small></button>
-      <button class="diff-btn" data-diff="hard">🔴 高级<br><small>高中词汇 · 难点语法</small></button>
-    </div>
-    <button class="btn" id="start-btn">🐍 开始游戏</button>
-    <div id="howto">
-      <p>🎯 <b style="color:#7dffa8;">拼单词</b>：顶部显示中文释义（开头会闪现英文单词），把散落在地上的字母<b>按顺序</b>吃掉拼出单词。吃错字母会扣血。</p>
-      <p>🎯 <b style="color:#7dffa8;">选词填空</b>：吃掉写着<b>正确答案</b>的方块；吃错扣血。</p>
-      <p>🐍 撞到自己或撞墙都会扣血；共有 3 条命。📱 触屏：滑动转向，或点按蛇的周围方向转向。</p>
-      <p>💡 H 键提示：显示单词并高亮下一个字母（扣 20 分）· 吃补给：⭐加分 ❤️回血 🐢减速 ✂️变短 · P 暂停 · M 静音</p>
-    </div>
-    <div id="highscore">🏆 最高分 <span id="hs-value">0</span></div>
-  </div>
-
-  <!-- 游戏结束 -->
-  <div id="over" class="overlay hidden">
-    <h1>💥 游戏结束</h1>
-    <div id="over-stats"></div>
-    <div class="btn-row">
-      <button class="btn" id="retry-btn">🔁 再来一局</button>
-      <button class="btn secondary" id="menu-btn">🏠 返回主菜单</button>
-    </div>
-  </div>
-
-  <!-- 暂停 -->
-  <div id="paused" class="overlay hidden">
-    <h1>⏸ 已暂停</h1>
-    <p class="sub">按 P 或 Esc 继续</p>
-    <div class="btn-row">
-      <button class="btn" id="resume-btn">▶️ 继续游戏</button>
-      <button class="btn secondary" id="pause-menu-btn">🏠 返回主菜单</button>
-    </div>
-  </div>
-</div>
-
-<script src="../shared/audio.js?v=20260819a"></script>
-<script src="../shared/chip-music.js?v=4"></script>
-<script src="data.js?v=20260814c"></script>
-<script src="../shared/vocabulary.js?v=20260820a"></script>
-<script src="game.js?v=20260901a"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#eef2df" />
+    <title>字母花园 · 贪吃蛇背单词</title>
+    <meta
+      name="description"
+      content="一条丝滑的小蛇，一座会开花的单词花园。转向、冲刺、串起字母，把英语吃进记忆。"
+    />
+    <link rel="stylesheet" href="style.css?v=20260912-garden-r4" />
+  </head>
+  <body>
+    <main id="app" data-phase="menu">
+      <header class="topbar">
+        <a href="../" class="back" aria-label="返回游戏大厅">←</a>
+        <div class="brand">
+          <span class="brand-mark">s</span>
+          <div><b>字母花园</b><small>WORD SNAKE</small></div>
+        </div>
+        <div class="top-actions">
+          <button
+            id="effects"
+            class="icon"
+            aria-label="切换游戏动效"
+            aria-pressed="true"
+            title="完整动效 / 简化动效"
+          >
+            ✦</button
+          ><button
+            id="sound"
+            class="icon"
+            aria-label="切换声音"
+            aria-pressed="false"
+          >
+            ♪</button
+          ><button id="exit" class="quiet" hidden>选单</button
+          ><button id="pause" class="icon" aria-label="暂停游戏" hidden>
+            Ⅱ
+          </button>
+        </div>
+      </header>
+      <section class="game-hud" id="hud" hidden aria-label="游戏信息">
+        <div class="stats">
+          <span><small>收获</small><b id="score">0</b></span
+          ><span id="combo" class="combo">x1</span
+          ><span id="progress">0 个单词</span
+          ><span id="hearts" aria-label="3 点生命">♥ ♥ ♥</span
+          ><span id="shield" hidden title="完成三个无碰撞单词，获得护盾"
+            >◈</span
+          >
+        </div>
+        <div class="word-panel">
+          <div class="word-caption">
+            <span id="meaning"></span
+            ><button
+              id="hint"
+              class="text-button"
+              title="提示正确答案，消耗 15 分"
+            >
+              提示 <kbd>H</kbd>
+            </button>
+          </div>
+          <div id="word" aria-label="当前单词"></div>
+          <div id="answers" hidden></div>
+        </div>
+      </section>
+      <section id="field" aria-label="贪吃蛇游戏区域">
+        <canvas
+          id="game"
+          tabindex="0"
+          aria-label="贪吃蛇：方向键或 WASD 转向，空格冲刺；触屏可连续滑动或使用方向按钮"
+        ></canvas>
+        <div id="toast" role="status" aria-live="polite">
+          <b></b><span></span>
+        </div>
+        <div id="harvest" hidden>
+          <span>✦ 丰收时间</span><b>12.0</b><small>收齐金果，恢复一颗心</small>
+        </div>
+        <div id="menu" class="screen">
+          <div class="menu-card">
+            <span class="eyebrow">A LITTLE GARDEN, A LONG ADVENTURE</span>
+            <h1>把单词，<br />一口口吃掉<span>。</span></h1>
+            <p class="intro">
+              转个弯，接上一个字母。<br />让一条小蛇，把学习变成一场小冒险。
+            </p>
+            <div class="mode-picker" role="group" aria-label="玩法">
+              <button data-mode="spell" aria-pressed="true">
+                <b>串起单词</b><small>循着亮起的字母走</small></button
+              ><button data-mode="choose" aria-pressed="false">
+                <b>答案猎手</b><small>游向正确的语法答案</small>
+              </button>
+            </div>
+            <div class="settings">
+              <label
+                >词库<select id="difficulty">
+                  <option value="easy">初级 · 日常词汇</option>
+                  <option value="medium">中级 · 拓展词汇</option>
+                  <option value="hard">高级 · 进阶词汇</option>
+                </select></label
+              >
+              <label
+                >场地<select id="arena">
+                  <option value="garden">漫游花园 · 穿越边界</option>
+                  <option value="classic">经典挑战 · 留心护栏</option>
+                </select></label
+              >
+            </div>
+            <label class="speed-setting"
+              >移动速度
+              <input
+                id="menu-speed"
+                type="range"
+                min="0"
+                max="4"
+                value="2"
+                step="1"
+              /><output id="menu-speed-label">轻快</output></label
+            >
+            <button id="start" class="primary">
+              出发，去花园 <span>↗</span>
+            </button>
+            <div class="menu-notes">
+              <span>方向键 / WASD 转向</span><span>长按空格冲刺</span
+              ><span>手机滑动 / 方向盘</span>
+            </div>
+            <p class="record" id="record"></p>
+          </div>
+          <div class="garden-note">
+            <span>01 / FIND YOUR FLOW</span
+            ><b>不用停。<br />下一个单词，已经在路上。</b>
+            <p>
+              顺序未到的字母可以直接穿过。<br />每完成 3
+              个单词，就有一场金果丰收。
+            </p>
+          </div>
+        </div>
+        <div id="pause-screen" class="screen veil" hidden>
+          <div class="small-card">
+            <span class="eyebrow">TAKE A BREATH</span>
+            <h2>花园等你回来</h2>
+            <p id="pause-reason">歇一会儿，进度会留在这里。</p>
+            <button id="resume" class="primary">继续采集 ↗</button
+            ><button id="pause-menu" class="quiet">返回选单</button>
+          </div>
+        </div>
+        <div id="over-screen" class="screen veil" hidden>
+          <div class="small-card">
+            <span class="eyebrow">A GOOD LITTLE ADVENTURE</span>
+            <h2>这一篮，收获满满</h2>
+            <b id="final-score" class="final-score">0</b>
+            <p id="final-details"></p>
+            <div id="word-review"></div>
+            <button id="restart" class="primary">再去一次 ↗</button
+            ><button id="over-menu" class="quiet">返回选单</button>
+          </div>
+        </div>
+      </section>
+      <footer id="controls" hidden>
+        <div class="dpad" aria-label="触屏方向盘">
+          <button data-dir="3" aria-label="向上">↑</button
+          ><button data-dir="2" aria-label="向左">←</button
+          ><button data-dir="1" aria-label="向下">↓</button
+          ><button data-dir="0" aria-label="向右">→</button>
+        </div>
+        <div class="control-note">
+          <b id="mode-note">边界相通 · 未亮字母可以穿过</b
+          ><small>方向键转向 · 空格冲刺 · Esc 暂停</small>
+        </div>
+        <label class="live-speed" title="速度不影响词库难度"
+          >速度<select id="live-speed" aria-label="游戏速度">
+            <option value="0">散步</option>
+            <option value="1">悠闲</option>
+            <option value="2" selected>轻快</option>
+            <option value="3">疾行</option>
+            <option value="4">极速</option>
+          </select></label
+        >
+        <button id="boost" aria-label="长按冲刺" class="boost">
+          <span>↗ 冲刺</span><small>长按 · 采集双倍分</small><i id="energy"></i>
+        </button>
+      </footer>
+    </main>
+    <script src="../shared/vocabulary.js"></script>
+    <script src="data.js"></script>
+    <script>
+      window.SNAKE_BANKS = {
+        words: window.PROJECT_VOCAB || VOCAB,
+        questions: GRAMMAR,
+      };
+    </script>
+    <script type="module" src="app.mjs?v=20260912-garden-r4"></script>
+  </body>
 </html>
