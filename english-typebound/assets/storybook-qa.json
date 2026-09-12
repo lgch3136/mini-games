@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-12",
+  "version": "20260912-story-r1",
+  "environment": "Current Mac / Codex In-app Browser; mobile viewport simulation, not physical-device measurements",
+  "unitTests": {"passed": 272, "failed": 0},
+  "motionSuite": {"passed": 15, "gameErrors": []},
+  "smallPhoneSuite": {"passed": 34, "viewport": {"width": 320, "height": 578}, "restartCycles": 8, "gameErrors": []},
+  "landscapeSuite": {"passed": 32, "viewport": {"width": 844, "height": 348}, "restartCycles": 8, "gameErrors": []},
+  "naturalFailureSuite": {"passed": 7, "combatSecondsToDefeat": 70.20833333333528, "gameErrors": []},
+  "finalJourney": {
+    "passed": 14,
+    "elapsedSeconds": 59.674,
+    "counts": {"letters": 363, "guards": 4, "rooms": 9},
+    "words": 70,
+    "enemyKinds": 4,
+    "gameErrors": [],
+    "performance": {"frames": 3417, "medianFrameMs": 16.7, "p95FrameMs": 32.8, "p95WorkMs": 1.8, "slowFrames": 64},
+    "maxResources": {"particles": 102, "tokens": 5, "rays": 1, "rings": 4, "labels": 4, "paths": 45, "images": 3, "backdropPixels": 776988, "voices": 26, "inputTimers": 0, "uiAnimations": 6},
+    "final": {"mode": "menu", "raf": false, "voices": 0, "musicTimer": false, "pending": 0}
+  },
+  "notes": [
+    "Reports are summaries of actual browser harness output; replay uses ordinary input events, not writes to game state.",
+    "Frame quantiles cover the latest 600 frames. Work time excludes browser compositing, GPU and whole-system CPU use.",
+    "The earlier mobile nine-room replay preceded final rig-anchor and restart-cache fixes; it is documented separately in STORYBOOK-QA.md.",
+    "A restart word-cache bug discovered through console inspection was fixed before these final restart suites. No claim of subjective equivalence to a commercial game."
+  ]
+}

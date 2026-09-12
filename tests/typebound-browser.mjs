@@ -51,6 +51,11 @@ function expect(name, value, details) {
 }
 function publish() {
   window.typeboundReport = structuredClone(report);
+  document.getElementById("report").textContent = JSON.stringify(
+    report,
+    null,
+    2,
+  );
 }
 async function reset(token) {
   await new Promise((resolve, reject) => {
@@ -63,7 +68,7 @@ async function reset(token) {
       },
       { once: true },
     );
-    frame.src = `../english-typebound/?qa=type-r4&run=${Date.now()}`;
+    frame.src = `../english-typebound/?qa=story-r1&run=${Date.now()}`;
   });
   await until(
     () => {
@@ -77,6 +82,24 @@ async function reset(token) {
     token,
   );
   report.version = diag().version;
+  report.gameErrors = [];
+  win().addEventListener("error", (e) => {
+    if (
+      e.filename?.includes("/english-typebound/") &&
+      report.gameErrors.length < 20
+    )
+      report.gameErrors.push({
+        message: e.message,
+        filename: e.filename,
+        line: e.lineno,
+      });
+  });
+  win().addEventListener("unhandledrejection", (e) => {
+    if (report.gameErrors.length < 20)
+      report.gameErrors.push({
+        message: String(e.reason?.stack || e.reason).slice(0, 2000),
+      });
+  });
 }
 async function startCombat() {
   click("#start");
@@ -117,7 +140,128 @@ function bounds() {
   });
 }
 function resourcesIdle(d) {
-  return !d.raf && !d.resources.musicTimer && d.resources.voices === 0;
+  return (
+    !d.raf &&
+    !d.resources.musicTimer &&
+    d.resources.voices === 0 &&
+    !d.resources.uiAnimations
+  );
+}
+async function storySuite(token) {
+  await reset(token);
+  await until(
+    () => Object.values(diag().resources.assets).every((s) => s === "ready"),
+    10000,
+    token,
+  );
+  expect(
+    "三章实际素材加载完成",
+    Object.keys(diag().resources.assets).length === 3,
+    diag().resources.assets,
+  );
+  await startCombat();
+  await delay(900, token);
+  expect(
+    "入场结束后双脚站稳",
+    Math.abs(diag().resources.presentation.heroX) < 0.01 &&
+      Math.abs(diag().resources.presentation.stride) < 0.01,
+  );
+  const letters = [...doc().querySelector("#word").children],
+    g = diag().game;
+  press(g.expected);
+  expect(
+    "敲键立即推进字母并进入飞行",
+    diag().game.cursor === 1 &&
+      diag().resources.presentation.pending === 1 &&
+      diag().resources.tokens === 1,
+  );
+  expect(
+    "文字节点保持稳定而非每键全部重建",
+    letters.every((e, i) => e === doc().querySelector("#word").children[i]),
+  );
+  expect(
+    "字母尚在途中时敌人不提前受力",
+    diag().resources.presentation.impacts === 0,
+  );
+  await delay(240, token);
+  expect(
+    "飞行结束只触发一次命中",
+    diag().resources.presentation.impacts === 1 &&
+      diag().resources.presentation.pending === 0,
+  );
+  press("Backspace");
+  press(g.word.en[0]);
+  expect(
+    "重打已删字母不重复生成攻击",
+    diag().resources.presentation.letters === 1,
+  );
+  while (diag().game.cursor < diag().game.word.en.length) {
+    press(diag().game.expected);
+    await delay(45, token);
+  }
+  expect(
+    "蓄字进度与正式单词一致",
+    Number(
+      doc().querySelector("#spell-meter").getAttribute("aria-valuenow"),
+    ) === diag().game.word.en.length,
+  );
+  press(" ");
+  expect(
+    "整词立即释放独立法术",
+    diag().resources.presentation.spells === 1 && diag().game.stats.words === 1,
+  );
+  while (diag().game.combo < 3) {
+    await ensureCombat();
+    while (diag().game.cursor < diag().game.word.en.length) {
+      press(diag().game.expected);
+      await delay(55, token);
+    }
+    press(" ");
+    await delay(330, token);
+  }
+  expect(
+    "三连词唤醒书灵及环境反馈",
+    diag().resources.presentation.flow === 1 &&
+      Number(doc().querySelector("#app").dataset.flow) === 1,
+  );
+  report.active = diag();
+  click("#pause");
+  await delay(160, token);
+  const before = diag().resources.presentation;
+  await delay(200, token);
+  expect(
+    "暂停冻结角色和弹道而非仅停止统计",
+    JSON.stringify(before) === JSON.stringify(diag().resources.presentation),
+  );
+  expect(
+    "暂停同时取消 UI 动画与所有声音",
+    resourcesIdle(diag()),
+    diag().resources,
+  );
+  click("#exit");
+  click("#result-menu");
+  const reduced = doc().querySelector("#reduced");
+  reduced.checked = true;
+  reduced.dispatchEvent(new (win().Event)("change", { bubbles: true }));
+  await startCombat();
+  press(diag().game.expected);
+  await delay(60, token);
+  expect(
+    "减弱动态模式不创建 UI 弹跳动画",
+    diag().resources.uiAnimations === 0 &&
+      doc().querySelector("#app").classList.contains("reduced"),
+  );
+  click("#exit");
+  click("#result-menu");
+  reduced.checked = false;
+  reduced.dispatchEvent(new (win().Event)("change", { bubbles: true }));
+  expect(
+    "回菜单清除所有待命中和临时特效",
+    resourcesIdle(diag()) &&
+      diag().resources.presentation.pending === 0 &&
+      diag().resources.tokens === 0,
+  );
+  report.final = diag();
 }
 async function suite(token) {
   await reset(token);
@@ -340,6 +484,47 @@ async function suite(token) {
     "开始页重置系统键盘切换文字",
     doc().querySelector("#native-keyboard").textContent === "使用系统键盘",
   );
+  const imageCount = diag().resources.images,
+    restarts = [];
+  for (let i = 0; i < 8; i++) {
+    await startCombat();
+    const before = diag(),
+      wordMatches =
+        doc().querySelector("#word").textContent === before.game.word.en;
+    press(before.game.expected);
+    await delay(35, token);
+    const inputMatches =
+      diag().game.cursor === 1 &&
+      doc()
+        .querySelector("#word")
+        .firstElementChild?.classList.contains("typed");
+    click("#exit");
+    click("#result-menu");
+    await delay(35, token);
+    const d = diag();
+    restarts.push({
+      wordMatches,
+      inputMatches,
+      idle: resourcesIdle(d),
+      images: d.resources.images,
+      pending: d.resources.presentation.pending,
+      tokens: d.resources.tokens,
+    });
+  }
+  expect(
+    "每次新旅程显示真实首词且第一键正常反馈",
+    restarts.every((r) => r.wordMatches && r.inputMatches),
+    restarts,
+  );
+  expect(
+    "反复开始退出八次不累积渲染、音频或飞行队列",
+    restarts.every((r) => r.idle && r.pending === 0 && r.tokens === 0),
+    restarts,
+  );
+  expect(
+    "反复开始复用三张场景图而非重复加载",
+    imageCount === 3 && restarts.every((r) => r.images === imageCount),
+  );
   report.viewport = viewport;
   report.final = diag();
 }
@@ -365,6 +550,14 @@ async function playback(token, full) {
         lastRoom = g.roomId;
         enemies.add(g.enemy.kind);
         counts.rooms++;
+        const art = ["letterwood", "tide", "sunrise"][
+          Math.floor(g.depth / 3) % 3
+        ];
+        expect(
+          `第 ${g.depth + 1} 关场景素材就绪`,
+          d.resources.assets[art] === "ready",
+          d.resources.assets,
+        );
       }
       if (!injected && g.stats.words === 2) {
         press(g.expected === "a" ? "b" : "a");
@@ -474,6 +667,11 @@ async function run(name, action) {
   try {
     await action(token);
     if (token !== generation) return;
+    expect(
+      "操作期间无游戏脚本错误",
+      !report.gameErrors?.length,
+      report.gameErrors,
+    );
     report.pass = report.checks.every((c) => c.pass);
     status.textContent = `${report.pass ? "通过" : "失败"} · ${report.checks.length} 项`;
   } catch (error) {
@@ -493,6 +691,8 @@ async function run(name, action) {
   }
 }
 document.getElementById("suite").onclick = () => run("输入与资源验收", suite);
+document.getElementById("story").onclick = () =>
+  run("绘本动画反馈验收", storySuite);
 document.getElementById("journey").onclick = () =>
   run("九关普通输入回放", (token) => playback(token, true));
 document.getElementById("long").onclick = () =>
@@ -514,4 +714,7 @@ document.getElementById("stop").onclick = () => {
 };
 frame.addEventListener("load", () => {
   if (!current) status.textContent = "准备就绪";
+});
+window.addEventListener("pagehide", () => {
+  generation++;
 });

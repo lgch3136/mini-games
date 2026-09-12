@@ -1,13 +1,13 @@
-import { Journey, STEP } from "./sim.mjs?v=20260906-type-r5";
+import { Journey, STEP } from "./sim.mjs?v=20260912-story-r1";
 import {
   makeLexicon,
   safeReview,
   RELICS,
-} from "./content.mjs?v=20260906-type-r5";
-import { TypingInput } from "./input.mjs?v=20260906-type-r5";
-import { Stage } from "./render.mjs?v=20260906-type-r5";
-import { TypeAudio } from "./audio.mjs?v=20260906-type-r5";
-const VERSION = "20260906-type-r5";
+} from "./content.mjs?v=20260912-story-r1";
+import { TypingInput } from "./input.mjs?v=20260912-story-r1";
+import { Stage } from "./render.mjs?v=20260912-story-r1";
+import { TypeAudio } from "./audio.mjs?v=20260912-story-r1";
+const VERSION = "20260912-story-r1";
 const $ = (id) => document.getElementById(id);
 const read = (k, fallback) => {
   try {
@@ -69,6 +69,7 @@ let wordSignature = "",
   resultSignature = "",
   pendingShown = false;
 const pulses = new Map(),
+  uiAnimations = new Map(),
   abort = new AbortController(),
   perf = { frames: 0, intervals: [], work: [], slowFrames: 0 };
 const on = (target, name, fn) =>
@@ -112,6 +113,18 @@ function updatePreferences() {
   updateWord(true);
   resize();
 }
+function animateUI(node, frames, duration = 240) {
+  if (!node || stage.reduced || !node.animate) return;
+  uiAnimations.get(node)?.cancel();
+  const animation = node.animate(frames, {
+    duration,
+    easing: "cubic-bezier(.2,.8,.2,1)",
+  });
+  uiAnimations.set(node, animation);
+  animation.onfinish = () => {
+    if (uiAnimations.get(node) === animation) uiAnimations.delete(node);
+  };
+}
 function resize() {
   if (destroyed) return;
   $("app").style.height =
@@ -122,19 +135,6 @@ function resize() {
   if (journey && !menuMode) {
     sizeWord();
     stage.draw(journey);
-  }
-  const backdrop = document.querySelector(".landscape");
-  if (!menuMode && journey?.phase !== "map") {
-    const root = $("app").getBoundingClientRect(),
-      arena = $("arena").getBoundingClientRect();
-    const ground =
-      arena.top - root.top + stage.point("hero").y + 39 * stage.scale;
-    const ratio = Math.max(root.width / 1672, ground / (941 * 0.77));
-    backdrop.style.backgroundSize = `${1672 * ratio}px ${941 * ratio}px`;
-    backdrop.style.backgroundPosition = `center ${ground - 941 * ratio * 0.77}px`;
-  } else {
-    backdrop.style.backgroundSize = "";
-    backdrop.style.backgroundPosition = "";
   }
 }
 function sizeWord() {
@@ -149,6 +149,7 @@ function begin(modeOverride) {
   runSaved = false;
   paused = false;
   menuMode = false;
+  delete $("word").dataset.wordKey;
   wordSignature =
     mapSignature =
     rewardSignature =
@@ -211,6 +212,8 @@ function stop() {
   input?.reset();
   pulses.forEach((p) => clearTimeout(p));
   pulses.clear();
+  for (const a of uiAnimations.values()) a.cancel();
+  uiAnimations.clear();
   document
     .querySelectorAll(".key.pressed")
     .forEach((e) => e.classList.remove("pressed"));
@@ -294,10 +297,40 @@ function processEvents() {
     stage.event(e, journey);
     audio.event(e);
     updateReview(e);
+    if (e.type === "letter") {
+      animateUI(
+        $("word").children[e.cursor - 1],
+        [
+          { transform: "translateY(3px) scale(.88)", color: "#fff3bb" },
+          { transform: "translateY(-2px) scale(1.08)", offset: 0.4 },
+          { transform: "translateY(0) scale(1)" },
+        ],
+        190,
+      );
+    }
     if (e.type === "word") {
+      animateUI(
+        $("combo"),
+        [
+          { opacity: 0.5, scale: "1.3" },
+          { opacity: 1, scale: "1" },
+        ],
+        330,
+      );
+      animateUI(
+        document.querySelector(".typing-dock"),
+        [
+          {
+            borderColor: e.clean ? "#b9efba" : "#decb9b",
+            boxShadow: "0 0 22px #97e3bd36",
+          },
+          { borderColor: "#d6d7b9", boxShadow: "0 4px 15px #193e4614" },
+        ],
+        420,
+      );
       set("learned-line", `${e.en} · ${e.zh}`);
-      if (journey.combo && journey.combo % 5 === 0)
-        note(`${journey.combo} 连词 · 让书写连成节奏`);
+      if (journey.combo === 3) note("书灵醒了 · 保持无错连词，让庭院开花");
+      else if (journey.combo === 6) note("流光盛放 · 你把这一页写亮了");
     }
     if (e.type === "guard") note("护盾已展开 · 敌人的蓄力被推迟");
     if (e.type === "enrage") note("封印松动 · 首领蓄力加快，继续把句子写完");
@@ -460,15 +493,26 @@ function updateWord(force = false) {
   if (signature === wordSignature && !force) return;
   wordSignature = signature;
   const container = $("word");
-  container.replaceChildren();
-  for (let i = 0; i < g.word.en.length; i++) {
-    const span = el("span", g.word.en[i]);
-    if (i < g.cursor) span.classList.add("typed");
-    if (i === g.cursor) span.classList.add("active");
-    if (i === g.cursor && g.errorAge > 0) span.classList.add("wrong");
-    if (i === g.cursor - 1) span.classList.add("letter-pop");
-    container.append(span);
+  const wordKey = `${g.roomId}/${g.wordId}/${g.word.en}`;
+  const newWord = container.dataset.wordKey !== wordKey;
+  if (newWord) {
+    container.dataset.wordKey = wordKey;
+    container.replaceChildren(
+      ...[...g.word.en].map((char) => el("span", char)),
+    );
   }
+  for (let i = 0; i < g.word.en.length; i++) {
+    const span = container.children[i];
+    span.classList.toggle("typed", i < g.cursor);
+    span.classList.toggle("active", i === g.cursor);
+    span.classList.toggle("wrong", i === g.cursor && g.errorAge > 0);
+  }
+  $("spell-progress").style.transform =
+    `scaleX(${g.cursor / g.word.en.length})`;
+  $("spell-meter").classList.toggle("ready", g.cursor === g.word.en.length);
+  $("spell-meter").setAttribute("aria-valuenow", g.cursor);
+  $("spell-meter").setAttribute("aria-valuemax", g.word.en.length);
+  set("spell-count", `${g.cursor} / ${g.word.en.length}`);
   container.setAttribute(
     "aria-label",
     `当前单词 ${g.word.en}，已输入 ${g.cursor} / ${g.word.en.length} 字母`,
@@ -510,7 +554,7 @@ function updateWord(force = false) {
     .forEach((k) => k.classList.remove("next"));
   const expected = g.expected === " " ? "Space" : g.expected.toUpperCase();
   document.querySelector(`.key[data-key="${expected}"]`)?.classList.add("next");
-  sizeWord();
+  if (newWord || force) sizeWord();
 }
 function updateHUD() {
   if (!journey?.enemy) return;
@@ -534,14 +578,26 @@ function updateHUD() {
     "enemy-hp",
     g.mode === "review"
       ? `${g.stats.words} / ${g.reviewTarget} 词`
-      : `${Math.ceil(e.hp)} / ${e.maxHp}`,
+      : `${Math.ceil(stage.displayEnemyHP ?? e.hp)} / ${e.maxHp}`,
   );
   $("enemy-bar").style.width =
-    `${g.mode === "review" ? Math.max(0, 1 - g.stats.words / g.reviewTarget) * 100 : (e.hp / e.maxHp) * 100}%`;
+    `${g.mode === "review" ? Math.max(0, 1 - g.stats.words / g.reviewTarget) * 100 : ((stage.displayEnemyHP ?? e.hp) / e.maxHp) * 100}%`;
   set("enemy-rule", e.detail);
   set("chapter-en", g.chapter.en);
   set("room-label", `${g.chapter.name} · ${(g.depth % 9) + 1} / 9`);
-  set("combo", g.combo > 1 ? `${g.combo} 连词` : "");
+  set("combo", g.combo > 0 ? `${g.combo} 连词` : "");
+  $("app").dataset.flow = String(Math.min(2, Math.floor(g.combo / 3)));
+  set(
+    "flow-label",
+    g.combo >= 6
+      ? "流光盛放"
+      : g.combo >= 3
+        ? "书灵共鸣"
+        : `书灵苏醒 ${g.combo} / 3`,
+  );
+  $("flow-progress").style.transform = `scaleX(${Math.min(1, g.combo / 3)})`;
+  audio.scene = Math.floor(g.depth / 3) % 3;
+  audio.flow = g.combo >= 3;
   set("charges", `${"◆ ".repeat(g.energy)}${"◇ ".repeat(3 - g.energy)}`);
   $("guard").classList.toggle("ready", g.energy >= 3);
   $("intent-bar").style.width = `${Math.min(1, e.charge) * 100}%`;
@@ -742,13 +798,15 @@ function frame(now) {
   raf = 0;
   if (destroyed || menuMode || paused) return;
   const beginWork = performance.now(),
-    elapsedMs = Math.min(50, Math.max(0, now - prev));
+    elapsedMs = Math.max(0, now - prev);
   prev = now;
   perf.frames++;
   if (elapsedMs > 25) perf.slowFrames++;
   perf.intervals.push(elapsedMs);
   if (perf.intervals.length > 600) perf.intervals.shift();
-  const dt = elapsedMs / 1000;
+  // Clamp simulation catch-up, not performance telemetry: a long browser stall
+  // must remain visible in the measured frame intervals.
+  const dt = Math.min(50, elapsedMs) / 1000;
   accumulator += dt;
   while (accumulator >= STEP) {
     journey.step(STEP);
@@ -795,6 +853,7 @@ function destroy() {
 }
 try {
   stage = new Stage($("stage"));
+  stage.poster($("traveller-preview"));
   audio = new TypeAudio();
   $("level").value = ["easy", "medium", "hard"].includes(prefs.level)
     ? prefs.level
@@ -933,6 +992,7 @@ try {
         audioState: audio.ctx?.state || "uncreated",
         musicTimer: !!audio.timer,
         inputTimers: pulses.size,
+        uiAnimations: uiAnimations.size,
       },
       performance: {
         frames: perf.frames,

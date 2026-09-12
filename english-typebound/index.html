@@ -6,14 +6,15 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <meta name="theme-color" content="#101b1b" />
+    <meta name="theme-color" content="#163b43" />
     <meta
       name="description"
-      content="键旅 Typebound：每一次落键，都是一记法术。用英文单词打败书灵，选择遗物，在森林遗迹里练习打字。"
+      content="键旅 Typebound 绘本冒险：带着小书灵穿过森林、潮汐与云海。逐字施法、连词点亮庭院，用 2,329 个分级英文单词练习打字。"
     />
     <title>键旅 · TYPEBOUND</title>
-    <link rel="stylesheet" href="style.css?v=20260906-type-r5" />
-    <link rel="preload" href="assets/letterwood.webp" as="image" />
+    <link rel="stylesheet" href="style.css?v=20260912-story-r1" />
+    <link rel="stylesheet" href="story.css?v=20260912-story-r1" />
+    <link rel="preload" href="assets/letterwood-story.webp" as="image" />
   </head>
   <body>
     <main id="app" data-view="menu">
@@ -39,7 +40,7 @@
           <h1>键旅<span>TYPEBOUND</span></h1>
           <p class="headline">把单词写成法术，<br />把练习走成冒险。</p>
           <p class="lead">
-            在林间遗迹里，找回失落的故事。<br />逐字落键、连词破阵，每一步都看得到成长。
+            带着小书灵，穿过森林、潮汐与云海。<br />敲出字母、放出魔法，把暗淡的书页写亮。
           </p>
           <div class="setup">
             <label
@@ -106,10 +107,14 @@
           </details>
         </div>
         <div class="menu-scene" aria-hidden="true">
-          <div class="emblem">✧<span>THE LETTERWOOD</span></div>
-          <p>有些故事，<br />等你亲手写下。</p>
+          <div class="scene-kicker">THE STORY COMES ALIVE</div>
+          <canvas id="traveller-preview" width="520" height="520"></canvas>
+          <p>下一页奇遇，<br />从你的指尖开始。</p>
+          <div class="chapter-stamps">
+            <span>01 · 雾林</span><span>02 · 潮汐</span><span>03 · 曙光</span>
+          </div>
           <div class="scene-caption">
-            <span>01 / 林间书庭</span><span>AN ORIGINAL TYPING ADVENTURE</span>
+            <span>三段风景 · 九页冒险</span><span>YOUR WORDS, YOUR MAGIC</span>
           </div>
         </div>
       </section>
@@ -161,6 +166,10 @@
             <span id="intent-label">等待你的第一键</span>
             <div><i id="intent-bar"></i></div>
           </div>
+          <div class="flow-badge">
+            <span id="flow-label">书灵苏醒 0 / 3</span>
+            <div><i id="flow-progress"></i></div>
+          </div>
           <p id="arena-note" aria-live="polite"></p>
         </div>
         <div class="typing-dock">
@@ -174,6 +183,19 @@
           <div class="word-line">
             <div id="word" aria-label="当前单词"></div>
             <div class="space-mark" id="space-mark">␣</div>
+          </div>
+          <div class="spell-charge">
+            <div
+              id="spell-meter"
+              role="progressbar"
+              aria-label="当前单词蓄字进度"
+              aria-valuemin="0"
+              aria-valuenow="0"
+              aria-valuemax="1"
+            >
+              <i id="spell-progress"></i>
+            </div>
+            <span id="spell-count">0 / 0</span>
           </div>
           <div class="word-meaning">
             <span id="meaning"></span
@@ -282,7 +304,7 @@
         </div>
       </div>
     </main>
-    <script src="../shared/vocabulary.js?v=20260906-type-r5"></script>
-    <script type="module" src="app.mjs?v=20260906-type-r5"></script>
+    <script src="../shared/vocabulary.js?v=20260912-story-r1"></script>
+    <script type="module" src="app.mjs?v=20260912-story-r1"></script>
   </body>
 </html>

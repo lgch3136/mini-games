@@ -48,6 +48,7 @@
   <body>
     <header>
       <button id="suite">输入与资源验收</button
+      ><button id="story">动画反馈验收</button
       ><button id="journey">完整九关回放</button
       ><button id="long">90 秒连续输入</button
       ><button id="failure">自然受伤与重试</button
@@ -56,12 +57,16 @@
     </header>
     <iframe
       id="subject"
-      src="../english-typebound/?qa=type-r4"
+      src="../english-typebound/?qa=story-r1"
       title="正式游戏页面"
     ></iframe>
+    <details>
+      <summary>验收数据</summary>
+      <pre id="report"></pre>
+    </details>
     <script
       type="module"
-      src="typebound-browser.mjs?v=20260906-type-r5-qa2"
+      src="typebound-browser.mjs?v=20260912-story-r1"
     ></script>
   </body>
 </html>

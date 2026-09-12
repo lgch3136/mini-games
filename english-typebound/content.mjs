@@ -6,16 +6,16 @@ export const CHAPTERS = [
     story: "旧书页在雾中醒来。用完整的单词，点亮通往遗迹的路。",
   },
   {
-    name: "星桥藏书",
-    en: "THE GLASS ARCHIVE",
+    name: "潮汐藏书",
+    en: "THE TIDAL ARCHIVE",
     color: "#b6c8f0",
-    story: "被遗忘的句子悬在桥上。让它们重新连成故事。",
+    story: "书岛漂浮在潮汐之上，小书灵想听听海的故事。沿着发光的石桥，把遗忘的句子重新连接。",
   },
   {
-    name: "余烬之门",
-    en: "THE LAST LANTERN",
+    name: "曙光书塔",
+    en: "THE SUNRISE OBSERVATORY",
     color: "#efc486",
-    story: "守门者正在吞下最后一行字。把故事写完，然后去更远的地方。",
+    story: "穿过云海，晨光落进书塔。守门者藏起了最后一行字：写完它，让新的故事醒来。",
   },
 ];
 

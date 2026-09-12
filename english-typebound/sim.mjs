@@ -4,7 +4,7 @@ import {
   RELICS,
   ENEMIES,
   PASSAGE_GLOSS,
-} from "./content.mjs?v=20260906-type-r5";
+} from "./content.mjs?v=20260912-story-r1";
 export const STEP = 1 / 120;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export class RNG {
