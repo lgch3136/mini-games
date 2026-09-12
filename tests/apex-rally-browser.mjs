@@ -2,7 +2,8 @@ import {
   rallyPilot,
   DOUBLE_SPRAY_STEPS,
   CHAIN_SPRAY_STEPS,
-} from "./apex-rally-pilot.mjs?v=20260908-mochi-r1";
+} from "./apex-rally-pilot.mjs?v=20260912-freedrift-r1";
+import { rearContact } from "../english-apex-drive/tyre-trails.mjs";
 const frame = document.getElementById("subject"),
   $ = (id) => document.getElementById(id);
 const win = () => frame.contentWindow,
@@ -147,7 +148,7 @@ async function input() {
     pointer("right", "pointerdown", 73);
     await wait(120);
     check(
-      "反打方向不反转漂移侧",
+      "反打输入不重置本次起漂记录",
       d().game.p.driftSide === -1 && d().game.p.steer > 0,
     );
     pointer("right", "pointerup", 73);
@@ -260,6 +261,61 @@ async function input() {
 $("race").onclick = () => run("race");
 $("items").onclick = () => run("items");
 $("input").onclick = input;
+$("free").onclick = async () => {
+  const token = ++serial;
+  window.rallyReport = { running: true, kind: "free", checks: [], traces: [] };
+  const sideOf = (a, b, c) => (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+  function intersections(left, right) {
+    let count = 0;
+    for (let i = 1; i < left.length; i++)
+      for (let j = 1; j < right.length; j++) {
+        const a = left[i - 1], b = left[i], c = right[j - 1], e = right[j];
+        if (sideOf(a, b, c) * sideOf(a, b, e) < 0 && sideOf(c, e, a) * sideOf(c, e, b) < 0) count++;
+      }
+    return count;
+  }
+  async function segment(seconds, values, trace) {
+    keys(values);
+    const end = d().game.time + seconds;
+    while (d().game.time < end) {
+      if (token !== serial) throw Error("已取消");
+      if (d().mode !== "playing") throw Error("输入序列被暂停");
+      const s = d().game;
+      if (trace && trace.at(-1)?.time !== s.time)
+        trace.push({ time: s.time, p: s.p, left: rearContact(s.p, -1), right: rearContact(s.p, 1) });
+      await wait(8);
+    }
+  }
+  try {
+    for (const side of [-1, 1]) {
+      $("status").textContent = `${side < 0 ? "左" : "右"}深漂：正常起步 → 持续转向 → 不松 Shift 反打`;
+      await launch("freestyle");
+      keys({ KeyW: true });
+      await until(() => !d().game.countdown && d().game.p.speed >= 40);
+      const trace = [], forward = side < 0 ? "KeyA" : "KeyD", counter = side < 0 ? "KeyD" : "KeyA";
+      await segment(1.4, { KeyW: true, [forward]: true, ShiftLeft: true }, trace);
+      const s = d().game, maxSlip = Math.max(...trace.map((t) => Math.abs(t.p.slip))) * 180 / Math.PI;
+      const crosses = intersections(trace.map((t) => t.left), trace.map((t) => t.right));
+      window.rallyReport.traces.push({ side, maxSlip, crosses, trace });
+      check(`${side}：真实侧滑超过 90°，两条实际后轮轨迹相交`, maxSlip > 90 && crosses > 0, { maxSlip, crosses });
+      check(`${side}：宽阔场地内未借助碰撞或越界改变朝向`, !s.p.offroad && s.crashes === 0 && s.trails.segments > 150, s.trails);
+      await segment(0.12, { KeyW: true, [counter]: true, ShiftLeft: true });
+      check(`${side}：不松 Shift 反打，120ms 内反转转动方向`, d().game.p.yawRate * side > 0, { yawRate: d().game.p.yawRate });
+      await segment(0.55, { KeyW: true, [counter]: true, ShiftLeft: true });
+      check(`${side}：反打可连续穿过回正，向另一侧甩尾`, d().game.p.slip * side < 0, { slip: d().game.p.slip });
+      check(`${side}：整个反打过程未出路面或碰撞`, !d().game.p.offroad && d().game.crashes === 0 && d().game.p.drift);
+      await segment(0.03, { KeyW: true, [counter]: true });
+      await segment(0.08, { KeyW: true, [forward]: true, ShiftLeft: true });
+      check(`${side}：换向甩尾后仍能按当前侧滑方向断位`, d().game.stats.cutDrifts === 1 && d().game.p.driftPhase === "cut");
+      window.rallyReport.perf = d(true).perf;
+      click("exit-btn");
+    }
+    check("自由漂移结束后停止渲染与音频", !d().raf && d().voices === 0 && d().audio !== "running");
+    if (token === serial) finish();
+  } catch (e) {
+    if (token === serial) finish(e);
+  }
+};
 $("techniques").onclick = async () => {
   const token = ++serial;
   window.rallyReport = {
@@ -280,6 +336,9 @@ $("techniques").onclick = async () => {
         x: p.x,
         z: p.z,
         speed: p.speed,
+        slip: p.slip,
+        charge: p.driftCharge,
+        yawRate: p.yawRate,
         phase: p.driftPhase,
         ready: p.miniReady,
         chain: p.miniChain,

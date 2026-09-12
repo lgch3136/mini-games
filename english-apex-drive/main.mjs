@@ -1,11 +1,11 @@
-import { Race, ITEMS } from "./world.mjs?v=20260908-mochi-r1";
-import { RaceView } from "./view.mjs?v=20260908-mochi-r1";
+import { Race, ITEMS } from "./world.mjs?v=20260912-freedrift-r1";
+import { RaceView } from "./view.mjs?v=20260912-freedrift-r1";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260908-mochi-r1";
+} from "../shared/first-person/shell.mjs?v=20260912-freedrift-r1";
 const app = new Shell({
   kind: "race",
   view: new RaceView($("game")),
@@ -73,6 +73,7 @@ const app = new Shell({
     $("technique").hidden = !p.techniqueTime;
     text("technique", p.technique);
     $("input-strip").hidden = w.mode !== "cruise";
+    text("input-slip", `侧滑角 ${Math.round((Math.abs(p.slip) * 180) / Math.PI)}°`);
     for (const [id, action] of [
       ["input-gas", "gas"],
       ["input-left", "left"],
@@ -89,7 +90,7 @@ const app = new Shell({
             ? "断位拉车头 · 点油门衔接"
             : p.driftPhase === "recover"
               ? "回正中 · 准备点按油门"
-              : "短按浅漂 / 长按深漂 · 反打回正"
+              : `侧滑 ${Math.round((Math.abs(p.slip) * 180) / Math.PI)}° · 反打可改甩尾方向`
           : touch
             ? "转向 + 漂移 → 松漂 → 点小喷"
             : "Shift + 转向 → 松漂回正 → 点 W / ↑",

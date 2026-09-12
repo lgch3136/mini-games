@@ -428,6 +428,16 @@ button.primary {
   letter-spacing: -0.04em;
   text-shadow: 0 4px 0 #ffffffa8;
 }
+#panel {
+  background: #e7f2eade;
+  backdrop-filter: blur(6px);
+}
+#panel h1 {
+  text-shadow: none;
+}
+#result {
+  color: #4f657b;
+}
 .title-dot {
   color: #ef95ad;
 }

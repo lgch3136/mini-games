@@ -10,9 +10,9 @@
     <title>团团卡丁 · Apex Drive</title>
     <link
       rel="stylesheet"
-      href="../shared/first-person/style.css?v=20260908-mochi-r1"
+      href="../shared/first-person/style.css?v=20260912-freedrift-r1"
     />
-    <link rel="stylesheet" href="style.css?v=20260908-mochi-r1" />
+    <link rel="stylesheet" href="style.css?v=20260912-freedrift-r1" />
     <script type="importmap">
       {
         "imports": {
@@ -69,6 +69,7 @@
                 <option value="race">漂移竞速 · 两圈 / 5 位对手</option>
                 <option value="items">道具乱斗 · 光弹 / 护盾 / 陷阱</option>
                 <option value="cruise">漂移练习 · 无对手 / 不限圈数</option>
+                <option value="freestyle">自由漂移场 · 大角度 / 交叉胎痕</option>
               </select></label
             ><label
               >对手强度<select id="difficulty">
@@ -105,7 +106,7 @@
           </p>
           <p class="quality-note">
             连喷：回正时同向轻点 Shift 再漂 → 两次点 W。断位：松 Shift
-            后反向轻点 Shift 拉正。
+            后反向轻点 Shift 拉正。长按 Shift 时也能反打换甩尾方向；可选自由漂移场练习。
           </p>
         </div>
         <div class="menu-tag">
@@ -145,7 +146,7 @@
         <div id="input-strip" hidden>
           <kbd id="input-gas">W ↑</kbd><kbd id="input-left">←</kbd
           ><kbd id="input-right">→</kbd><kbd id="input-drift">Shift</kbd
-          ><span>练习输入</span>
+          ><span id="input-slip">侧滑角 0°</span>
         </div>
         <div class="speedometer">
           <small id="gear">N</small><b id="speed">0</b><span>KM/H</span>
@@ -185,6 +186,6 @@
       <div id="fatal" hidden></div>
     </main>
     <script src="../shared/vocabulary.js"></script>
-    <script type="module" src="main.mjs?v=20260908-mochi-r1"></script>
+    <script type="module" src="main.mjs?v=20260912-freedrift-r1"></script>
   </body>
 </html>

@@ -11,8 +11,9 @@ import {
   stepKart,
   motionState,
   cancelDrift,
-} from "./kart-motion.mjs?v=20260908-mochi-r1";
-export const VERSION = "20260908-mochi-r1",
+} from "./kart-motion.mjs?v=20260912-freedrift-r1";
+import { TyreTrails } from "./tyre-trails.mjs";
+export const VERSION = "20260912-freedrift-r1",
   DT = 1 / 120;
 // Includes the visible tyre shoulders and front/rear rounded bumpers.
 export const KART_BOUNDS = Object.freeze({ halfWidth: 1.16, halfLength: 1.49 });
@@ -83,6 +84,21 @@ export const TRACKS = [
       [-170, 0],
     ],
     height: 1,
+  },
+  {
+    name: "自由漂移场",
+    sub: "SKIDPAD / FREE PRACTICE",
+    width: 180,
+    color: 0xb7c8a2,
+    points: [
+      [0, 0],
+      [0, -240],
+      [160, -400],
+      [400, -240],
+      [400, 0],
+      [200, 160],
+    ],
+    height: 0,
   },
 ];
 const cat = (a, b, c, d, t) =>
@@ -199,6 +215,11 @@ export class Race {
     difficulty = "club",
     seed = 4721,
   } = {}) {
+    this.freestyle = mode === "freestyle";
+    if (this.freestyle) {
+      track = 3;
+      mode = "cruise";
+    }
     this.track = new Track(track);
     this.mode = mode;
     this.assist = assist;
@@ -233,6 +254,8 @@ export class Race {
     this.countdown = 3;
     this.finished = false;
     this.events = [];
+    this.trails = new TyreTrails();
+    this.trailHeight = (x, z) => this.track.nearest(x, z).y;
     this.laps = 0;
     this.nextGate = 1;
     this.gates = 20;
@@ -609,6 +632,7 @@ export class Race {
       ).length;
     this.pickup(p, -1, this.laps * t.length + current.s, current.side);
     this.stepItems(dt);
+    this.trails.sample(p, this.time, this.trailHeight);
     if (this.rank < oldRank && this.time > 4) {
       p.boost = clamp(p.boost + 0.08, 0, 1);
       this.events.push({ type: "overtake", rank: this.rank });
@@ -810,6 +834,7 @@ export class Race {
     this.mines = this.mines.filter((m) => m.ttl > 0);
   }
   resetCar() {
+    this.trails.break();
     const q = this.track.at(this.p.progress, 0);
     Object.assign(this.p, {
       x: q.x,
@@ -835,6 +860,8 @@ export class Race {
       length: this.track.length,
       laps: this.laps,
       mode: this.mode,
+      freestyle: this.freestyle,
+      trails: { segments: this.trails.count, capacity: this.trails.capacity },
       difficulty: this.difficulty,
       stats: { ...this.stats },
       features: this.features,

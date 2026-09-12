@@ -84,7 +84,7 @@ test("drift is deliberate: no charge when stationary or driving straight", () =>
   assert.equal(w.p.drift, false);
   assert.equal(w.p.driftCharge, 0);
 });
-test("both drift directions have immediate response and countersteer keeps the chosen side", () => {
+test("both drift directions respond immediately; countersteer preserves entry-side bookkeeping", () => {
   for (const side of [-1, 1]) {
     const w = fresh();
     ticks(w, { gas: true }, 180);

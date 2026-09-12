@@ -140,7 +140,7 @@ export class Shell {
     // 1200-frame percentile arrays on every read. Full reports opt in once.
     window.firstPersonDiagnostics = ({ metrics = true } = {}) => ({
       version:
-        this.kind === "race" ? "20260908-mochi-r1" : "20260906-firstlight-r1",
+        this.kind === "race" ? "20260912-freedrift-r1" : "20260906-firstlight-r1",
       kind: this.kind,
       mode: this.mode,
       raf: !!this.raf,

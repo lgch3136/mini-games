@@ -67,8 +67,8 @@ test("Shift duration changes the actual route, slip and speed loss", () => {
   const short = skidpad(),
     deep = skidpad();
   short.run(0.12, { gas: true, steer: 1, drift: true });
-  short.run(0.48, { gas: true, steer: 1 });
-  deep.run(0.6, { gas: true, steer: 1, drift: true });
+  short.run(0.78, { gas: true, steer: 1 });
+  deep.run(0.9, { gas: true, steer: 1, drift: true });
   assert.ok(Math.abs(deep.p.yaw) > Math.abs(short.p.yaw) * 1.2);
   assert.ok(Math.abs(deep.p.slip) > Math.abs(short.p.slip) * 1.4);
   assert.ok(deep.p.speed < short.p.speed - 0.4);
@@ -130,11 +130,13 @@ test("opposite Shift retap cuts the drift; holding the same Shift does not", () 
     s.run(0.32, { gas: true, steer: 1, drift: true });
     s.run(0.03, { gas: true, steer: 1 });
   }
-  normal.run(0.18, { gas: true, steer: -1 });
-  cut.run(0.18, { gas: true, steer: -1, drift: true });
+  normal.run(0.1, { gas: true, steer: -1 });
+  cut.run(0.1, { gas: true, steer: -1, drift: true });
   assert.equal(cut.events.filter((e) => e.type === "cutDrift").length, 1);
   assert.equal(cut.p.driftPhase, "cut");
   assert.ok(Math.abs(cut.p.slip) < Math.abs(normal.p.slip));
+  cut.run(0.08, { gas: true, steer: -1, drift: true });
+  assert.ok(Math.abs(cut.p.slip) < 0.05, "cut settles without swinging past the travel vector");
   cut.run(0.1, { gas: true, steer: -1 });
   assert.equal(cut.p.drift, false);
   assert.ok(cut.maxYawStep < 0.035);

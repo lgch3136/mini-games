@@ -10,7 +10,10 @@ import {
 
 export const DRIFT = Object.freeze({
   minSpeed: 12,
-  minCharge: 0.12,
+  // A deliberate ~200 ms shallow drift can earn a small spray even when
+  // entered from a steering correction. Age + peak-slip guards still reject
+  // straight driving and one-frame Shift spam; tiers 2/3 need more charge.
+  minCharge: 0.08,
   tapBuffer: 0.14,
   sprayWindow: 0.8,
   cutDuration: 0.24,
@@ -110,7 +113,7 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
       p.drift &&
       p.driftPhase !== "cut" &&
       p.driftAge > 0.13 &&
-      Math.sign(steer) !== p.driftSide;
+      steer * p.slip < -0.07;
     if (counterCut) {
       bankSpray(p, time, emit);
       p.driftPhase = "cut";
@@ -145,7 +148,8 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
   const gas = !!(input.gas || input.boost || autoGas),
     brake = !!input.brake;
   p.brake = brake;
-  const lock = lerp(0.57, 0.09, clamp(p.speed / 64, 0, 1));
+  const forwardSpeed = Math.abs(p.speed * Math.cos(p.slip));
+  const lock = lerp(0.57, 0.09, clamp(forwardSpeed / 64, 0, 1));
   const gripYaw = clamp(31 / Math.max(p.speed, 6), 0.48, 1.65);
   // A small powered low-speed steering response lets the player turn away
   // from a head-on rail stop; zero speed must not permanently lock the yaw.
@@ -156,34 +160,55 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
     gripYaw,
   );
   let grip = 20,
-    drag = 0;
+    drag = 0,
+    lateralLimit = Infinity;
   if (p.drift) {
     p.driftAge += dt;
-    const against = steer * p.driftSide < -0.2;
+    // Countersteering is relative to the CURRENT slide, not an input-side
+    // latch from the start of the drift. Crossing through zero is permitted.
+    const against = steer * p.slip < -0.02;
     if (p.driftPhase === "slide") {
       p.driftHold += dt;
       // Shift is a progressive handbrake, not a binary drift animation.
       p.driftPower = 0.22 + 0.78 * (1 - Math.exp(-p.driftHold / 0.24));
+      // Steering owns yaw in BOTH directions while Shift is held. The old
+      // permanent driftSide torque kept pushing into the first turn even
+      // under full opposite input. Tyres, not a target slip angle, limit the
+      // travel vector; sustained input can now over-rotate past 90 degrees.
+      const deepTurn = 1 - Math.exp(-Math.max(0, p.driftHold - 0.35) / 0.45);
       targetYaw =
-        (-p.driftSide * (0.35 + p.driftPower * 0.47) - steer * 0.44) *
-        clamp(40 / Math.max(20, p.speed), 0.72, 1.25);
-      grip = against ? 4.8 : lerp(2.5, 1.4, p.driftPower);
-      drag = 0.8 + p.driftPower * 4.2;
+        -steer * (0.79 + p.driftPower * 0.47 + deepTurn * 1.7) *
+        clamp(40 / Math.max(20, forwardSpeed), 0.72, 1.25);
+      grip = against ? 3.8 : lerp(2.5, 1.4, p.driftPower);
+      lateralLimit =
+        (against ? 65 : lerp(48, 28, p.driftPower)) /
+        Math.max(p.speed, 12);
+      drag =
+        0.5 + p.driftPower * 2.1 +
+        p.speed * 0.13 * Math.sin(p.slip) ** 2 +
+        p.speed * 0.24 * Math.max(0, -Math.cos(p.slip));
     } else if (p.driftPhase === "cut") {
       p.cutTime = Math.max(0, p.cutTime - dt);
-      targetYaw = clamp(p.slip * 10, -2.5, 2.5) + targetYaw * 0.13;
-      grip = 5;
+      targetYaw = clamp(p.slip * 20 - p.yawRate * 1.3, -3.8, 3.8);
+      grip = 6;
       drag = 0.25;
-      if (!p.cutTime) finishSlide(p, time, emit);
+      if (!p.cutTime) {
+        if (Math.abs(p.slip) < 0.15) finishSlide(p, time, emit);
+        else {
+          p.driftPhase = "recover";
+          p.recoverTime = 0;
+        }
+      }
     } else {
       p.recoverTime += dt;
       p.driftPower = damp(p.driftPower, 0, 7, dt);
       // Countersteer rotates the body toward the existing velocity vector.
       // Letting go restores tyres progressively instead of snapping to grip.
-      const recovery = against ? 7 : Math.abs(steer) < 0.1 ? 3.5 : 0.8;
+      const recovery = against ? 4 : Math.abs(steer) < 0.1 ? 1.8 : 0;
       targetYaw += clamp(p.slip * recovery, -1.7, 1.7);
-      grip = against ? 6 : lerp(2.5, 8, clamp(p.recoverTime / 0.65, 0, 1));
-      drag = 0.4;
+      grip = against ? 6 : Math.abs(steer) < 0.1 ? 4 : 2;
+      lateralLimit = (against ? 78 : 38) / Math.max(p.speed, 12);
+      drag = 0.4 + p.speed * 0.09 * Math.sin(p.slip) ** 2;
     }
   } else if (
     assist &&
@@ -195,7 +220,14 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
   }
   p.yawRate = damp(p.yawRate, targetYaw, p.driftPhase === "cut" ? 23 : 26, dt);
   p.yaw = angle(p.yaw + p.yawRate * dt);
-  p.heading = mixAngle(p.heading, p.yaw, 1 - Math.exp(-grip * dt));
+  if (Number.isFinite(lateralLimit)) {
+    // Bounded lateral tyre force preserves sideways momentum. Exponential
+    // heading-to-body alignment alone silently capped the achievable slip.
+    const turn = Math.sin(p.yaw - p.heading) * grip;
+    p.heading = angle(
+      p.heading + lateralLimit * Math.tanh(turn / lateralLimit) * dt,
+    );
+  } else p.heading = mixAngle(p.heading, p.yaw, 1 - Math.exp(-grip * dt));
   p.slip = angle(p.heading - p.yaw);
 
   if (p.drift && p.driftPhase !== "cut" && onRoad) {
@@ -218,10 +250,8 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
     if (p.driftPhase === "recover") {
       if (p.recoverTime > 0.04 && Math.abs(p.slip) < 0.32)
         bankSpray(p, time, emit);
-      if (
-        (p.recoverTime > 0.08 && Math.abs(p.slip) < 0.075) ||
-        p.recoverTime > 0.85
-      )
+      // A timer must not turn a still-sideways kart into a gripped kart.
+      if (p.recoverTime > 0.08 && Math.abs(p.slip) < 0.075)
         finishSlide(p, time, emit);
     }
   }

@@ -2,15 +2,16 @@ import {
   SceneKit,
   T,
   label,
-} from "../shared/first-person/scene.mjs?v=20260908-mochi-r1";
+} from "../shared/first-person/scene.mjs?v=20260912-freedrift-r1";
 import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs";
-import { SectorBatch } from "./sector-batch.mjs?v=20260908-mochi-r1";
-import { GUARDRAIL } from "./world.mjs?v=20260908-mochi-r1";
+import { SectorBatch } from "./sector-batch.mjs?v=20260912-freedrift-r1";
+import { GUARDRAIL } from "./world.mjs?v=20260912-freedrift-r1";
+import { TRAIL_LIFE } from "./tyre-trails.mjs";
 import {
   makeMochiKart,
   animateMochiKart,
   roundedBox,
-} from "./mochi-kart.mjs?v=20260908-mochi-r1";
+} from "./mochi-kart.mjs?v=20260912-freedrift-r1";
 export class RaceView extends SceneKit {
   constructor(canvas) {
     super(canvas);
@@ -19,7 +20,6 @@ export class RaceView extends SceneKit {
     this.carModels = [];
     this.chase = true;
     this.fx = [];
-    this.skids = [];
     this.emitClock = 0;
     this.dummy = new T.Object3D();
     this.fxColor = new T.Color();
@@ -127,7 +127,6 @@ export class RaceView extends SceneKit {
     this.geometries = new Set(this.permanent);
     this.carModels = [];
     this.fx = [];
-    this.skids = [];
     this.emitClock = 0;
     const track = world.track,
       b = new SectorBatch(this),
@@ -138,9 +137,9 @@ export class RaceView extends SceneKit {
       red = this.mat("rumble", 0xff9aaf),
       rail = this.mat("guardrail", 0xfff1d5, 0.6, 0),
       post = this.mat("posts", 0x84c4c7, 0.65, 0);
-    sand.color.set([0xb8dd91, 0xb8d6b1, 0xf3d6b0][track.id]);
-    asphalt.color.set([0x819db8, 0x9993b6, 0x829ab2][track.id]);
-    red.color.set([0xff9aae, 0xae9cdd, 0xffb182][track.id]);
+    sand.color.set([0xb8dd91, 0xb8d6b1, 0xf3d6b0, 0xb8dd91][track.id]);
+    asphalt.color.set([0x819db8, 0x9993b6, 0x829ab2, 0x9aaebb][track.id]);
+    red.color.set([0xff9aae, 0xae9cdd, 0xffb182, 0xff9aae][track.id]);
     const sea = this.mat("sea", 0x69cddd, 0.65, 0);
     this.add(new T.PlaneGeometry(5000, 5000), sea, 150, -5, 0).rotation.x =
       -Math.PI / 2;
@@ -229,7 +228,10 @@ export class RaceView extends SceneKit {
       rock = this.mat("rock", 0xbfc8dc);
     for (let s = 10; s < track.length; s += 15) {
       const side = rng() > 0.5 ? 1 : -1,
-        q = track.at(s, side * (17 + rng() * 26)),
+        q = track.at(
+          s,
+          side * (Math.max(17, track.width * 0.5 + 10) + rng() * 26),
+        ),
         h = 5 + rng() * 5;
       const base = Math.max(0.1, q.y - 0.3);
       b.cylinder(q.x, base + h * 0.38, q.z, 0.2, h * 0.8, trunk, 7);
@@ -267,7 +269,10 @@ export class RaceView extends SceneKit {
       glass = this.mat("windows", 0x6aa8c2, 0.5, 0.03),
       accent = this.mat("track-accent", 0xeea6ba);
     for (let i = 0; i < 14; i++) {
-      const q = track.at((i * track.length) / 14, 45 + (i % 3) * 8),
+      const q = track.at(
+          (i * track.length) / 14,
+          Math.max(45, track.width * 0.5 + 15) + (i % 3) * 8,
+        ),
         h = 5 + (i % 4) * 4;
       const house = roundedBox(10, h, 8, 1.1, 3);
       b.geometry(house, concrete, q.x, h / 2, q.z, 0, q.yaw);
@@ -300,27 +305,26 @@ export class RaceView extends SceneKit {
       }
       b.box(q.x, q.y + 7.2, q.z, track.width + 3, 0.28, 0.35, concrete, q.yaw);
     }
-    const q = track.at(1);
+    const q = track.at(1),
+      startWidth = Math.min(track.width, 16);
     for (const side of [-1, 1]) {
-      const p = track.at(1, side * (track.width * 0.5 + 1));
+      const p = track.at(1, side * (startWidth * 0.5 + 1));
       b.box(p.x, p.y + 3.5, p.z, 0.6, 7, 0.6, post, q.yaw);
     }
-    b.box(q.x, q.y + 6.8, q.z, track.width + 2.6, 1.25, 0.5, post, q.yaw);
+    b.box(q.x, q.y + 6.8, q.z, startWidth + 2.6, 1.25, 0.5, post, q.yaw);
     b.finish();
     let signMat = this.materials.get("startsign-" + track.id);
     if (!signMat) {
-      const signTex = label("MOCHI  /  SUNNY CIRCUIT", {
-        color: "#fff8e5",
-        bg: "#629aab",
-        w: 1024,
-        h: 128,
-      });
+      const signTex = label(
+        world.freestyle ? "MOCHI  /  DRIFT PARK" : "MOCHI  /  SUNNY CIRCUIT",
+        { color: "#fff8e5", bg: "#629aab", w: 1024, h: 128 },
+      );
       this.textures.push(signTex);
       signMat = new T.MeshBasicMaterial({ map: signTex });
       this.materials.set("startsign-" + track.id, signMat);
     }
     const sign = this.add(
-      new T.PlaneGeometry(track.width + 1.8, 0.95),
+      new T.PlaneGeometry(startWidth + 1.8, 0.95),
       signMat,
       q.x,
       q.y + 6.8,
@@ -439,7 +443,7 @@ export class RaceView extends SceneKit {
           }
         }
       }
-    // Fixed-size instanced pools: tyre marks, sparks and game objects add a
+    // Fixed-size buffers: tyre marks, sparks and game objects add a
     // constant number of draw calls, not one mesh/allocation per effect.
     this.sparkGeo = new T.SphereGeometry(0.065, 4, 3);
     this.geometries.add(this.sparkGeo);
@@ -453,14 +457,38 @@ export class RaceView extends SceneKit {
     this.sparkMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
     this.sparkMesh.frustumCulled = false;
     this.group.add(this.sparkMesh);
-    const skidGeo = new T.PlaneGeometry(0.14, 1.2);
-    skidGeo.rotateX(-Math.PI / 2);
-    this.geometries.add(skidGeo);
-    this.skidMesh = new T.InstancedMesh(
-      skidGeo,
-      this.mat("skid-rubber", 0x243235),
-      180,
+    const skidGeo = new T.BufferGeometry();
+    skidGeo.setAttribute(
+      "position",
+      new T.BufferAttribute(world.trails.positions, 3).setUsage(T.DynamicDrawUsage),
     );
+    skidGeo.setAttribute(
+      "born",
+      new T.BufferAttribute(world.trails.born, 1).setUsage(T.DynamicDrawUsage),
+    );
+    skidGeo.setDrawRange(0, 0);
+    this.geometries.add(skidGeo);
+    this.materials.get("skid-ribbon")?.dispose();
+    const skidMaterial = new T.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: T.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+      uniforms: { now: { value: 0 } },
+      vertexShader: `attribute float born; varying float age; uniform float now;
+        void main(){age=now-born;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+      fragmentShader: `varying float age; void main(){
+        float ink=.46*(1.-smoothstep(${TRAIL_LIFE - 2}.,${TRAIL_LIFE}.,age));
+        if(ink<.005) discard; gl_FragColor=vec4(.12,.18,.21,ink);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    });
+    this.materials.set("skid-ribbon", skidMaterial);
+    this.skidMesh = new T.Mesh(skidGeo, skidMaterial);
+    this.trailVersion = -1;
     this.skidMesh.frustumCulled = false;
     this.group.add(this.skidMesh);
     const boltGeo = new T.SphereGeometry(0.48, 10, 6);
@@ -637,14 +665,6 @@ export class RaceView extends SceneKit {
         for (const side of [-1, 1]) {
           const px = x + Math.sin(yaw) * 0.85 + Math.cos(yaw) * side * 0.96,
             pz = z + Math.cos(yaw) * 0.85 - Math.sin(yaw) * side * 0.96;
-          if (p.drift && this.skids.length < 180)
-            this.skids.push({
-              x: px,
-              y: y + 0.029,
-              z: pz,
-              yaw: p.heading,
-              life: 5,
-            });
           if (this.fx.length < 96)
             this.fx.push({
               x: px,
@@ -681,9 +701,7 @@ export class RaceView extends SceneKit {
       f.z += f.vz * dt;
       f.vy -= 5 * dt;
     }
-    for (const f of this.skids) f.life -= dt;
     this.fx = this.fx.filter((f) => f.life > 0);
-    this.skids = this.skids.filter((f) => f.life > 0);
     const d = this.dummy;
     this.fx.forEach((f, i) => {
       d.position.set(f.x, f.y, f.z);
@@ -697,15 +715,13 @@ export class RaceView extends SceneKit {
     this.sparkMesh.instanceMatrix.needsUpdate = true;
     if (this.sparkMesh.instanceColor)
       this.sparkMesh.instanceColor.needsUpdate = true;
-    this.skids.forEach((f, i) => {
-      d.position.set(f.x, f.y, f.z);
-      d.rotation.set(0, f.yaw, 0);
-      d.scale.set(1, 1, Math.min(1, f.life));
-      d.updateMatrix();
-      this.skidMesh.setMatrixAt(i, d.matrix);
-    });
-    this.skidMesh.count = this.skids.length;
-    this.skidMesh.instanceMatrix.needsUpdate = true;
+    this.skidMesh.material.uniforms.now.value = w.time;
+    if (this.trailVersion !== w.trails.version) {
+      this.trailVersion = w.trails.version;
+      this.skidMesh.geometry.attributes.position.needsUpdate = true;
+      this.skidMesh.geometry.attributes.born.needsUpdate = true;
+      this.skidMesh.geometry.setDrawRange(0, w.trails.count * 6);
+    }
     let index = 0;
     for (const item of [...w.missiles, ...w.mines]) {
       const q = w.track.at(item.s, item.offset),
@@ -726,7 +742,7 @@ export class RaceView extends SceneKit {
       this.itemMesh.instanceColor.needsUpdate = true;
   }
   releasePools() {
-    for (const name of ["sparkMesh", "skidMesh", "itemMesh"])
+    for (const name of ["sparkMesh", "itemMesh"])
       this[name]?.dispose();
   }
   dispose() {
