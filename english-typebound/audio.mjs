@@ -1,5 +1,5 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260905-dawn";
-import { FLIGHT } from "./presentation.mjs?v=20260912-story-r1";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1";
+import { FLIGHT } from "./presentation.mjs?v=20260918-play-r1";
 const hz = (n) => 440 * 2 ** ((n - 69) / 12);
 const MOTIFS = [
   [0, 4, 7, 12, 9, 7, 4, 2, 0, 7, 9, 12, 7, 4, 2, null],
@@ -89,15 +89,18 @@ export class TypeAudio extends Soundtrack {
         hz(root + 19),
       );
       this.hiss(t, 0.11, 0.035, 2200);
+      const octave = e.spell === "frost" ? 24 : 12,
+        sustain = e.spell === "bloom" ? 0.42 : 0.28,
+        timbre = e.spell === "ember" ? "triangle" : "sine";
       [0, third, 7, 12].forEach((n, i) =>
-        note(root + 12 + n, 0.28, 0.048, FLIGHT.word + i * 0.018),
+        note(root + octave + n, sustain, 0.04, FLIGHT.word + i * 0.018, timbre),
       );
-      if (e.combo === 3 || e.combo === 6)
+      if (e.burst)
         [7, 12, 16, 19].forEach((n, i) =>
           note(root + n, 0.38, 0.045, FLIGHT.word + 0.08 + i * 0.055),
         );
     }
-    if (e.type === "guard")
+    if (e.type === "guard" || e.type === "parry")
       [0, 7, 12, third + 12].forEach((n, i) =>
         note(root + n, 0.42, 0.06, i * 0.04),
       );

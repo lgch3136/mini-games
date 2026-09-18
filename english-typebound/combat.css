@@ -1,0 +1,251 @@
+/* Compact spell console keeps the word and the action in the same glance. */
+.spell-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0 0 9px;
+}
+.spell-picker button {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 1px 5px;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid #9ab9b633;
+  border-radius: 10px;
+  background: #ffffff06;
+  color: #b5c9c5;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+}
+.spell-picker kbd {
+  grid-row: span 2;
+  align-self: center;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  text-align: center;
+  padding: 2px;
+  font:
+    11px ui-monospace,
+    monospace;
+  opacity: 0.8;
+}
+.spell-picker b {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+.spell-picker small {
+  font-size: 10px;
+  opacity: 0.8;
+}
+.spell-picker button[aria-pressed="true"] {
+  background: #ffc18d19;
+  border-color: #ffc18d;
+  color: #ffd5a7;
+  transform: translateY(-1px);
+}
+.spell-picker [data-spell="frost"][aria-pressed="true"] {
+  background: #85d6fa1a;
+  border-color: #85d6fa;
+  color: #b5eaff;
+}
+.spell-picker [data-spell="bloom"][aria-pressed="true"] {
+  background: #a6e8b51a;
+  border-color: #a6e8b5;
+  color: #b7f0c5;
+}
+.typing-dock {
+  background: linear-gradient(120deg, #142e36f5, #224447f5);
+  border-color: #a9c2b843;
+  padding: 12px 18px 8px;
+  border-radius: 18px;
+  color: #e4ece3;
+  box-shadow: 0 12px 28px #102b3626;
+}
+.typing-heading > span,
+.word-meaning,
+#input-help,
+.upcoming,
+.keyboard-caption {
+  color: #b4c7c1;
+}
+#word {
+  color: #9db3b8;
+}
+#word > .active {
+  color: #fff3d3;
+}
+#word > .typed {
+  color: #8ce8cc;
+}
+#meaning {
+  color: #e0eadb;
+}
+#word-feedback {
+  color: #f2c992;
+}
+#guard {
+  color: #c7e5ce;
+  border-color: #b4d7bd55;
+  background: #ffffff09;
+}
+#guard.ready {
+  color: #183e40;
+  background: #bee5ca;
+}
+#guard.parry {
+  color: #483015;
+  background: #ffdc93;
+  border-color: #fff2c0;
+  box-shadow: 0 0 0 3px #ffeeb323;
+}
+.spell-charge {
+  color: #c0d2cc;
+}
+.space-mark {
+  color: #98b7ae;
+}
+#combo {
+  color: #ffd5a7;
+}
+#app[data-flow="1"] #combo,
+#app[data-flow="2"] #combo {
+  color: #ffe9a5;
+}
+@media (min-width: 760px) and (hover: hover) and (pointer: fine) {
+  .keyboard-wrap {
+    display: none;
+  }
+  .typing-dock {
+    max-width: 900px;
+    width: calc(100% - 48px);
+    align-self: center;
+    margin: -15px auto 0;
+    z-index: 3;
+    position: relative;
+  }
+  .arena {
+    max-height: none;
+    min-height: 220px;
+    flex: 1;
+    border-radius: 20px;
+  }
+  #arena-note {
+    bottom: 23px;
+  }
+  #battle {
+    padding-bottom: 18px;
+  }
+  .word-line {
+    height: 60px;
+  }
+}
+@media (max-width: 580px) {
+  .spell-picker {
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+  .spell-picker button {
+    grid-template-columns: 16px 1fr;
+    padding: 6px 4px;
+    gap: 1px 3px;
+  }
+  .spell-picker small {
+    font-size: 8px;
+    white-space: nowrap;
+  }
+  .spell-picker b {
+    font-size: 11px;
+  }
+  .spell-picker kbd {
+    font-size: 9px;
+  }
+  .typing-dock {
+    padding: 7px 8px 5px;
+    min-height: 190px;
+  }
+  .upcoming {
+    display: none;
+  }
+  .flow-badge {
+    max-width: 140px;
+  }
+}
+@media (max-height: 650px) and (max-width: 580px) {
+  .spell-picker small {
+    display: none;
+  }
+  .typing-dock {
+    min-height: 162px;
+  }
+  .word-line {
+    height: 39px;
+  }
+  .spell-picker button {
+    padding: 4px;
+  }
+  .keyboard-wrap {
+    margin-top: 3px;
+  }
+}
+/* Light, motion and geometry carry the combat; no illustrated backdrop. */
+#app:is([data-view="combat"], [data-view="victory"], [data-view="paused"]) {
+  background: #091b25;
+}
+#app:is([data-view="combat"], [data-view="victory"], [data-view="paused"])
+  .landscape {
+  display: none;
+}
+#battle .arena {
+  border-color: #9cdec11c;
+  border-radius: 22px;
+}
+.landscape,
+#app[data-chapter="1"] .landscape,
+#app[data-chapter="2"] .landscape {
+  background-image: radial-gradient(ellipse at 72% 43%, #254f51, #091b27 76%);
+}
+.landscape:after {
+  background: linear-gradient(90deg, #091b2799, transparent);
+}
+.menu-scene {
+  background: radial-gradient(ellipse at 50% 54%, #82ebcf0c, transparent 65%);
+}
+@media (max-height: 480px) and (min-width: 581px) {
+  .typing-dock {
+    padding: 6px 8px;
+    min-height: 0;
+    width: 100%;
+    margin: 0;
+  }
+  .spell-picker {
+    gap: 5px;
+    margin-bottom: 5px;
+  }
+  .spell-picker button {
+    grid-template-columns: 17px 1fr;
+    padding: 5px 7px;
+    gap: 4px;
+    align-items: center;
+  }
+  .spell-picker b {
+    font-size: 11px;
+  }
+  .spell-picker kbd {
+    grid-row: auto;
+    font-size: 9px;
+  }
+  .spell-picker small,
+  .upcoming,
+  #input-help {
+    display: none;
+  }
+  .key {
+    height: clamp(24px, 7.2svh, 32px);
+  }
+  .keyboard-wrap {
+    align-self: end;
+  }
+}

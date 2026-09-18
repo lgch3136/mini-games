@@ -77,6 +77,27 @@ export const OPERATIONS = [
     sectors: ["废弃中继站", "双层栈道", "防御工事", "最后防线"],
     color: "#b9d7f3",
   },
+  {
+    name: "雨夜货站",
+    label: "NIGHT FREIGHT",
+    subtitle: "从货台上层绕后，利用油桶拆掉交叉火力。",
+    sectors: ["卸货站台", "双层仓线", "货运枢纽", "终点封锁"],
+    color: "#a9cef0",
+  },
+  {
+    name: "冻湖运输线",
+    label: "FROZEN EXPRESS",
+    subtitle: "等待移动平台接驳，选择稳妥下路或补给高线。",
+    sectors: ["冰岸前哨", "运输接驳", "高架泵站", "冰湖守卫"],
+    color: "#b6f0ec",
+  },
+  {
+    name: "熔炉深潜",
+    label: "FURNACE RUN",
+    subtitle: "在高低炉台间切换射线，突破盾兵与炮台的组合防线。",
+    sectors: ["铸造入口", "错层炉台", "冷却廊桥", "熔炉核心"],
+    color: "#ffc492",
+  },
 ];
 
 function buildLevel(stage) {
@@ -159,6 +180,152 @@ function buildLevel(stage) {
     });
   const checkpoint = (x) => beacons.push({ x, y: 454, active: false });
 
+  const operation =
+    ((stage % OPERATIONS.length) + OPERATIONS.length) % OPERATIONS.length;
+  if (operation >= 3) {
+    // Three fully authored routes. No recycled 2,300 px opening or random
+    // geometry: every landing and sightline has an intentional safe approach.
+    if (operation === 3) {
+      floor(0, 2180, 454, "steel");
+      deck(320, 354, 260, "steel");
+      deck(750, 330, 320, "steel");
+      enemy("grunt", 630);
+      enemy("turret", 980, 330);
+      cover(860, 454, "barrel");
+      supply(450, 320, "spread");
+      enemy("runner", 1270);
+      cover(1450);
+      deck(1440, 352, 300, "steel");
+      enemy("shield", 1790);
+      supply(1560, 316, "health");
+      floor(2340, 1120, 454, "steel");
+      deck(2100, 366, 270, "steel");
+      deck(2510, 348, 210, "steel");
+      deck(2800, 252, 220, "steel");
+      enemy("drone", 2250, 235);
+      enemy("grunt", 2530);
+      enemy("turret", 2900, 252);
+      cover(2780, 454, "barrel");
+      supply(2890, 218, "pulse");
+      checkpoint(2480);
+      floor(3650, 2010, 454, "steel");
+      deck(3370, 372, 350, "steel");
+      deck(3940, 352, 240, "steel");
+      deck(4420, 316, 310, "steel");
+      enemy("shield", 4040);
+      enemy("runner", 4240);
+      enemy("drone", 4510, 235);
+      enemy("turret", 4890);
+      cover(4790, 454, "barrel");
+      supply(4560, 282, "health");
+      enemy("grunt", 5230);
+      deck(5280, 354, 230, "steel");
+    } else if (operation === 4) {
+      floor(0, 1040);
+      floor(1220, 850);
+      floor(2250, 1080);
+      floor(3520, 1160);
+      floor(4860, 800);
+      deck(1000, 388, 240, "steel", {
+        motion: "x",
+        base: 1040,
+        range: 70,
+        speed: 0.8,
+      });
+      deck(2030, 378, 260, "steel", {
+        motion: "x",
+        base: 2070,
+        range: 70,
+        speed: 0.9,
+      });
+      deck(3280, 374, 290, "steel", {
+        motion: "x",
+        base: 3330,
+        range: 65,
+        speed: 0.7,
+      });
+      deck(4610, 380, 280, "steel", {
+        motion: "x",
+        base: 4650,
+        range: 65,
+        speed: 0.85,
+      });
+      deck(400, 350, 230, "steel");
+      supply(510, 315, "spread");
+      enemy("grunt", 780);
+      deck(1400, 350, 240, "steel");
+      enemy("drone", 1510, 230);
+      enemy("runner", 1750);
+      supply(1510, 315, "health");
+      checkpoint(2380);
+      deck(2600, 352, 240, "steel");
+      deck(2860, 256, 260, "steel");
+      enemy("shield", 2750);
+      enemy("turret", 3000, 256);
+      supply(2980, 222, "pulse");
+      enemy("drone", 3400, 210);
+      enemy("grunt", 3800);
+      deck(3900, 352, 350, "steel");
+      supply(4050, 318, "health");
+      enemy("turret", 4350);
+      enemy("shield", 5230);
+      deck(5150, 350, 300, "steel");
+    } else {
+      floor(0, 1110, 454, "steel");
+      floor(1110, 850, 504, "steel");
+      floor(1960, 970, 454, "steel");
+      floor(3100, 1000, 504, "steel");
+      floor(4100, 1560, 454, "steel");
+      deck(360, 348, 300, "steel");
+      enemy("grunt", 720);
+      supply(490, 314, "spread");
+      deck(1060, 358, 290, "steel");
+      enemy("turret", 1420, 504);
+      cover(1270, 504, "barrel");
+      deck(1720, 398, 280, "steel");
+      enemy("drone", 1790, 250);
+      supply(1850, 364, "health");
+      checkpoint(2210);
+      enemy("shield", 2440);
+      deck(2340, 350, 300, "steel");
+      supply(2480, 316, "pulse");
+      deck(2840, 375, 310, "steel");
+      enemy("runner", 3200, 504);
+      deck(3350, 398, 260, "steel");
+      deck(3630, 296, 260, "steel");
+      enemy("turret", 3780, 296);
+      cover(3680, 504, "barrel");
+      deck(3900, 398, 260, "steel");
+      enemy("shield", 4410);
+      deck(4470, 350, 270, "steel");
+      enemy("drone", 4670, 236);
+      supply(4590, 316, "health");
+      enemy("turret", 5100);
+      cover(4970, 454, "barrel");
+      deck(5300, 352, 250, "steel");
+    }
+    // Rest point, readable arena entry, then the established boss contract.
+    floor(5660, 1250, 454, "steel");
+    checkpoint(5490);
+    supply(5520, 416, "health");
+    supply(5700, 416, "spread");
+    deck(5840, 354, 120, "steel");
+    deck(6500, 354, 120, "steel");
+    return {
+      length: 6910,
+      terrain,
+      enemies,
+      props,
+      pickups,
+      beacons,
+      bossX: 6340,
+      arena: 5710,
+      exit: 6800,
+      nextId: id + 1,
+      operation,
+    };
+  }
+
   // The first screen teaches run, cover, jump and continuous fire one at a time.
   floor(0, 1320);
   deck(340, 354, 220);
@@ -181,7 +348,7 @@ function buildLevel(stage) {
   supply(1830, 314, "health");
   checkpoint(2310);
 
-  const variant = stage % 3;
+  const variant = operation;
   if (variant === 0) {
     floor(2530, 430, 488);
     floor(2960, 640);

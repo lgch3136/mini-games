@@ -1,4 +1,4 @@
-export const VERSION = "20260906-silk";
+export const VERSION = "20260918-play-r1";
 export const DT = 1 / 60;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;

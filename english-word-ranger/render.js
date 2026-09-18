@@ -1,4 +1,9 @@
-import { HEIGHT, clamp, rng, weaponPose } from "./engine.mjs?v=20260905-dawn";
+import {
+  HEIGHT,
+  clamp,
+  rng,
+  weaponPose,
+} from "./engine.mjs?v=20260918-play-r1";
 
 const mix = (a, b, t) => a + (b - a) * t;
 const TAU = Math.PI * 2;
@@ -60,9 +65,121 @@ export class Renderer {
   }
   setWorld(world) {
     this.world = world;
+    this.operation = world.stage % 6;
+    this.operationArt =
+      this.operation >= 3 ? this.buildOperationBackdrop() : null;
     this.tileCache.clear();
     for (const t of world.terrain)
       this.tileCache.set(t.id, this.buildTerrain(t));
+  }
+  buildOperationBackdrop() {
+    // Prepaint a seamless parallax panel once per level, not per animation frame.
+    const panel = document.createElement("canvas");
+    panel.width = 1600;
+    panel.height = HEIGHT;
+    const c = panel.getContext("2d"),
+      op = this.operation;
+    const colors =
+      op === 3
+        ? ["#172837", "#506570", "#293f4b"]
+        : op === 4
+          ? ["#587f9d", "#bdd4d9", "#789fac"]
+          : ["#282c38", "#786357", "#493e3f"];
+    const sky = c.createLinearGradient(0, 0, 0, HEIGHT);
+    sky.addColorStop(0, colors[0]);
+    sky.addColorStop(0.72, colors[1]);
+    sky.addColorStop(1, colors[2]);
+    c.fillStyle = sky;
+    c.fillRect(0, 0, 1600, HEIGHT);
+    if (op === 4) {
+      for (let layer = 0; layer < 3; layer++) {
+        c.fillStyle = ["#abc6d0", "#8aabb9", "#70909f"][layer];
+        c.beginPath();
+        c.moveTo(0, HEIGHT);
+        for (let i = 0; i <= 16; i++)
+          c.lineTo(
+            i * 100,
+            260 + layer * 49 - Math.abs(Math.sin(i * 2.2 + layer)) * 95,
+          );
+        c.lineTo(1600, HEIGHT);
+        c.fill();
+      }
+      c.fillStyle = "#bedadd55";
+      c.fillRect(0, 402, 1600, 138);
+      for (let i = 0; i < 36; i++) {
+        c.fillStyle = i % 2 ? "#d2e5df30" : "#52839535";
+        c.fillRect(
+          (i * 197) % 1600,
+          420 + ((i * 29) % 115),
+          45 + (i % 5) * 20,
+          1,
+        );
+      }
+    } else {
+      for (let i = 0; i < 16; i++) {
+        const x = i * 110,
+          h = 70 + ((i * 71) % 180);
+        c.fillStyle = op === 3 ? "#253c49" : "#403e44";
+        c.fillRect(x, 350 - h, 85, h + 110);
+        c.fillStyle = op === 3 ? "#9bc7c230" : "#ffbd7930";
+        for (let j = 0; j < 5; j++) c.fillRect(x + 12 + j * 13, 365 - h, 5, 3);
+      }
+    }
+    for (let i = 0; i < 4; i++) {
+      const x = i * 400 + 120;
+      if (op === 3) {
+        c.fillStyle = "#273e49";
+        c.fillRect(x, 125, 14, 330);
+        c.fillRect(x - 75, 120, 205, 10);
+        c.strokeStyle = "#405d67";
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(x - 65, 129);
+        c.lineTo(x + 100, 190);
+        c.lineTo(x + 6, 190);
+        c.stroke();
+        c.fillStyle = "#3f5660";
+        c.fillRect(x + 65, 298, 180, 105);
+        for (let k = 0; k < 9; k++) {
+          c.fillStyle = "#526b702f";
+          c.fillRect(x + 70 + k * 20, 302, 2, 97);
+        }
+        c.fillStyle = "#d6cba280";
+        c.fillRect(x + 90, 297, 125, 3);
+      } else if (op === 4) {
+        c.fillStyle = "#557783";
+        c.fillRect(x, 285, 10, 180);
+        c.fillRect(x - 26, 283, 65, 5);
+        c.strokeStyle = "#5b7f8c";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(x - 400, 274);
+        c.quadraticCurveTo(x - 190, 334, x, 274);
+        c.stroke();
+      } else {
+        c.strokeStyle = "#484b50";
+        c.lineWidth = 27;
+        c.beginPath();
+        c.moveTo(x, 455);
+        c.lineTo(x, 186);
+        c.quadraticCurveTo(x, 147, x + 40, 147);
+        c.lineTo(x + 270, 147);
+        c.stroke();
+        c.strokeStyle = "#8b80704a";
+        c.lineWidth = 2;
+        c.stroke();
+        c.fillStyle = "#2c3440";
+        c.fillRect(x + 45, 280, 215, 149);
+        const glow = c.createLinearGradient(0, 290, 0, 410);
+        glow.addColorStop(0, "#cd875465");
+        glow.addColorStop(1, "#cd875408");
+        c.fillStyle = glow;
+        c.fillRect(x + 57, 291, 190, 126);
+        c.fillStyle = "#e7b27c80";
+        c.fillRect(x + 57, 290, 190, 3);
+      }
+    }
+    return panel;
   }
   polygon(points, fill, stroke = null, width = 1) {
     const c = this.ctx;
@@ -117,7 +234,52 @@ export class Renderer {
       w = t.w,
       h = t.h;
     ctx.translate(2, 6);
-    if (t.material === "earth") {
+    if (t.material === "earth" && this.operation === 4) {
+      const ice = ctx.createLinearGradient(0, 0, 0, h);
+      ice.addColorStop(0, "#6b9ead");
+      ice.addColorStop(0.18, "#487386");
+      ice.addColorStop(1, "#243f55");
+      this.rect(0, 0, w, h, ice);
+      // Broad facets are cached with the terrain; the solid top is unambiguous.
+      for (let x = 0; x < w; x += 92) {
+        this.polygon(
+          [
+            [x, 8],
+            [x + 42, 14],
+            [x + 64, h],
+            [x + 12, h],
+          ],
+          "#b6e4e810",
+        );
+        this.line(
+          [
+            [x + 17, 11],
+            [x + 32, 36],
+            [x + 21, 57],
+          ],
+          "#c2e7e426",
+          1,
+        );
+      }
+      this.rect(0, 0, w, 5, "#dcecec");
+      this.rect(0, 5, w, 2, "#89c5d2");
+      this.line(
+        [
+          [0.5, 7],
+          [0.5, h],
+        ],
+        "#b1d7df",
+        1.2,
+      );
+      this.line(
+        [
+          [w - 1, 7],
+          [w - 1, h],
+        ],
+        "#152d43",
+        2,
+      );
+    } else if (t.material === "earth") {
       const gradient = ctx.createLinearGradient(0, 0, 0, h);
       gradient.addColorStop(0, "#6b715a");
       gradient.addColorStop(0.2, "#4c5950");
@@ -169,10 +331,24 @@ export class Renderer {
       this.rect(0, 13, w, 3, "#293f3e");
       this.rect(8, 17, w - 16, 5, "#627164");
     } else {
-      this.rect(0, 0, w, h, "#294451");
-      this.rect(0, 0, w, 4, t.motion ? "#9bf4df" : "#cfceac");
+      const furnace = this.operation === 5;
+      this.rect(0, 0, w, h, furnace ? "#3f3942" : "#294451");
+      this.rect(
+        0,
+        0,
+        w,
+        4,
+        t.motion ? "#9bf4df" : furnace ? "#efc392" : "#cfceac",
+      );
       for (let x = 0; x < w; x += 64) {
-        this.rect(x + 2, 6, 60, Math.min(h - 8, 52), "#45646c", 2);
+        this.rect(
+          x + 2,
+          6,
+          60,
+          Math.min(h - 8, 52),
+          furnace ? "#5f5360" : "#45646c",
+          2,
+        );
         this.line(
           [
             [x + 6, 8],
@@ -211,7 +387,11 @@ export class Renderer {
     c.globalAlpha = 1;
     c.imageSmoothingEnabled = true;
     this.rect(0, 0, W, H, "#789995");
-    if (this.background.complete && this.background.naturalWidth)
+    if (this.operationArt) {
+      const x = -((cam * 0.16) % 1600);
+      c.drawImage(this.operationArt, x, 0);
+      c.drawImage(this.operationArt, x + 1600, 0);
+    } else if (this.background.complete && this.background.naturalWidth)
       c.drawImage(
         this.background,
         -cam * 0.12,
@@ -342,6 +522,34 @@ export class Renderer {
   drawScenery(world, cam) {
     const W = this.width,
       c = this.ctx;
+    if (this.operation >= 3) {
+      // Restrained weather: fixed count, no allocation, no light flashes.
+      for (let i = 0; i < 24; i++) {
+        const x =
+          (((i * 173.7 - cam * 0.22 + this.time * 7) % (W + 40)) + W + 40) %
+          (W + 40);
+        const y =
+          (i * 71 + this.time * (this.operation === 3 ? 135 : 18)) % HEIGHT;
+        if (this.operation === 3)
+          this.line(
+            [
+              [x, y],
+              [x - 3, y + 9],
+            ],
+            "#bbd8e024",
+            0.7,
+          );
+        else
+          this.ellipse(
+            x,
+            y,
+            this.operation === 4 ? 1.4 : 1,
+            1,
+            this.operation === 4 ? "#eff8ed70" : "#f6c28565",
+          );
+      }
+      return;
+    }
     // Parallax structures are low contrast; never resemble collision surfaces.
     for (let i = 0; i < 16; i++) {
       const x = i * 420 - cam * 0.66 + 260;

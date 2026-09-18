@@ -92,6 +92,16 @@ async function suite() {
       "assets not ready",
     );
     await launch();
+    tap("KeyF");
+    await frames(2);
+    // Training intentionally refills meter every frame; cost is covered in versus unit tests.
+    check("F starts MAX through production key binding",diag().engine.fighters[0].maxTime>400 && diag().engine.fighters[0].stats.maxActivations===1,diag().engine.fighters[0]);
+    await reset("guard");
+    tap("KeyT");
+    await frames(15);
+    check("T command grab defeats grounded guard",diag().engine.fighters[1].hp<100 && diag().engine.fighters[0].stats.throws>0);
+    await launch();
+    change("dummy", "idle");
     check(
       "Blender GLB meshes loaded",
       diag().view.models === 2 &&
@@ -314,6 +324,7 @@ async function suite() {
   } finally {
     if (run === runId) {
       window.furyReport.running = false;
+      $("report").textContent = JSON.stringify(window.furyReport);
       $("status").textContent = window.furyReport.pass
         ? "PASS · 操作回归完成"
         : "FAIL · " + window.furyReport.error;
@@ -365,6 +376,7 @@ async function spar() {
           "KeyQ",
           "KeyL",
           "KeyR",
+          "KeyT",
         ];
         tap(sequence[count++ % sequence.length]);
         lastAction = frame;
@@ -375,6 +387,7 @@ async function spar() {
         key("KeyW", false);
         lastJump = frame;
       }
+      if(p.meter>=100&&!p.maxTime&&!p.move&&!p.down&&!p.stun)tap("KeyF");
       await delay(35);
     }
     key("KeyD", false);
@@ -409,6 +422,7 @@ async function spar() {
   } finally {
     document.body.classList.remove("clean");
     window.furyReport.running = false;
+    $("report").textContent = JSON.stringify(window.furyReport);
     $("status").textContent = window.furyReport.pass
       ? "PASS · 连续交战完成"
       : "STOP · " + window.furyReport.error;

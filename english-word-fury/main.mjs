@@ -4,8 +4,8 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20260906-joints";
-import { ArenaView } from "./view.mjs?v=20260906-joints";
+} from "./combat.mjs?v=20260918-play-r1";
+import { ArenaView } from "./view.mjs?v=20260918-play-r1";
 import { FuryAudio } from "./sound.mjs";
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
@@ -140,15 +140,25 @@ function event(e) {
     if (e.counter) {
       setText("callout", "COUNTER · 破招");
       calloutUntil = game.frame + 60;
+    } else if (e.punish) {
+      setText("callout", "PUNISH · 抓住收招");
+      calloutUntil = game.frame + 60;
     }
   }
-  if (["break", "tech", "cancel"].includes(e.type)) {
+  if (
+    ["break", "tech", "cancel", "max", "recovery", "superCancel"].includes(
+      e.type,
+    )
+  ) {
     setText(
       "callout",
       {
         break: "GUARD CRUSH · 破防",
         tech: "THROW ESCAPE · 拆投",
         cancel: "GUARD CANCEL · 防御取消",
+        max: "MAX · 七秒爆发",
+        recovery: "RECOVERY · 受身回避",
+        superCancel: "SUPER CANCEL · 奥义衔接",
       }[e.type],
     );
     calloutUntil = game.frame + 65;
@@ -165,6 +175,10 @@ function updateHud(force = false) {
   game.f.forEach((f, i) => {
     setText("name-" + i, f.c.name);
     setText("stocks-" + i, Math.floor(f.meter / 100));
+    setText(
+      "max-" + i,
+      f.maxTime ? `MAX ${(f.maxTime / 60).toFixed(1)}s` : "POWER",
+    );
     $("hp-" + i).style.transform = `scaleX(${f.hp / 100})`;
     $("guard-" + i).style.transform = `scaleX(${f.guard / 100})`;
     $("meter-" + i).style.transform =
@@ -362,6 +376,8 @@ const p1 = {
   KeyE: "upper",
   KeyQ: "rush",
   KeyR: "super",
+  KeyF: "max",
+  KeyT: "grab",
 };
 const p2 = {
   ArrowLeft: "left",
@@ -376,6 +392,8 @@ const p2 = {
   Digit6: "wave",
   Digit7: "upper",
   Digit8: "super",
+  Digit9: "max",
+  Digit0: "grab",
 };
 window.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;

@@ -1,11 +1,11 @@
-import { Race, ITEMS } from "./world.mjs?v=20260912-freedrift-r1";
-import { RaceView } from "./view.mjs?v=20260912-freedrift-r1";
+import { Race, ITEMS } from "./world.mjs?v=20260918-play-r1";
+import { RaceView } from "./view.mjs?v=20260918-play-r1";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260912-freedrift-r1";
+} from "../shared/first-person/shell.mjs?v=20260918-play-r1";
 const app = new Shell({
   kind: "race",
   view: new RaceView($("game")),
@@ -72,7 +72,7 @@ const app = new Shell({
     );
     $("technique").hidden = !p.techniqueTime;
     text("technique", p.technique);
-    $("input-strip").hidden = w.mode !== "cruise";
+    $("input-strip").hidden = !["cruise", "freestyle"].includes(w.mode);
     text("input-slip", `侧滑角 ${Math.round((Math.abs(p.slip) * 180) / Math.PI)}°`);
     for (const [id, action] of [
       ["input-gas", "gas"],

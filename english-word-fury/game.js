@@ -29,13 +29,13 @@ const ASSET_SOURCES = {
   rival: 'assets/rival-atlas-v3.webp',
   bruiser: 'assets/bruiser-atlas-v3.webp',
   heroAttacks: 'assets/hero-attacks-v4.webp',
-  heroGround: 'assets/hero-ground-v1.webp?v=20260831a',
-  heroAir: 'assets/hero-air-v1.webp?v=20260831a',
+  heroGround: 'assets/hero-ground-v1.webp?v=20260918-play-r1',
+  heroAir: 'assets/hero-air-v1.webp?v=20260918-play-r1',
   heroMotion: 'assets/hero-motion-v1.webp',
   heroSpecials: 'assets/hero-specials-v1.webp',
   heroCombat: 'assets/hero-combat-v1.webp',
-  rivalMotion: 'assets/rival-motion-v1.webp?v=20260831a',
-  vfx: 'assets/vfx-atlas-v1.webp?v=20260831a',
+  rivalMotion: 'assets/rival-motion-v1.webp?v=20260918-play-r1',
+  vfx: 'assets/vfx-atlas-v1.webp?v=20260918-play-r1',
   arenas: 'assets/arena-atlas-v1.webp',
 };
 const ASSETS = {};

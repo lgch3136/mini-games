@@ -1,4 +1,4 @@
-// All twenty-six letters belong to typing. Only Escape / Enter are game shortcuts.
+// All twenty-six letters belong to typing; 1/2/3, Escape and Enter are shortcuts.
 export class TypingInput {
   constructor({
     doc = document,
@@ -7,6 +7,7 @@ export class TypingInput {
     text,
     erase,
     guard,
+    spell = () => {},
     pause,
     notice,
     pulse,
@@ -50,6 +51,11 @@ export class TypingInput {
       if (e.key === "Enter") {
         e.preventDefault();
         guard();
+        return;
+      }
+      if (/^[123]$/.test(e.key)) {
+        e.preventDefault();
+        spell(["ember", "frost", "bloom"][Number(e.key) - 1]);
         return;
       }
       if (e.key === "Backspace") {

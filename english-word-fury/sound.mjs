@@ -1,4 +1,4 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260905-dawn";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1";
 // Original 32-bar broken-beat arrangement; bounded audio engine shared with Ranger.
 export class FuryAudio extends Soundtrack {
   schedule() {
@@ -113,7 +113,7 @@ export class FuryAudio extends Soundtrack {
     } else if (e.type === "word") {
       for (const [i, f] of [523, 659, 784].entries())
         tone(f, 0.18, 0.045, "sine", null, i * 0.07);
-    } else if (["break", "tech", "cancel"].includes(e.type)) {
+    } else if (["break", "tech", "cancel", "max", "recovery", "superCancel"].includes(e.type)) {
       tone(1050, 0.14, 0.08, "triangle", 230);
       this.hiss(t, 0.15, 0.1, 2200);
     }

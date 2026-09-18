@@ -1,7 +1,7 @@
-import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260906-silk";
-import { View } from "./view.mjs?v=20260906-silk";
-import { MoonAudio } from "./audio.mjs?v=20260906-moonblade";
-import { InputBuffer } from "./input.mjs?v=20260906-silk";
+import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260918-play-r1";
+import { View } from "./view.mjs?v=20260918-play-r1";
+import { MoonAudio } from "./audio.mjs?v=20260918-play-r1";
+import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 const $ = (id) => document.getElementById(id),
   audio = new MoonAudio(),
   coarse = matchMedia("(pointer:coarse)");

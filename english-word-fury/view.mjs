@@ -1,13 +1,13 @@
 import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { pose, interpolatePose, ankle } from "./motion.mjs?v=20260906-joints";
+import { pose, interpolatePose, ankle } from "./motion.mjs?v=20260918-play-r1";
 import {
   ROSTER,
   lerp,
   clamp,
   hurtbox,
   attackBox,
-} from "./combat.mjs?v=20260906-joints";
+} from "./combat.mjs?v=20260918-play-r1";
 const Y = new THREE.Vector3(0, 1, 0),
   Z = new THREE.Vector3(0, 0, 1),
   v = new THREE.Vector3(),
@@ -180,9 +180,17 @@ export class ArenaView {
   }
   event(e) {
     if (
-      ["hit", "block", "clash", "land", "wave", "tech", "break"].includes(
-        e.type,
-      )
+      [
+        "hit",
+        "block",
+        "clash",
+        "land",
+        "wave",
+        "tech",
+        "break",
+        "max",
+        "superCancel",
+      ].includes(e.type)
     ) {
       this.effects.push({
         ...e,
@@ -323,6 +331,28 @@ export class ArenaView {
     const scale = (this.w / 16) * this.camera.zoom;
     this.drawAtmosphere(c);
     this.drawTrails(fight, c, scale);
+    for (const f of fight.f)
+      if (f.maxTime > 0) {
+        const [x, y] = this.screen(lerp(f.px, f.x, alpha), f.y + 1.5);
+        c.save();
+        c.strokeStyle = "#ffe2a5";
+        c.globalAlpha = 0.24;
+        c.lineWidth = 1.3;
+        for (let i = 0; i < 3; i++) {
+          c.beginPath();
+          c.ellipse(
+            x,
+            y,
+            scale * (0.65 + i * 0.08),
+            scale * 1.6,
+            Math.sin(fight.frame / 35 + i) * 0.09,
+            Math.PI * (i * 0.6),
+            Math.PI * (i * 0.6 + 1.2),
+          );
+          c.stroke();
+        }
+        c.restore();
+      }
     for (const shot of fight.projectiles) {
       const [x, y] = this.screen(lerp(shot.px, shot.x, alpha), shot.y),
         r = shot.r * scale;
@@ -372,6 +402,20 @@ export class ArenaView {
           );
           c.fill();
         }
+      } else if (e.type === "max" || e.type === "superCancel") {
+        c.strokeStyle = "#ffe1a1";
+        c.lineWidth = 3 * (1 - t) + 0.5;
+        c.beginPath();
+        c.ellipse(
+          0,
+          0,
+          scale * (0.5 + t * 1.7),
+          scale * (0.8 + t * 1.5),
+          0,
+          0,
+          Math.PI * 2,
+        );
+        c.stroke();
       } else if (e.type === "block" || e.type === "tech") {
         c.strokeStyle = "#a5eaff";
         c.lineWidth = 2.5;

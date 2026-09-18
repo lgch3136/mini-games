@@ -4,9 +4,9 @@ import {
   HEIGHT,
   OPERATIONS,
   clamp,
-} from "./engine.mjs?v=20260905-dawn";
-import { Renderer } from "./render.js?v=20260905-dawn";
-import { Soundtrack } from "./sound.js?v=20260905-dawn";
+} from "./engine.mjs?v=20260918-play-r1";
+import { Renderer } from "./render.js?v=20260918-play-r1";
+import { Soundtrack } from "./sound.js?v=20260918-play-r1";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game"),
@@ -269,7 +269,7 @@ function updateHUD() {
   setText("run-number", String(world.stage + 1).padStart(2, "0"));
   const sector =
     p.x < 2250 ? 0 : p.x < 3900 ? 1 : p.x < world.level.arena ? 2 : 3;
-  setText("sector", OPERATIONS[world.stage % 3].sectors[sector]);
+  setText("sector", OPERATIONS[world.stage % OPERATIONS.length].sectors[sector]);
   const wordKey = world.word.en + ":" + world.word.progress;
   if (wordKey !== lastWordKey) {
     setText("word-meaning", world.word.zh);

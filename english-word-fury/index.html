@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#17242c" />
     <title>单词斗魂 · 截风擂台</title>
-    <link rel="stylesheet" href="style.css?v=20260906-joints" />
+    <link rel="stylesheet" href="style.css?v=20260918-play-r1" />
   </head>
   <body>
     <main id="shell">
@@ -46,10 +46,10 @@
             </div>
             <div class="power-hud power-left">
               <b id="stocks-0">0</b>
-              <div><span>POWER</span><i id="meter-0"></i></div>
+              <div><span id="max-0">POWER</span><i id="meter-0"></i></div>
             </div>
             <div class="power-hud power-right">
-              <div><span>POWER</span><i id="meter-1"></i></div>
+              <div><span id="max-1">POWER</span><i id="meter-1"></i></div>
               <b id="stocks-1">0</b>
             </div>
             <div id="combo" class="combo"></div>
@@ -77,6 +77,8 @@
             ><button data-key="roll">回避</button
             ><button data-key="wave">气波</button
             ><button data-key="super">奥义</button>
+            <button data-key="max">爆气</button
+            ><button data-key="grab">必杀投</button>
           </div>
           <div class="four-keys">
             <button data-key="A" class="key-a">A<small>轻拳</small></button
@@ -203,6 +205,19 @@
           </section>
           <section>
             <h3>指令与连招</h3>
+            <p>
+              <kbd>F</kbd> 爆气：消耗一格，7 秒内攻击增强；命中突进技可用 R
+              衔接奥义（再耗一格）。
+            </p>
+            <p>
+              <kbd>T</kbd>
+              近身必杀投；远处空抓有明显收招。铁岳的山岳崩更强；赤绫的 Q
+              是两段连脚。
+            </p>
+            <p>
+              后 + L 向后回避；被击飞即将落地时点 L
+              受身。盯住对手的收招反击，会显示 PUNISH。
+            </p>
             <p>↓ ↘ → + 拳：截风波 <kbd>空格</kbd></p>
             <p>→ ↓ ↘ + 拳：升龙破 <kbd>E</kbd></p>
             <p>↓ ↙ ← + 脚：疾风连脚 <kbd>Q</kbd></p>
@@ -227,7 +242,7 @@
         </p>
       </dialog>
     </main>
-    <script src="../shared/vocabulary.js?v=20260820a"></script>
-    <script type="module" src="main.mjs?v=20260906-joints"></script>
+    <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
+    <script type="module" src="main.mjs?v=20260918-play-r1"></script>
   </body>
 </html>

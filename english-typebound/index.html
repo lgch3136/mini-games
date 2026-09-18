@@ -9,12 +9,12 @@
     <meta name="theme-color" content="#163b43" />
     <meta
       name="description"
-      content="键旅 Typebound 绘本冒险：带着小书灵穿过森林、潮汐与云海。逐字施法、连词点亮庭院，用 2,329 个分级英文单词练习打字。"
+      content="键旅 Typebound 光灵冒险：三系法术、弹性光灵、命中涟漪与连词共鸣。用 2,329 个分级英文单词，在三章九关中练习打字。"
     />
     <title>键旅 · TYPEBOUND</title>
-    <link rel="stylesheet" href="style.css?v=20260912-story-r1" />
-    <link rel="stylesheet" href="story.css?v=20260912-story-r1" />
-    <link rel="preload" href="assets/letterwood-story.webp" as="image" />
+    <link rel="stylesheet" href="style.css?v=20260918-play-r1" />
+    <link rel="stylesheet" href="story.css?v=20260918-play-r1" />
+    <link rel="stylesheet" href="combat.css?v=20260918-play-r1" />
   </head>
   <body>
     <main id="app" data-view="menu">
@@ -40,7 +40,7 @@
           <h1>键旅<span>TYPEBOUND</span></h1>
           <p class="headline">把单词写成法术，<br />把练习走成冒险。</p>
           <p class="lead">
-            带着小书灵，穿过森林、潮汐与云海。<br />敲出字母、放出魔法，把暗淡的书页写亮。
+            让每一次落键，点亮一束光。<br />星火强攻、霜环控场、生息回复——把单词写成你的战术。
           </p>
           <div class="setup">
             <label
@@ -81,7 +81,8 @@
             <div class="settings-body">
               <p>
                 逐字输入，打完一个词按空格施法。错字不推进，直接重打；Backspace
-                回退。完成 3 个词后，Enter 释放护盾；Esc 暂停。
+                回退。1 / 2 / 3 切换强攻、冰霜与回复；每 3 连词爆发。Enter 用 3
+                格能量开盾，敌人即将攻击时只用 1 格即可反制；Esc 暂停。
               </p>
               <p>
                 字速 WPM = 已完成单词的字符数（含空格）÷ 5 ÷
@@ -173,6 +174,17 @@
           <p id="arena-note" aria-live="polite"></p>
         </div>
         <div class="typing-dock">
+          <div class="spell-picker" role="group" aria-label="选择法术">
+            <button data-spell="ember" aria-pressed="true">
+              <kbd>1</kbd><b>星火</b><small>强攻 · 快速破敌</small>
+            </button>
+            <button data-spell="frost" aria-pressed="false">
+              <kbd>2</kbd><b>霜环</b><small>缓速 · 打断蓄力</small>
+            </button>
+            <button data-spell="bloom" aria-pressed="false">
+              <kbd>3</kbd><b>生息</b><small>回复 · 无错 +4 生命</small>
+            </button>
+          </div>
           <div class="typing-heading">
             <span id="typing-label">书写即施法</span><b id="combo"></b
             ><button id="guard" title="Enter 释放护盾">
@@ -304,7 +316,7 @@
         </div>
       </div>
     </main>
-    <script src="../shared/vocabulary.js?v=20260912-story-r1"></script>
-    <script type="module" src="app.mjs?v=20260912-story-r1"></script>
+    <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
+    <script type="module" src="app.mjs?v=20260918-play-r1"></script>
   </body>
 </html>

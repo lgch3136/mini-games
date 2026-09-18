@@ -11,9 +11,9 @@ import {
   stepKart,
   motionState,
   cancelDrift,
-} from "./kart-motion.mjs?v=20260912-freedrift-r1";
+} from "./kart-motion.mjs?v=20260918-play-r1";
 import { TyreTrails } from "./tyre-trails.mjs";
-export const VERSION = "20260912-freedrift-r1",
+export const VERSION = "20260918-play-r1",
   DT = 1 / 120;
 // Includes the visible tyre shoulders and front/rear rounded bumpers.
 export const KART_BOUNDS = Object.freeze({ halfWidth: 1.16, halfLength: 1.49 });

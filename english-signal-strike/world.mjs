@@ -7,7 +7,14 @@ import {
   hypot,
   random,
 } from "../shared/first-person/math.mjs";
-export const VERSION = "20260906-firstlight-r1",
+import {
+  MAPS,
+  mapById,
+  coverPlan,
+  enemyPlan,
+} from "./maps.mjs?v=20260918-play-r1";
+export { MAPS };
+export const VERSION = "20260918-play-r1",
   DT = 1 / 120;
 export const ZONES = [
   {
@@ -52,7 +59,7 @@ export const WEAPONS = [
     range: 32,
   },
 ];
-export function level() {
+export function level(map = "harbor") {
   const boxes = [],
     props = [];
   const box = (x, y, z, hx, hy, hz, kind = "wall") => {
@@ -70,10 +77,19 @@ export function level() {
       box(side * 15, 3.6, z - 18, 3.2, 3.6, 7.5, "building");
       box(side * 16, 5, z - 40, 2.4, 5, 5, "building");
     }
-    box(-5, 1, z - 17, 3.2, 1, 1.8, "cover");
-    box(6, 1.55, z - 28, 2.5, 1.55, 2, "crate");
-    box(-8, 1.15, z - 37, 2.3, 1.15, 1.7, "crate");
-    props.push({ kind: "relay", x: i === 1 ? -8 : 8, y: 1, z: z - 43 });
+    if (map === "harbor") {
+      box(-5, 1, z - 17, 3.2, 1, 1.8, "cover");
+      box(6, 1.55, z - 28, 2.5, 1.55, 2, "crate");
+      box(-8, 1.15, z - 37, 2.3, 1.15, 1.7, "crate");
+    } else
+      for (const [x, localZ, hx, hz, h, kind] of coverPlan(map, i))
+        box(x, h / 2, z + localZ, hx, h / 2, hz, kind);
+    props.push({
+      kind: "relay",
+      x: (i === 1 ? -1 : 1) * (map === "hangar" ? 5 : 8),
+      y: 1,
+      z: z - 44,
+    });
     if (i < 2) {
       box(-13, 3, z - 49, 6.5, 3, 0.75, "gatewall");
       box(13, 3, z - 49, 6.5, 3, 0.75, "gatewall");
@@ -82,10 +98,16 @@ export function level() {
   return { boxes, props };
 }
 export class Strike {
-  constructor({ easy = false, checkpoint = 0 } = {}) {
+  constructor({ easy = false, checkpoint = 0, map = "harbor" } = {}) {
+    this.map = mapById(map);
+    this.zones = ZONES.map((z, i) => ({
+      ...z,
+      name: this.map.zones[i],
+      sub: `${this.map.en} / ${i + 1}`,
+    }));
     this.easy = easy;
     this.random = random(418);
-    Object.assign(this, level());
+    Object.assign(this, level(this.map.id));
     this.events = [];
     this.time = 0;
     this.finished = false;
@@ -130,14 +152,7 @@ export class Strike {
     let id = 0;
     for (let zone = 0; zone < 3; zone++) {
       const z = -zone * 52;
-      const spots = [
-        [-5, z - 24, "spider"],
-        [6, z - 13, "drone"],
-        [-9, z - 34, "sentry"],
-        [9, z - 37, "spider"],
-        [0, z - 43, "drone"],
-      ];
-      if (zone === 2) spots.push([0, z - 37, "boss"]);
+      const spots = enemyPlan(this.map.id, zone);
       for (const [x, ez, kind] of spots) {
         const hp =
           kind === "boss"
@@ -549,6 +564,7 @@ export class Strike {
   snapshot() {
     return {
       time: this.time,
+      map: this.map.id,
       dead: this.dead,
       finished: this.finished,
       zone: this.zone,

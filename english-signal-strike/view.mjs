@@ -3,7 +3,7 @@ import {
   T,
   label,
   roadTexture,
-} from "../shared/first-person/scene.mjs?v=20260906-firstlight-r1";
+} from "../shared/first-person/scene.mjs?v=20260918-play-r1";
 import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs";
 const dummy = new T.Object3D();
 export class StrikeView extends SceneKit {
@@ -62,6 +62,8 @@ export class StrikeView extends SceneKit {
     this.permanent = new Set(this.geometries);
   }
   build(w) {
+    const palette = w.map;
+    this.scene.fog.color.setHex(palette.fog);
     for (const c of [...this.group.children]) this.group.remove(c);
     for (const g of this.geometries) if (!this.permanent.has(g)) g.dispose();
     this.geometries = new Set(this.permanent);
@@ -81,6 +83,10 @@ export class StrikeView extends SceneKit {
       teal = this.emissive("teal", 0x74d9d5, 1.1),
       gold = this.emissive("gold", 0xf6b967, 0.7),
       red = this.emissive("red", 0xfe7354, 1.2);
+    wall.color.setHex(palette.wall);
+    floor.color.setHex(palette.floor);
+    teal.color.setHex(palette.accent);
+    teal.emissive?.setHex(palette.accent);
     wall.map = this.concrete;
     floor.map = this.floorMap;
     this.add(
@@ -102,7 +108,7 @@ export class StrikeView extends SceneKit {
         o.hz * 2,
         o.kind === "crate" ? dark : wall,
       );
-      if (o.kind === "cover" || o.kind === "crate") {
+      if (o.kind === "cover" || o.kind === "crate" || o.kind === "conduit") {
         b.box(
           o.x,
           o.y + o.hy + 0.035,
@@ -183,14 +189,11 @@ export class StrikeView extends SceneKit {
         b.box(0, 0.013, z - j * 4.7, 0.1, 0.014, 1.5, white);
       b.box(-2, 0.016, z - 45, 4, 0.016, 0.12, orange);
       b.box(2, 0.016, z - 45, 4, 0.016, 0.12, orange);
-      let pm = this.materials.get("sign" + zone);
+      const signKey = `sign-${palette.id}-${zone}`;
+      let pm = this.materials.get(signKey);
       if (!pm) {
         const poster = label(
-          [
-            "01  /  HARBOR ACCESS",
-            "02  /  COOLANT ATRIUM",
-            "03  /  SIGNAL CORE",
-          ][zone],
+          `0${zone + 1}  /  ${palette.en}`,
           {
             color: zone === 1 ? "#9cf5e4" : "#ffe1b0",
             bg: "#1b3541",
@@ -200,7 +203,7 @@ export class StrikeView extends SceneKit {
         );
         this.textures.push(poster);
         pm = new T.MeshBasicMaterial({ map: poster });
-        this.materials.set("sign" + zone, pm);
+        this.materials.set(signKey, pm);
       }
       const sign = this.add(
         new T.PlaneGeometry(10, 1.25),
@@ -213,7 +216,7 @@ export class StrikeView extends SceneKit {
         b.box(side * 6.25, 3.1, z - 48.7, 0.45, 6.2, 0.8, trim);
       b.box(0, 6.3, z - 48.7, 13, 0.5, 0.85, trim);
       b.box(0, 5.95, z - 48.18, 11.8, 0.055, 0.06, teal);
-      if (zone === 1) {
+      if (zone === 1 || palette.id === "hangar" || palette.id === "foundry") {
         for (let j = 0; j < 6; j++) {
           b.box(0, 9, z - j * 7.5, 40, 0.28, 0.3, trim);
           b.box(-7, 8.8, z - j * 7.5, 0.14, 0.1, 7, teal);

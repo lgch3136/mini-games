@@ -1,11 +1,11 @@
-import { Strike, ZONES, WEAPONS } from "./world.mjs?v=20260906-firstlight-r1";
-import { StrikeView } from "./view.mjs?v=20260906-firstlight-r1";
+import { Strike, MAPS, WEAPONS } from "./world.mjs?v=20260918-play-r1";
+import { StrikeView } from "./view.mjs?v=20260918-play-r1";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260906-firstlight-r1";
+} from "../shared/first-person/shell.mjs?v=20260918-play-r1";
 let hitUntil = 0;
 const app = new Shell({
   kind: "fps",
@@ -14,16 +14,14 @@ const app = new Shell({
     new Strike({
       easy: $("difficulty").value === "easy",
       checkpoint: checkpoint || 0,
+      map: $("map-select").value,
     }),
   hud(app) {
     const w = app.world;
     if (!w) return;
     const p = w.p;
-    text(
-      "zone-label",
-      `${String(w.zone + 1).padStart(2, "0")} / ${ZONES[w.zone].sub.split(" / ")[0]}`,
-    );
-    text("zone-name", ZONES[w.zone].name);
+    text("zone-label", `${String(w.zone + 1).padStart(2, "0")} / ${w.map.en}`);
+    text("zone-name", w.zones[w.zone].name);
     text("remaining", w.remaining ?? 5);
     text("hp", Math.ceil(p.hp));
     text("shield", Math.ceil(p.shield));
@@ -71,7 +69,7 @@ const app = new Shell({
     text(
       "result",
       w.dead
-        ? `当前抵达：${ZONES[w.zone].name}\n已摧毁 ${w.kills} 个防御单位 · 尝试用掩体挡住远程攻击。\n可从最近已激活中继继续。`
+        ? `当前抵达：${w.zones[w.zone].name}\n已摧毁 ${w.kills} 个防御单位 · 尝试用掩体挡住远程攻击。\n可从最近已激活中继继续。`
         : `三座中继全部恢复 / 核心守卫已解除\n行动耗时 ${clock(w.time)} · 摧毁 ${w.kills} 个防御单位\n命中率 ${Math.round((w.hits / Math.max(1, w.shots)) * 100)}%`,
     );
     app.retryCheckpoint = w.dead ? w.checkpoint : 0;
@@ -83,3 +81,12 @@ $("sensitivity").addEventListener(
   () => (app.controls.sensitivity = +$("sensitivity").value),
 );
 app.init();
+$("map-select").addEventListener("change", () => {
+  app.retryCheckpoint = 0;
+  const map = MAPS.find((m) => m.id === $("map-select").value);
+  text("map-brief", map.brief);
+  if (app.mode !== "menu" || !app.view.ready) return;
+  app.world = app.create();
+  app.view.build(app.world);
+  app.menu();
+});

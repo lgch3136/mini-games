@@ -139,8 +139,7 @@ export class Shell {
     // Automated input can sample the state frequently without sorting two
     // 1200-frame percentile arrays on every read. Full reports opt in once.
     window.firstPersonDiagnostics = ({ metrics = true } = {}) => ({
-      version:
-        this.kind === "race" ? "20260912-freedrift-r1" : "20260906-firstlight-r1",
+      version: "20260918-play-r1",
       kind: this.kind,
       mode: this.mode,
       raf: !!this.raf,

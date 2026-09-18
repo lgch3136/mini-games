@@ -14,7 +14,7 @@ export const DRIFT = Object.freeze({
   // entered from a steering correction. Age + peak-slip guards still reject
   // straight driving and one-frame Shift spam; tiers 2/3 need more charge.
   minCharge: 0.08,
-  tapBuffer: 0.14,
+  tapBuffer: 0.18,
   sprayWindow: 0.8,
   cutDuration: 0.24,
   chainWindow: 1.35,
@@ -143,12 +143,14 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
     p.recoverTime = 0;
   }
   p.driftHeld = handbrake;
-  p.steer = damp(p.steer, steer, 30, dt);
+  p.steer = damp(p.steer, steer, 52, dt);
 
   const gas = !!(input.gas || input.boost || autoGas),
     brake = !!input.brake;
   p.brake = brake;
-  const forwardSpeed = Math.abs(p.speed * Math.cos(p.slip));
+  // Steering must depend on road speed, NOT speed projected onto the nose.
+  // cos(slip) used to approach zero in a slide and unexpectedly multiply yaw.
+  const forwardSpeed = p.speed;
   const lock = lerp(0.57, 0.09, clamp(forwardSpeed / 64, 0, 1));
   const gripYaw = clamp(31 / Math.max(p.speed, 6), 0.48, 1.65);
   // A small powered low-speed steering response lets the player turn away
@@ -175,17 +177,18 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
       // permanent driftSide torque kept pushing into the first turn even
       // under full opposite input. Tyres, not a target slip angle, limit the
       // travel vector; sustained input can now over-rotate past 90 degrees.
-      const deepTurn = 1 - Math.exp(-Math.max(0, p.driftHold - 0.35) / 0.45);
+      const deepTurn = 1 - Math.exp(-Math.max(0, p.driftHold - 0.22) / 0.54);
       targetYaw =
-        -steer * (0.79 + p.driftPower * 0.47 + deepTurn * 1.7) *
-        clamp(40 / Math.max(20, forwardSpeed), 0.72, 1.25);
-      grip = against ? 3.8 : lerp(2.5, 1.4, p.driftPower);
+        -steer *
+        (1.08 + p.driftPower * 0.3 + deepTurn * 1.6) *
+        clamp(46 / Math.max(24, forwardSpeed), 0.88, 1.08);
+      grip = against ? 2.6 : lerp(2.5, 1.4, p.driftPower);
       lateralLimit =
-        (against ? 65 : lerp(48, 28, p.driftPower)) /
-        Math.max(p.speed, 12);
+        (against ? 44 : lerp(48, 28, p.driftPower)) / Math.max(p.speed, 12);
       drag =
-        0.5 + p.driftPower * 2.1 +
-        p.speed * 0.13 * Math.sin(p.slip) ** 2 +
+        0.22 +
+        p.driftPower * 0.9 +
+        p.speed * 0.15 * Math.sin(p.slip) ** 2 +
         p.speed * 0.24 * Math.max(0, -Math.cos(p.slip));
     } else if (p.driftPhase === "cut") {
       p.cutTime = Math.max(0, p.cutTime - dt);
@@ -204,10 +207,18 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
       p.driftPower = damp(p.driftPower, 0, 7, dt);
       // Countersteer rotates the body toward the existing velocity vector.
       // Letting go restores tyres progressively instead of snapping to grip.
-      const recovery = against ? 4 : Math.abs(steer) < 0.1 ? 1.8 : 0;
-      targetYaw += clamp(p.slip * recovery, -1.7, 1.7);
-      grip = against ? 6 : Math.abs(steer) < 0.1 ? 4 : 2;
-      lateralLimit = (against ? 78 : 38) / Math.max(p.speed, 12);
+      const recovery = against ? 3.4 : Math.abs(steer) < 0.1 ? 2.4 : 0;
+      // Roll tyres back in over 240 ms: releasing Shift is not an instant
+      // lateral-grip tripler. Counter input rotates the nose first.
+      const settle = 1 - Math.exp(-p.recoverTime / 0.24);
+      targetYaw += clamp(p.slip * recovery, -1.65, 1.65);
+      grip = against
+        ? lerp(2.8, 5.8, settle)
+        : Math.abs(steer) < 0.1
+          ? lerp(2, 5, settle)
+          : 2;
+      lateralLimit =
+        (against ? lerp(42, 72, settle) : 38) / Math.max(p.speed, 12);
       drag = 0.4 + p.speed * 0.09 * Math.sin(p.slip) ** 2;
     }
   } else if (
@@ -218,7 +229,7 @@ export function stepKart(p, input, env, dt, emit = () => {}) {
   ) {
     targetYaw += clamp(angle(roadYaw - p.yaw) * 1.3, -0.16, 0.16);
   }
-  p.yawRate = damp(p.yawRate, targetYaw, p.driftPhase === "cut" ? 23 : 26, dt);
+  p.yawRate = damp(p.yawRate, targetYaw, p.driftPhase === "cut" ? 23 : 44, dt);
   p.yaw = angle(p.yaw + p.yawRate * dt);
   if (Number.isFinite(lateralLimit)) {
     // Bounded lateral tyre force preserves sideways momentum. Exponential

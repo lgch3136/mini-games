@@ -1,4 +1,4 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260905-dawn";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1";
 export class MoonAudio extends Soundtrack {
   schedule() {
     if (!this.ctx || !this.running || this.muted) return;

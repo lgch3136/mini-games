@@ -1,7 +1,7 @@
 import {
   racePilot,
   strikePilot,
-} from "./first-person-pilot.mjs?v=20260906-firstlight-r1";
+} from "./first-person-pilot.mjs?v=20260918-play-r1";
 const frame = document.getElementById("subject"),
   $ = (id) => document.getElementById(id),
   win = () => frame.contentWindow,
@@ -153,6 +153,59 @@ function report() {
   $("report").textContent = JSON.stringify(window.fpReport);
   $("status").textContent =
     window.fpReport.error || "完成 · 已停止测试并释放音频/渲染";
+}
+async function mapSuite() {
+  cancelled = false;
+  run++;
+  window.fpReport = { game: "fps", kind: "maps", running: true, checks: [] };
+  try {
+    await launch("fps");
+    click("exit-btn");
+    let warm;
+    for (let cycle = 0; cycle < 2; cycle++)
+      for (const map of ["harbor", "foundry", "canal", "hangar"]) {
+        const select = doc().getElementById("map-select");
+        select.value = map;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        click("start");
+        await until(() => d().mode === "playing", "map start");
+        check(map + " / 正式 UI 创建正确地图", d().game.map === map);
+        keys({ KeyW: true, KeyJ: true });
+        await wait(450);
+        keys({});
+        check(
+          map + " / 可移动射击，无横向溢出",
+          d().game.p.z < 2 &&
+            d().game.shots > 1 &&
+            doc().documentElement.scrollWidth <= win().innerWidth,
+        );
+        click("exit-btn");
+        check(
+          map + " / 退出释放循环和声音",
+          !d().raf && d().voices === 0 && d().audio !== "running",
+        );
+        if (map === "hangar") {
+          const r = d();
+          if (cycle === 0) warm = r;
+          else
+            check(
+              "四图反复切换后 GPU 对象不累积",
+              r.geometries <= warm.geometries + 1 &&
+                r.textures <= warm.textures,
+              {
+                warm: { g: warm.geometries, t: warm.textures },
+                after: { g: r.geometries, t: r.textures },
+              },
+            );
+        }
+      }
+  } catch (e) {
+    window.fpReport.error = e.message;
+  } finally {
+    keys({});
+    if (d().mode === "playing") click("exit-btn");
+    report();
+  }
 }
 async function suite(game) {
   cancelled = false;
@@ -314,6 +367,7 @@ async function route(game) {
 }
 $("race").onclick = () => suite("race");
 $("fps").onclick = () => suite("fps");
+$("fps-maps").onclick = mapSuite;
 $("race-run").onclick = () => route("race");
 $("fps-run").onclick = () => route("fps");
 $("stop").onclick = () => {

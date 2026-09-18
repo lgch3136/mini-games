@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560">
+<defs><radialGradient id="bg"><stop stop-color="#203e48"/><stop offset="1" stop-color="#071a25"/></radialGradient><radialGradient id="mint"><stop stop-color="#c6fff1" stop-opacity=".5"/><stop offset=".25" stop-color="#81e8cf" stop-opacity=".16"/><stop offset="1" stop-color="#81e8cf" stop-opacity="0"/></radialGradient><radialGradient id="gold"><stop stop-color="#ffdea8" stop-opacity=".7"/><stop offset=".3" stop-color="#ffdc98" stop-opacity=".12"/><stop offset="1" stop-color="#ffdc98" stop-opacity="0"/></radialGradient></defs>
+<rect width="1000" height="560" fill="url(#bg)"/>
+<g fill="none" stroke="#90ddca" stroke-opacity=".11"><ellipse cx="500" cy="415" rx="370" ry="64"/><ellipse cx="500" cy="415" rx="480" ry="102"/><path d="M0 407Q120 413 240 405T500 407T760 405T1000 407"/></g>
+<circle cx="270" cy="295" r="175" fill="url(#mint)"/><circle cx="740" cy="295" r="135" fill="url(#gold)"/>
+<path d="M270 221C324 218 340 270 331 304S291 358 254 352S204 312 207 277S234 224 270 221Z" fill="#9cedcf0b" stroke="#a6f9df" stroke-width="2"/>
+<ellipse cx="255" cy="274" rx="36" ry="23" fill="none" stroke="#eaffee40" transform="rotate(-25 255 274)"/>
+<path d="M270 274Q274 291 291 295Q274 299 270 316Q266 299 249 295Q266 291 270 274" fill="#e0fff0"/>
+<circle cx="740" cy="295" r="56" fill="#f9dfa908" stroke="#f2c79a" stroke-width="1.6"/><path d="M740 214A81 81 0 0 1 817 320" fill="none" stroke="#f2c79a" stroke-width="3"/>
+<path d="M740 278Q744 291 757 295Q744 299 740 312Q736 299 723 295Q736 291 740 278" fill="#ffe8bc"/>
+<path d="M354 283Q470 221 614 266" stroke="#a4efd06b" stroke-width="2" fill="none"/><circle cx="609" cy="265" r="42" fill="url(#mint)"/><path d="M612 253L616 263L626 267L616 271L612 281L608 271L598 267L608 263Z" fill="#d4ffeb"/>
+<g fill="#c6fff0" font-family="monospace" font-size="16" opacity=".75"><text x="422" y="251">f</text><text x="468" y="244">l</text><text x="514" y="244">o</text><text x="560" y="253">w</text></g>
+<text x="64" y="76" fill="#cbe9df" font-family="sans-serif" font-size="20" letter-spacing="7">TYPEBOUND</text><text x="64" y="108" fill="#81b0af" font-family="sans-serif" font-size="12" letter-spacing="3">EVERY KEY / A LITTLE LIGHT</text>
+<text x="64" y="501" fill="#bcd6ca" font-family="sans-serif" font-size="15" letter-spacing="2">光灵 · 三系法术 · 连词共鸣</text>
+</svg>

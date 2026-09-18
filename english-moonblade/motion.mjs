@@ -1,8 +1,8 @@
 import {
   solvePose,
   interpolatePose,
-} from "../english-word-fury/motion.mjs?v=20260906-joints";
-import { lerp, clamp } from "./world.mjs?v=20260906-silk";
+} from "../english-word-fury/motion.mjs?v=20260918-play-r1";
+import { lerp, clamp } from "./world.mjs?v=20260918-play-r1";
 export { interpolatePose };
 const mix = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
 const smooth = (t) => {

@@ -2,16 +2,16 @@ import {
   SceneKit,
   T,
   label,
-} from "../shared/first-person/scene.mjs?v=20260912-freedrift-r1";
+} from "../shared/first-person/scene.mjs?v=20260918-play-r1";
 import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs";
-import { SectorBatch } from "./sector-batch.mjs?v=20260912-freedrift-r1";
-import { GUARDRAIL } from "./world.mjs?v=20260912-freedrift-r1";
+import { SectorBatch } from "./sector-batch.mjs?v=20260918-play-r1";
+import { GUARDRAIL } from "./world.mjs?v=20260918-play-r1";
 import { TRAIL_LIFE } from "./tyre-trails.mjs";
 import {
   makeMochiKart,
   animateMochiKart,
   roundedBox,
-} from "./mochi-kart.mjs?v=20260912-freedrift-r1";
+} from "./mochi-kart.mjs?v=20260918-play-r1";
 export class RaceView extends SceneKit {
   constructor(canvas) {
     super(canvas);
@@ -42,6 +42,13 @@ export class RaceView extends SceneKit {
     this.buildSky();
     this.permanent = new Set(this.geometries);
     this.ready = true;
+  }
+  resize() {
+    super.resize();
+    // Toon lighting already has soft contact shadows under every kart.
+    // Balanced mode keeps the native CSS-pixel buffer but skips the second
+    // full scene/shadow pass. Detailed mode retains real sun shadows.
+    this.renderer.shadowMap.enabled = this.quality > 1.25;
   }
   buildSky() {
     // A direction-space sky has no panorama cut seam when the driver makes

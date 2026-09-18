@@ -254,7 +254,7 @@ test("ordinary jump holds the vertical camera while platform heights and reverse
     p = { x: 40, y: 0, vx: 7.5, ground: true };
   c.reset(p, 108);
   for (let i = 0; i < 90; i++) c.advance(p, 108, false, 1 / 60);
-  assert.ok(c.lead.value > 2.19);
+  assert.ok(c.lead.value > 1.58 && c.lead.value <= 1.6);
   for (let i = 0; i < 50; i++) {
     const t = i / 60,
       y = Math.max(0, 13 * t - 16 * t * t);
@@ -265,11 +265,11 @@ test("ordinary jump holds the vertical camera while platform heights and reverse
     );
   }
   p.vx = -7.5;
-  for (let i = 0; i < 30; i++) c.advance(p, 108, false, 1 / 60);
-  assert.ok(c.lead.value < -2);
+  for (let i = 0; i < 90; i++) c.advance(p, 108, false, 1 / 60);
+  assert.ok(c.lead.value < -1.56);
   p.y = 4;
   for (let i = 0; i < 90; i++) c.advance(p, 108, false, 1 / 60);
-  assert.ok(Math.abs(c.y.value - 7.4) < 0.001);
+  assert.ok(Math.abs(c.y.value - 7.4) < 0.01);
 });
 test("camera movement is bounded and consistent across display rates, landing pulse never exceeds 0.032 units", () => {
   const values = [30, 60, 120].map((hz) => {

@@ -1,13 +1,13 @@
-import { Journey, STEP } from "./sim.mjs?v=20260912-story-r1";
+import { Journey, STEP } from "./sim.mjs?v=20260918-play-r1";
 import {
   makeLexicon,
   safeReview,
   RELICS,
-} from "./content.mjs?v=20260912-story-r1";
-import { TypingInput } from "./input.mjs?v=20260912-story-r1";
-import { Stage } from "./render.mjs?v=20260912-story-r1";
-import { TypeAudio } from "./audio.mjs?v=20260912-story-r1";
-const VERSION = "20260912-story-r1";
+} from "./content.mjs?v=20260918-play-r1";
+import { TypingInput } from "./input.mjs?v=20260918-play-r1";
+import { Stage } from "./render.mjs?v=20260918-play-r1";
+import { TypeAudio } from "./audio.mjs?v=20260918-play-r1";
+const VERSION = "20260918-play-r1";
 const $ = (id) => document.getElementById(id);
 const read = (k, fallback) => {
   try {
@@ -333,6 +333,9 @@ function processEvents() {
       else if (journey.combo === 6) note("流光盛放 · 你把这一页写亮了");
     }
     if (e.type === "guard") note("护盾已展开 · 敌人的蓄力被推迟");
+    if (e.type === "parry") note("完美反制 · 1 格能量弹回攻击！");
+    if (e.type === "word" && e.burst)
+      note(`${e.combo} 连词 · 共鸣爆发 +${e.burstDamage}`);
     if (e.type === "enrage") note("封印松动 · 首领蓄力加快，继续把句子写完");
     if (e.type === "sentence") note("句子完成 · 封印受到额外冲击");
     if (e.type === "victory") {
@@ -365,9 +368,17 @@ function keyErase() {
 }
 function guard() {
   if (paused || menuMode) return;
-  if (!journey.guard()) notify("完成 3 个单词即可释放护盾。");
+  if (!journey.guard())
+    notify("3 格能量展开护盾；敌人即将攻击时，1 格即可反制。");
   processEvents();
   updateHUD();
+}
+function chooseSpell(spell) {
+  if (paused || menuMode || !journey?.selectSpell(spell)) return;
+  processEvents();
+  updateHUD();
+  if (!matchMedia("(pointer:coarse)").matches)
+    $("typing-input").focus({ preventScroll: true });
 }
 function pulse(char) {
   const key = char === " " ? "Space" : char.toUpperCase();
@@ -560,6 +571,18 @@ function updateHUD() {
   if (!journey?.enemy) return;
   const g = journey,
     e = g.enemy;
+  $("app").dataset.spell = g.spell;
+  for (const button of document.querySelectorAll("[data-spell]"))
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.spell === g.spell),
+    );
+  set(
+    "typing-label",
+    { ember: "星火 · 强攻", frost: "霜环 · 控场", bloom: "生息 · 回复" }[
+      g.spell
+    ],
+  );
   set("wpm", g.time >= 3 ? g.wpm : "—");
   set("accuracy", g.accuracy);
   set("score", g.score.toLocaleString());
@@ -589,17 +612,15 @@ function updateHUD() {
   $("app").dataset.flow = String(Math.min(2, Math.floor(g.combo / 3)));
   set(
     "flow-label",
-    g.combo >= 6
-      ? "流光盛放"
-      : g.combo >= 3
-        ? "书灵共鸣"
-        : `书灵苏醒 ${g.combo} / 3`,
+    `共鸣 ${g.combo % 3} / 3 · 下一词${g.combo % 3 === 2 ? "爆发！" : "继续蓄能"}`,
   );
-  $("flow-progress").style.transform = `scaleX(${Math.min(1, g.combo / 3)})`;
+  $("flow-progress").style.transform = `scaleX(${(g.combo % 3) / 3})`;
   audio.scene = Math.floor(g.depth / 3) % 3;
   audio.flow = g.combo >= 3;
   set("charges", `${"◆ ".repeat(g.energy)}${"◇ ".repeat(3 - g.energy)}`);
-  $("guard").classList.toggle("ready", g.energy >= 3);
+  const canParry = e.charge >= 0.78 && g.energy >= 1;
+  $("guard").classList.toggle("ready", g.energy >= 3 || canParry);
+  $("guard").classList.toggle("parry", canParry);
   $("intent-bar").style.width = `${Math.min(1, e.charge) * 100}%`;
   $("intent").classList.toggle("danger", e.charge > 0.72);
   set(
@@ -608,9 +629,11 @@ function updateHUD() {
       ? "从容书写 · 无攻击"
       : !g.roomStarted
         ? "等待你的第一键"
-        : e.stagger > 0
-          ? "蓄力被打断"
-          : `敌人蓄力 ${Math.max(0, e.period * (e.enraged ? 0.8 : 1) * (1 - e.charge)).toFixed(1)}s`,
+        : canParry
+          ? "↵ 现在反制！只消耗 1 格能量"
+          : e.stagger > 0
+            ? "蓄力被打断"
+            : `敌人蓄力 ${Math.max(0, e.period * (e.enraged ? 0.8 : 1) * (1 - e.charge)).toFixed(1)}s`,
   );
 }
 function statsView(target) {
@@ -813,7 +836,7 @@ function frame(now) {
     accumulator -= STEP;
   }
   processEvents();
-  stage.advance(dt);
+  stage.advance(dt, journey);
   stage.draw(journey);
   if (now > hudAt) {
     hudAt = now + 100;
@@ -872,6 +895,7 @@ try {
     text: keyText,
     erase: keyErase,
     guard,
+    spell: chooseSpell,
     pause: togglePause,
     notice: notify,
     pulse,
@@ -910,6 +934,8 @@ try {
     }
   });
   on($("guard"), "click", guard);
+  for (const button of document.querySelectorAll("[data-spell]"))
+    on(button, "click", () => chooseSpell(button.dataset.spell));
   on($("sound"), "click", async () => {
     await audio.setMuted(!audio.muted);
     set("sound", `声音 ${audio.muted ? "关" : "开"}`);

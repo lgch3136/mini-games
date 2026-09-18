@@ -1,5 +1,5 @@
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
-export const VERSION = "20260906-joints";
+export const VERSION = "20260918-play-r1";
 export const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const ROSTER = [
@@ -29,7 +29,7 @@ export const ROSTER = [
     power: 0.92,
     size: 0.94,
     plan: "rush",
-    text: "步法更快，跳入与下段交替施压；不要把突进踢留在对手面前收招。",
+    text: "二段飞燕突进、快速下段与小跳施压。命中后接 MAX 超必杀；被防住就别继续硬抢。",
   },
   {
     id: "shan",
@@ -43,7 +43,7 @@ export const ROSTER = [
     power: 1.13,
     size: 1.08,
     plan: "grappler",
-    text: "压缩对手的退路，以长脚牵制，再近身抓投。力量换取更谨慎的走位。",
+    text: "低飞重波封路，靠近后用山岳崩指令投破防。重拳伤害高，落空后的收招也更危险。",
   },
 ];
 const move = (
@@ -147,6 +147,15 @@ export const MOVES = {
     push: 0.25,
     lift: 0.19,
   }),
+  grab: move("近身必杀投", 8, 2, 34, 23, 1.1, 1.7, {
+    pose: "throw",
+    level: "throw",
+    special: true,
+    down: true,
+    stop: 7,
+    push: 0.3,
+    lift: 0.22,
+  }),
   wave: move("截风波", 13, 1, 28, 12, 0, 1.45, {
     pose: "wave",
     projectile: true,
@@ -201,8 +210,43 @@ export function moveFor(f, name) {
       name: "飞燕穿风",
       startup: 8,
       recovery: 22,
-      damage: 13,
+      damage: 7,
+      active: 14,
+      hitFrames: [0, 6],
+      stun: 23,
+      push: 0.06,
       lunge: 0.105,
+    };
+  if (f.id === 1 && name === "lowKick")
+    return { ...base, name: "燕啄", startup: 4, recovery: 8, range: 1.4 };
+  if (f.id === 1 && name === "wave")
+    return {
+      ...base,
+      name: "飞羽",
+      startup: 11,
+      recovery: 25,
+      damage: 9,
+      projectileSpeed: 0.17,
+    };
+  if (f.id === 2 && name === "wave")
+    return {
+      ...base,
+      name: "裂地劲",
+      startup: 17,
+      recovery: 30,
+      damage: 16,
+      y: 0.6,
+      level: "low",
+      projectileSpeed: 0.105,
+    };
+  if (f.id === 2 && name === "grab")
+    return {
+      ...base,
+      name: "山岳崩",
+      startup: 6,
+      range: 1.24,
+      damage: 29,
+      recovery: 38,
     };
   if (f.id === 1 && name === "upper")
     return { ...base, name: "燕返", startup: 4, recovery: 26, damage: 13 };
@@ -236,6 +280,10 @@ export function fighter(id, side) {
     hp: 100,
     guard: 100,
     meter: 0,
+    maxTime: 0,
+    rollDirection: 1,
+    recoverWindow: 0,
+    confirmSerial: -1,
     state: "idle",
     stateFrame: 0,
     action: null,
@@ -275,6 +323,8 @@ export function fighter(id, side) {
       counters: 0,
       throws: 0,
       specials: 0,
+      punishes: 0,
+      maxActivations: 0,
       whiffs: 0,
     },
     poseFrom: null,
@@ -427,6 +477,10 @@ export class Fight {
           f.history = [];
           return "super";
         }
+        if (["A", "C"].includes(key) && this.motion(f, [4, 1, 2, 3, 6])) {
+          f.history = [];
+          return "grab";
+        }
         if (["A", "C"].includes(key) && this.motion(f, [6, 2, 3])) {
           f.history = [];
           return "upper";
@@ -454,11 +508,12 @@ export class Fight {
     if (!m) return false;
     if (
       (m.cost || 0) > f.meter ||
-      (f.y > 0.04 && ["wave", "super", "upper", "rush", "throw"].includes(name))
+      (f.y > 0.04 &&
+        ["wave", "super", "upper", "rush", "throw", "grab"].includes(name))
     )
       return false;
     if (
-      name === "throw" &&
+      m.level === "throw" &&
       (this.f[1 - f.side].y > 0.15 || this.f[1 - f.side].throwImmune)
     )
       return false;
@@ -485,6 +540,16 @@ export class Fight {
     return true;
   }
   attempt(f, key, held = f.held) {
+    if (key === "recover" || (key === "roll" && f.down)) {
+      // A deliberate fall recovery rewards timing; a held evade never repeats.
+      if (f.hp > 0 && f.down && f.y > 0 && f.y < 1.2 && f.vy < 0) {
+        // Buffer the choice, but preserve the falling arc until actual contact.
+        f.recoverWindow = 10;
+        f.rollDirection = held.has(f.facing === 1 ? "left" : "right") ? -1 : 1;
+        return true;
+      }
+      return false;
+    }
     if (
       f.down ||
       f.stun ||
@@ -502,6 +567,19 @@ export class Fight {
         f.inv = 22;
         this.emit("cancel", { side: f.side });
       } else return false;
+    }
+    if (
+      key === "max" &&
+      !f.action &&
+      !f.maxTime &&
+      f.y === 0 &&
+      f.meter >= 100
+    ) {
+      f.meter -= 100;
+      f.maxTime = 420;
+      f.stats.maxActivations++;
+      this.emit("max", { side: f.side, x: f.x, y: 1.6 });
+      return true;
     }
     if (key === "jump" && !f.action && f.y === 0) {
       f.vy = f.held.has("up") ? 0.235 : 0.16;
@@ -522,7 +600,8 @@ export class Fight {
     if (["roll", "backstep"].includes(key) && !f.action && f.y === 0) {
       f.state = key;
       f.stateFrame = 0;
-      f.vx = f.facing * (key === "roll" ? 0.145 : -0.16);
+      f.rollDirection = held.has(f.facing === 1 ? "left" : "right") ? -1 : 1;
+      f.vx = f.facing * (key === "roll" ? 0.145 * f.rollDirection : -0.16);
       f.inv = key === "roll" ? 18 : 7;
       f.run = false;
       if (key === "backstep") {
@@ -538,13 +617,22 @@ export class Fight {
     if (f.action) {
       const a = f.action;
       const category = m.special ? "special" : m.heavy ? "heavy" : "light";
+      const superCancel =
+        name === "super" &&
+        f.maxTime > 0 &&
+        a.spec.special &&
+        a.connected &&
+        !a.spec.projectile &&
+        a.name !== "super";
       if (
         !a.connected ||
-        !a.spec.cancel?.includes(category) ||
+        (!superCancel && !a.spec.cancel?.includes(category)) ||
         a.frame > a.spec.startup + a.spec.active + 7 ||
         (a.name === name && name !== "lowKick")
       )
         return false;
+      if (superCancel && f.meter >= 100)
+        this.emit("superCancel", { side: f.side, x: f.x, y: f.y + 1.5 });
     }
     return this.start(f, name);
   }
@@ -566,6 +654,24 @@ export class Fight {
       this.queue(e, e.aiQueue.key);
       e.aiQueue = null;
     }
+    // Hit confirmation needs its own small reaction window, not the much
+    // slower neutral decision interval. It reads a contact, never user input.
+    if (e.action?.connected && e.confirmSerial !== e.action.serial) {
+      e.confirmSerial = e.action.serial;
+      const a = e.action;
+      if (
+        a.spec.cancel &&
+        this.random() < (this.difficulty === "easy" ? 0.3 : 0.78)
+      )
+        e.aiQueue = {
+          key: a.spec.cancel.includes("heavy")
+            ? "punch"
+            : e.c.plan === "rush"
+              ? "rush"
+              : "wave",
+          at: this.frame + 3,
+        };
+    }
     if (this.frame < e.aiNext || e.freeze || e.down || e.stun) return;
     const react =
       this.difficulty === "easy" ? 20 : this.difficulty === "hard" ? 10 : 15;
@@ -579,12 +685,29 @@ export class Fight {
       e.aiQueue = { key, at: this.frame + delay };
     };
     if (e.action) {
-      if (
-        e.action.connected &&
-        e.action.spec.cancel?.includes("special") &&
-        r < 0.6
-      )
-        attack(e.c.plan === "rush" ? "rush" : "wave", 3);
+      return;
+    }
+    if (e.y > 0.2) {
+      if (dist < 2.4 && e.vy < 0.14) attack("D", 1);
+      return;
+    }
+    if (e.meter >= 200 && !e.maxTime && dist > 2.4 && r < 0.32) {
+      attack("max", 2);
+      return;
+    }
+    // Mix a readable low / overhead / throw against a passive blocker instead
+    // of always feeding the same guarded normal into an inert opponent.
+    if (p.blocking && dist < 1.8 && r < 0.7) {
+      attack(
+        dist < 1.12
+          ? e.c.plan === "grappler"
+            ? "grab"
+            : "throw"
+          : p.crouch
+            ? "overhead"
+            : "lowKick",
+        5,
+      );
       return;
     }
     // Decisions see only the opponent's existing state, never unprocessed input.
@@ -666,6 +789,8 @@ export class Fight {
     f.px = f.x;
     f.py = f.y;
     f.flash = Math.max(0, f.flash - 1);
+    f.maxTime = Math.max(0, f.maxTime - 1);
+    f.recoverWindow = Math.max(0, f.recoverWindow - 1);
     f.throwImmune = Math.max(0, f.throwImmune - 1);
     f.buffer = f.buffer.filter(
       (b) => this.frame - b.frame <= 10 + (f.freeze > 0 ? 6 : 0),
@@ -689,7 +814,7 @@ export class Fight {
       f.crouch = f.y === 0 && f.held.has("down");
       f.blocking = f.y === 0 && (f.held.has("guard") || dx === -f.facing);
     }
-    if (!f.down) {
+    {
       for (let i = f.buffer.length - 1; i >= 0; i--) {
         if (this.attempt(f, f.buffer[i].key, f.buffer[i].held)) {
           f.buffer.splice(0, i + 1);
@@ -728,6 +853,7 @@ export class Fight {
       const a = f.action,
         m = a.spec;
       a.frame++;
+      if (m.hitFrames?.includes(a.frame - m.startup)) a.hit = false;
       if (a.frame === m.startup) {
         this.emit("swing", {
           side: f.side,
@@ -741,7 +867,7 @@ export class Fight {
             px: f.x + f.facing * 0.95,
             y: f.y + m.y,
             dir: f.facing,
-            speed: a.name === "super" ? 0.21 : 0.135,
+            speed: m.projectileSpeed || (a.name === "super" ? 0.21 : 0.135),
             spec: m,
             name: a.name,
             life: 130,
@@ -789,6 +915,15 @@ export class Fight {
         f.land = f.action ? 5 : 2;
         if (f.action?.name.startsWith("air")) f.action = null;
         this.emit("land", { side: f.side });
+        if (f.recoverWindow && f.down && f.hp > 0) {
+          f.recoverWindow = f.down = f.stun = f.land = 0;
+          f.state = "roll";
+          f.stateFrame = 8;
+          f.vx = f.facing * f.rollDirection * 0.13;
+          f.inv = 12;
+          f.throwImmune = 18;
+          this.emit("recovery", { side: f.side });
+        }
       }
     }
     if (
@@ -841,6 +976,10 @@ export class Fight {
           : true);
     const counter =
       !!target.action && target.action.frame <= target.action.spec.startup;
+    const punish =
+      !!target.action &&
+      target.action.frame >=
+        target.action.spec.startup + target.action.spec.active;
     const scale = Math.max(0.42, 1 - attacker.combo * 0.085);
     let damage = guard
       ? spec.special
@@ -849,7 +988,11 @@ export class Fight {
       : Math.max(
           1,
           Math.round(
-            spec.damage * attacker.c.power * scale * (counter ? 1.2 : 1),
+            spec.damage *
+              attacker.c.power *
+              scale *
+              (counter ? 1.2 : 1) *
+              (attacker.maxTime ? 1.18 : 1),
           ),
         );
     if (attacker.side === 1 && this.difficulty === "easy")
@@ -888,6 +1031,7 @@ export class Fight {
       target.received++;
       this.sessionHits++;
       if (counter) attacker.stats.counters++;
+      if (punish) attacker.stats.punishes++;
       if (isThrow) attacker.stats.throws++;
       if (spec.down || target.y > 0.12) {
         target.stun = 0;
@@ -911,6 +1055,7 @@ export class Fight {
       damage,
       heavy: spec.heavy || spec.special,
       counter,
+      punish,
       x: target.x - attacker.facing * 0.22,
       y: target.y + clamp(spec.y, 0.45, target.crouch ? 1.6 : 2.8),
       combo: attacker.combo,
@@ -987,7 +1132,12 @@ export class Fight {
     }
     // Collect both contacts before resolving, so simultaneous normals can trade.
     for (const { f, a } of hits) {
-      if (this.receive(this.f[1 - f.side], f, a.spec, a.name)) {
+      const firstInSeries =
+        a.spec.hitFrames && a.frame < a.spec.startup + a.spec.hitFrames.at(-1);
+      const spec = firstInSeries
+        ? { ...a.spec, down: false, lift: 0, stop: 3 }
+        : a.spec;
+      if (this.receive(this.f[1 - f.side], f, spec, a.name)) {
         a.hit = true;
         a.connected = true;
       }
@@ -1091,6 +1241,7 @@ export class Fight {
         y: f.y,
         hp: f.hp,
         meter: f.meter,
+        maxTime: f.maxTime,
         state: f.state,
         move: f.action?.name || null,
         moveFrame: f.action?.frame || 0,

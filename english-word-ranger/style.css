@@ -198,6 +198,7 @@ h2 {
   font-size: 10px;
 }
 .segments {
+  flex-wrap: wrap;
   display: flex;
   border: 1px solid #accfb730;
   border-radius: 6px;

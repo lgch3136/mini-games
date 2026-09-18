@@ -55,13 +55,17 @@ export function rigAnchors(w, h, s, pose, time, reduced = false) {
   return {
     book: {
       x: w * 0.24 + (pose.heroX + bx * cos - by * sin) * s,
-      y: h * 0.86 + (-32 + breathe + bx * sin + by * cos) * s,
+      y:
+        h * 0.72 + ((pose.heroY || 0) - 32 + breathe + bx * sin + by * cos) * s,
     },
-    hero: { x: w * 0.24 + pose.heroX * s, y: h * 0.86 - 74 * s },
+    hero: {
+      x: w * 0.24 + pose.heroX * s,
+      y: h * 0.72 + ((pose.heroY || 0) - 74) * s,
+    },
     enemy: {
       x: w * 0.77 + pose.enemyX * s,
       y:
-        h * 0.86 +
+        h * 0.72 +
         ((reduced ? 0 : Math.sin(time * 2.4) * 4) - pose.death * 30 - 74) * s,
     },
   };
@@ -96,6 +100,7 @@ export class StoryMotion {
     this.impacts = [];
     this.flash = 0;
     this.hurt = 0;
+    this.threat = 0;
     this.counters = { letters: 0, spells: 0, impacts: 0, words: 0, guards: 0 };
   }
   event(e) {
@@ -121,9 +126,10 @@ export class StoryMotion {
       this.combo = 0;
       this.flow = 0;
     }
-    if (e.type === "guard") {
+    if (e.type === "guard" || e.type === "parry") {
       this.guardAge = 0;
       this.counters.guards++;
+      if (e.type === "parry") this.queue("word", FLIGHT.word, 1.2, e);
     }
     if (e.type === "hurt") {
       this.attackAge = 0;
@@ -135,9 +141,12 @@ export class StoryMotion {
     this.pending.push({ kind, at: this.time + delay, power, detail });
     if (this.pending.length > 64) this.pending.shift();
   }
-  advance(dt) {
+  advance(dt, game = null) {
     dt = clamp(dt, 0, 0.05);
     this.time += dt;
+    const approach =
+      game?.phase === "combat" ? (game.enemy?.charge || 0) ** 2 * 48 : 0;
+    this.threat += (approach - this.threat) * (1 - Math.exp(-dt * 6));
     this.entry += dt;
     this.castAge += dt;
     this.letterAge += dt;
@@ -182,10 +191,13 @@ export class StoryMotion {
     const death =
       this.victoryAge < 0 ? 0 : ease((this.victoryAge - FLIGHT.word) / 0.7);
     return {
-      heroX: reduced ? 0 : -95 * entering + this.hero.x + cast * 7,
-      enemyX: reduced ? 0 : 100 * entering + this.enemy.x - attack * 32,
+      heroX: reduced ? 0 : -95 * entering + this.hero.x + cast * 24,
+      heroY: reduced ? 0 : -cast * 9,
+      enemyX: reduced
+        ? 0
+        : 100 * entering + this.enemy.x - attack * 76 - this.threat,
       cast: reduced ? cast * 0.25 : cast,
-      stride: reduced ? 0 : Math.sin(this.entry * 23) * entering,
+      stride: reduced ? 0 : Math.sin(this.entry * 23) * entering + cast * 0.65,
       lean: reduced ? 0 : cast * 0.085 - this.hero.x * 0.006,
       death,
       flash: clamp(this.flash / 0.22),

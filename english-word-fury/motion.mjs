@@ -1,4 +1,4 @@
-import { clamp, lerp, total } from "./combat.mjs?v=20260906-joints";
+import { clamp, lerp, total } from "./combat.mjs?v=20260918-play-r1";
 const PI = Math.PI;
 const smooth = (t) => {
   t = clamp(t, 0, 1);
@@ -250,7 +250,7 @@ export function pose(f, alpha = 1) {
   }
   if (f.state === "roll") {
     const q = clamp(f.stateFrame / 28, 0, 1),
-      a = -q * 2 * PI,
+      a = -q * 2 * PI * (f.rollDirection || 1),
       cx = 0,
       cy = 1.32,
       upright = p,

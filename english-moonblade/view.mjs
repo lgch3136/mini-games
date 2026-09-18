@@ -1,10 +1,10 @@
 import * as T from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { MotionTrack } from "./motion.mjs?v=20260906-silk";
-import { FollowCamera } from "./camera.mjs?v=20260906-silk";
-import { platformLayers } from "./terrain.mjs?v=20260906-silk";
-import { prepareRigidSkin, createRigidSkin } from "./rig.mjs?v=20260906-silk";
-import { clamp, lerp } from "./world.mjs?v=20260906-silk";
+import { MotionTrack } from "./motion.mjs?v=20260918-play-r1";
+import { FollowCamera } from "./camera.mjs?v=20260918-play-r1";
+import { platformLayers } from "./terrain.mjs?v=20260918-play-r1";
+import { prepareRigidSkin, createRigidSkin } from "./rig.mjs?v=20260918-play-r1";
+import { clamp, lerp } from "./world.mjs?v=20260918-play-r1";
 const Y = new T.Vector3(0, 1, 0),
   vec = new T.Vector3(),
   quat = new T.Quaternion(),

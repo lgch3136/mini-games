@@ -140,7 +140,7 @@ test("spell origins follow the moving book rather than the nominal standing spot
   const m = new StoryMotion(),
     a = rigAnchors(1000, 400, 1, m.pose(), 0);
   assert.equal(a.book.x, 240 - 95 + 39);
-  assert.equal(a.book.y, 344 - 75);
+  assert.equal(a.book.y, 288 - 75);
   advance(m, 1);
   const b = rigAnchors(1000, 400, 1, m.pose(), m.time);
   assert.ok(Math.abs(b.book.x - a.book.x - 95) < 1e-8);

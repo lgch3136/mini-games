@@ -150,19 +150,20 @@ function resourcesIdle(d) {
 async function storySuite(token) {
   await reset(token);
   await until(
-    () => Object.values(diag().resources.assets).every((s) => s === "ready"),
+    () =>
+      Object.values(diag().resources.assets).every((s) => s === "procedural"),
     10000,
     token,
   );
   expect(
-    "三章实际素材加载完成",
+    "三章程序光场就绪，无需位图请求",
     Object.keys(diag().resources.assets).length === 3,
     diag().resources.assets,
   );
   await startCombat();
   await delay(900, token);
   expect(
-    "入场结束后双脚站稳",
+    "光灵入场后平稳悬浮",
     Math.abs(diag().resources.presentation.heroX) < 0.01 &&
       Math.abs(diag().resources.presentation.stride) < 0.01,
   );
@@ -522,11 +523,61 @@ async function suite(token) {
     restarts,
   );
   expect(
-    "反复开始复用三张场景图而非重复加载",
-    imageCount === 3 && restarts.every((r) => r.images === imageCount),
+    "程序光场不加载或累积场景位图",
+    imageCount === 0 && restarts.every((r) => r.images === 0),
   );
   report.viewport = viewport;
   report.final = diag();
+}
+async function spellSuite(token) {
+  await reset(token);
+  await startCombat();
+  press("2");
+  expect(
+    "数字键切换霜环，不误记为字母",
+    diag().game.spell === "frost" &&
+      diag().game.cursor === 0 &&
+      diag().game.stats.errors === 0,
+  );
+  click('[data-spell="bloom"]');
+  expect(
+    "点击生息切换法术与选中反馈",
+    diag().game.spell === "bloom" &&
+      doc()
+        .querySelector('[data-spell="bloom"]')
+        .getAttribute("aria-pressed") === "true",
+  );
+  press("1");
+  const word = diag().game.word.en;
+  for (const letter of word) {
+    press(letter);
+    await delay(40, token);
+  }
+  press(" ");
+  expect(
+    "一词获得一格能量",
+    diag().game.energy === 1 && diag().game.stats.words === 1,
+  );
+  status.textContent = "等待敌人自然蓄力，验证 1 格能量反制";
+  await until(() => diag().game.enemy.charge >= 0.82, 22000, token);
+  expect(
+    "自然蓄力进入反制提示窗口",
+    doc().querySelector("#guard").classList.contains("parry"),
+  );
+  const hp = diag().game.enemy.hp;
+  press("Enter");
+  expect(
+    "Enter 反制只消耗一格并打断攻击",
+    diag().game.energy === 0 &&
+      diag().game.stats.parries === 1 &&
+      diag().game.enemy.charge === 0 &&
+      diag().game.enemy.hp < hp,
+  );
+  click("#exit");
+  click("#result-menu");
+  await delay(120, token);
+  report.final = diag();
+  expect("法术测试结束无后台音频或渲染", resourcesIdle(diag()));
 }
 async function playback(token, full) {
   await reset(token);
@@ -555,7 +606,7 @@ async function playback(token, full) {
         ];
         expect(
           `第 ${g.depth + 1} 关场景素材就绪`,
-          d.resources.assets[art] === "ready",
+          d.resources.assets[art] === "procedural",
           d.resources.assets,
         );
       }
@@ -692,7 +743,9 @@ async function run(name, action) {
 }
 document.getElementById("suite").onclick = () => run("输入与资源验收", suite);
 document.getElementById("story").onclick = () =>
-  run("绘本动画反馈验收", storySuite);
+  run("光灵动画反馈验收", storySuite);
+document.getElementById("spells").onclick = () =>
+  run("法术切换与自然蓄力反制", spellSuite);
 document.getElementById("journey").onclick = () =>
   run("九关普通输入回放", (token) => playback(token, true));
 document.getElementById("long").onclick = () =>

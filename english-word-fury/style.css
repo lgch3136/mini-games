@@ -815,6 +815,7 @@ kbd {
 }
 .utility {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 6px;
 }
@@ -1000,7 +1001,8 @@ kbd {
     align-items: center;
   }
   .utility {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(2, auto);
     gap: 5px;
   }
   .utility button {

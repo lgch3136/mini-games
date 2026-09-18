@@ -4,7 +4,7 @@ import {
   RELICS,
   ENEMIES,
   PASSAGE_GLOSS,
-} from "./content.mjs?v=20260912-story-r1";
+} from "./content.mjs?v=20260918-play-r1";
 export const STEP = 1 / 120;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export class RNG {
@@ -64,6 +64,7 @@ export class Journey {
     this.hp = this.maxHp = 100;
     this.shield = 0;
     this.energy = 0;
+    this.spell = "ember";
     this.relics = {};
     this.events = [];
     this.history = [];
@@ -81,6 +82,8 @@ export class Journey {
       bestCombo: 0,
       damage: 0,
       guards: 0,
+      parries: 0,
+      bursts: 0,
       rooms: 0,
     };
     this.combo = 0;
@@ -183,6 +186,7 @@ export class Journey {
       maxHp,
       charge: 0,
       stagger: 0,
+      chill: 0,
       hit: 0,
       attack: 0,
       enraged: false,
@@ -321,18 +325,42 @@ export class Journey {
     this.energy = Math.min(3, this.energy + 1);
     const multiplier = 1 + (this.relics.quill || 0) * 0.15;
     let damage = (en.length * 2.1 + 8) * multiplier * (clean ? 1.2 : 1);
+    // Each spell changes a decision, not just a colour.
+    if (this.spell === "ember") damage *= 1.16;
+    if (this.spell === "frost") {
+      damage *= 0.82;
+      this.enemy.chill = clean ? 1.35 : 0.65;
+      this.enemy.charge = Math.max(0, this.enemy.charge - 0.12);
+    }
+    if (this.spell === "bloom") {
+      damage *= 0.86;
+      if (clean) this.hp = Math.min(this.maxHp, this.hp + 4);
+    }
     if (this.enemy.kind === "sentinel") damage *= clean ? 1.4 : 0.75;
     if (clean && this.enemy.kind === "moth")
       this.enemy.charge = Math.max(0, this.enemy.charge - 0.11);
-    if (this.combo > 0 && this.combo % 3 === 0)
-      damage += (this.relics.echo || 0) * 12;
+    const burst = this.combo > 0 && this.combo % 3 === 0,
+      burstDamage = burst ? 16 + (this.relics.echo || 0) * 12 : 0;
+    if (burst) {
+      damage += burstDamage;
+      this.stats.bursts++;
+    }
     this.score += Math.round(
       (en.length * 10 + (clean ? 30 : 0)) *
         (1 + Math.min(10, this.combo) * 0.05),
     );
     this.heroCast = 0.55;
     this.enemy.stagger = Math.max(this.enemy.stagger, clean ? 0.28 : 0.16);
-    this.event("word", { en, zh, clean, combo: this.combo, damage });
+    this.event("word", {
+      en,
+      zh,
+      clean,
+      combo: this.combo,
+      damage,
+      spell: this.spell,
+      burst,
+      burstDamage,
+    });
     this.history.unshift({ en, zh, clean, errors: this.wordErrors });
     if (this.history.length > 60) this.history.pop();
     const m = this.mistakes.get(en);
@@ -380,13 +408,32 @@ export class Journey {
     if (this.enemy.hp <= 0) this.winRoom();
   }
   guard() {
-    if (this.phase !== "combat" || this.energy < 3) return false;
+    if (this.phase !== "combat") return false;
+    if (this.enemy.charge >= 0.78 && this.energy >= 1) {
+      this.energy--;
+      this.enemy.charge = 0;
+      this.enemy.stagger = 1;
+      this.shield = Math.min(60, this.shield + 10);
+      this.stats.parries++;
+      this.event("parry");
+      this.damage(18, false);
+      return true;
+    }
+    if (this.energy < 3) return false;
     this.energy = 0;
     this.shield = Math.min(60, this.shield + 22);
     this.enemy.charge = Math.max(0, this.enemy.charge - 0.3);
     this.enemy.stagger = 0.65;
     this.stats.guards++;
     this.event("guard");
+    return true;
+  }
+  selectSpell(spell) {
+    if (this.phase !== "combat" || !["ember", "frost", "bloom"].includes(spell))
+      return false;
+    if (this.spell === spell) return false;
+    this.spell = spell;
+    this.event("spell", { spell });
     return true;
   }
   hurt() {
@@ -418,6 +465,7 @@ export class Journey {
     this.errorAge = Math.max(0, this.errorAge - dt);
     this.enemy.hit = Math.max(0, this.enemy.hit - dt);
     this.enemy.attack = Math.max(0, this.enemy.attack - dt);
+    this.enemy.chill = Math.max(0, this.enemy.chill - dt);
     if (!this.roomStarted) return;
     this.time += dt;
     if (this.time >= this.sampleAt) {
@@ -430,7 +478,8 @@ export class Journey {
       this.enemy.stagger = Math.max(0, this.enemy.stagger - dt);
     else if (this.mode === "journey") {
       this.enemy.charge +=
-        dt / (this.enemy.period * (this.enemy.enraged ? 0.8 : 1));
+        (dt * (this.enemy.chill > 0 ? 0.22 : 1)) /
+        (this.enemy.period * (this.enemy.enraged ? 0.8 : 1));
       if (this.enemy.charge >= 1) {
         this.enemy.charge -= 1;
         this.enemy.attack = 0.7;
@@ -505,6 +554,7 @@ export class Journey {
         maxHp: this.maxHp,
         shield: this.shield,
         energy: this.energy,
+        spell: this.spell,
         time: this.time,
         visualTime: this.visualTime,
         roomStarted: this.roomStarted,
