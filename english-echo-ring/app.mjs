@@ -1,8 +1,8 @@
 import { Game, STEP, TAU, clamp } from "./sim.mjs?v=20260906-echo-r5";
 import { Controls } from "./input.mjs?v=20260906-echo-r5";
-import { Renderer } from "./render.mjs?v=20260906-echo-r5";
+import { Renderer } from "./render.mjs?v=20260928-light-r1";
 import { EchoAudio } from "./audio.mjs?v=20260906-echo-r5";
-const VERSION = "20260906-echo-r5";
+const VERSION = "20260928-light-r1";
 const $ = (id) => document.getElementById(id);
 const phases = ["01 / 涟漪", "02 / 回流", "03 / 共振", "04 / 深潮"];
 const timeText = (t) =>
@@ -279,6 +279,7 @@ function frame(timestamp) {
     while (accumulator >= STEP) {
       preview.time += STEP;
       preview.ring.step(STEP);
+      renderer.update(STEP, preview, false);
       accumulator -= STEP;
     }
     renderer.draw(preview, accumulator / STEP, true);
@@ -309,6 +310,8 @@ try {
     prefs.reduced ?? matchMedia("(prefers-reduced-motion:reduce)").matches;
   $("quality").value = prefs.quality === "1" ? "1" : "1.75";
   renderer.reduced = $("reduced").checked;
+  $("field").checked = prefs.field !== false;
+  renderer.fieldEnabled = $("field").checked;
   preview = new Game({ seed: 7231 });
   for (let i = 0; i < 690; i++) {
     const t = i * STEP,
@@ -348,21 +351,37 @@ try {
   }
   for (const el of document.querySelectorAll("input[name=mode]"))
     on(el, "change", refreshBest);
-  for (const id of ["reduced", "quality"])
+  for (const id of ["reduced", "quality", "field"])
     on($(id), "change", () => {
       renderer.reduced = $("reduced").checked;
+      renderer.fieldEnabled = $("field").checked;
+      if (!renderer.fieldEnabled) renderer.field.clear();
       saveStore("echo-ring-prefs-v1", {
         reduced: renderer.reduced,
         quality: $("quality").value,
+        field: renderer.fieldEnabled,
       });
       resize();
     });
+  on(window, "keydown", (e) => {
+    if (mode !== "playing" || e.code !== "KeyV" || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    $("field").click();
+    notify(renderer.fieldEnabled ? "柔性流场 · 开" : "柔性流场 · 关", 1.2);
+  });
   on($("preview-space"), "pointerdown", (e) => {
     if (mode !== "menu") return;
     preview.ring.pluck(
       Math.atan2(e.clientY - renderer.cy, e.clientX - renderer.cx),
       200,
     );
+    if (renderer.fieldEnabled) {
+      const rect = renderer.canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left - renderer.cx) / renderer.scale;
+      const y = (e.clientY - rect.top - renderer.cy) / renderer.scale;
+      const amount = Math.min(1, 245 / (Math.hypot(x, y) || 1));
+      renderer.field.impulse(x * amount, y * amount, 220, 115);
+    }
     previewUntil = performance.now() + 2000;
     requestFrame();
   });
@@ -415,6 +434,12 @@ try {
       voices: audio.voices.size,
       audioState: audio.ctx?.state ?? "uncreated",
       musicTimer: !!audio.timer,
+      fieldNodes: renderer.field.count,
+      fieldEnabled: renderer.fieldEnabled,
+      reducedMotion: renderer.reduced,
+      haloReady: renderer.halo.complete && renderer.halo.naturalWidth > 0,
+      fieldEnergy: Math.round(renderer.field.energy * 1000) / 1000,
+      fieldPeak: Math.round(renderer.field.peak * 1000) / 1000,
     },
     canvas: {
       width: renderer.canvas.width,

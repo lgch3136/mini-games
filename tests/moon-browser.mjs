@@ -174,6 +174,7 @@ async function suite() {
     key("KeyA", false);
     await frames(5);
     const cameraY = d().view.camera.y;
+    const cameraWidth = d().view.camera.width;
     tap("Space");
     await frames(1);
     let short = 0;
@@ -197,12 +198,12 @@ async function suite() {
     });
     check(
       "Ordinary jump does not bob or zoom the camera",
-      !checkJumpCamera && Math.abs(d().view.camera.width - 24) < 0.01,
+      !checkJumpCamera && Math.abs(d().view.camera.width - cameraWidth) < 0.01,
       d().view.camera,
     );
     check(
       "Lighting and sword-history pools stay bounded",
-      d().view.localLights === 2 && d().view.hero.trail <= 10,
+      d().view.localLights === 2 && d().view.hero.trail <= 24,
       d().view,
     );
     const energy = d().world.player.energy;
@@ -405,8 +406,9 @@ async function motion() {
       lastJump = -200,
       lastSlash = -40,
       lastNinja = -400;
-    const first = d().world.frame;
+    const first = d().world.frame, deadline = performance.now() + 45000;
     while (!cancelled && run === runId && d().world.frame - first < 1440) {
+      if (performance.now() > deadline) throw Error("Playback exceeded its wall-clock budget; stopping test load");
       const diag = d(),
         p = diag.world.player,
         f = diag.world.frame;
@@ -557,6 +559,112 @@ async function terrain() {
     done();
   }
 }
+async function reaction() {
+  begin("20260929 cache, feedback, comfort and resource lifecycle");
+  let comfort;
+  try {
+    await until(() => win().moonDiagnostics && d().view?.ready, "assets not ready");
+    if (d().mode !== "menu") click("exit-btn");
+    comfort = doc().getElementById("comfort").checked;
+    if (comfort) click("comfort");
+    await launch();
+    await frames(45);
+    const geometry = d().view.geometries, textures = d().view.textures;
+    check("Closer framing preserves pixel ratio and original actor geometry", d().view.camera.width < 21 && d().view.dpr === Math.min(win().devicePixelRatio, 1.5) && d().view.originalCharacterDraws >= 18, d().view);
+    key("KeyD", true); await until(() => d().world.player.x > 4.9, "approach cache"); key("KeyD", false); await frames(3);
+    tap("KeyJ"); await until(() => d().world.props[0].broken, "slash did not break visible cache");
+    check("Visible cache breaks through ordinary attack input", d().view.caches.broken === 1, d().view.caches);
+    check("Break emits bounded visible fragments", d().view.feedback.active > 8 && d().view.feedback.active <= 192, d().view.feedback);
+    const active = d().view.feedback.active;
+    click("pause-btn"); const frozen = d().world.frame; await wait(250);
+    check("Pause freezes simulation and feedback without audio work", d().world.frame === frozen && d().view.feedback.active === active && !d().raf && !d().audio.timer, d().audio);
+    click("primary-action"); key("KeyD", true); await until(() => d().world.player.x > 6.3, "collect cache reward"); key("KeyD", false); await frames(4);
+    check("Revealed cache reward is actually collectable", d().world.player.energy >= 8, d().world.player.energy);
+    key("KeyA", true); await frames(8); tap("KeyL"); await frames(2);
+    check("Dash emits a local trail without camera impacts", d().view.feedback.active > 0 && d().view.camera.impact === 0, d().view);
+    key("KeyA", false);
+    for (let i = 0; i < 4; i++) {
+      click("exit-btn"); click("start-btn"); await frames(12);
+      check(`Rebuild ${i + 1}: GPU resources do not accumulate`, d().view.geometries === geometry && d().view.textures === textures, { geometry: d().view.geometries, textures: d().view.textures });
+    }
+    click("exit-btn"); click("comfort"); click("start-btn"); await frames(6);
+    check("Comfort mode is explicit and preserves a readable hero", d().view.reduced && d().view.hero.position.every(Number.isFinite));
+    click("exit-btn");
+    check("Exit clears particles, rings, RAF, UI animation and audio", !d().view.feedback.active && !d().view.feedback.rings && !d().raf && !d().uiAnimations && !d().audio.timer && !d().audio.voices, d());
+    if (doc().getElementById("comfort").checked !== comfort) click("comfort");
+    window.moonReport.pass = true;
+  } catch (e) {
+    window.moonReport.error = e.message; window.moonReport.pass = false;
+  } finally {
+    for (const k of ["KeyA", "KeyD", "KeyJ", "KeyL"]) key(k, false);
+    if (d().mode === "playing") click("pause-btn");
+    done();
+  }
+}
+let clipUrl;
+async function renderFault() {
+  begin("injected renderer failure must stop audio and animation");
+  let ctx, clear;
+  try {
+    await launch(); await frames(5);
+    ctx = doc().getElementById("fx").getContext("2d"); clear = ctx.clearRect;
+    ctx.clearRect = () => { throw Error("QA injected drawing failure"); };
+    await until(() => d().mode === "error", "render exception was not caught");
+    ctx.clearRect = clear;
+    check("Frame exception stops RAF, audio timer and voices", !d().raf && !d().audio.timer && !d().audio.voices, d().audio);
+    check("Exception presents a recoverable screen", !doc().getElementById("panel").hidden);
+    click("primary-action");
+    check("Ordinary return button recovers the menu", d().mode === "menu" && !d().raf);
+    window.moonReport.pass = true;
+  } catch(e) { window.moonReport.pass = false; window.moonReport.error = e.message; }
+  finally { if (ctx && clear) ctx.clearRect = clear; if (d().mode === "playing") click("pause-btn"); done(); }
+}
+async function record() {
+  const run = begin("12-second actual canvas recording (60 fps requested; not a benchmark)");
+  let stream, recorder, compositeRaf = 0;
+  const keys = { left: "KeyA", right: "KeyD", jump: "Space", attack: "KeyJ", ninja: "KeyI", dash: "KeyL", down: "KeyS" };
+  try {
+    await until(() => win().moonDiagnostics && d().view?.ready, "assets not ready");
+    if (d().mode !== "menu") click("exit-btn");
+    const chapter = doc().getElementById("chapter-select"); chapter.value = "0"; chapter.dispatchEvent(new Event("change", { bubbles: true }));
+    if (doc().getElementById("comfort").checked) click("comfort");
+    await launch(); await frames(40);
+    const capture = document.createElement("canvas"); capture.width = 1280; capture.height = 720;
+    const ctx = capture.getContext("2d", { alpha: false });
+    const composite = () => {
+      ctx.drawImage(doc().getElementById("game"), 0, 0, 1280, 720);
+      ctx.drawImage(doc().getElementById("fx"), 0, 0, 1280, 720);
+      compositeRaf = win().requestAnimationFrame(composite);
+    };
+    composite();
+    stream = capture.captureStream(60);
+    const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8"].find((s) => MediaRecorder.isTypeSupported(s));
+    recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6000000 });
+    const chunks = []; recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    recorder.start(250);
+    const memory = {}, start = d().world.frame, deadline = performance.now() + 20000;
+    while (run === runId && !cancelled && d().mode === "playing" && d().world.frame - start < 720) {
+      if (performance.now() > deadline) throw Error("Recording exceeded its wall-clock budget");
+      const next = pilot(d().world, memory);
+      for (const [action, code] of Object.entries(keys)) key(code, !!next[action]);
+      $("status").textContent = `实际输入与画面录制 · ${Math.floor((d().world.frame - start) / 60)} / 12 秒`;
+      await wait(12);
+    }
+    await new Promise((resolve) => { recorder.onstop = resolve; recorder.stop(); });
+    if (clipUrl) URL.revokeObjectURL(clipUrl);
+    clipUrl = URL.createObjectURL(new Blob(chunks, { type: mimeType }));
+    $("clip").href = clipUrl; $("clip").download = "moonblade-fluid-20260929.webm"; $("clip").hidden = false;
+    window.moonReport.pass = true;
+  } catch (e) { window.moonReport.pass = false; window.moonReport.error = e.message; }
+  finally {
+    if (compositeRaf) win().cancelAnimationFrame(compositeRaf);
+    if (recorder?.state === "recording") recorder.stop();
+    stream?.getTracks().forEach((t) => t.stop());
+    for (const code of Object.values(keys)) key(code, false);
+    if (d().mode === "playing") click("pause-btn");
+    done();
+  }
+}
 $("suite").addEventListener("click", suite);
 $("all").addEventListener("click", async () => {
   window.moonBatch = { running: true, results: [] };
@@ -572,6 +680,9 @@ $("all").addEventListener("click", async () => {
 });
 $("motion").addEventListener("click", motion);
 $("terrain").addEventListener("click", terrain);
+$("reaction").addEventListener("click", reaction);
+$("fault").addEventListener("click", renderFault);
+$("record").addEventListener("click", record);
 $("route").addEventListener("click", route);
 $("stop").addEventListener("click", () => {
   cancelled = true;
@@ -583,6 +694,7 @@ $("stop").addEventListener("click", () => {
   $("status").textContent = "已停止并释放";
 });
 window.addEventListener("pagehide", () => {
+  if (clipUrl) URL.revokeObjectURL(clipUrl);
   cancelled = true;
   runId++;
 });

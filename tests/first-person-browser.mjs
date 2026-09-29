@@ -146,6 +146,7 @@ async function launch(game) {
   if (game === "race") doc().getElementById("auto-gas").checked = false;
   click("start");
   await until(() => d().mode === "playing", "start");
+  if (game === "fps") await until(() => d().game.time >= 0.2, "first rendered frames", 5000);
 }
 function report() {
   window.fpReport.running = false;
@@ -171,13 +172,17 @@ async function mapSuite() {
         await until(() => d().mode === "playing", "map start");
         check(map + " / 正式 UI 创建正确地图", d().game.map === map);
         keys({ KeyW: true, KeyJ: true });
-        await wait(450);
+        // New map compilation may occupy the first display frame. Hold the
+        // actual inputs for 450 ms of real simulation, not a shader-load timer.
+        const moveUntil = d().game.time + 0.45;
+        await until(() => d().game.time >= moveUntil, "map simulation did not advance", 5000);
         keys({});
         check(
           map + " / 可移动射击，无横向溢出",
           d().game.p.z < 2 &&
-            d().game.shots > 1 &&
+          d().game.shots > 1 &&
             doc().documentElement.scrollWidth <= win().innerWidth,
+          {z:d().game.p.z,shots:d().game.shots,time:d().game.time,mode:d().mode},
         );
         click("exit-btn");
         check(
@@ -230,7 +235,7 @@ async function suite(game) {
       const speed = d().game.p.speed;
       keys({ KeyS: true });
       await wait(500);
-      check("刹车实际降低速度", d().game.p.speed < speed - 6);
+      check("刹车实际降低速度", d().game.p.speed < speed - 6, {before:speed,after:d().game.p.speed,brake:d().game.p.brake,mode:d().mode});
       keys({});
       tap("KeyR");
       await wait(100);
@@ -269,6 +274,7 @@ async function suite(game) {
       check("突进有冷却", d().game.p.dashCD > 1);
     }
     await mobileCheck(game);
+    check("光效实例在固定容量内", d().lightFX.capacity === (game === "race" ? 32 : 48) && d().lightFX.instances <= d().lightFX.capacity, d().lightFX);
     click("pause-btn");
     const t = d().game.time;
     await wait(220);
@@ -285,6 +291,7 @@ async function suite(game) {
     click("exit-btn");
     const geo = d().geometries;
     check("返回菜单停止后台运行", d().mode === "menu" && !d().raf);
+    check("返回菜单清空瞬时光斑", d().lightFX.active === 0, d().lightFX);
     for (let i = 0; i < 3; i++) {
       click("start");
       await wait(80);
@@ -319,6 +326,9 @@ async function route(game) {
     let last = performance.now();
     while (!cancelled && id === run) {
       const state = d();
+      window.fpReport.maxLightInstances = Math.max(window.fpReport.maxLightInstances || 0, state.lightFX.instances);
+      window.fpReport.maxLightBursts = Math.max(window.fpReport.maxLightBursts || 0, state.lightFX.active);
+      if (state.lightFX.instances > state.lightFX.capacity) throw Error("光效实例超出容量");
       if (state.mode === "finished") {
         check(
           game === "race" ? "两圈正式跑完" : "三座中继正式通关",

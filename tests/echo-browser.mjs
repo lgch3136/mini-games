@@ -60,7 +60,7 @@ function pointer(id, type, n, dx = 0, dy = 0) {
 }
 async function ready() {
   for (let i = 0; i < 200; i++) {
-    if (w().echoDiagnostics) return;
+    if (w().echoDiagnostics && d().resources.haloReady) return;
     await wait(25);
   }
   throw Error("game load timeout");
@@ -95,10 +95,17 @@ function layout() {
 }
 async function suite() {
   const id = ++run;
+  let preferences;
   window.echoReport = { running: true, kind: "inputs", checks: [] };
+  $("report").textContent = JSON.stringify(window.echoReport);
   try {
+    await ready();
+    preferences = { field:doc().getElementById("field").checked, reduced:doc().getElementById("reduced").checked };
+    if (!preferences.field) click("field");
+    if (preferences.reduced) click("reduced");
     await start();
     check("正式页面启动", d().mode === "playing");
+    check("派生透明柔光已载入", d().resources.haloReady);
     check(
       "按钮与页面无溢出",
       layout().inBounds && layout().scroll <= w().innerWidth,
@@ -111,6 +118,13 @@ async function suite() {
     keys({ KeyD: true });
     await wait(210);
     check("连续右移", d().game.p.vx > 200);
+    check("移动驱动柔性流场", d().resources.fieldEnergy > 0 && d().resources.fieldNodes === 1089, d().resources);
+    tap("KeyV");
+    await wait(50);
+    check("V 键实时关闭流场但移动不中断", !d().resources.fieldEnabled && d().resources.fieldEnergy === 0 && d().game.p.vx > 200);
+    tap("KeyV");
+    await wait(50);
+    check("V 键恢复流场且无需重开", d().resources.fieldEnabled && d().resources.fieldEnergy > 0);
     keys({ KeyA: true });
     await wait(70);
     check("反向操作立即生效", d().game.p.vx < -160);
@@ -137,6 +151,7 @@ async function suite() {
       "暂停冻结模拟与渲染",
       d().mode === "paused" && d().game.time === paused.game.time && !d().raf,
     );
+    check("暂停冻结空间形变", d().resources.fieldEnergy === paused.resources.fieldEnergy);
     check(
       "暂停释放音乐调度与所有声音",
       !d().resources.musicTimer &&
@@ -184,6 +199,7 @@ async function suite() {
         !d().resources.musicTimer,
       d().resources,
     );
+    check("退出清空流场残留", d().resources.fieldEnergy === 0 && d().resources.fieldPeak === 0);
     const previewBox = doc()
       .getElementById("preview-space")
       .getBoundingClientRect();
@@ -192,6 +208,24 @@ async function suite() {
     check("菜单轻触激起波纹", d().raf);
     await wait(2150);
     check("菜单波纹自动结束，不空转", !d().raf && d().resources.voices === 0);
+    click("field");
+    await start();
+    keys({KeyD:true, KeyJ:true});
+    await wait(180);
+    check("关闭流场仍可正常操作且不计算形变",
+      !d().resources.fieldEnabled && d().resources.fieldEnergy === 0 && d().game.p.x > 10);
+    keys({});
+    click("exit");
+    click("field");
+    click("reduced");
+    await start();
+    keys({KeyD:true});
+    await wait(150);
+    check("轻动效模式保持移动与弹性模拟",
+      d().resources.reducedMotion && d().game.p.x > 8 && d().resources.fieldEnergy > 0);
+    keys({});
+    click("exit");
+    click("reduced");
     doc().querySelector("input[value=edge]").click();
     click("start");
     const deadline = performance.now() + 22000;
@@ -227,6 +261,10 @@ async function suite() {
     if (id === run) {
       keys({});
       if (w().echoDiagnostics && d().mode !== "menu") click("exit");
+      if (preferences) {
+        if (doc().getElementById("field").checked !== preferences.field) click("field");
+        if (doc().getElementById("reduced").checked !== preferences.reduced) click("reduced");
+      }
       report();
     }
   }
@@ -235,6 +273,8 @@ function report() {
   window.echoReport.running = false;
   window.echoReport.final = d();
   $("report").textContent = JSON.stringify(window.echoReport);
+  $("live").textContent = JSON.stringify({version:d().version, mode:d().mode,
+    resources:d().resources, performance:d().performance});
   $("status").textContent =
     window.echoReport.error ||
     (window.echoReport.cancelled ? "已取消 · 已释放" : "完成 · 已停止");
@@ -250,15 +290,22 @@ async function playback(capture = false) {
     maxBullets: 0,
     maxPhase: 0,
   };
+  $("report").textContent = JSON.stringify(window.echoReport);
+  $("live").textContent = "{}";
   try {
     await start();
     let elapsed = 0,
-      last = performance.now();
+      last = performance.now(), reportedAt = 0;
     while (id === run && elapsed < (capture ? 40 : 90)) {
       const now = performance.now();
       elapsed += (now - last) / 1000;
       last = now;
       const s = d();
+      if (now - reportedAt > 250) {
+        reportedAt = now;
+        $("live").textContent = JSON.stringify({version:s.version, mode:s.mode, time:s.game.time,
+          score:s.game.score, resources:s.resources, performance:s.performance, canvas:s.canvas});
+      }
       if (s.mode === "playing") {
         const a = echoPilot(s.game);
         keys({
@@ -282,6 +329,8 @@ async function playback(capture = false) {
           s.game.phase,
         );
         window.echoReport.performance = s.performance;
+        window.echoReport.maxFieldPeak = Math.max(window.echoReport.maxFieldPeak || 0, s.resources.fieldPeak || 0);
+        window.echoReport.maxFieldEnergy = Math.max(window.echoReport.maxFieldEnergy || 0, s.resources.fieldEnergy || 0);
         if (capture && s.game.time >= 17) {
           $("status").textContent = "实机截图时刻";
           await wait(1600);
@@ -299,8 +348,8 @@ async function playback(capture = false) {
         });
         click("retry");
       }
-      $("status").textContent =
-        "正常输入回放 " + Math.floor(elapsed) + " 秒 / " + s.game.score + " 分";
+      const status = "正常输入回放 " + Math.floor(elapsed) + " 秒 / " + s.game.score + " 分";
+      if ($("status").textContent !== status) $("status").textContent = status;
       await wait(34);
     }
     if (id !== run) return;

@@ -50,6 +50,15 @@ export class MoonAudio extends Soundtrack {
     } else if (e.type === "kill") {
       this.hiss(t, 0.14, 0.13, 700);
       tone(140, 0.18, 0.1, 35);
+    } else if (e.type === "break") {
+      tone(175, 0.075, 0.1, 68);
+      this.hiss(t, 0.12, 0.13, 1300);
+      this.tone(235, t + 0.035, 0.045, 0.04, "triangle", this.effects, 80);
+    } else if (e.type === "deflect") {
+      tone(1900, 0.08, 0.075, 740);
+      this.hiss(t, 0.035, 0.055, 4600);
+    } else if (e.type === "impact") {
+      this.hiss(t, 0.045, 0.035, 3100);
     } else if (e.type === "hurt") {
       tone(90, 0.18, 0.12, 32);
       this.hiss(t, 0.06, 0.1, 450);

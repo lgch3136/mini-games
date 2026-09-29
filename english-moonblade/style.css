@@ -152,10 +152,10 @@ footer {
 }
 .hp {
   margin: 7px 0 6px;
-  height: 11px;
+  height: 7px;
   border: 1px solid #e4d2aa99;
   background: #081824bb;
-  transform: skewX(-12deg);
+  border-radius: 2px;
   overflow: hidden;
 }
 .hp i {
@@ -258,11 +258,16 @@ footer {
   top: 22%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: clamp(12px, 1.5vw, 21px);
-  letter-spacing: 3px;
+  font-size: clamp(11px, 1.2vw, 16px);
+  letter-spacing: 2px;
   color: #ffe0a7;
   text-shadow: 0 2px 9px #000;
+  white-space: nowrap;
+  padding: 8px 18px;
+  border-radius: 30px;
+  background: linear-gradient(90deg, transparent, #08232a88 30%, #08232a88 70%, transparent);
 }
+#toast:empty { display: none; }
 #loading {
   position: absolute;
   bottom: 15%;
@@ -667,7 +672,7 @@ dialog > p:last-child {
   .energy #score {
     display: none;
   }
-  .vitals {
+.vitals {
     width: 34%;
   }
   #words small {

@@ -139,7 +139,7 @@ export class Shell {
     // Automated input can sample the state frequently without sorting two
     // 1200-frame percentile arrays on every read. Full reports opt in once.
     window.firstPersonDiagnostics = ({ metrics = true } = {}) => ({
-      version: "20260918-play-r1",
+      version: "20260928-light-r1",
       kind: this.kind,
       mode: this.mode,
       raf: !!this.raf,
@@ -150,6 +150,7 @@ export class Shell {
       triangles: view.renderer.info.render.triangles,
       geometries: view.renderer.info.memory.geometries,
       textures: view.renderer.info.memory.textures,
+      lightFX: {enabled:view.lights?.enabled ?? false, instances:view.lights?.mesh.count || 0, capacity:view.lights?.capacity || 0, active:view.lights?.active || 0},
       perf: metrics ? this.metrics() : undefined,
       game: this.world?.snapshot(),
     });
@@ -197,6 +198,7 @@ export class Shell {
     $("resume").hidden = this.mode === "finished";
     this.controls.active = play;
     this.view.reduced = $("comfort").checked;
+    if (this.view.lights) this.view.lights.enabled = $("light-fx")?.checked ?? true;
     this.view.quality = +$("quality").value;
     text("pause-btn", play ? "暂停" : "继续");
     this.onHUD?.(this);
@@ -212,6 +214,7 @@ export class Shell {
   }
   menu() {
     this.stop();
+    this.view.lights?.clear();
     this.mode = "menu";
     this.applyMode();
     this.view.render(this.world, 1, 0);

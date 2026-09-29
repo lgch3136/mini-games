@@ -68,7 +68,7 @@ async function reset(token) {
       },
       { once: true },
     );
-    frame.src = `../english-typebound/?qa=story-r1&run=${Date.now()}`;
+    frame.src = `../english-typebound/?qa=light-r1&run=${Date.now()}`;
   });
   await until(
     () => {
@@ -149,120 +149,37 @@ function resourcesIdle(d) {
 }
 async function storySuite(token) {
   await reset(token);
-  await until(
-    () =>
-      Object.values(diag().resources.assets).every((s) => s === "procedural"),
-    10000,
-    token,
-  );
-  expect(
-    "三章程序光场就绪，无需位图请求",
-    Object.keys(diag().resources.assets).length === 3,
-    diag().resources.assets,
-  );
+  await until(() => diag().resources.assets.halo === "ready", 10000, token);
   await startCombat();
-  await delay(900, token);
-  expect(
-    "光灵入场后平稳悬浮",
-    Math.abs(diag().resources.presentation.heroX) < 0.01 &&
-      Math.abs(diag().resources.presentation.stride) < 0.01,
-  );
-  const letters = [...doc().querySelector("#word").children],
-    g = diag().game;
-  press(g.expected);
-  expect(
-    "敲键立即推进字母并进入飞行",
-    diag().game.cursor === 1 &&
-      diag().resources.presentation.pending === 1 &&
-      diag().resources.tokens === 1,
-  );
-  expect(
-    "文字节点保持稳定而非每键全部重建",
-    letters.every((e, i) => e === doc().querySelector("#word").children[i]),
-  );
-  expect(
-    "字母尚在途中时敌人不提前受力",
-    diag().resources.presentation.impacts === 0,
-  );
-  await delay(240, token);
-  expect(
-    "飞行结束只触发一次命中",
-    diag().resources.presentation.impacts === 1 &&
-      diag().resources.presentation.pending === 0,
-  );
-  press("Backspace");
-  press(g.word.en[0]);
-  expect(
-    "重打已删字母不重复生成攻击",
-    diag().resources.presentation.letters === 1,
-  );
-  while (diag().game.cursor < diag().game.word.en.length) {
-    press(diag().game.expected);
-    await delay(45, token);
-  }
-  expect(
-    "蓄字进度与正式单词一致",
-    Number(
-      doc().querySelector("#spell-meter").getAttribute("aria-valuenow"),
-    ) === diag().game.word.en.length,
-  );
+  await delay(300,token);
+  expect("第一键前计时为零、平均字速不冒虚高", diag().game.time === 0 && doc().querySelector("#session-time").textContent === "00:00" && doc().querySelector("#wpm").textContent === "—");
+  const letters=[...doc().querySelector("#word").children], first=diag().game.expected;
+  press(first);
+  await delay(80,token);
+  expect("正确落键立即推进光轨与字母",diag().game.cursor===1 && diag().resources.presentation.target>0 && diag().resources.presentation.energy>0);
+  expect("字母节点保持稳定",letters.every((e,i)=>e===doc().querySelector("#word").children[i]));
+  const count=diag().resources.rings;
+  press("Backspace"); press(first);
+  expect("回删重打不重复制造光脉冲",diag().resources.rings===count);
+  while(diag().game.cursor<diag().game.word.en.length) {press(diag().game.expected);await delay(70,token);}
+  expect("未提交单词不提前计入完成数",doc().querySelector("#practice-words").textContent==="0");
   press(" ");
-  expect(
-    "整词立即释放独立法术",
-    diag().resources.presentation.spells === 1 && diag().game.stats.words === 1,
-  );
-  while (diag().game.combo < 3) {
-    await ensureCombat();
-    while (diag().game.cursor < diag().game.word.en.length) {
-      press(diag().game.expected);
-      await delay(55, token);
-    }
-    press(" ");
-    await delay(330, token);
-  }
-  expect(
-    "三连词唤醒书灵及环境反馈",
-    diag().resources.presentation.flow === 1 &&
-      Number(doc().querySelector("#app").dataset.flow) === 1,
-  );
-  report.active = diag();
-  click("#pause");
-  await delay(160, token);
-  const before = diag().resources.presentation;
-  await delay(200, token);
-  expect(
-    "暂停冻结角色和弹道而非仅停止统计",
-    JSON.stringify(before) === JSON.stringify(diag().resources.presentation),
-  );
-  expect(
-    "暂停同时取消 UI 动画与所有声音",
-    resourcesIdle(diag()),
-    diag().resources,
-  );
-  click("#exit");
-  click("#result-menu");
-  const reduced = doc().querySelector("#reduced");
-  reduced.checked = true;
-  reduced.dispatchEvent(new (win().Event)("change", { bubbles: true }));
-  await startCombat();
-  press(diag().game.expected);
-  await delay(60, token);
-  expect(
-    "减弱动态模式不创建 UI 弹跳动画",
-    diag().resources.uiAnimations === 0 &&
-      doc().querySelector("#app").classList.contains("reduced"),
-  );
-  click("#exit");
-  click("#result-menu");
-  reduced.checked = false;
-  reduced.dispatchEvent(new (win().Event)("change", { bubbles: true }));
-  expect(
-    "回菜单清除所有待命中和临时特效",
-    resourcesIdle(diag()) &&
-      diag().resources.presentation.pending === 0 &&
-      diag().resources.tokens === 0,
-  );
-  report.final = diag();
+  expect("空格提交同时计数并产生整词回响",diag().game.stats.words===1 && doc().querySelector("#practice-words").textContent==="1" && diag().resources.presentation.release>0);
+  await delay(3200,token);
+  const g=diag().game;
+  expect("仪表平均 WPM 与有效练习时间公式一致",Number(doc().querySelector("#wpm").textContent)===Math.round(g.stats.committed*12/g.time));
+  expect("计时已经推进",doc().querySelector("#session-time").textContent!=="00:00");
+  press(g.expected==="a"?"b":"a");
+  expect("错键影响准确率并给出局部反馈",Number(doc().querySelector("#accuracy").textContent)<100 && doc().querySelector("#word-feedback").textContent.includes("需要"));
+  click("#pause"); await delay(80,token);
+  const before=diag(),clock=doc().querySelector("#session-time").textContent;
+  await delay(400,token);
+  expect("暂停冻结计时与光轨",before.game.time===diag().game.time && JSON.stringify(before.resources.presentation)===JSON.stringify(diag().resources.presentation) && clock===doc().querySelector("#session-time").textContent);
+  expect("暂停释放声音和 UI 动画",resourcesIdle(diag()));
+  report.active=diag();
+  click("#exit");click("#result-menu");
+  expect("退出清空光脉冲且不空转",resourcesIdle(diag()) && diag().resources.rings===0 && diag().resources.presentation.energy===0);
+  report.final=diag();
 }
 async function suite(token) {
   await reset(token);
@@ -508,7 +425,7 @@ async function suite(token) {
       inputMatches,
       idle: resourcesIdle(d),
       images: d.resources.images,
-      pending: d.resources.presentation.pending,
+      pending: d.resources.presentation.pending || 0,
       tokens: d.resources.tokens,
     });
   }
@@ -523,8 +440,8 @@ async function suite(token) {
     restarts,
   );
   expect(
-    "程序光场不加载或累积场景位图",
-    imageCount === 0 && restarts.every((r) => r.images === 0),
+    "柔光位图固定一张，反复进入不累积",
+    imageCount === 1 && restarts.every((r) => r.images === 1),
   );
   report.viewport = viewport;
   report.final = diag();
@@ -606,7 +523,7 @@ async function playback(token, full) {
         ];
         expect(
           `第 ${g.depth + 1} 关场景素材就绪`,
-          d.resources.assets[art] === "procedural",
+          d.resources.assets.halo === "ready",
           d.resources.assets,
         );
       }
@@ -743,7 +660,7 @@ async function run(name, action) {
 }
 document.getElementById("suite").onclick = () => run("输入与资源验收", suite);
 document.getElementById("story").onclick = () =>
-  run("光灵动画反馈验收", storySuite);
+  run("计时 / 字速 / 光轨验收", storySuite);
 document.getElementById("spells").onclick = () =>
   run("法术切换与自然蓄力反制", spellSuite);
 document.getElementById("journey").onclick = () =>

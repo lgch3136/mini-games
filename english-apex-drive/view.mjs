@@ -7,6 +7,7 @@ import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs";
 import { SectorBatch } from "./sector-batch.mjs?v=20260918-play-r1";
 import { GUARDRAIL } from "./world.mjs?v=20260918-play-r1";
 import { TRAIL_LIFE } from "./tyre-trails.mjs";
+import { LightPool, loadLightTexture } from '../shared/light/pool.mjs?v=20260928-light-r1';
 import {
   makeMochiKart,
   animateMochiKart,
@@ -40,6 +41,7 @@ export class RaceView extends SceneKit {
     this.mat("asphalt", 0x859fb7, 0.92);
     this.dashboard();
     this.buildSky();
+    this.lights = new LightPool(this, await loadLightTexture(this), 32);
     this.permanent = new Set(this.geometries);
     this.ready = true;
   }
@@ -127,6 +129,7 @@ export class RaceView extends SceneKit {
     display.rotation.x = -0.15;
   }
   build(world) {
+    this.lights?.clear();
     this.releasePools();
     // Cockpit geometry is retained across races, so scene rebuild only replaces track meshes.
     for (const c of [...this.group.children]) this.group.remove(c);
@@ -661,6 +664,22 @@ export class RaceView extends SceneKit {
       o.box.rotation.set(0.15, w.time * 0.9, Math.sin(w.time) * 0.13);
     });
     this.effects(w, dt, x, y, z, yaw);
+    this.lights.begin(dt, this.camera, this.reduced);
+    if (!this.showroom) {
+      const boost = p.nitro > 0, drift = p.drift && Math.abs(p.speed) > 4;
+      // Colours communicate charge tier. Wheel light follows real axle positions.
+      const hue = boost ? 0xffd28e : [0x99ddd8,0x80dfff,0xffd180,0xdfb4ff][p.driftTier || 0];
+      for (const side of [-1,1]) {
+        const lx=x+Math.sin(yaw)*0.85+Math.cos(yaw)*side*0.96;
+        const lz=z+Math.cos(yaw)*0.85-Math.sin(yaw)*side*0.96;
+        if (boost || drift) {
+          this.lights.add(lx,y+0.055,lz,boost?2.2:1.5,hue,this.reduced?0.12:0.32,true,boost?1.9:1,yaw);
+          this.lights.add(lx,y+0.22,lz,boost?1.5:0.85,hue,this.reduced?0.1:0.28);
+        }
+      }
+      if (p.miniWindow > 0) this.lights.add(x,y+0.08,z,3.4,0xffe6a1,0.16,true,0.6,yaw);
+    }
+    this.lights.end();
     this.renderer.render(this.scene, this.camera);
   }
   effects(w, dt, x, y, z, yaw) {
@@ -753,6 +772,7 @@ export class RaceView extends SceneKit {
       this[name]?.dispose();
   }
   dispose() {
+    this.lights?.dispose();
     this.releasePools();
     super.dispose();
   }

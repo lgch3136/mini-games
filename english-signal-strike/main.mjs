@@ -1,11 +1,11 @@
 import { Strike, MAPS, WEAPONS } from "./world.mjs?v=20260918-play-r1";
-import { StrikeView } from "./view.mjs?v=20260918-play-r1";
+import { StrikeView } from "./view.mjs?v=20260928-light-r1";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260918-play-r1";
+} from "../shared/first-person/shell.mjs?v=20260928-light-r1";
 let hitUntil = 0;
 const app = new Shell({
   kind: "fps",

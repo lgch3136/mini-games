@@ -12,7 +12,7 @@
       content="回响边界：只能向圆心开火的轻量街机游戏。躲开自己的回弹，让每一次碰撞化为涟漪。"
     />
     <title>回响边界 · Echo Ring</title>
-    <link rel="stylesheet" href="style.css?v=20260906-echo-r5" />
+    <link rel="stylesheet" href="style.css?v=20260923-flow-r1" />
   </head>
   <body>
     <main id="app">
@@ -25,7 +25,7 @@
         <a href="../" class="back" aria-label="返回游戏合集"
           ><span>↗</span> ARCADE</a
         >
-        <span class="edition">ECHO RING <i>/</i> 001</span>
+        <span class="edition">ECHO RING <i>/</i> FLOW</span>
         <nav aria-label="游戏控制">
           <button id="sound" aria-pressed="true">声音 开</button
           ><button id="pause" hidden>暂停</button
@@ -36,12 +36,12 @@
       <section id="menu" aria-label="游戏开始界面">
         <div class="copy">
           <p class="eyebrow">
-            <span class="tiny-ring"></span> SMALL RULE. ENDLESS ECHO.
+            <span class="tiny-ring"></span> SMALL RULE. LIVING SPACE.
           </p>
           <h1>回响边界<span>ECHO / RING</span></h1>
           <p class="intro">你的下一发，<br />可能就是下一次危险。</p>
           <p class="description">
-            朝圆心开火。借回弹清场，也别被它追上。<br />在一圈涟漪里，找到自己的节奏。
+            朝圆心开火。借回弹清场，也别被它追上。<br />穿过柔软的流场，让每次碰撞都有回响。
           </p>
           <fieldset class="mode-choice">
             <legend class="sr-only">游戏模式</legend>
@@ -63,7 +63,7 @@
           <div class="control-note">
             <span class="desktop-note"
               >WASD / 方向键 移动 · J / 空格 开火<br />Shift / K 穿行 · P / Esc
-              暂停</span
+              暂停 · V 流场对比</span
             ><span class="mobile-note"
               >左手摇杆移动 · 右手开火<br />「穿行」可以短暂穿过危险</span
             >
@@ -79,11 +79,12 @@
               <p>
                 圆形敌人会追踪，紫色敌人会绕行，菱形敌人会分裂。虚线圆是出场预告，此时不会碰撞。
               </p>
+              <label><input id="field" type="checkbox" checked />柔性流场（可关闭对比）</label>
               <label
                 ><input
                   id="reduced"
                   type="checkbox"
-                />轻动效（减少涟漪幅度与粒子）</label
+                />轻动效（减少形变、尾迹与粒子）</label
               >
               <label
                 >渲染<select id="quality">
@@ -103,8 +104,8 @@
         </div>
         <div id="preview-space" aria-hidden="true">
           <span class="preview-caption"
-            >每次碰撞，都留下回响。<small
-              >REAL-TIME CANVAS / NO VIDEO</small
+            >轻触流场，看涟漪散开。<small
+              >LIVING FIELD / REAL-TIME CANVAS</small
             ></span
           >
         </div>
@@ -194,6 +195,6 @@
         <a href="../">返回合集</a>
       </div>
     </main>
-    <script type="module" src="app.mjs?v=20260906-echo-r5"></script>
+    <script type="module" src="app.mjs?v=20260928-light-r1"></script>
   </body>
 </html>

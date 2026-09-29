@@ -2,7 +2,8 @@ import {
   solvePose,
   interpolatePose,
 } from "../english-word-fury/motion.mjs?v=20260918-play-r1";
-import { lerp, clamp } from "./world.mjs?v=20260918-play-r1";
+import { lerp, clamp } from "./world.mjs?v=20260929-fluid-r2";
+import { gait, strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2";
 export { interpolatePose };
 const mix = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
 const smooth = (t) => {
@@ -30,16 +31,17 @@ function controlsPose(b, time = 0, weights = {}) {
     for (const [k, v] of Object.entries(to))
       p[k] = Array.isArray(v) ? mix(p[k], v, t) : lerp(p[k], v, t);
   };
-  const run = weights.run ?? (b.ground ? clamp(Math.abs(b.vx) / 7.5, 0, 1) : 0);
+  const run = weights.run ?? (b.ground ? clamp(Math.abs(b.vx) / 1.25, 0, 1) : 0);
   if (run > 0) {
     const phase = b.run ?? b.x * 3.2;
+    const { stride, stance, lift } = gait(b.vx), sprint = clamp(Math.abs(b.vx) / 7.5, 0, 1);
     const foot = (o) => {
       const q = (((phase / (Math.PI * 2) + o) % 1) + 1) % 1;
-      return q < 0.56
-        ? [lerp(0.76, -0.76, q / 0.56), 0]
+      return q < stance
+        ? [lerp(stride, -stride, q / stance), 0]
         : [
-            lerp(-0.76, 0.76, smooth((q - 0.56) / 0.44)),
-            Math.sin(((q - 0.56) / 0.44) * Math.PI) * 0.42,
+            lerp(-stride, stride, smooth((q - stance) / (1 - stance))),
+            Math.sin(((q - stance) / (1 - stance)) * Math.PI) * lift,
           ];
     };
     const a = foot(0),
@@ -48,9 +50,9 @@ function controlsPose(b, time = 0, weights = {}) {
       {
         footF: [...a, 0.18],
         footB: [...c, -0.18],
-        hip: [0.12, 1.34, 0],
-        chest: [0.48, 2.26, 0],
-        head: [0.51, 2.56, 0],
+        hip: [0.08, 1.25 - sprint * 0.1 + Math.sin(phase * 2) * 0.025, 0],
+        chest: [0.2 + sprint * 0.28, 2.12 + Math.sin(phase * 2 - 0.3) * 0.025, 0],
+        head: [0.24 + sprint * 0.27, 2.44 + Math.sin(phase * 2 - 0.5) * 0.018, 0],
         handF: [-0.22 + Math.sin(phase) * 0.36, 2.02, 0.32],
         handB: [-0.22 - Math.sin(phase) * 0.36, 2.0, -0.29],
         swordAngle: -2.15,
@@ -125,8 +127,19 @@ function controlsPose(b, time = 0, weights = {}) {
     p.swordAngle = lerp(p.swordAngle, -2.2, dash);
   }
   let attack = b.attack;
-  if (!attack && ["strike", "sweep", "rush", "leap"].includes(b.state))
-    attack = { kind: "slash", chain: b.state === "sweep" ? 2 : 0, frame: 8 };
+  // Enemy attack time comes from the same countdown that controls its hitbox.
+  // Previously every strike rendered frame 8 for the entire active state.
+  if (!attack && ["strike", "sweep", "rush", "leap"].includes(b.state)) {
+    const chain = b.state === "sweep" ? 2 : 0;
+    const duration = { strike: 0.2, sweep: 0.44, rush: 0.55, leap: 0.85 }[b.state];
+    const age = Math.max(0, duration - b.timer);
+    attack = { kind: "slash", chain, frame: [3, 4, 6][chain] + Math.min(12, age * (b.state === "strike" ? 60 : 35)) };
+  }
+  if (!attack && b.state === "recover" && b.kind !== "archer") {
+    const duration = b.kind === "boss" ? (b.hp < 24 ? 0.7 : 0.95) : 0.7;
+    const chain = b.choice === 1 ? 2 : 0;
+    attack = { kind: "slash", chain, frame: [3, 4, 6][chain] + 12 + Math.max(0, duration - b.timer) * 60 };
+  }
   if (b.state === "tell") {
     blend(
       {
@@ -134,9 +147,9 @@ function controlsPose(b, time = 0, weights = {}) {
         handB: [0.37, 2.16, -0.22],
         chest: [-0.04, 2.4, 0],
       },
-      0.9,
+      0.75 + 0.15 * smooth(1 - b.timer / (b.kind === "guard" ? 0.42 : 0.55)),
     );
-    p.swordAngle = 0.95;
+    p.swordAngle = 0.72;
   }
   if (attack) {
     const a = attack,
@@ -155,19 +168,20 @@ function controlsPose(b, time = 0, weights = {}) {
     } else {
       const start = [3, 4, 6][a.chain],
         t = q < start ? smooth(q / start) : 1 - smooth((q - start - 6) / 12),
-        swing = smooth((q - start + 1) / 4);
+        swing = smooth((q - start + 1) / (b.kind ? 6 : 4));
+      const rising = a.chain === 1;
       blend(
         {
-          chest: [lerp(-0.09, 0.38, swing), 2.35, 0],
-          head: [lerp(-0.04, 0.47, swing), 2.65, 0],
-          handF: mix([-0.3, 2.99, 0.41], [1.11, 1.94, 0.34], swing),
+          chest: [lerp(-0.09, a.chain === 2 ? 0.5 : 0.38, swing), 2.35, 0],
+          head: [lerp(-0.04, a.chain === 2 ? 0.58 : 0.47, swing), 2.65, 0],
+          handF: rising ? mix([0.35, 1.68, 0.41], [0.78, 2.95, 0.34], swing) : mix([-0.3, 2.99, 0.41], [1.11, 1.94, 0.34], swing),
           handB: [0.15, 1.98, -0.22],
         },
         t,
       );
       p.swordAngle = lerp(
         p.swordAngle,
-        lerp(0.72, a.chain === 2 ? -2.55 : -1.86, swing),
+        rising ? lerp(-2.3, 0.35, swing) : lerp(0.72, a.chain === 2 ? -2.55 : -1.86, swing),
         t,
       );
     }
@@ -208,14 +222,14 @@ export class MotionTrack {
       ...body,
       run: lerp(old?.run ?? body.run ?? 0, body.run ?? 0, alpha),
       vx: lerp(old?.vx ?? body.vx, body.vx, alpha),
+      timer: old && old.state === body.state && Number.isFinite(old.timer) ? lerp(old.timer, body.timer, alpha) : body.timer,
     };
     if (!Number.isFinite(body.run)) {
       const x = lerp(body.px, body.x, alpha),
         scale = body.kind === "boss" ? 0.84 : 0.61;
       this.phase =
         (this.phase || 0) +
-        Math.abs(x - (this.lastX ?? x)) *
-          ((2 * Math.PI * 0.56) / (1.52 * scale));
+        (body.ground ? strideAdvance(x - (this.lastX ?? x), b.vx, scale) : 0);
       this.lastX = x;
       b.run = this.phase;
     }
@@ -225,7 +239,7 @@ export class MotionTrack {
         frame: Math.max(0, body.attack.frame - 1 + alpha),
       };
     const target = {
-      run: body.ground && !body.dash ? clamp(Math.abs(b.vx) / 7.5, 0, 1) : 0,
+      run: body.ground && !body.dash ? clamp(Math.abs(b.vx) / 1.25, 0, 1) : 0,
       air: Number(!body.ground),
       wall: Number(
         !!body.wall &&
@@ -278,7 +292,7 @@ export class MotionTrack {
       this.carry = {
         pose: this.last,
         age: 0,
-        duration: body.attack?.frame <= 2 ? 0.04 : 0.07,
+        duration: body.attack?.frame <= 2 || ["strike", "sweep", "rush", "leap"].includes(body.state) ? 0.025 : 0.07,
       };
     }
     this.action = action;

@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  --ink: #08151c;
+  --ink: #070f1b;
   --paper: #e0ebe3;
   --muted: #839e9f;
   --line: #b2dfd41c;
@@ -1153,6 +1153,40 @@ h2 {
   *:after {
     animation: none !important;
     transition: none !important;
+  }
+}
+/* On wide screens HUD lives beside the arena, not in a second row above it. */
+@media (min-width: 900px) and (min-height: 600px) {
+  #play-space {
+    top: 76px;
+    bottom: 74px;
+  }
+  .hud-top {
+    top: 113px;
+    width: min(1080px, calc(100% - 96px));
+  }
+  .score-stat strong {
+    font-size: 36px;
+  }
+  .phase-stat {
+    left: 0;
+    top: 91px;
+    transform: none;
+    text-align: left;
+  }
+  #notice {
+    top: 79px;
+    font-size: 10px;
+  }
+  #hint {
+    top: 267px;
+    bottom: auto;
+    left: max(48px, calc((100% - 1080px) / 2));
+    width: 148px;
+    transform: none;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.9;
   }
 }
 @media (max-width: 440px) {

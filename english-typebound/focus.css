@@ -1,0 +1,57 @@
+/* Practice is the main event; the light track is a direct view of accepted input. */
+.practice-metrics { position:absolute; inset:30px 32px auto; display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:24px; pointer-events:none; }
+.practice-metrics > div { display:flex; flex-direction:column; gap:8px; }
+.practice-metrics small { color:#95b5bb; font-size:10px; letter-spacing:.12em; }
+.practice-metrics strong { font:500 clamp(30px,4vw,58px)/1 ui-monospace,SFMono-Regular,monospace; color:#e3f8f0; font-variant-numeric:tabular-nums; letter-spacing:-.065em; }
+.practice-metrics .primary-metric strong { color:#a7f1d9; font-size:clamp(42px,5.8vw,78px); }
+.practice-metrics em { font:10px system-ui; letter-spacing:.12em; color:#799d9f; margin-top:2px; }
+.pulse-caption { position:absolute; left:5.5%; top:75%; margin:0; color:#91b7b8; font-size:10px; letter-spacing:.05em; }
+.arena .health { top:auto; bottom:15px; width:24%; }
+.arena .health { min-width:0; }
+.arena .hero-health { left:32px; }
+.arena .enemy-health { right:32px; }
+.arena .health small { display:none; }
+.arena .health > span { font-size:9px; margin-bottom:5px; }
+.arena .hp-track { height:3px; }
+.arena .enemy-intent { top:auto; bottom:14px; width:30%; padding:0; background:none; border:0; }
+.arena .enemy-intent > span { font-size:10px; }
+.arena .flow-badge, #arena-note { display:none; }
+#battle .run-metrics { font-size:10px; }
+.menu-scene { background:linear-gradient(0deg,#081923 0%,transparent 62%),url('assets/cover-light-20260928.webp') center/cover; border:1px solid #a3d2c222; border-radius:24px; overflow:hidden; }
+#traveller-preview { display:none; }
+.menu-scene .scene-kicker { margin-bottom:auto; padding:24px 0; }
+.menu-scene > p { margin-top:290px; }
+.typing-dock { --key-light:50%; overflow:hidden; }
+.typing-dock:before { content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit; background:radial-gradient(ellipse at var(--key-light) 64%,#81eadc12,transparent 52%); transition:background-position .15s; }
+@media (min-width:760px) and (hover:hover) and (pointer:fine) {
+  #battle .arena { min-height:230px; }
+  .typing-dock { margin:12px auto 0; }
+}
+@media (max-width:580px) {
+  .practice-metrics { inset:15px 15px auto; gap:12px; grid-template-columns:1.2fr 1.15fr 1fr .7fr; }
+  .practice-metrics > div { gap:5px; }
+  .practice-metrics small { font-size:8px; letter-spacing:0; }
+  .practice-metrics strong { font-size:24px; }
+  .practice-metrics .primary-metric strong { font-size:34px; }
+  .practice-metrics em { font-size:8px; letter-spacing:0; }
+  .arena .hero-health { left:15px; }
+  .arena .enemy-health { right:15px; }
+  .arena .health { bottom:10px; width:24%; }
+  .arena .health > span { font-size:8px; }
+  .arena .health b,.arena .health em { display:none; }
+  .arena .enemy-intent { bottom:8px; width:40%; }
+  .arena .enemy-intent > span { font-size:8px; }
+  .pulse-caption { top:73%; font-size:8px; }
+  #battle .arena { min-height:162px; }
+}
+@media (max-height:650px) and (max-width:580px) {
+  #battle .arena { min-height:135px; }
+  .practice-metrics { top:10px; }
+  .practice-metrics em,.pulse-caption { display:none; }
+}
+@media (max-height:480px) and (min-width:581px) {
+  .practice-metrics { inset:12px 16px auto; grid-template-columns:1fr 1fr; gap:10px 16px; }
+  .practice-metrics strong,.practice-metrics .primary-metric strong { font-size:26px; }
+  .practice-metrics small { font-size:8px; }
+  .practice-metrics em,.pulse-caption,.arena .health,.arena .enemy-intent { display:none; }
+}

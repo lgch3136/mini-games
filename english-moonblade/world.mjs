@@ -1,4 +1,5 @@
-export const VERSION = "20260918-play-r1";
+import { strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2";
+export const VERSION = "20260929-fluid-r2";
 export const DT = 1 / 60;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -28,6 +29,7 @@ export const STAGES = [
       [37, 1.5],
       [76, 0],
     ],
+    caches: [[6.2, 0], [23, 0.5], [38.5, 1.5], [66, 1.2], [99, 0]],
     platforms: [
       floor(-4, 21),
       floor(20, 10, 0.5),
@@ -76,6 +78,7 @@ export const STAGES = [
       [35, 4],
       [73, 1],
     ],
+    caches: [[6, 0], [21, 2], [35, 4], [75.5, 1], [98, 1]],
     platforms: [
       floor(-4, 17, 0, "stone"),
       floor(16, 3, 3.7, "stone"),
@@ -125,6 +128,7 @@ export const STAGES = [
       [35, 0],
       [78, 0],
     ],
+    caches: [[6, 0], [21, 1], [39, 0], [59, 1], [80, 0]],
     platforms: [
       floor(-4, 20, 0, "stone"),
       floor(19, 11, 1, "stone"),
@@ -259,6 +263,16 @@ export class World {
         taken: false,
       })),
     );
+    // Physical, optional supply caches. They never change platform collision
+    // or block a route. Reserve rewards now so the GPU instance capacity stays
+    // fixed; reveal each reward exactly once when its cache is broken.
+    this.props = (this.level.caches || [])
+      .filter(([cx]) => cx > x - 2)
+      .map(([cx, cy], i) => {
+        const reward = { id: id++, x: cx, y: cy + 0.68, kind: "energy", taken: false, hidden: true };
+        this.loot.push(reward);
+        return { id: `cache-${i}`, x: cx, y: cy, w: 0.82, h: 0.86, broken: false, reward };
+      });
     this.hint = "";
     this.goalX = this.level.length - 2;
   }
@@ -370,7 +384,7 @@ export class World {
     this.combo++;
     this.comboLife = 2.2;
     this.score += 25 + this.combo * 5;
-    this.emit("hit", { x: e.x, y: e.y + e.h * 0.6, heavy: damage >= 3 });
+    this.emit("hit", { x: e.x, y: e.y + e.h * 0.6, dir, target: e.id, heavy: damage >= 3 });
     if (e.hp <= 0) {
       e.dead = true;
       this.kills++;
@@ -379,13 +393,21 @@ export class World {
         10,
         this.player.energy + (e.kind === "boss" ? 3 : 1),
       );
-      this.emit("kill", { x: e.x, y: e.y + 1 });
+      this.emit("kill", { x: e.x, y: e.y + 1, dir, target: e.id, kind: e.kind });
       if (e.kind === "boss") {
         this.bossDefeated = true;
         this.bossLocked = false;
         this.emit("bossClear");
       }
     }
+    return true;
+  }
+  breakProp(prop, dir) {
+    if (prop.broken) return false;
+    prop.broken = true;
+    prop.reward.hidden = false;
+    this.score += 40;
+    this.emit("break", { x: prop.x, y: prop.y + 0.45, dir, target: prop.id });
     return true;
   }
   step(input = {}, dt = DT) {
@@ -426,7 +448,7 @@ export class World {
         p.dashCool = 0.6;
         p.inv = Math.max(p.inv, 0.18);
         p.attack = null;
-        this.emit("dash", { x: p.x, y: p.y + 1 });
+        this.emit("dash", { x: p.x, y: p.y + 0.8, dir: p.facing });
       }
       if (
         p.jumpBuffer > 0 &&
@@ -444,7 +466,7 @@ export class World {
         p.coyote = 0;
         p.wallMemory = 0;
         p.ground = false;
-        this.emit("jump", { x: p.x, y: p.y, wall: !!wall });
+        this.emit("jump", { x: p.x, y: p.y, wall: !!wall, dir: p.facing });
       }
       if (p.attackBuffer > 0 && p.dash <= 0) {
         if (p.attack) {
@@ -467,7 +489,7 @@ export class World {
           w: 0.45,
           h: 0.45,
         });
-        this.emit("ninja", { x: p.x, y: p.y + 1 });
+        this.emit("ninja", { x: p.x + p.facing * 0.55, y: p.y + 1.05, dir: p.facing });
       }
       if (p.dash > 0) {
         p.dash = Math.max(0, p.dash - dt);
@@ -505,7 +527,7 @@ export class World {
         p.attack = null;
       }
     }
-    p.run += Math.abs(p.x - p.px) * ((2 * Math.PI * 0.56) / (1.52 * 0.64));
+    if (p.ground && !p.dash) p.run += strideAdvance(p.x - p.px, p.vx, 0.64);
     p.x = clamp(p.x, this.bossLocked ? 82 : 0, this.level.length);
     if (p.y < -5) {
       p.hp = 0;
@@ -516,6 +538,18 @@ export class World {
       p.attack.frame++;
       const a = p.attack,
         r = this.attackRect();
+      if (r) {
+        for (const prop of this.props)
+          if (!prop.broken && overlap(r, box(prop))) this.breakProp(prop, p.facing);
+        // A visible blade can actually cut an incoming projectile. This uses
+        // the same active frames as damage; cosmetic trails cannot parry.
+        for (const shot of this.projectiles)
+          if (shot.life > 0 && shot.owner === "enemy" && overlap(r, { x: shot.x - shot.w / 2, y: shot.y - shot.h / 2, w: shot.w, h: shot.h })) {
+            shot.life = 0;
+            this.emit("deflect", { x: shot.x, y: shot.y, dir: p.facing });
+            this.score += 15;
+          }
+      }
       if (r)
         for (const e of this.enemies)
           if (!e.dead && overlap(r, box(e)) && !a.hits.has(e.id)) {
@@ -536,6 +570,7 @@ export class World {
     }
     for (const e of this.enemies) this.updateEnemy(e, dt);
     for (const s of this.projectiles) {
+      if (s.life <= 0) continue;
       s.px = s.x;
       s.x += s.vx * dt;
       s.life -= dt;
@@ -545,26 +580,30 @@ export class World {
         w: Math.abs(s.x - s.px) + s.w,
         h: s.h,
       };
+      // Resolve first contact along the swept path, independent of array order.
+      // A cache behind an enemy must not steal its hit, nor may a fast shot
+      // cross a narrow wall and damage a target on the other side.
+      const dir = Math.sign(s.vx) || 1;
+      let contact = null, nearest = Infinity;
+      const consider = (rect, kind, target) => {
+        if (!overlap(r, rect)) return;
+        const distance = Math.max(0, dir > 0 ? rect.x - (s.px + s.w / 2) : (s.px - s.w / 2) - (rect.x + rect.w));
+        if (distance < nearest) { nearest = distance; contact = { kind, target }; }
+      };
+      for (const t of this.level.platforms)
+        if (!t.oneWay) consider({ x: t.x, y: t.y - t.h, w: t.w, h: t.h }, "wall", t);
       if (s.owner === "player") {
-        for (const e of this.enemies)
-          if (!e.dead && overlap(r, box(e))) {
-            this.hitEnemy(e, 2, Math.sign(s.vx), s.id);
-            s.life = 0;
-            break;
-          }
-      } else if (overlap(r, box(p))) {
-        this.hurt(1, Math.sign(s.vx));
+        for (const e of this.enemies) if (!e.dead) consider(box(e), "enemy", e);
+        for (const prop of this.props) if (!prop.broken) consider(box(prop), "cache", prop);
+      } else consider(box(p), "player", p);
+      if (contact) {
+        s.x = s.px + dir * nearest;
+        if (contact.kind === "cache") this.breakProp(contact.target, dir);
+        else if (contact.kind === "enemy") this.hitEnemy(contact.target, 2, dir, s.id);
+        else if (contact.kind === "player") this.hurt(1, dir);
+        else this.emit("impact", { x: s.x, y: s.y, dir: -dir });
         s.life = 0;
       }
-      for (const t of this.level.platforms)
-        if (
-          !t.oneWay &&
-          s.x >= t.x &&
-          s.x <= t.x + t.w &&
-          s.y < t.y &&
-          s.y > t.y - t.h
-        )
-          s.life = 0;
     }
     this.projectiles = this.projectiles
       .filter((s) => s.life > 0 && Math.abs(s.x - p.x) < 30)
@@ -573,7 +612,7 @@ export class World {
       if (overlap(box(p), { x: h.x, y: h.y, w: h.w, h: 0.52 }))
         this.hurt(1, p.x < h.x ? -1 : 1);
     for (const l of this.loot)
-      if (!l.taken && Math.hypot(l.x - p.x, l.y - p.y - 0.9) < 1) {
+      if (!l.taken && !l.hidden && Math.hypot(l.x - p.x, l.y - p.y - 0.9) < 1) {
         l.taken = true;
         this.score += 30;
         if (l.kind === "energy") p.energy = Math.min(10, p.energy + 2);
@@ -769,6 +808,7 @@ export class World {
       score: this.score,
       kills: this.kills,
       collected: this.collected,
+      props: this.props.map(({ id, x, y, broken }) => ({ id, x, y, broken })),
       deaths: this.deaths,
       player: {
         x: p.x,

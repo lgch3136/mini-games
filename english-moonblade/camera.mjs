@@ -10,9 +10,13 @@ function spring(s, target, omega, dt) {
 // Critically damped and time-based: no frame-count lerp, oscillating zoom or
 // ordinary-hit random shake. Look-ahead follows movement in either direction.
 export class FollowCamera {
+  constructor({ halfWidth = 12, elevation = 3.4 } = {}) {
+    this.halfWidth = halfWidth;
+    this.elevation = elevation;
+  }
   reset(p, length) {
-    this.x = { value: clamp(p.x, 12, length - 12), velocity: 0 };
-    this.y = { value: p.y + 3.4, velocity: 0 };
+    this.x = { value: clamp(p.x, this.halfWidth, length - this.halfWidth), velocity: 0 };
+    this.y = { value: p.y + this.elevation, velocity: 0 };
     this.lead = { value: 0, velocity: 0 };
     this.leadGoal = 0;
     this.floor = p.y;
@@ -60,14 +64,17 @@ export class FollowCamera {
     const dead = 1.15;
     if (focus > this.anchor + dead) this.anchor = focus - dead;
     else if (focus < this.anchor - dead) this.anchor = focus + dead;
-    const tx = bossLocked ? length - 14 : clamp(this.anchor, 12, length - 12);
-    let ty = clamp(this.floor + 3.4, 3.4, 10.3);
-    if (p.y > ty + 4.3) ty = clamp(p.y - 0.9, 3.4, 10.3);
-    if (p.y < ty - 5.5) ty = clamp(p.y + 5.5, 3.4, 10.3);
-    if (bossLocked) ty = 3.4;
+    const tx = bossLocked ? length - 14 : clamp(this.anchor, this.halfWidth, length - this.halfWidth);
+    let ty = clamp(this.floor + this.elevation, this.elevation, 10.3);
+    if (p.y > ty + 4.3) ty = clamp(p.y - 0.9, this.elevation, 10.3);
+    // A descent from a raised ledge must not leave the next landing surface
+    // hidden below the viewport while we wait to commit the new floor.
+    const lowerBand = Math.min(5.5, this.elevation + 0.7);
+    if (p.y < ty - lowerBand) ty = clamp(p.y + lowerBand, this.elevation, 10.3);
+    if (bossLocked) ty = this.elevation;
     spring(this.x, tx, bossLocked ? 4 : 9, dt);
     spring(this.y, ty, 6.5, dt);
-    const bounded = clamp(this.x.value, 12, length - 12);
+    const bounded = clamp(this.x.value, this.halfWidth, length - this.halfWidth);
     if (bounded !== this.x.value) {
       this.x.value = bounded;
       this.x.velocity = 0;

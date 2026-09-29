@@ -5,6 +5,7 @@ import {
   roadTexture,
 } from "../shared/first-person/scene.mjs?v=20260918-play-r1";
 import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs";
+import { LightPool, loadLightTexture } from '../shared/light/pool.mjs?v=20260928-light-r1';
 const dummy = new T.Object3D();
 export class StrikeView extends SceneKit {
   constructor(canvas) {
@@ -59,9 +60,12 @@ export class StrikeView extends SceneKit {
     );
     this.flash.rotation.x = -Math.PI / 2;
     this.flash.visible = false;
+    this.lights = new LightPool(this, await loadLightTexture(this), 48);
     this.permanent = new Set(this.geometries);
   }
   build(w) {
+    this.lights?.clear();
+    for (const name of ['bulletMesh','sparkMesh','dropMesh']) this[name]?.dispose();
     const palette = w.map;
     this.scene.fog.color.setHex(palette.fog);
     for (const c of [...this.group.children]) this.group.remove(c);
@@ -401,6 +405,7 @@ export class StrikeView extends SceneKit {
       this.kick = e.weapon === 1 ? 0.11 : 0.055;
       this.flashTime = 0.05;
       for (const p of e.impacts) {
+        this.lights.emit(p.x,p.y,p.z,0x9eede9,e.weapon===1?1.3:0.8,0.22);
         this.traces.push({ a: { ...e.origin }, b: p, life: 0.065 });
         for (let i = 0; i < 3; i++)
           this.effects.push({
@@ -416,6 +421,7 @@ export class StrikeView extends SceneKit {
       }
     }
     if (e.type === "kill") {
+      this.lights.emit(e.x,e.y,e.z,0xffd797,2.5,0.5);
       for (let i = 0; i < 18; i++)
         this.effects.push({
           x: e.x,
@@ -559,6 +565,21 @@ export class StrikeView extends SceneKit {
       this.dropMesh.setMatrixAt(i, dummy.matrix);
     });
     this.dropMesh.instanceMatrix.needsUpdate = true;
+    this.lights.begin(dt,this.camera,this.reduced);
+    for (let i=0;i<this.relayModels.length;i++) {
+      if (w.relays[i]) continue;
+      const r=w.props[i];
+      if (Math.abs(r.z-p.z)>55) continue;
+      this.lights.add(r.x,0.04,r.z,4.2,0x7de2d2,0.22,true);
+      this.lights.add(r.x,1.9,r.z,2.3,0xffd18a,0.16);
+    }
+    for (const a of this.actors) {
+      const e=w.enemies[a.id];
+      if (!a.root.visible || e.wind<=0) continue;
+      this.lights.add(e.x,e.y,e.z,1.3+e.wind,0xffae79,this.reduced?0.12:0.28);
+    }
+    this.lights.end();
     this.renderer.render(this.scene, this.camera);
   }
+  dispose() { this.lights?.dispose(); super.dispose(); }
 }

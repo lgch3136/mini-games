@@ -1,7 +1,8 @@
-import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260918-play-r1";
-import { View } from "./view.mjs?v=20260918-play-r1";
-import { MoonAudio } from "./audio.mjs?v=20260918-play-r1";
+import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260929-fluid-r2";
+import { View } from "./view.mjs?v=20260929-fluid-r2";
+import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
+import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
 const $ = (id) => document.getElementById(id),
   audio = new MoonAudio(),
   coarse = matchMedia("(pointer:coarse)");
@@ -77,6 +78,7 @@ function stop() {
   acc = 0;
   release();
   audio.pause();
+  $("combo").getAnimations().forEach((animation) => animation.cancel());
 }
 function input() {
   return controls.read();
@@ -126,8 +128,19 @@ function loop() {
   if (raf || mode !== "playing" || document.hidden || destroyed) return;
   last = performance.now();
   acc = 0;
-  raf = requestAnimationFrame(tick);
+  raf = requestAnimationFrame(guardedTick);
   audio.start();
+}
+function guardedTick(now) {
+  try { tick(now); }
+  catch (error) {
+    // A broken display frame must not leave the music scheduler alive forever.
+    stop();
+    mode = "error";
+    panel("RENDERING PAUSED", "画面已安全停止", "发生绘制异常，音频与动画循环已关闭。可返回出发点重试。", "返回出发点");
+    text("status", error.message || "绘制异常");
+    console.error(error);
+  }
 }
 function toast(s, t = 1.8) {
   text("toast", s);
@@ -147,6 +160,8 @@ function event(e) {
     word();
   }
   if (e.type === "checkpoint") toast("检查点已记录 · 体力回复");
+  if (e.type === "break") toast("补给箱破开 · 靠近收取忍力", 1.2);
+  if (e.type === "deflect") toast("刀锋截弹", 0.7);
   if (e.type === "bossClear") toast("月印已夺回 · 前往寺门", 3);
 }
 function hud() {
@@ -159,7 +174,13 @@ function hud() {
   text("energy", "◆".repeat(p.energy) + "◇".repeat(10 - p.energy));
   text("score", String(world.score).padStart(5, "0"));
   const combo = world.combo >= 2 ? `${world.combo}<small>连斩</small>` : "";
-  if ($("combo").innerHTML !== combo) $("combo").innerHTML = combo;
+  if ($("combo").innerHTML !== combo) {
+    $("combo").innerHTML = combo;
+    if (combo && !view.reduced) $("combo").animate([
+      { transform: "scale(1.22)", opacity: 0.5 },
+      { transform: "scale(1)", opacity: 1 },
+    ], { duration: 160, easing: "cubic-bezier(.2,.9,.3,1)" });
+  }
   const boss = world.enemies.find((e) => e.kind === "boss" && !e.dead);
   $("boss").hidden = !boss || !world.bossLocked;
   if (boss) $("boss-fill").style.transform = `scaleX(${boss.hp / boss.maxHp})`;
@@ -198,7 +219,7 @@ function tick(now) {
     finish();
     return;
   }
-  raf = requestAnimationFrame(tick);
+  raf = requestAnimationFrame(guardedTick);
 }
 function panel(kicker, title, body, label) {
   text("panel-kicker", kicker);
@@ -268,7 +289,7 @@ $("primary-action").addEventListener("click", () => {
   } else if (mode === "clear") {
     world.next();
     begin();
-  } else if (mode === "won") {
+  } else if (mode === "won" || mode === "error") {
     menu();
   }
 });
@@ -281,6 +302,10 @@ $("sound-btn").addEventListener("click", async () => {
 });
 $("detail").addEventListener("change", () => {
   if (view) view.detail = $("detail").checked;
+  preview();
+});
+$("comfort").addEventListener("change", () => {
+  if (view) { view.reduced = $("comfort").checked; view.feedback.clear(); }
   preview();
 });
 $("chapter-select").addEventListener("change", () => {
@@ -395,6 +420,7 @@ coarse.addEventListener("change", () => {
   if (mode === "playing") $("touch").hidden = !coarse.matches;
 });
 $("game").addEventListener("webglcontextlost", (e) => {
+  if (destroyed) return;
   e.preventDefault();
   pause();
   text("status", "画面上下文已释放，请刷新恢复。");
@@ -418,6 +444,7 @@ function performanceSnapshot() {
       p95: pct(perf.frames, 0.95),
       workP95: pct(perf.work, 0.95),
       longFrames: perf.longFrames,
+      ...pacingStats(perf.frames),
     };
     performanceCacheUntil = now + 250;
   }
@@ -427,6 +454,7 @@ window.moonDiagnostics = () => ({
   version: VERSION,
   mode,
   raf: !!raf,
+  uiAnimations: $("combo").getAnimations().length,
   world: world.snapshot(),
   input: controls.read(),
   view: view?.diagnostics(),
@@ -446,6 +474,7 @@ window.moonDiagnostics = () => ({
 });
 try {
   view = new View($("game"), $("fx"));
+  $("comfort").checked = view.reduced;
   await view.preload();
   view.build(world);
   $("loading").hidden = true;

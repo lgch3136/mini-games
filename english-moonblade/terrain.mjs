@@ -15,6 +15,6 @@ export function platformLayers(p, city) {
     },
     tile: p.oneWay
       ? null
-      : { center: p.y - (city ? 0.08 : 0.04), top: p.y, bottom: p.y - 0.08 },
+      : { center: p.y - 0.04, top: p.y, bottom: p.y - 0.08 },
   };
 }

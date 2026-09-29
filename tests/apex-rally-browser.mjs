@@ -93,6 +93,7 @@ async function run(mode) {
     const end = performance.now() + 240000;
     while (token === serial && d().mode === "playing" && !d().game.finished) {
       const s = d().game;
+      window.rallyReport.maxLightInstances = Math.max(window.rallyReport.maxLightInstances || 0, d().lightFX.instances);
       keys(rallyPilot(s, memory));
       if (s.time > sampleAt) {
         window.rallyReport.samples.push({
@@ -117,6 +118,7 @@ async function run(mode) {
       s.stats,
     );
     check("氮气实际消耗与补充", s.stats.nitros >= 2, s.stats);
+    check("漂移与喷射实际点亮限额柔光", window.rallyReport.maxLightInstances >= 4 && window.rallyReport.maxLightInstances <= 32, {max:window.rallyReport.maxLightInstances});
     if (mode === "items")
       check("主动拾取补给箱", s.stats.pickups >= 3, s.stats);
     check("完整路线无数值错误", Number.isFinite(s.p.x + s.p.speed + s.time));
@@ -295,6 +297,7 @@ $("free").onclick = async () => {
       const trace = [], forward = side < 0 ? "KeyA" : "KeyD", counter = side < 0 ? "KeyD" : "KeyA";
       await segment(1.4, { KeyW: true, [forward]: true, ShiftLeft: true }, trace);
       const s = d().game, maxSlip = Math.max(...trace.map((t) => Math.abs(t.p.slip))) * 180 / Math.PI;
+      check(`${side}：漂移轮边柔光已渲染`, d().lightFX.enabled && d().lightFX.instances >= 4 && d().lightFX.instances <= 32, d().lightFX);
       const crosses = intersections(trace.map((t) => t.left), trace.map((t) => t.right));
       window.rallyReport.traces.push({ side, maxSlip, crosses, trace });
       check(`${side}：真实侧滑超过 90°，两条实际后轮轨迹相交`, maxSlip > 90 && crosses > 0, { maxSlip, crosses });

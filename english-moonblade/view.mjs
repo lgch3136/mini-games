@@ -1,10 +1,15 @@
 import * as T from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { MotionTrack } from "./motion.mjs?v=20260918-play-r1";
-import { FollowCamera } from "./camera.mjs?v=20260918-play-r1";
-import { platformLayers } from "./terrain.mjs?v=20260918-play-r1";
+import { MotionTrack } from "./motion.mjs?v=20260929-fluid-r2";
+import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
+import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1";
+import { bevelBox, dressStage, syncCaches } from "./dressing.mjs?v=20260929-fluid-r2";
+import { platformLayers } from "./terrain.mjs?v=20260929-reaction-r1";
 import { prepareRigidSkin, createRigidSkin } from "./rig.mjs?v=20260918-play-r1";
-import { clamp, lerp } from "./world.mjs?v=20260918-play-r1";
+import { clamp, lerp } from "./world.mjs?v=20260929-fluid-r2";
+import { spatialBatches } from "./cadence.mjs?v=20260929-fluid-r2";
+import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2";
+import { GpuClock } from "./gpu-clock.mjs?v=20260929-fluid-r2";
 const Y = new T.Vector3(0, 1, 0),
   vec = new T.Vector3(),
   quat = new T.Quaternion(),
@@ -18,14 +23,18 @@ export class View {
       canvas,
       antialias: true,
       alpha: false,
-      powerPreference: "low-power",
+      // A live action game must not force an integrated GPU on dual-GPU Macs.
+      // Visibility pauses the loop; pagehide relinquishes the context entirely.
+      powerPreference: "high-performance",
     });
     this.renderer.setClearColor(0x091522);
+    this.gpuClock = new GpuClock(this.renderer.getContext(), new URLSearchParams(location.search).has('qa'));
     this.renderer.outputColorSpace = T.SRGBColorSpace;
     this.renderer.toneMapping = T.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.2;
     this.scene = new T.Scene();
-    this.camera = new T.OrthographicCamera(-12, 12, 6.75, -6.75, 0.1, 100);
+    this.viewHeight = 11.3;
+    this.camera = new T.OrthographicCamera(-10.04, 10.04, 5.65, -5.65, 0.1, 100);
     this.camera.position.set(0, 0, 30);
     this.camera.lookAt(0, 0, 0);
     this.cx = 10;
@@ -35,14 +44,16 @@ export class View {
     this.cache = new Map();
     this.rigs = new Map();
     this.elapsed = 0;
-    this.follow = new FollowCamera();
+    this.follow = new FollowCamera({ halfWidth: 10.04, elevation: 1.85 });
+    this.feedback = new Feedback();
+    this.project = this.screen.bind(this);
     this.reduced = matchMedia("(prefers-reduced-motion:reduce)").matches;
     this.detail = true;
-    this.scene.add(new T.HemisphereLight(0xa8c9e8, 0x172232, 1.35));
-    const key = new T.DirectionalLight(0xc8e4ff, 2.4);
-    key.position.set(-5, 7, 5);
+    this.scene.add(new T.HemisphereLight(0xabcbd5, 0x152433, 1.05));
+    const key = new T.DirectionalLight(0xe2e7d2, 2.65);
+    key.position.set(-3, 7, 5);
     this.scene.add(key);
-    const rim = new T.DirectionalLight(0x92b9ec, 1.6);
+    const rim = new T.DirectionalLight(0x86cced, 2.25);
     rim.position.set(4, 5, -4);
     this.scene.add(rim);
     this.light = new T.PointLight(0x9df8ff, 0, 5, 2);
@@ -74,6 +85,18 @@ export class View {
     gc.fillStyle = gg;
     gc.fillRect(0, 0, 128, 128);
     this.glowMap = new T.CanvasTexture(glow);
+    this.glowImage = glow;
+    const paper = document.createElement("canvas");
+    paper.width = 64; paper.height = 128;
+    const pc = paper.getContext("2d"), pg = pc.createRadialGradient(32, 76, 2, 32, 65, 84);
+    pg.addColorStop(0, "#ffefd0"); pg.addColorStop(0.5, "#bdad88"); pg.addColorStop(1, "#403d32");
+    pc.fillStyle = pg; pc.fillRect(0, 0, 64, 128);
+    for (let i = 0; i < 250; i++) {
+      pc.fillStyle = i % 2 ? "#ffffff08" : "#080e1410";
+      pc.fillRect((i * 29) % 64, (i * 37) % 128, 1, 3 + i % 7);
+    }
+    this.paperMap = new T.CanvasTexture(paper);
+    this.paperMap.colorSpace = T.SRGBColorSpace;
   }
   async preload() {
     const loader = new GLTFLoader(),
@@ -84,7 +107,9 @@ export class View {
           new URL(`./assets/${n}.glb`, import.meta.url).href,
         );
         this.cache.set(n, r.scene);
-        this.rigs.set(n, prepareRigidSkin(r.scene));
+        const rig = prepareRigidSkin(r.scene);
+        for (const m of rig.materials) { m.roughness = 0.62; m.metalness = 0.08; }
+        this.rigs.set(n, rig);
       }),
     );
     this.backgrounds = await Promise.all(
@@ -105,10 +130,19 @@ export class View {
       new T.PlaneGeometry(30, 16.875),
       new T.MeshBasicMaterial({
         map: this.backgrounds[0],
-        color: 0xc9d8e9,
+        color: 0x83989e,
         toneMapped: false,
       }),
     );
+    // Recede the busy illustration without blur or a second scene render.
+    this.bg.material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace("#include <color_fragment>", `
+        #include <color_fragment>
+        float luma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb = mix(vec3(luma), diffuseColor.rgb, 0.65);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.042, 0.092, 0.11), 0.14);
+      `);
+    };
     this.bg.position.z = -8;
     this.scene.add(this.bg);
     this.ready = true;
@@ -118,18 +152,28 @@ export class View {
     this.w = r.width;
     this.h = r.height;
     // Menu can fill a portrait phone; keep geometry proportional there too.
-    const halfWidth = (6.75 * r.width) / Math.max(1, r.height);
+    const halfWidth = (this.viewHeight * 0.5 * r.width) / Math.max(1, r.height);
     this.camera.left = -halfWidth;
     this.camera.right = halfWidth;
     this.camera.updateProjectionMatrix();
+    this.follow.halfWidth = halfWidth;
     this.dpr = Math.min(devicePixelRatio || 1, 1.5);
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setSize(r.width, r.height, false);
     this.fx.width = Math.round(r.width * this.dpr);
     this.fx.height = Math.round(r.height * this.dpr);
   }
-  instanced(list, geometry, material, parent) {
+  instanced(list, geometry, material, parent, chunked = false) {
     if (!list.length) return;
+    if (chunked) {
+      const group = new T.Group();
+      for (const chunk of spatialBatches(list)) {
+        const mesh = this.instanced(chunk, geometry, material, group);
+        mesh.computeBoundingSphere();
+      }
+      parent.add(group);
+      return group;
+    }
     const m = new T.InstancedMesh(geometry, material, list.length);
     list.forEach((v, i) => {
       dummy.position.set(...v.p);
@@ -148,6 +192,7 @@ export class View {
       this.scene.remove(this.stageGroup);
       this.stageGroup.traverse((o) => {
         if (o.isMesh) {
+          if (o.isInstancedMesh) o.dispose();
           o.geometry.dispose();
           o.material.dispose();
         }
@@ -156,6 +201,7 @@ export class View {
     for (const a of this.actors.values()) {
       this.scene.remove(a.root);
       a.skeleton.dispose();
+      a.materials.forEach((m) => m.dispose());
       a.shadow.geometry.dispose();
       a.shadow.material.dispose();
       this.scene.remove(a.shadow);
@@ -178,20 +224,20 @@ export class View {
       blocks.push({
         p: [p.x + p.w / 2, layers.wall.center, -0.3],
         s: [p.w, layers.wall.height, depth],
-        c: city ? 0x7d98b2 : 0x96aaa3,
+        c: city ? 0x657876 : 0x72837b,
       });
       caps.push({
         p: [p.x + p.w / 2, layers.cap.center, 0.0],
         s: [p.w + 0.12, layers.cap.height, depth + 0.12],
-        c: city ? 0x405565 : 0x647773,
+        c: city ? 0x384c4e : 0x52635a,
       });
       if (!p.oneWay) {
-        for (let x = p.x + 0.25; x < p.x + p.w; x += 0.52)
-          for (let z = -1.27; z < 1.1; z += 0.52)
+        for (let x = p.x + 0.3; x < p.x + p.w; x += 0.62)
+          for (let z = -1.02; z < 1.1; z += 0.54)
             tiles.push({
-              p: [x, layers.tile.center, z],
-              s: city ? [0.245, 0.08, 0.49] : [0.49, 0.08, 0.49],
-              c: city ? 0x3c5265 : 0x647775,
+              p: [Math.min(x, p.x + p.w - 0.28), p.y - 0.04, z],
+              s: [0.6, 0.08, 0.52],
+              c: new T.Color(city ? 0x57716e : 0x7a8980).multiplyScalar(0.96 + Math.sin(x * 31 + z * 13) * 0.04),
             });
         for (let y = p.y - 0.48; y > p.y - 0.6; y -= 0.8)
           seams.push({
@@ -199,15 +245,6 @@ export class View {
             s: [p.w, 0.018, 0.035],
             c: 0x121f2b,
           });
-        for (let x = p.x + 1; x < p.x + p.w; x += 4.2) {
-          if (city) {
-            posts.push({
-              p: [x, p.y - 1.3, 1.09],
-              s: [0.07, 2.4, 0.08],
-              c: 0x3d4c53,
-            });
-          }
-        }
         if (p.w > 7) {
           const x = p.x + Math.min(6, p.w * 0.25);
           lamps.push({
@@ -282,19 +319,9 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.instanced(blocks, cube.clone(), stoneMat, this.stageGroup);
     for (const list of [caps, seams, posts, rails, lamps])
       this.instanced(list, cube.clone(), material(0xffffff), this.stageGroup);
-    const tileGeo = city
-      ? new T.CylinderGeometry(
-          1,
-          1,
-          1,
-          6,
-          1,
-          true,
-          Math.PI / 2,
-          Math.PI,
-        ).rotateX(Math.PI / 2)
-      : cube.clone();
-    this.instanced(tiles, tileGeo, material(0xffffff), this.stageGroup);
+    const tileMaterial = material(0xffffff);
+    tileMaterial.roughness = city ? 0.42 : 0.72;
+    this.instanced(tiles, bevelBox(0.035), tileMaterial, this.stageGroup, true);
     this.instanced(
       lanterns,
       new T.SphereGeometry(1, 10, 6),
@@ -394,6 +421,8 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       Math.max(1, world.loot.length),
     );
     this.stageGroup.add(this.lootMesh);
+    this.lootColors = [new T.Color(0xfb7892), new T.Color(0x81e5e9), new T.Color(0xffdc8e)];
+    dressStage(this, world);
     this.bg.material.map = this.backgrounds[city ? 0 : 1];
     this.makeActor("hero", "shinobi");
     for (const e of world.enemies)
@@ -404,6 +433,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.groundCamera = world.player.y;
     this.follow.reset(world.player, world.level.length);
     this.effects = [];
+    this.feedback.clear();
     this.stage = world.stage;
   }
   makeActor(id, type) {
@@ -411,6 +441,11 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       this.cache.get(type),
       this.rigs.get(type),
     );
+    // Hit/death uniforms are local to each actor; geometry stays shared.
+    const materials = (Array.isArray(skin.material) ? skin.material : [skin.material]).map((m) => {
+      const clone = m.clone(); clone.transparent = true; clone.forceSinglePass = true; return clone;
+    });
+    skin.material = materials;
     this.scene.add(root);
     const shadow = new T.Mesh(
       new T.PlaneGeometry(1.65, 0.85),
@@ -422,13 +457,16 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     );
     shadow.rotation.x = -Math.PI / 2;
     this.scene.add(shadow);
+    const ribbon = new BladeRibbon();
     this.actors.set(id, {
       root,
       parts,
       skin,
       skeleton,
+      materials,
       shadow,
-      trail: [],
+      ribbon,
+      trail: ribbon.nodes,
       bladeBase: new T.Vector3(),
       bladeTip: new T.Vector3(),
       motion: new MotionTrack(),
@@ -487,10 +525,10 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     }
     r.sword.position.set(...p.handF);
     r.sword.rotation.set(0, 0, p.swordAngle);
-    const angle =
-      -1.65 +
-      Math.sin(this.elapsed * 8 - b.x) * 0.15 -
-      clamp(Math.abs(b.vx) * 0.022, 0, 0.3);
+    const targetAngle = -1.6 - clamp(Math.abs(b.vx) * 0.035, 0, 0.48) + clamp(b.vy * 0.018, -0.18, 0.18);
+    a.scarf = dt ? lerp(a.scarf ?? targetAngle, targetAngle, 1 - Math.exp(-dt * 18)) : (a.scarf ?? targetAngle);
+    a.scarfTail = dt ? lerp(a.scarfTail ?? a.scarf, a.scarf, 1 - Math.exp(-dt * 12)) : (a.scarfTail ?? a.scarf);
+    const angle = a.scarf + Math.sin(this.elapsed * 8 - b.x) * 0.045;
     r.scarfA.position.set(p.chest[0] - 0.1, p.chest[1] + 0.2, -0.12);
     r.scarfA.rotation.z = -angle;
     r.scarfB.position.set(
@@ -498,46 +536,42 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       r.scarfA.position.y + Math.cos(angle) * 0.47,
       -0.12,
     );
-    r.scarfB.rotation.z = -angle + 0.25 * Math.sin(this.elapsed * 9);
+    r.scarfB.rotation.z = -a.scarfTail + 0.075 * Math.sin(this.elapsed * 9);
     a.shadow.position.set(root.position.x, floor + 0.016, 0.65);
     a.shadow.scale.setScalar(1 + Math.min(height, 4) * 0.12);
     a.shadow.material.opacity = 0.46 / (1 + height * 0.55);
     a.shadow.visible = root.visible && floor > -10 && height < 7;
-    if (isHero) {
+    {
       r.sword.updateWorldMatrix(true, false);
       a.bladeBase.set(0, 0.12, 0).applyMatrix4(r.sword.matrixWorld);
       a.bladeTip.set(0.22, 1.28, 0).applyMatrix4(r.sword.matrixWorld);
     }
-    if (isHero && dt > 0) {
-      if (a.lastFacing !== b.facing) a.trail.length = 0;
-      a.lastFacing = b.facing;
+    if (dt > 0) {
       const attack = b.attack,
         start = attack?.kind === "slash" ? [3, 4, 6][attack.chain] : 0,
         active = attack?.kind === "slash" ? [5, 6, 7][attack.chain] : 0,
-        striking =
+        striking = isHero ?
           attack &&
           (attack.kind === "dive" ||
-            (attack.frame >= start && attack.frame < start + active));
-      if (striking)
-        a.trail.push({
-          base: a.bladeBase.clone(),
-          tip: a.bladeTip.clone(),
-          age: 0,
-        });
-      for (const node of a.trail) node.age += dt;
-      a.trail = a.trail.filter((node) => node.age < 0.09).slice(-10);
+            (attack.frame >= start && attack.frame < start + active)) :
+          ["strike", "sweep"].includes(b.state);
+      a.ribbon.update(a.bladeBase, a.bladeTip, dt, !!striking, b.facing);
     }
-    if (isHero && b.inv > 0)
-      root.traverse((o) => {
-        if (o.isMesh)
-          o.visible = b.inv > 0.85 || Math.floor(this.elapsed * 15) % 3 !== 0;
-      });
-    else
-      root.traverse((o) => {
-        if (o.isMesh) o.visible = true;
-      });
+    // Never blink the entire hero out of existence. Damage is a short local
+    // material response, and reduced-motion makes it substantially gentler.
+    for (const m of a.materials) {
+      const flash = isHero ? (b.stun > 0 ? 0.2 : b.inv > 0 ? 0.055 : 0) : (b.flash || 0) * 2.8;
+      m.emissive.setHex(isHero ? 0xefa387 : 0xffca8b);
+      m.emissiveIntensity = this.reduced ? flash * 0.35 : flash;
+      m.opacity = 1;
+    }
   }
   event(e) {
+    this.feedback.emit(e, this.reduced || !this.detail);
+    if (e.type === "kill") {
+      const actor = this.actors.get(e.target);
+      if (actor) actor.death = { age: 0, dir: e.dir || 1, x: actor.root.position.x, y: actor.root.position.y };
+    }
     if (e.type === "land" && this.detail && !this.reduced && e.speed > 17)
       this.follow.land(Math.min(1, e.speed / 18));
     if (
@@ -607,10 +641,13 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.camera.lookAt(this.cx, this.cy, 0);
     this.camera.updateMatrixWorld();
     this.bg.position.set(
-      this.cx - (this.cx - 12) * 0.035,
-      this.cy * 0.91 + 0.3,
+      this.cx - Math.sin(this.cx * 0.035) * 0.36,
+      this.cy - 1.25 + (this.cy - this.follow.elevation) * 0.02,
       -8,
     );
+    // Keep the authored skyline (including the moon) in frame. Parallax is
+    // bounded, so a long chapter cannot walk beyond this background plane.
+    this.bg.scale.set(Math.max(this.viewHeight * 1.12 / 16.875, (this.camera.right - this.camera.left + 1.3) / 30), this.viewHeight * 1.12 / 16.875, 1);
     this.actor(
       this.actors.get("hero"),
       p,
@@ -623,6 +660,18 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     for (const e of world.enemies) {
       if (e.kind === "bat") continue;
       const a = this.actors.get(e.id);
+      if (e.dead && a.death) {
+        a.death.age += dt;
+        const t = a.death.age, q = clamp(t / 0.34, 0, 1);
+        a.root.visible = q < 1;
+        a.shadow.visible = false;
+        if (q === 1) { a.death = null; continue; }
+        a.root.position.x = a.death.x + a.death.dir * (1 - Math.exp(-t * 8)) * 0.48;
+        a.root.position.y = a.death.y + Math.sin(q * Math.PI) * 0.1;
+        a.root.rotation.z = -a.death.dir * q * 0.18;
+        for (const m of a.materials) { m.opacity = (1 - q) ** 0.7; m.emissiveIntensity = (1 - q) * 0.2; }
+        continue;
+      }
       a.root.visible = !e.dead && Math.abs(e.x - this.cx) < 14;
       a.shadow.visible = a.root.visible;
       if (a.root.visible)
@@ -644,23 +693,20 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
         0.7,
       );
       dummy.rotation.set(this.elapsed, 0, this.elapsed * 0.7);
-      dummy.scale.setScalar(l.taken ? 0 : 1);
+      dummy.scale.setScalar(l.taken || l.hidden ? 0 : 1);
       dummy.updateMatrix();
       this.lootMesh.setMatrixAt(i, dummy.matrix);
       this.lootMesh.setColorAt(
         i,
-        new T.Color(
-          l.kind === "health"
-            ? 0xfb7892
-            : l.kind === "energy"
-              ? 0x81e5e9
-              : 0xffdc8e,
-        ),
+        this.lootColors[l.kind === "health" ? 0 : l.kind === "energy" ? 1 : 2],
       );
     }
     this.lootMesh.instanceMatrix.needsUpdate = true;
     if (this.lootMesh.instanceColor)
       this.lootMesh.instanceColor.needsUpdate = true;
+    syncCaches(this, world);
+    this.feedback.locomotion(p, dt, this.reduced || !this.detail);
+    this.feedback.advance(dt, world.level.platforms);
     this.updateLighting(px, py, dt);
     const flash = this.effects.findLast(
       (e) => e.type === "hit" && e.age < 0.12,
@@ -668,14 +714,25 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.light.intensity =
       this.detail && flash ? 4 * (1 - flash.age / 0.12) : 0;
     this.light.position.set(flash?.x || px, flash?.y || py + 1, 1.7);
+    this.gpuClock.begin();
     this.renderer.render(this.scene, this.camera);
+    this.gpuClock.end();
     this.drawFx(world, dt, alpha);
   }
   drawFx(world, dt, alpha) {
     const c = this.ctx,
-      unit = this.h / 13.5;
+      unit = this.h / this.viewHeight;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, this.w, this.h);
+    if (!this.vignette || this.vignetteHeight !== this.h) {
+      this.vignette = c.createLinearGradient(0, 0, 0, this.h);
+      this.vignette.addColorStop(0, "rgba(3,13,20,.22)");
+      this.vignette.addColorStop(0.38, "rgba(3,13,20,0)");
+      this.vignette.addColorStop(0.72, "rgba(3,13,20,0)");
+      this.vignette.addColorStop(1, "rgba(3,13,20,.4)");
+      this.vignetteHeight = this.h;
+    }
+    c.fillStyle = this.vignette; c.fillRect(0, 0, this.w, this.h);
     if (this.detail && !this.reduced) {
       c.strokeStyle = "rgba(173,205,235,.12)";
       c.lineWidth = 0.75;
@@ -690,46 +747,32 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
           c.stroke();
         }
     }
-    const p = world.player,
-      a = this.actors.get("hero");
     // The ribbon is made from actual blade endpoints after the model's pose
     // and 3D turn, rather than an unrelated circle painted ahead of the player.
-    if (a.trail.length > 1) {
+    for (const [id, a] of this.actors) {
+      if (!a.root.visible || a.trail.length < 2) continue;
+      const hero = id === "hero";
       c.save();
       c.globalCompositeOperation = "lighter";
-      for (let i = 1; i < a.trail.length; i++) {
-        const prev = a.trail[i - 1],
-          cur = a.trail[i],
-          b0 = this.screen(
-            prev.base.x * 0.25 + prev.tip.x * 0.75,
-            prev.base.y * 0.25 + prev.tip.y * 0.75,
-            prev.base.z * 0.25 + prev.tip.z * 0.75,
-          ),
-          t0 = this.screen(...prev.tip.toArray()),
-          b1 = this.screen(
-            cur.base.x * 0.25 + cur.tip.x * 0.75,
-            cur.base.y * 0.25 + cur.tip.y * 0.75,
-            cur.base.z * 0.25 + cur.tip.z * 0.75,
-          ),
-          t1 = this.screen(...cur.tip.toArray());
-        c.globalAlpha =
-          clamp(1 - prev.age / 0.09, 0, 1) * (this.detail ? 0.24 : 0.14);
-        c.fillStyle = "#81dfff";
-        c.beginPath();
-        c.moveTo(...b0);
-        c.lineTo(...t0);
-        c.lineTo(...t1);
-        c.lineTo(...b1);
-        c.closePath();
-        c.fill();
-        c.globalAlpha *= 1.6;
-        c.strokeStyle = "#dfffff";
-        c.lineWidth = Math.max(1, unit * 0.035);
-        c.beginPath();
-        c.moveTo(...t0);
-        c.lineTo(...t1);
-        c.stroke();
-      }
+      const outer = a.trail.map((n) => this.screen(n.tip.x, n.tip.y, n.tip.z));
+      const inner = a.trail.map((n) => this.screen(
+        n.base.x * 0.46 + n.tip.x * 0.54, n.base.y * 0.46 + n.tip.y * 0.54, n.base.z * 0.46 + n.tip.z * 0.54));
+      const curve = (points) => {
+        for (let i = 1; i < points.length - 1; i++)
+          c.quadraticCurveTo(...points[i], (points[i][0] + points[i + 1][0]) / 2, (points[i][1] + points[i + 1][1]) / 2);
+        c.lineTo(...points.at(-1));
+      };
+      const end = outer.at(-1), begin = outer[0];
+      const gradient = c.createLinearGradient(begin[0], begin[1], end[0] + 0.01, end[1] + 0.01);
+      gradient.addColorStop(0, hero ? "rgba(72,164,192,0)" : "rgba(202,119,88,0)");
+      gradient.addColorStop(0.5, hero ? "rgba(116,229,242,.3)" : "rgba(246,158,97,.2)");
+      gradient.addColorStop(1, hero ? "rgba(223,255,255,.66)" : "rgba(255,203,132,.4)");
+      c.globalAlpha = (this.reduced || !this.detail ? 0.4 : 0.9) * clamp(1 - a.trail.at(-1).age / 0.1, 0, 1);
+      c.fillStyle = gradient;
+      c.beginPath(); c.moveTo(...begin); curve(outer);
+      inner.reverse(); c.lineTo(...inner[0]); curve(inner); c.closePath(); c.fill();
+      c.strokeStyle = hero ? "#e6ffff" : "#f3c699"; c.lineWidth = Math.max(0.8, unit * 0.027);
+      c.beginPath(); c.moveTo(...begin); curve(outer); c.stroke();
       c.restore();
     }
     for (const e of world.enemies) {
@@ -791,6 +834,10 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       c.save();
       c.translate(x, y);
       c.rotate(s.owner === "player" ? this.elapsed * 24 : 0);
+      if (this.detail && !this.reduced) {
+        c.save(); c.globalCompositeOperation = "lighter"; c.globalAlpha = 0.28;
+        c.drawImage(this.glowImage, -unit * 0.42, -unit * 0.42, unit * 0.84, unit * 0.84); c.restore();
+      }
       c.fillStyle = s.owner === "player" ? "#d5eced" : "#ff9678";
       if (s.owner === "player") {
         for (let i = 0; i < 4; i++) {
@@ -806,39 +853,8 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       }
       c.restore();
     }
-    for (const e of this.effects) {
-      e.age += dt;
-      const q = e.age / e.life,
-        [x, y] = this.screen(e.x || 0, e.y || 0);
-      c.save();
-      c.translate(x, y);
-      c.globalAlpha = 1 - q;
-      if (e.type === "hit" || e.type === "kill" || e.type === "hurt") {
-        for (let i = 0; i < 8; i++) {
-          const r = (0.1 + q * 0.8) * unit,
-            angle = (i * Math.PI) / 4;
-          c.strokeStyle = e.type === "hurt" ? "#ff8076" : "#ffe8b5";
-          c.lineWidth = i % 2 ? 1.5 : 2.7;
-          c.beginPath();
-          c.moveTo(Math.cos(angle) * r * 0.3, Math.sin(angle) * r * 0.3);
-          c.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
-          c.stroke();
-        }
-      } else if (e.type === "land" || e.type === "dash") {
-        c.strokeStyle = "#adc2d6";
-        c.lineWidth = 1;
-        c.beginPath();
-        c.ellipse(0, 0, (0.3 + q) * unit, 0.09 * unit, 0, 0, Math.PI * 2);
-        c.stroke();
-      } else if (e.type === "checkpoint") {
-        c.strokeStyle = "#ffdc93";
-        c.lineWidth = 2;
-        c.beginPath();
-        c.arc(0, -unit, unit * (0.5 + q * 1.3), 0, Math.PI * 2);
-        c.stroke();
-      }
-      c.restore();
-    }
+    this.feedback.draw(c, this.project, unit, this.glowImage, this.reduced || !this.detail);
+    for (const e of this.effects) e.age += dt;
     this.effects = this.effects.filter((e) => e.age < e.life);
   }
   diagnostics() {
@@ -850,6 +866,9 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       geometries: this.renderer.info.memory.geometries,
       actors: this.actors.size,
       effects: this.effects.length,
+      feedback: { active: this.feedback.active, capacity: this.feedback.particles.length, emitted: this.feedback.emitted, rings: this.feedback.rings.filter((r) => r.life).length },
+      caches: { broken: this.cacheBroken?.size || 0, count: this.cacheLists?.[0]?.length || 0 },
+      reduced: this.reduced,
       camera: {
         x: this.cx,
         y: this.cy,
@@ -869,12 +888,16 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       originalCharacterDraws: this.rigs.get("shinobi")?.sourceDraws,
       terrainProbe: this.screen(9, 0),
       dpr: this.dpr,
+      gpu: this.gpuClock?.summary,
     };
   }
   dispose() {
+    this.feedback.clear();
+    this.gpuClock.dispose();
     for (const a of this.actors.values()) a.skeleton.dispose();
     this.scene.traverse((o) => {
       if (o.isMesh) {
+        if (o.isInstancedMesh) o.dispose();
         o.geometry.dispose();
         const ms = Array.isArray(o.material) ? o.material : [o.material];
         ms.forEach((m) => m.dispose());
@@ -884,7 +907,11 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.stone?.dispose();
     this.shadowMap.dispose();
     this.glowMap.dispose();
+    this.paperMap.dispose();
     this.renderer.dispose();
+    // Disposing Three.js objects alone leaves the WebGL context alive until
+    // GC. pagehide is terminal; explicitly relinquish its GPU allocation.
+    this.renderer.forceContextLoss();
     this.cache.clear();
     for (const rig of this.rigs.values()) rig.geometry.dispose();
     this.rigs.clear();

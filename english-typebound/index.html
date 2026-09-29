@@ -9,12 +9,13 @@
     <meta name="theme-color" content="#163b43" />
     <meta
       name="description"
-      content="键旅 Typebound 光灵冒险：三系法术、弹性光灵、命中涟漪与连词共鸣。用 2,329 个分级英文单词，在三章九关中练习打字。"
+      content="键旅 Typebound 追光练习：有效计时、平均字速、准确率与落键光轨。用 2,329 个分级英文单词，在三章九关中练习打字。"
     />
     <title>键旅 · TYPEBOUND</title>
     <link rel="stylesheet" href="style.css?v=20260918-play-r1" />
     <link rel="stylesheet" href="story.css?v=20260918-play-r1" />
     <link rel="stylesheet" href="combat.css?v=20260918-play-r1" />
+    <link rel="stylesheet" href="focus.css?v=20260928-light-r1" />
   </head>
   <body>
     <main id="app" data-view="menu">
@@ -40,7 +41,7 @@
           <h1>键旅<span>TYPEBOUND</span></h1>
           <p class="headline">把单词写成法术，<br />把练习走成冒险。</p>
           <p class="lead">
-            让每一次落键，点亮一束光。<br />星火强攻、霜环控场、生息回复——把单词写成你的战术。
+            看得见速度，也听得见节奏。<br />有效计时、平均字速与准确率，让每次练习都有回响。
           </p>
           <div class="setup">
             <label
@@ -146,13 +147,18 @@
             <span id="chapter-en"></span><b id="room-label"></b>
           </div>
           <div class="run-metrics">
-            <span><b id="wpm">0</b> WPM</span
-            ><span><b id="accuracy">100</b>% 准确率</span
-            ><span><b id="score">0</b> 星墨</span>
+            <span><b id="score">0</b> 星墨 · 逐字练习</span>
           </div>
         </div>
         <div id="arena" class="arena">
-          <canvas id="stage" aria-label="旅人对抗书灵的实时战斗动画"></canvas>
+          <canvas id="stage" aria-label="随正确输入推进、形变的节奏光轨"></canvas>
+          <div class="practice-metrics" aria-label="本次练习统计">
+            <div class="primary-metric"><small>平均打字速度</small><strong id="wpm">—</strong><em>WPM · 5 字符 / 词</em></div>
+            <div><small>有效练习时间</small><strong id="session-time">00:00</strong><em>暂停不计时</em></div>
+            <div><small>准确率 %</small><strong id="accuracy">100</strong><em>错键保留记录</em></div>
+            <div><small>完成单词</small><strong id="practice-words">0</strong><em>空格提交后计入</em></div>
+          </div>
+          <p class="pulse-caption" id="pulse-caption"></p>
           <div class="health hero-health">
             <span>执笔旅人 <b id="hero-hp"></b></span>
             <div class="hp-track"><i id="hero-bar"></i></div>
@@ -317,6 +323,6 @@
       </div>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="app.mjs?v=20260918-play-r1"></script>
+    <script type="module" src="app.mjs?v=20260928-light-r1"></script>
   </body>
 </html>

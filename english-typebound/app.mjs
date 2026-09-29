@@ -5,9 +5,9 @@ import {
   RELICS,
 } from "./content.mjs?v=20260918-play-r1";
 import { TypingInput } from "./input.mjs?v=20260918-play-r1";
-import { Stage } from "./render.mjs?v=20260918-play-r1";
+import { Stage, practiceMetrics } from "./focus-render.mjs?v=20260928-light-r1";
 import { TypeAudio } from "./audio.mjs?v=20260918-play-r1";
-const VERSION = "20260918-play-r1";
+const VERSION = "20260928-light-r1";
 const $ = (id) => document.getElementById(id);
 const read = (k, fallback) => {
   try {
@@ -520,6 +520,7 @@ function updateWord(force = false) {
   }
   $("spell-progress").style.transform =
     `scaleX(${g.cursor / g.word.en.length})`;
+  document.querySelector('.typing-dock').style.setProperty('--key-light', `${10 + g.cursor / g.word.en.length * 80}%`);
   $("spell-meter").classList.toggle("ready", g.cursor === g.word.en.length);
   $("spell-meter").setAttribute("aria-valuenow", g.cursor);
   $("spell-meter").setAttribute("aria-valuemax", g.word.en.length);
@@ -583,7 +584,11 @@ function updateHUD() {
       g.spell
     ],
   );
-  set("wpm", g.time >= 3 ? g.wpm : "—");
+  const metrics = practiceMetrics(g);
+  set('wpm', metrics.wpm ?? '—');
+  set('session-time', timeText(metrics.seconds));
+  set('practice-words', metrics.words);
+  set('pulse-caption', !g.roomStarted ? '第一键开始计时 · 每次正确落键，向前一束光' : g.errorAge > 0 ? '错键已记录 · 直接重打正确字母' : g.cursor === g.word.en.length ? '单词已就绪 · 空格释放回响' : `${g.combo} 连词 · 光轨跟随当前单词进度`);
   set("accuracy", g.accuracy);
   set("score", g.score.toLocaleString());
   set("hero-hp", `${Math.ceil(g.hp)} / ${g.maxHp}`);

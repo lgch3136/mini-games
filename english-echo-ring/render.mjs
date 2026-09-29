@@ -1,4 +1,5 @@
 import { RADIUS, TAU, mix, random } from "./sim.mjs?v=20260906-echo-r5";
+import { FlowField, ShipShape } from "./field.mjs?v=20260923-flow-r1";
 const C = {
   ship: "#bdfcf1",
   shot: "#70e5e0",
@@ -8,6 +9,15 @@ const C = {
   ink: "#091a21",
   white: "#dcece6",
 };
+// Compact in place: do not allocate four replacement arrays on every physics tick.
+function retainLive(items) {
+  let count = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.age < item.life) items[count++] = item;
+  }
+  items.length = count;
+}
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -17,6 +27,13 @@ export class Renderer {
     this.effects = [];
     this.labels = [];
     this.trail = [];
+    this.field = new FlowField(RADIUS);
+    this.fieldCanvas = document.createElement("canvas");
+    this.fieldContext = this.fieldCanvas.getContext("2d");
+    this.shape = new ShipShape();
+    this.fieldEnabled = true;
+    this.halo = new Image();
+    this.halo.src = '../shared/light/assets/halo-20260928.webp';
     this.edgeX = new Float64Array(192);
     this.edgeY = new Float64Array(192);
     this.rng = random(6309);
@@ -28,8 +45,9 @@ export class Renderer {
       stamp.width = stamp.height = 80;
       const c = stamp.getContext("2d"),
         g = c.createRadialGradient(40, 40, 0, 40, 40, 40);
-      g.addColorStop(0, color + "60");
-      g.addColorStop(0.24, color + "16");
+      g.addColorStop(0, color + "90");
+      g.addColorStop(0.18, color + "2e");
+      g.addColorStop(0.5, color + "09");
       g.addColorStop(1, color + "00");
       c.fillStyle = g;
       c.fillRect(0, 0, 80, 80);
@@ -48,12 +66,17 @@ export class Renderer {
       0.18,
       Math.min((box.width - 38) / 620, (box.height - 24) / 620),
     );
+    // Soft environmental lines do not need the full Retina backbuffer. Keep
+    // ships and bullets at full resolution; composite only the field texture.
+    const fieldSize = Math.max(192, Math.min(640,
+      Math.ceil(RADIUS * 2 * this.scale * Math.min(this.dpr, 1.15))));
+    this.fieldCanvas.width = this.fieldCanvas.height = fieldSize;
     this.background = document.createElement("canvas");
     this.background.width = this.canvas.width;
     this.background.height = this.canvas.height;
     const c = this.background.getContext("2d");
     c.scale(this.dpr, this.dpr);
-    c.fillStyle = "#08151c";
+    c.fillStyle = "#070f1b";
     c.fillRect(0, 0, width, height);
     const glow = c.createRadialGradient(
       this.cx,
@@ -63,9 +86,9 @@ export class Renderer {
       this.cy,
       Math.max(width, height) * 0.65,
     );
-    glow.addColorStop(0, "#133039");
-    glow.addColorStop(0.48, "#0d232b");
-    glow.addColorStop(1, "#08151c");
+    glow.addColorStop(0, "#0d2533");
+    glow.addColorStop(0.48, "#0a1627");
+    glow.addColorStop(1, "#060e19");
     c.fillStyle = glow;
     c.fillRect(0, 0, width, height);
     const r = random(621);
@@ -77,8 +100,23 @@ export class Renderer {
     this.effects.length = 0;
     this.labels.length = 0;
     this.trail.length = 0;
+    this.field.clear();
+    this.shape.clear();
+    this.time = 0;
   }
   event(e) {
+    if (this.fieldEnabled) {
+      if (e.type === "shot")
+        this.field.impulse(e.x, e.y, 17, 38, Math.cos(e.angle), Math.sin(e.angle));
+      else if (e.type === "bounce")
+        this.field.impulse(e.x, e.y, 165, 98, -Math.cos(e.angle) * 0.9, -Math.sin(e.angle) * 0.9);
+      else if (e.type === "kill") this.field.impulse(e.x, e.y, e.returning ? 175 : 125, 90);
+      else if (e.type === "resonance") this.field.impulse(e.x, e.y, 220, 210);
+      else if (e.type === "hurt") this.field.impulse(e.x, e.y, 150, 115);
+      else if (e.type === "dash") this.field.impulse(e.x, e.y, -100, 78);
+      else if (e.type === "spawn") this.field.impulse(e.x, e.y, -70, 62);
+      else if (e.type === "graze" || e.type === "hit") this.field.impulse(e.x, e.y, 70, 60);
+    }
     const push = (item) => {
       if (this.effects.length >= 40) this.effects.shift();
       this.effects.push(item);
@@ -101,7 +139,7 @@ export class Renderer {
       push({
         ...e,
         age: 0,
-        life: e.type === "resonance" ? 1.1 : e.type === "kill" ? 0.48 : 0.38,
+        life: e.type === "resonance" ? 1.35 : e.type === "kill" ? 0.58 : 0.42,
         color,
       });
       const count = this.reduced
@@ -144,6 +182,15 @@ export class Renderer {
   }
   update(dt, game, moving = true) {
     this.time += dt;
+    const p = game.p, speed = Math.hypot(p.vx, p.vy);
+    if (this.fieldEnabled) {
+      if (moving && !game.over) this.field.wake(p.x, p.y, p.vx, p.vy, dt);
+      this.field.step(dt);
+    }
+    const angle = Math.hypot(p.x, p.y) > 12 ? Math.atan2(-p.y, -p.x) : p.aim;
+    this.shape.step(dt,
+      Math.max(-1, Math.min(1, (-Math.sin(angle) * p.vx + Math.cos(angle) * p.vy) / 220)),
+      p.dash > 0 ? 1.3 : 1 + Math.min(1, speed / 220) * 0.075);
     for (const p of this.particles) {
       p.px = p.x;
       p.py = p.y;
@@ -153,22 +200,25 @@ export class Renderer {
       p.vx *= Math.exp(-2.7 * dt);
       p.vy *= Math.exp(-2.7 * dt);
     }
-    this.particles = this.particles.filter((p) => p.age < p.life);
+    retainLive(this.particles);
     for (const e of this.effects) e.age += dt;
     for (const l of this.labels) l.age += dt;
-    this.effects = this.effects.filter((e) => e.age < e.life);
-    this.labels = this.labels.filter((e) => e.age < e.life);
+    retainLive(this.effects);
+    retainLive(this.labels);
     for (const p of this.trail) p.age += dt;
-    this.trail = this.trail.filter((p) => p.age < 0.22);
+    retainLive(this.trail);
+    const tail = this.trail[this.trail.length - 1];
     if (
       moving &&
       Math.hypot(game.p.vx, game.p.vy) > 20 &&
-      this.trail.length < 30
+      this.trail.length < 44 &&
+      (!tail || Math.hypot(game.p.x - tail.x, game.p.y - tail.y) > 2)
     )
       this.trail.push({
         x: game.p.x,
         y: game.p.y,
         age: 0,
+        life: this.reduced ? 0.15 : 0.3,
         dash: game.p.dash > 0,
         aim: game.p.aim,
       });
@@ -195,6 +245,49 @@ export class Renderer {
     c.beginPath();
     c.arc(x, y, Math.max(0.1, r), 0, TAU);
     c.stroke();
+  }
+  drawField(alpha) {
+    if (!this.fieldEnabled) return;
+    const c = this.fieldContext, f = this.field, n = f.size;
+    const pixels = this.fieldCanvas.width, scale = pixels / (RADIUS * 2);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, pixels, pixels);
+    c.setTransform(scale, 0, 0, scale, pixels / 2, pixels / 2);
+    f.sample(alpha, this.reduced);
+    const paths = Array.from({ length: 8 }, () => new Path2D());
+    // Fewer lines on small screens, not lower-resolution input or simulation.
+    const stride = this.scale < 0.6 || this.dpr === 1 ? 4 : 2;
+    for (let axis = 0; axis < 2; axis++) {
+      for (let row = stride; row < n - 1; row += stride) {
+        for (let col = 0; col < n; col += stride) {
+          const i = axis ? col * n + row : row * n + col;
+          const before = i - (axis ? n : 1) * stride, after = i + (axis ? n : 1) * stride;
+          // Midpoint quadratics are tangent-continuous across cell boundaries.
+          // Continue to the clipping circle instead of leaving staircase ends.
+          const ax = col > 0 ? (f.sx[before] + f.sx[i]) * 0.5 : f.sx[i];
+          const ay = col > 0 ? (f.sy[before] + f.sy[i]) * 0.5 : f.sy[i];
+          const bx = col + stride < n ? (f.sx[after] + f.sx[i]) * 0.5 : f.sx[i];
+          const by = col + stride < n ? (f.sy[after] + f.sy[i]) * 0.5 : f.sy[i];
+          const tier = Math.min(7, Math.floor(f.light[i] * 7.99));
+          paths[tier].moveTo(ax, ay);
+          paths[tier].quadraticCurveTo(f.sx[i], f.sy[i], bx, by);
+        }
+      }
+    }
+    c.save();
+    c.beginPath();
+    c.arc(0, 0, RADIUS - 7, 0, TAU);
+    c.clip();
+    const colors = ["#97dde91b", "#97dde926", "#97dde931", "#97dde93c", "#97dde947", "#97dde952", "#97dde95d", "#97dde968"];
+    // Small, even light steps and constant line width avoid hard flashing bands.
+    // Only eight batched strokes; no per-node blur or gradients.
+    for (let i = 0; i < paths.length; i++) {
+      c.strokeStyle = colors[i];
+      c.lineWidth = 0.75 / Math.max(0.7, this.scale);
+      c.stroke(paths[i]);
+    }
+    c.restore();
+    this.ctx.drawImage(this.fieldCanvas, -RADIUS, -RADIUS, RADIUS * 2, RADIUS * 2);
   }
   draw(game, alpha = 1, preview = false) {
     if (!this.background) return;
@@ -229,14 +322,29 @@ export class Renderer {
         0.85,
       );
     }
-    this.circle(0, 0, 220, "#6caaa408", 1);
+    this.drawField(alpha);
+    // Local light pools sit behind every threat, never whitening the whole frame.
+    if (this.halo.complete && this.halo.naturalWidth) {
+      c.save(); c.globalCompositeOperation = 'lighter';
+      const attenuation = this.reduced ? 0.3 : 1;
+      c.globalAlpha = 0.12 * attenuation;
+      c.drawImage(this.halo, x - 38, y - 38, 76, 76);
+      for (const e of this.effects) {
+        if (e.type !== 'bounce' && e.type !== 'kill' && e.type !== 'resonance') continue;
+        const progress = e.age / e.life;
+        const size = (e.type === 'resonance' ? 230 : e.type === 'kill' ? 92 : 76) * (0.8 + progress * 0.35);
+        c.globalAlpha = (1-progress)**2 * (e.type === 'resonance' ? 0.2 : 0.36) * attenuation;
+        c.drawImage(this.halo, e.x-size/2, e.y-size/2, size, size);
+      }
+      c.restore();
+    }
     this.circle(0, 0, 132, "#6caaa40a", 1);
     c.textAlign = "center";
     c.textBaseline = "middle";
-    c.fillStyle = "#8fc6c222";
-    c.font = `300 ${game.score > 99999 ? 60 : 78}px ui-monospace, SFMono-Regular, Consolas, monospace`;
-    c.fillText(preview ? "ECHO" : game.score.toLocaleString("en-US"), 0, -14);
-    c.fillStyle = "#a6cec447";
+    c.fillStyle = "#8fc6c21c";
+    c.font = "300 58px ui-monospace, SFMono-Regular, Consolas, monospace";
+    if (preview) c.fillText("ECHO", 0, -14);
+    c.fillStyle = "#a6cec42d";
     c.font = "10px system-ui, sans-serif";
     c.letterSpacing = "3px";
     c.fillText(
@@ -244,7 +352,7 @@ export class Renderer {
         ? "R I N G"
         : game.combo > 1
           ? game.combo + "  连击"
-          : "回  响  边  界",
+          : "",
       0,
       39,
     );
@@ -280,6 +388,8 @@ export class Renderer {
     c.strokeStyle = game.resonance > 0 ? "#d6ffe8" : "#cee7df";
     c.lineWidth = 1.45;
     c.stroke(path);
+    // A faint stable inner guide keeps the true circular play area legible.
+    this.circle(0, 0, RADIUS - 16, "#8de5d615", 0.65);
     c.save();
     c.clip(path);
     for (const e of this.effects)
@@ -298,8 +408,8 @@ export class Renderer {
       }
     c.restore();
     // Centre cross and fine aim line never conceal threats.
-    this.line(-4, 0, 4, 0, "#bbdacf4a");
-    this.line(0, -4, 0, 4, "#bbdacf4a");
+    this.circle(0, 0, 5, "#b1e5e452", 0.8);
+    this.circle(0, 0, 10, "#b1e5e420", 0.65);
     if (!game.over) {
       c.setLineDash([2, 10]);
       this.line(x, y, 0, 0, "#8de5d61d", 0.75);
@@ -326,7 +436,7 @@ export class Renderer {
         continue;
       }
       this.glow(e.type === "orbit" ? "orbit" : "enemy", ex, ey, 62, 0.65);
-      this.line(ex - e.vx * 0.2, ey - e.vy * 0.2, ex, ey, color + "25", 2);
+      this.line(ex - e.vx * 0.14, ey - e.vy * 0.14, ex, ey, color + "22", 2);
       c.save();
       c.translate(ex, ey);
       if (e.type === "split") {
@@ -391,24 +501,29 @@ export class Renderer {
         danger ? 3 : 2.4,
       );
       if (danger) this.circle(bx, by, 4.7, color + "9c", 0.8);
+      // The sharp head, not its halo or tail, tells the player where a shot is.
+      c.fillStyle = danger ? "#fff4d4" : "#d7ffff";
+      c.beginPath();
+      c.arc(bx, by, danger ? 1.65 : 1.25, 0, TAU);
+      c.fill();
     }
     for (let i = 1; i < this.trail.length; i++) {
       const a = this.trail[i - 1],
         b = this.trail[i],
-        opacity = Math.round((1 - b.age / 0.22) * (b.dash ? 130 : 55));
-      this.line(
-        a.x,
-        a.y,
-        b.x,
-        b.y,
-        "#99fbe0" + opacity.toString(16).padStart(2, "0"),
-        b.dash ? 6 : 2.4,
-      );
+        fade = Math.max(0, 1 - b.age / b.life),
+        opacity = Math.round(fade ** 1.4 * (b.dash ? 130 : 72));
+      const next = this.trail[i + 1];
+      c.beginPath();
+      c.moveTo((a.x + b.x) / 2, (a.y + b.y) / 2);
+      c.quadraticCurveTo(b.x, b.y, next ? (b.x + next.x) / 2 : x, next ? (b.y + next.y) / 2 : y);
+      c.strokeStyle = "#99fbe0" + opacity.toString(16).padStart(2, "0");
+      c.lineWidth = (b.dash ? 6 : 2.6) * fade;
+      c.stroke();
       if (b.dash && i % 6 === 0 && !this.reduced) {
         c.save();
         c.translate(b.x, b.y);
         c.rotate(b.aim);
-        c.globalAlpha = (1 - b.age / 0.22) * 0.19;
+        c.globalAlpha = fade * 0.16;
         c.fillStyle = C.ship;
         c.beginPath();
         c.moveTo(11, 0);
@@ -423,14 +538,8 @@ export class Renderer {
     if (!game.over) {
       const angle = Math.hypot(x, y) > 12 ? Math.atan2(-y, -x) : p.aim,
         recoil = p.recoil * 2;
-      const bank = Math.max(
-        -1,
-        Math.min(1, (-Math.sin(angle) * p.vx + Math.cos(angle) * p.vy) / 220),
-      );
-      const stretch =
-        p.dash > 0
-          ? 1.2
-          : 1 + Math.min(1, Math.hypot(p.vx, p.vy) / 220) * 0.045;
+      const bank = this.reduced ? 0 : this.shape.bank;
+      const stretch = this.reduced ? 1 : this.shape.stretch;
       this.glow("ship", x, y, p.dash > 0 ? 84 : 59, 0.8);
       if (p.invulnerable > 0)
         this.circle(x, y, 16 + Math.sin(t * 7) * 0.8, "#afeedd60", 1);
@@ -514,19 +623,28 @@ export class Renderer {
               1,
             );
           }
-      } else if (e.type === "bounce")
+      } else if (e.type === "bounce") {
         this.glow("return", e.x, e.y, 60 + f * 45, (1 - f) * 0.75);
-      else this.circle(e.x, e.y, 12 + f * 20, e.color + opacity, 0.9);
+        c.save();
+        c.translate(e.x, e.y);
+        c.rotate(e.angle + Math.PI / 2);
+        c.beginPath();
+        c.ellipse(0, 0, 5 + f * 27, 2 + Math.sin(f * Math.PI) * 5, 0, 0, TAU);
+        c.strokeStyle = e.color + opacity;
+        c.lineWidth = 0.9;
+        c.stroke();
+        c.restore();
+      } else this.circle(e.x, e.y, 12 + f * 20, e.color + opacity, 0.9);
     }
     for (const s of this.particles) {
       const opacity = Math.round((1 - s.age / s.life) * 200)
         .toString(16)
         .padStart(2, "0");
       this.line(
-        s.x,
-        s.y,
-        s.x - s.vx * 0.027,
-        s.y - s.vy * 0.027,
+        mix(s.px, s.x, alpha),
+        mix(s.py, s.y, alpha),
+        mix(s.px, s.x, alpha) - s.vx * 0.027,
+        mix(s.py, s.y, alpha) - s.vy * 0.027,
         s.color + opacity,
         1.3,
       );
@@ -542,7 +660,9 @@ export class Renderer {
   }
   dispose() {
     this.clear();
+    this.halo.src = '';
     this.background = null;
+    this.fieldCanvas.width = this.fieldCanvas.height = 1;
     for (const stamp of Object.values(this.glows))
       stamp.width = stamp.height = 1;
     this.glows = {};
