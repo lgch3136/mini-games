@@ -1,8 +1,8 @@
 import { Game, STEP, TAU, clamp } from "./sim.mjs?v=20260906-echo-r5";
 import { Controls } from "./input.mjs?v=20260906-echo-r5";
-import { Renderer } from "./render.mjs?v=20260928-light-r1";
+import { Renderer } from "./render.mjs?v=20260929-membrane-r1";
 import { EchoAudio } from "./audio.mjs?v=20260906-echo-r5";
-const VERSION = "20260928-light-r1";
+const VERSION = "20260929-membrane-r1";
 const $ = (id) => document.getElementById(id);
 const phases = ["01 / 涟漪", "02 / 回流", "03 / 共振", "04 / 深潮"];
 const timeText = (t) =>
@@ -354,8 +354,7 @@ try {
   for (const id of ["reduced", "quality", "field"])
     on($(id), "change", () => {
       renderer.reduced = $("reduced").checked;
-      renderer.fieldEnabled = $("field").checked;
-      if (!renderer.fieldEnabled) renderer.field.clear();
+      renderer.setFieldEnabled($("field").checked);
       saveStore("echo-ring-prefs-v1", {
         reduced: renderer.reduced,
         quality: $("quality").value,
@@ -440,6 +439,8 @@ try {
       haloReady: renderer.halo.complete && renderer.halo.naturalWidth > 0,
       fieldEnergy: Math.round(renderer.field.energy * 1000) / 1000,
       fieldPeak: Math.round(renderer.field.peak * 1000) / 1000,
+      heightPeak: Math.round(renderer.field.heightPeak * 1000) / 1000,
+      surface: renderer.surface?.diagnostics() ?? { mode: "canvas2d", reason: renderer.fieldEnabled ? "economy" : "disabled", drawCalls: 0 },
     },
     canvas: {
       width: renderer.canvas.width,

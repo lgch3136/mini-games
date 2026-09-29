@@ -25,7 +25,7 @@
         <a href="../" class="back" aria-label="返回游戏合集"
           ><span>↗</span> ARCADE</a
         >
-        <span class="edition">ECHO RING <i>/</i> FLOW</span>
+        <span class="edition">ECHO RING <i>/</i> MEMBRANE</span>
         <nav aria-label="游戏控制">
           <button id="sound" aria-pressed="true">声音 开</button
           ><button id="pause" hidden>暂停</button
@@ -41,7 +41,7 @@
           <h1>回响边界<span>ECHO / RING</span></h1>
           <p class="intro">你的下一发，<br />可能就是下一次危险。</p>
           <p class="description">
-            朝圆心开火。借回弹清场，也别被它追上。<br />穿过柔软的流场，让每次碰撞都有回响。
+            朝圆心开火。借回弹清场，也别被它追上。<br />掠过一层微光，让每次碰撞留下涟漪。
           </p>
           <fieldset class="mode-choice">
             <legend class="sr-only">游戏模式</legend>
@@ -79,7 +79,7 @@
               <p>
                 圆形敌人会追踪，紫色敌人会绕行，菱形敌人会分裂。虚线圆是出场预告，此时不会碰撞。
               </p>
-              <label><input id="field" type="checkbox" checked />柔性流场（可关闭对比）</label>
+              <label><input id="field" type="checkbox" checked />光学薄膜与弹性涟漪（V 键切换）</label>
               <label
                 ><input
                   id="reduced"
@@ -89,7 +89,7 @@
               <label
                 >渲染<select id="quality">
                   <option value="1.75">细腻 · 自适应</option>
-                  <option value="1">节能</option>
+                  <option value="1">节能 · 纯 Canvas</option>
                 </select></label
               >
               <a
@@ -98,14 +98,14 @@
                 rel="noopener"
                 >玩法灵感：Mors 的 dead_center ↗</a
               >
-              <small>独立实现 · 原创矢量画面与程序合成音乐</small>
+              <small>独立实现 · 光学材质不参与碰撞 · 无 WebGL 时自动使用 Canvas</small>
             </div>
           </details>
         </div>
         <div id="preview-space" aria-hidden="true">
           <span class="preview-caption"
-            >轻触流场，看涟漪散开。<small
-              >LIVING FIELD / REAL-TIME CANVAS</small
+            >轻触，压出一道微光。<small
+              >LIVING MEMBRANE / LIGHT IN MOTION</small
             ></span
           >
         </div>
@@ -195,6 +195,6 @@
         <a href="../">返回合集</a>
       </div>
     </main>
-    <script type="module" src="app.mjs?v=20260928-light-r1"></script>
+    <script type="module" src="app.mjs?v=20260929-membrane-r1"></script>
   </body>
 </html>

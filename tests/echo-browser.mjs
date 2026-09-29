@@ -100,7 +100,9 @@ async function suite() {
   $("report").textContent = JSON.stringify(window.echoReport);
   try {
     await ready();
-    preferences = { field:doc().getElementById("field").checked, reduced:doc().getElementById("reduced").checked };
+    preferences = { field:doc().getElementById("field").checked, reduced:doc().getElementById("reduced").checked, quality:doc().getElementById("quality").value };
+    doc().getElementById("quality").value="1.75";
+    doc().getElementById("quality").dispatchEvent(new Event('change',{bubbles:true}));
     if (!preferences.field) click("field");
     if (preferences.reduced) click("reduced");
     await start();
@@ -119,9 +121,11 @@ async function suite() {
     await wait(210);
     check("连续右移", d().game.p.vx > 200);
     check("移动驱动柔性流场", d().resources.fieldEnergy > 0 && d().resources.fieldNodes === 1089, d().resources);
+    check("接触驱动高度与材质", d().resources.heightPeak>0 && ['material','canvas2d'].includes(d().resources.surface.mode), d().resources.surface);
     tap("KeyV");
     await wait(50);
     check("V 键实时关闭流场但移动不中断", !d().resources.fieldEnabled && d().resources.fieldEnergy === 0 && d().game.p.vx > 200);
+    check("关闭流场释放材质通道", d().resources.surface.drawCalls===0 && d().resources.heightPeak===0);
     tap("KeyV");
     await wait(50);
     check("V 键恢复流场且无需重开", d().resources.fieldEnabled && d().resources.fieldEnergy > 0);
@@ -152,6 +156,7 @@ async function suite() {
       d().mode === "paused" && d().game.time === paused.game.time && !d().raf,
     );
     check("暂停冻结空间形变", d().resources.fieldEnergy === paused.resources.fieldEnergy);
+    check("暂停不提交材质纹理或 GPU 绘制", d().resources.surface.uploads===paused.resources.surface.uploads);
     check(
       "暂停释放音乐调度与所有声音",
       !d().resources.musicTimer &&
@@ -264,6 +269,8 @@ async function suite() {
       if (preferences) {
         if (doc().getElementById("field").checked !== preferences.field) click("field");
         if (doc().getElementById("reduced").checked !== preferences.reduced) click("reduced");
+        doc().getElementById("quality").value=preferences.quality;
+        doc().getElementById("quality").dispatchEvent(new Event('change',{bubbles:true}));
       }
       report();
     }

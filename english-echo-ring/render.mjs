@@ -1,5 +1,6 @@
 import { RADIUS, TAU, mix, random } from "./sim.mjs?v=20260906-echo-r5";
-import { FlowField, ShipShape } from "./field.mjs?v=20260923-flow-r1";
+import { FlowField, ShipShape } from "./field.mjs?v=20260929-membrane-r1";
+import { MembraneSurface } from "./surface.mjs?v=20260929-membrane-r1";
 const C = {
   ship: "#bdfcf1",
   shot: "#70e5e0",
@@ -32,10 +33,12 @@ export class Renderer {
     this.fieldContext = this.fieldCanvas.getContext("2d");
     this.shape = new ShipShape();
     this.fieldEnabled = true;
+    this.surface = null;
     this.halo = new Image();
     this.halo.src = '../shared/light/assets/halo-20260928.webp';
     this.edgeX = new Float64Array(192);
     this.edgeY = new Float64Array(192);
+    this.edgeRadius = new Float32Array(192);
     this.rng = random(6309);
     this.time = 0;
     this.reduced = false;
@@ -55,6 +58,8 @@ export class Renderer {
     }
   }
   resize(width, height, box, quality = 1.5) {
+    this.quality = quality;
+    if (quality === 1) { this.surface?.dispose(); this.surface = null; }
     this.width = width;
     this.height = height;
     this.dpr = Math.min(window.devicePixelRatio || 1, quality, 2);
@@ -71,6 +76,24 @@ export class Renderer {
     const fieldSize = Math.max(192, Math.min(640,
       Math.ceil(RADIUS * 2 * this.scale * Math.min(this.dpr, 1.15))));
     this.fieldCanvas.width = this.fieldCanvas.height = fieldSize;
+    this.surface?.resize(fieldSize);
+    // All small object materials are cached, not re-created for every enemy.
+    this.shipFinish = this.ctx.createLinearGradient(-6, -8, 5, 8);
+    this.shipFinish.addColorStop(0, '#f1fff1');
+    this.shipFinish.addColorStop(.38, '#c7fbea');
+    this.shipFinish.addColorStop(.44, '#70bfb1');
+    this.shipFinish.addColorStop(1, '#376c77');
+    this.rimFinish = this.ctx.createLinearGradient(-RADIUS, -RADIUS, RADIUS, RADIUS);
+    this.rimFinish.addColorStop(0, '#dafff0c7');
+    this.rimFinish.addColorStop(.35, '#80b5ad78');
+    this.rimFinish.addColorStop(.7, '#577a9b45');
+    this.rimFinish.addColorStop(1, '#a8d3be97');
+    this.enemyFinishes = {};
+    for (const [name, color] of [['seek',C.enemy],['orbit',C.orbit],['split',C.enemy]]) {
+      const finish = this.ctx.createRadialGradient(-4,-5,0,0,0,17);
+      finish.addColorStop(0,color+'65');finish.addColorStop(.44,color+'22');finish.addColorStop(1,'#091922');
+      this.enemyFinishes[name] = finish;
+    }
     this.background = document.createElement("canvas");
     this.background.width = this.canvas.width;
     this.background.height = this.canvas.height;
@@ -103,6 +126,10 @@ export class Renderer {
     this.field.clear();
     this.shape.clear();
     this.time = 0;
+  }
+  setFieldEnabled(enabled) {
+    this.fieldEnabled = enabled;
+    if (!enabled) { this.field.clear(); this.surface?.dispose(); this.surface = null; }
   }
   event(e) {
     if (this.fieldEnabled) {
@@ -254,6 +281,17 @@ export class Renderer {
     c.clearRect(0, 0, pixels, pixels);
     c.setTransform(scale, 0, 0, scale, pixels / 2, pixels / 2);
     f.sample(alpha, this.reduced);
+    if (this.quality > 1) {
+      if (!this.surface) {
+        this.surface = new MembraneSurface(f.size);
+        this.surface.resize(pixels);
+      }
+      if (this.surface.render(f, this.edgeRadius)) {
+        const extent = RADIUS + 24;
+        this.ctx.drawImage(this.surface.canvas, -extent, -extent, extent * 2, extent * 2);
+        return;
+      }
+    }
     const paths = Array.from({ length: 8 }, () => new Path2D());
     // Fewer lines on small screens, not lower-resolution input or simulation.
     const stride = this.scale < 0.6 || this.dpr === 1 ? 4 : 2;
@@ -309,6 +347,14 @@ export class Renderer {
       p = game.p,
       x = mix(p.px, p.x, alpha),
       y = mix(p.py, p.y, alpha);
+    // Sample once: both the optical meniscus and the sharp foreground outline
+    // follow this exact boundary, instead of two visibly disconnected circles.
+    for (let j = 0; j < game.ring.n; j++) {
+      const a = (j / game.ring.n) * TAU, r = game.ring.radius(j, alpha, t, this.reduced);
+      this.edgeRadius[j] = r;
+      this.edgeX[j] = Math.cos(a) * r;
+      this.edgeY[j] = Math.sin(a) * r;
+    }
     // Calibration ticks stay still; the living membrane is the only moving frame.
     for (let i = 0; i < 48; i++) {
       const a = (i / 48) * TAU,
@@ -359,12 +405,6 @@ export class Renderer {
     c.letterSpacing = "0px";
     // C1-continuous quadratic spline: no visible corners when a wave travels.
     const path = new Path2D();
-    for (let j = 0; j < game.ring.n; j++) {
-      const a = (j / game.ring.n) * TAU,
-        r = game.ring.radius(j, alpha, t, this.reduced);
-      this.edgeX[j] = Math.cos(a) * r;
-      this.edgeY[j] = Math.sin(a) * r;
-    }
     path.moveTo(
       (this.edgeX[191] + this.edgeX[0]) / 2,
       (this.edgeY[191] + this.edgeY[0]) / 2,
@@ -382,11 +422,11 @@ export class Renderer {
     c.strokeStyle = game.resonance > 0 ? "#b9ffe513" : "#7be6dd0a";
     c.lineWidth = 14;
     c.stroke(path);
-    c.strokeStyle = "#99d3cb20";
-    c.lineWidth = 4.5;
+    c.strokeStyle = this.rimFinish;
+    c.lineWidth = 4;
     c.stroke(path);
     c.strokeStyle = game.resonance > 0 ? "#d6ffe8" : "#cee7df";
-    c.lineWidth = 1.45;
+    c.lineWidth = 1.1;
     c.stroke(path);
     // A faint stable inner guide keeps the true circular play area legible.
     this.circle(0, 0, RADIUS - 16, "#8de5d615", 0.65);
@@ -447,7 +487,7 @@ export class Renderer {
         c.lineTo(0, e.r);
         c.lineTo(-e.r, 0);
         c.closePath();
-        c.fillStyle = "#211f2a";
+        c.fillStyle = this.enemyFinishes.split;
         c.fill();
         c.strokeStyle = color;
         c.lineWidth = 1.7;
@@ -457,11 +497,14 @@ export class Renderer {
           this.circle(0, 0, 5, color + "c0");
         }
       } else {
-        c.fillStyle = "#18232b";
+        c.fillStyle = this.enemyFinishes[e.type] || this.enemyFinishes.seek;
         c.beginPath();
         c.arc(0, 0, e.r, 0, TAU);
         c.fill();
         this.circle(0, 0, e.r, color, 1.6);
+        // A short fixed light-side crescent makes the orb read as one material.
+        c.beginPath();c.arc(0,0,e.r-2.7,-2.65,-1.1);
+        c.strokeStyle=color+'72';c.lineWidth=.75;c.stroke();
         if (e.type === "orbit") {
           c.rotate(t * e.spin * 1.8);
           c.strokeStyle = color + "75";
@@ -547,7 +590,7 @@ export class Renderer {
       c.translate(x - Math.cos(angle) * recoil, y - Math.sin(angle) * recoil);
       c.rotate(angle);
       c.scale(stretch, 1 / Math.sqrt(stretch));
-      c.fillStyle = "#cdf9e9";
+      c.fillStyle = this.shipFinish;
       c.strokeStyle = "#fff9e8";
       c.lineWidth = 0.8;
       c.beginPath();
@@ -660,6 +703,7 @@ export class Renderer {
   }
   dispose() {
     this.clear();
+    this.surface?.dispose();
     this.halo.src = '';
     this.background = null;
     this.fieldCanvas.width = this.fieldCanvas.height = 1;

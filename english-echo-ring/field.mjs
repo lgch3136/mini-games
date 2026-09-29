@@ -7,7 +7,7 @@ export class FlowField {
     this.size = size;
     this.spacing = (radius * 2) / (size - 1);
     this.count = size * size;
-    for (const name of ["x", "y", "dx", "dy", "px", "py", "vx", "vy", "sx", "sy", "light"])
+    for (const name of ["x", "y", "dx", "dy", "px", "py", "vx", "vy", "sx", "sy", "light", "z", "pz", "vz", "sz"])
       this[name] = new Float32Array(this.count);
     this.mask = new Uint8Array(this.count);
     for (let row = 0; row < size; row++) {
@@ -21,10 +21,11 @@ export class FlowField {
     this.clear();
   }
   clear() {
-    for (const name of ["dx", "dy", "px", "py", "vx", "vy", "light"])
+    for (const name of ["dx", "dy", "px", "py", "vx", "vy", "light", "z", "pz", "vz", "sz"])
       this[name].fill(0);
     this.energy = 0;
     this.peak = 0;
+    this.heightPeak = 0;
   }
   impulse(x, y, strength = 90, spread = 70, directionX = 0, directionY = 0) {
     if (![x, y, strength, spread, directionX, directionY].every(Number.isFinite) || spread <= 0)
@@ -47,6 +48,9 @@ export class FlowField {
         const force = strength * weight * weight;
         this.vx[i] = Math.max(-260, Math.min(260, this.vx[i] + (xx * inverse + directionX) * force));
         this.vy[i] = Math.max(-260, Math.min(260, this.vy[i] + (yy * inverse + directionY) * force));
+        // A contact presses INTO the membrane. One height field drives both
+        // the apparent refraction and the normal used to light the surface.
+        this.vz[i] = Math.max(-150, Math.min(150, this.vz[i] - force * 0.52));
       }
     }
   }
@@ -61,12 +65,14 @@ export class FlowField {
     // A pause cannot introduce a large unstable integration step.
     const steps = Math.max(1, Math.ceil(Math.min(dt, 0.05) * 120));
     const h = Math.min(dt, 0.05) / steps, n = this.size;
-    let sum = 0, peak = 0;
+    let sum = 0, peak = 0, heightPeak = 0;
     for (let step = 0; step < steps; step++) {
       this.px.set(this.dx);
       this.py.set(this.dy);
+      this.pz.set(this.z);
       sum = 0;
       peak = 0;
+      heightPeak = 0;
       for (let i = n; i < this.count - n; i++) {
         if (!this.mask[i]) continue;
         const x = this.px[i], y = this.py[i];
@@ -84,12 +90,20 @@ export class FlowField {
         }
         this.dx[i] = xx;
         this.dy[i] = yy;
+        const z = this.pz[i];
+        const lz = this.pz[i - 1] + this.pz[i + 1] + this.pz[i - n] + this.pz[i + n] - 4 * z;
+        this.vz[i] += (lz * 260 - z * 18 - this.vz[i] * 5.2) * h;
+        let zz = z + this.vz[i] * h;
+        if (Math.abs(zz) > 12) { zz = Math.sign(zz) * 12; this.vz[i] *= 0.5; }
+        this.z[i] = zz;
+        heightPeak = Math.max(heightPeak, Math.abs(zz));
         sum += xx * xx + yy * yy;
         peak = Math.max(peak, Math.hypot(xx, yy));
       }
     }
     this.energy = Math.sqrt(sum / this.count);
     this.peak = peak;
+    this.heightPeak = heightPeak;
   }
   sample(alpha = 1, reduced = false) {
     alpha = Math.max(0, Math.min(1, alpha));
@@ -99,6 +113,7 @@ export class FlowField {
       const dy = (this.py[i] + (this.dy[i] - this.py[i]) * alpha) * amount;
       this.sx[i] = this.x[i] + dx;
       this.sy[i] = this.y[i] + dy;
+      this.sz[i] = (this.pz[i] + (this.z[i] - this.pz[i]) * alpha) * amount;
       this.light[i] = Math.min(1, Math.hypot(dx, dy) / 7);
     }
   }

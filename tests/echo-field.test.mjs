@@ -2,6 +2,50 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { FlowField, ShipShape } from "../english-echo-ring/field.mjs";
 import { Game, STEP } from "../english-echo-ring/sim.mjs";
+import { packSurface, packBoundary } from "../english-echo-ring/surface.mjs";
+
+test("optical rim samples the same periodic boundary, including its seam", () => {
+  const radii=Float32Array.from({length:192},(_,i)=>280+Math.sin(i/192*Math.PI*2)*12);
+  const bytes=new Uint8Array(1024);assert.equal(packBoundary(radii,bytes),bytes);
+  for(let i=0;i<256;i++){
+    const source=i*192/256, j=Math.floor(source), a=source-j;
+    const expected=radii[j]+(radii[(j+1)%192]-radii[j])*a;
+    const actual=280+(bytes[i*4]*256+bytes[i*4+1])*64/65535-32;
+    assert.ok(Math.abs(actual-expected)<.0005);
+  }
+});
+
+test("surface contact depresses locally, travels and settles without moving gameplay", () => {
+  const f = new FlowField(), center=16*f.size+16, observer=center+7;
+  f.impulse(0,0,200,45);f.step(STEP);
+  assert.ok(f.z[center]<0);
+  assert.equal(f.z[observer],0);
+  f.sample(0);assert.equal(f.sz[center],0);
+  f.sample(1);assert.equal(f.sz[center],f.z[center]);
+  const full=f.sz[center];f.sample(1,true);
+  assert.ok(Math.abs(f.sz[center]-full*.22)<1e-6);
+  for(let i=0;i<100;i++)f.step(STEP);
+  assert.ok(Math.abs(f.z[observer])>.0005);
+  for(let i=0;i<1300;i++)f.step(STEP);
+  assert.ok(f.heightPeak<.001);
+});
+
+test("height field and 16-bit material texture stay bounded with no buffer growth", () => {
+  const f=new FlowField(), z=f.z, vz=f.vz, bytes=new Uint8Array(f.count*4);
+  for(let tick=0;tick<2400;tick++) {
+    if(tick%3===0)f.impulse(Math.sin(tick)*210,Math.cos(tick)*210,220,110);
+    f.step(STEP);f.sample(.5);
+    assert.ok(Number.isFinite(f.heightPeak)&&f.heightPeak<=12);
+    assert.equal(packSurface(f,bytes),bytes);
+    if(tick%60===0)for(let i=0;i<f.count;i++) {
+      const decoded=(bytes[i*4]*256+bytes[i*4+1])*32/65535-16;
+      assert.ok(Math.abs(decoded-f.sz[i])<.00025);
+      if(!f.mask[i])assert.equal(f.z[i],0);
+    }
+  }
+  assert.equal(f.z,z);assert.equal(f.vz,vz);assert.equal(bytes.byteLength,4356);
+  f.clear();assert.equal(f.heightPeak,0);assert.ok(f.z.every(n=>n===0)&&f.vz.every(n=>n===0));
+});
 
 test("field starts at rest, preserves fixed geometry, and interpolation is bounded", () => {
   const f = new FlowField();
