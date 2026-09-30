@@ -107,3 +107,14 @@ Use `tests/mobile-quality-browser.html` with **390×844**, **320×568**, and **8
    - Verify result medal, recent timing label, weakest-lane advice and separation of saved records
 
 Remaining release risks: real iOS audio activation/interruption behavior, exact keyboard/safe-area geometry with Safari chrome, long-run GPU/thermal costs, perceived difficulty balance, and actual first-use comprehension. Those cannot be marked passed from these Node tests.
+
+## Typebound live-QA correction, 2026-09-30 14:50 UTC
+
+The sole browser reviewer reproduced low-contrast coaching at 390×844 / 320×568, brand text under the Sound button at 320×568, and a clipped typing card/missing touch keyboard after completing the eight-word warm-up, retrying, and rotating to 844×390.
+
+Corrections are confined to `english-typebound/mobile-quality.css`:
+- `#typing-coach` now owns an opaque pale surface and dark foreground (`#e6f2e7` / `#183c35`), 12px text, and a calculated **10.49:1** authored color-pair contrast. This is a color calculation, not a screenshot-based device contrast measurement
+- Narrow headers use a three-column grid with a shrinkable brand slot; Back and the three game controls retain minimum44px targets. The brand no longer uses the legacy absolute left74px position
+- Short-landscape live layout explicitly places the goal ribbon, arena, typing card, and keyboard. The new ribbon previously consumed an implicit grid cell and displaced the keyboard below the viewport. Vertical overflow remains scrollable when browser chrome reduces available height further
+
+Targeted Node checks after correction: 75/75 pass, including a new opaque coach-color contrast regression. No gameplay rules changed. Actual post-fix screenshots and rotation/keyboard usability must still be verified in the browser after the bundled correction is published.

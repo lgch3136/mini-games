@@ -206,3 +206,18 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 3px; }
 .quick-start details { margin-top:8px;color:#a9bdcf; }.quick-start summary { min-height:44px;display:flex;align-items:center;cursor:pointer;color:#8bd9eb; }
 .quick-start p { margin:3px 0; }.quick-start b { color:#edfaff; }
 @media(max-width:600px){#hud-top{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;}#hud-top .left{justify-content:flex-start;}#hud-top .right{flex-wrap:nowrap;}#mode-select{grid-template-columns:1fr 1fr;}.mode-btn{min-height:66px;}.mode-btn small{display:block;margin-top:5px;font-size:10px;}#logo-img{max-height:88px;}#menu h1{font-size:26px;}}
+
+/* Preserve the portrait flight physics while making landscape HUD reachable. */
+@media (orientation:landscape) and (max-height:600px) and (min-width:600px) {
+  #game-wrap { width:100vw;height:100dvh;aspect-ratio:auto;border:0;border-radius:0; }
+  #game { inset:auto;left:50%;top:50%;transform:translate(-50%,-50%); }
+  #question-bar { position:absolute;left:max(12px,env(safe-area-inset-left));top:12px;margin:0;width:172px;max-width:none;max-height:calc(100dvh - 130px);padding:10px;overflow-y:auto; }
+  #q-target { font-size:16px;max-width:100%; } #q-top { gap:5px; } #q-bottom { gap:6px;font-size:12px; }
+  #hud-top { position:absolute;right:max(12px,env(safe-area-inset-right));top:16px;width:160px;padding:0;display:flex;flex-direction:column;gap:14px; }
+  #hud-top .left { flex-wrap:wrap;justify-content:center;gap:6px; } #hud-top .right { gap:8px;flex-wrap:nowrap; }
+  .stat-chip { font-size:12px;padding:5px 8px; }
+  #route-status { position:absolute;left:12px;bottom:78px;width:172px;text-align:center;line-height:1.5; }
+  #hint-bar { display:block;position:absolute;left:12px;bottom:12px;width:172px;white-space:normal;text-align:center;line-height:1.5;margin:0;padding:7px; }
+  #glide-btn { right:max(16px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));width:150px; }
+  #logo-img { max-height:80px;object-fit:contain; }
+}

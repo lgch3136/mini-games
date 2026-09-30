@@ -250,3 +250,17 @@ test('Temple: score and mastery categories separate single songs, endless loops,
   assert.equal(new Set(variants.map(templeRecordKey)).size,variants.length);
   assert.equal(templeRecordKey({mode:'free',difficulty:'easy',speed:1}), 'temple-wind-v1-free-run-easy-1');
 });
+test('Typebound: explicit opaque coach colors retain at least 7:1 text contrast',()=>{
+  const css=fs.readFileSync(new URL('../english-typebound/mobile-quality.css',import.meta.url),'utf8');
+  const rule=css.match(/#typing-coach\s*\{([^}]+)\}/)?.[1];
+  assert.ok(rule,'Coach must own its foreground/background rather than inherit a layered surface');
+  const foreground=rule.match(/(?:^|;)\s*color:\s*(#[0-9a-f]{6})\s*;/i)?.[1];
+  const background=rule.match(/(?:^|;)\s*background:\s*(#[0-9a-f]{6})\s*;/i)?.[1];
+  assert.ok(foreground&&background,'Both authored colors must be opaque');
+  const luminance=hex=>{
+    const rgb=hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+    return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+  };
+  const a=luminance(foreground),b=luminance(background),ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  assert.ok(ratio>=7,`Coach color-pair contrast is ${ratio.toFixed(2)}:1`);
+});

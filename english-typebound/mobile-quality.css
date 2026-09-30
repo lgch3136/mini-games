@@ -39,3 +39,64 @@
   #app[data-practice-target="true"] #battle .arena { min-height:108px; height:108px; flex:0 0 108px; }
   #app[data-practice-target="true"] .practice-metrics { inset:10px 12px auto; }
 }
+/* Verified mobile QA follow-up: the coach owns its contrast instead of relying
+   on the layered typing-dock gradient underneath it. */
+#typing-coach {
+  position:relative;
+  color:#183c35;
+  background:#e6f2e7;
+  border:1px solid #b9d0bf;
+  border-radius:8px;
+  padding:6px 8px;
+  margin:5px 0 7px;
+  font-size:12px;
+  font-weight:550;
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+#typing-coach:empty { display:none; }
+@media (max-width:580px) {
+  /* The brand used to be absolutely positioned at left:74px, so the live
+     sound/pause/end controls could paint over it on a 320px-wide viewport. */
+  .topbar {
+    display:grid;
+    grid-template-columns:44px minmax(0,1fr) auto;
+    column-gap:4px;
+    padding-inline:max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right));
+    min-height:54px;
+  }
+  .topbar .back { min-width:44px; min-height:44px; justify-content:center; }
+  .topbar #brand {
+    position:static;
+    inset:auto;
+    transform:none;
+    display:flex;
+    align-items:center;
+    gap:4px;
+    min-width:0;
+    max-width:100%;
+    overflow:hidden;
+    white-space:nowrap;
+    font-size:10px;
+    letter-spacing:.04em;
+  }
+  .topbar #brand > span { min-width:0; margin-left:0; overflow:hidden; text-overflow:ellipsis; }
+  .topbar nav { gap:4px; min-width:0; justify-self:end; }
+  .topbar button { min-width:44px; min-height:44px; padding:7px 8px; white-space:nowrap; font-size:11px; }
+}
+@media (max-height:480px) and (min-width:581px) {
+  /* Every live child has an explicit cell. Adding the goal ribbon must not
+     create implicit rows below the viewport or displace the touch keyboard. */
+  #battle {
+    grid-template-columns:minmax(0,.9fr) minmax(0,1.2fr);
+    grid-template-rows:auto minmax(min-content,1fr) auto;
+    gap:6px 12px;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+  }
+  #battle > .practice-ribbon { grid-column:1 / -1; grid-row:1; padding:3px 0; }
+  #battle > .battle-top { display:none; }
+  #battle > .arena { grid-column:1; grid-row:2 / 4; min-height:160px; height:100%; }
+  #battle > .typing-dock { grid-column:2; grid-row:2; min-width:0; min-height:0; align-self:start; margin:0; }
+  #battle > .keyboard-wrap { grid-column:2; grid-row:3; min-width:0; margin:0; align-self:end; }
+}

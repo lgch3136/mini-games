@@ -20,3 +20,9 @@ button:focus-visible, select:focus-visible { outline:3px solid #3d8968; outline-
   .small-card { max-height:calc(100dvh - 90px); overflow-y:auto; overscroll-behavior:contain; }
 }
 @media (prefers-reduced-motion:reduce) { .expedition-track em { transition:none; } }
+/* Keep the short-landscape controls in the flex flow, below the board. */
+@media (max-height:480px) and (orientation:landscape) {
+  #controls { min-height:44px; height:auto; }
+  #controls .dpad button { flex:0 0 44px; width:44px; height:44px; min-width:44px; min-height:44px; }
+  #controls .boost, #controls .live-speed select { min-height:44px; }
+}

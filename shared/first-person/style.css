@@ -467,6 +467,8 @@ button.primary:hover {
   place-content: center;
   padding: 30px;
   background: #0b202b;
+  /* Fatal messages must stay legible even when a game's light theme changes --ink. */
+  color: #ecf3ee;
   z-index: 30;
   text-align: center;
   line-height: 2;

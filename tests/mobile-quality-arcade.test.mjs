@@ -313,3 +313,18 @@ test('Breaker: an assisted target stays separate and hittable through rotation',
  assert.equal(f.evaluate('Game.bricks.every(k=>k.y+k.h<Game.paddle.y-60)'),true);
  assert.equal(f.evaluate('playTop()>=80&&Game.balls.every(b=>b.y>=playTop()+b.r&&b.y<Game.paddle.y)'),true);
 });
+
+test('Flappy: short landscape separates a portrait-ratio render surface without changing flight physics',()=>{
+ const f=fixture('english-flappy-word',{mobile:true,width:390,height:844});
+ f.evaluate('startGame();Game.state="playing";spawnAhead();Game.gliding=true;');
+ f.element('game-wrap').clientWidth=844;f.element('game-wrap').clientHeight=390;f.evaluate('resize();');
+ assert.equal(f.evaluate('W'),420);assert.equal(f.evaluate('H'),660);
+ assert.ok(Math.abs(parseFloat(f.element('game').style.width)/parseFloat(f.element('game').style.height)-420/660)<1e-6);
+ assert.ok(parseFloat(f.element('game').style.width)<=844-360);
+ assert.equal(parseFloat(f.element('game').style.height),390);
+ assert.equal(f.evaluate('Game.gliding'),false);
+ assert.equal(f.evaluate('Game.pipes.every(p=>p.gapY-p.gapH/2>=flightBounds().top-1e-6&&p.gapY+p.gapH/2<=flightBounds().bottom+1e-6)'),true);
+ f.element('game-wrap').clientWidth=320;f.element('game-wrap').clientHeight=568;f.evaluate('resize();');
+ assert.equal(f.element('game').style.width,'320px');assert.equal(f.evaluate('W'),320);
+ assert.ok(f.element('game').width*f.element('game').height<=1400000);
+});

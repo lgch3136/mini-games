@@ -676,6 +676,9 @@ try {
   console.error(error);
   setText("loading", "3D 画面未能启动。需要 WebGL 2 与完整角色资源，可刷新重试或返回合集。 ");
   $("loading").setAttribute("role", "alert");
+  // The arena is an isolated stacking context below the menu. A startup
+  // failure must escape it so its message and return link are usable.
+  document.body.append($("loading"));
   const back = document.createElement("a"); back.href = "../"; back.textContent = "返回游戏合集"; $("loading").append(back);
   setText("start-btn", "载入失败，请刷新");
 }

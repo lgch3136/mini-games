@@ -8,7 +8,7 @@ const params=new URLSearchParams(location.search);
 if(params.get('game')==='hub'||Object.hasOwn(GAME_GUIDE,params.get('game')))game.value=params.get('game');
 if([...viewport.options].some(o=>o.value===params.get('size')))viewport.value=params.get('size');
 let frame=null;
-function load(){if(frame){frame.src='about:blank';frame.remove();}frame=document.createElement('iframe');frame.title='游戏实际页面';const [w,h]=viewport.value.split('x');frame.width=w;frame.height=h;frame.src=game.value==='hub'?'../index.html':`../${game.value}/index.html`;stage.replaceChildren(frame);report.textContent='载入中';frame.addEventListener('load',()=>{report.textContent=`已载入 ${game.options[game.selectedIndex].text} · ${w}×${h}\n请实际操作后检查；仅看到菜单不代表玩法通过。`;},{once:true});}
+function load(){if(frame){frame.src='about:blank';frame.remove();}frame=document.createElement('iframe');frame.title='游戏实际页面';const [w,h]=viewport.value.split('x');frame.width=w;frame.height=h;const destination=game.value==='hub'?'../index.html':`../${game.value}/index.html`;const revision=params.get('build');frame.src=revision?destination+'?v='+encodeURIComponent(revision.slice(0,80)):destination;stage.replaceChildren(frame);report.textContent='载入中';frame.addEventListener('load',()=>{report.textContent=`已载入 ${game.options[game.selectedIndex].text} · ${w}×${h}\n请实际操作后检查；仅看到菜单不代表玩法通过。`;},{once:true});}
 document.querySelector('#load').addEventListener('click',load);
 document.querySelector('#next').addEventListener('click',()=>{game.selectedIndex=(game.selectedIndex+1)%game.options.length;load();});
 viewport.addEventListener('change',()=>{if(frame){const [w,h]=viewport.value.split('x');frame.width=w;frame.height=h;}});

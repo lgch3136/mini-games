@@ -1001,7 +1001,11 @@ function resize() {
   const wrap = $id('game-wrap');
   const cw = wrap.clientWidth || 420, ch = wrap.clientHeight || 660;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+  // In short landscape the flight stays portrait-shaped; HUD lives beside it.
+  const landscape = cw >= 600 && cw > ch && ch <= 600;
+  const surfaceWidth = landscape ? Math.min(cw - 360, ch * 420 / 660) : cw;
+  const surfaceHeight = landscape ? surfaceWidth * 660 / 420 : ch;
+  const portrait = !landscape && matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
   const oldGround=GROUND_Y,oldWidth=W;
   W = portrait ? cw : 420;
   H = portrait ? ch : 660;
@@ -1016,11 +1020,11 @@ function resize() {
   BIRD_X = portrait ? Math.min(132, W * 0.32) : 132;
   Game.bird.x = BIRD_X;
   Game.bird.y = Math.min(Game.bird.y, GROUND_Y - BIRD_R);
-  const width = Math.max(1, Math.round(cw * dpr)), height = Math.max(1, Math.round(ch * dpr));
+  const width = Math.max(1, Math.round(surfaceWidth * dpr)), height = Math.max(1, Math.round(surfaceHeight * dpr));
   if (canvas.width !== width) canvas.width = width;
   if (canvas.height !== height) canvas.height = height;
-  canvas.style.width = cw + 'px';
-  canvas.style.height = ch + 'px';
+  canvas.style.width = surfaceWidth + 'px';
+  canvas.style.height = surfaceHeight + 'px';
   if (!['ready', 'playing'].includes(Game.state)) render();
 }
 window.addEventListener('resize', resize);

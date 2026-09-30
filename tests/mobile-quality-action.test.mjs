@@ -308,3 +308,65 @@ test('Apex and Strike: production HUD clears previous result artwork when starti
     app.mode = 'paused'; captured.hud(app); assert.equal($(medal).hidden, true); assert.equal($(recap).hidden, true);
   }
 });
+
+test('3D startup fallback palettes have explicit readable text independent of gameplay themes', () => {
+  const rules = (path, selector) => {
+    const css = readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const blocks = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    return blocks.filter(([, selectors]) => selectors.trim() === selector).map(([, , declarations]) => declarations).join(';');
+  };
+  const property = (declarations, name) => {
+    const values = [...declarations.matchAll(new RegExp(`(?:^|;)\\s*${name}:\\s*(#[a-f\\d]{6}(?:[a-f\\d]{2})?)\\b`, 'gi'))];
+    assert.ok(values.length, `fallback needs an explicit ${name}, not inherited theme ink`);
+    return values.at(-1)[1];
+  };
+  const rgba = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).concat(hex.length === 9 ? parseInt(hex.slice(7, 9), 16) / 255 : 1);
+  const contrast = (ink, background) => {
+    const [r, g, b, alpha] = rgba(background);
+    // White underneath a translucent dark fallback is its worst case.
+    const bg = [r, g, b].map(c => c * alpha + 255 * (1 - alpha));
+    const luminance = rgb => rgb.map(c => c / 255).map(c => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4).reduce((n, c, i) => n + c * [.2126, .7152, .0722][i], 0);
+    const [light, dark] = [luminance(rgba(ink).slice(0, 3)), luminance(bg)].sort((a, b) => b - a);
+    return (light + .05) / (dark + .05);
+  };
+  const fatal = rules('../shared/first-person/style.css', '#fatal');
+  const fatalInk = property(fatal, 'color'), fatalBackground = property(fatal, 'background');
+  assert.ok(contrast(fatalInk, fatalBackground) >= 7);
+  for (const game of ['apex-drive', 'signal-strike']) {
+    const local = rules(`../english-${game}/style.css`, '#fatal');
+    assert.doesNotMatch(local, /(?:^|;)\s*color:/, 'game styling must not silently replace the accessible fallback ink');
+    assert.ok(contrast(property(rules(`../english-${game}/style.css`, '#fatal a'), 'color'), fatalBackground) >= 7);
+  }
+  for (const game of ['moonblade', 'word-fury']) {
+    const alert = rules(`../english-${game}/style.css`, '#loading[role="alert"]');
+    assert.ok(contrast(property(alert, 'color'), property(alert, 'background')) >= 7);
+    assert.ok(contrast(property(rules(`../english-${game}/style.css`, '#loading a'), 'color'), property(alert, 'background')) >= 7);
+  }
+});
+
+test('Fury: actual renderer-construction failure promotes its alert outside the isolated arena', async () => {
+  const { runInNewContext } = await import('node:vm');
+  const combat = await import('../english-word-fury/combat.mjs');
+  const dojo = await import('../english-word-fury/dojo.mjs');
+  const elements = new Map();
+  class Element {
+    constructor() { this.children = []; this.attributes = {}; this.value = 'normal'; this.style = {}; this.dataset = {}; this.textContent = ''; this.classList = { add() {}, remove() {}, toggle() {} }; }
+    addEventListener() {} setAttribute(name, value) { this.attributes[name] = value; } append(node) { this.children.push(node); node.parent = this; } replaceChildren() {} getAnimations() { return []; }
+  }
+  const get = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
+  const window = { addEventListener() {} }, document = { getElementById: get, querySelectorAll: () => [], createElement: () => new Element(), body: new Element(), addEventListener() {} };
+  get('loading').parent = get('arena');
+  const context = {
+    ...combat, ...dojo, window, document,
+    ArenaView: class { constructor() { throw new Error('WebGL unavailable'); } },
+    FuryAudio: class {}, FighterSnapshots: class {}, ResizeObserver: class { observe() {} },
+    matchMedia: () => ({ matches: false, addEventListener() {} }), localStorage: memory(), console: { error() {} },
+  };
+  const source = readFileSync(new URL('../english-word-fury/main.mjs', import.meta.url), 'utf8').replace(/import[\s\S]*?from\s+"[^"]+";/g, '');
+  await runInNewContext(`(async () => { ${source} })()`, context);
+  assert.equal(get('loading').parent, document.body);
+  assert.equal(get('loading').attributes.role, 'alert');
+  assert.match(get('loading').textContent, /WebGL 2/);
+  assert.equal(get('loading').children[0].href, '../');
+  assert.equal(get('loading').children[0].textContent, '返回游戏合集');
+});
