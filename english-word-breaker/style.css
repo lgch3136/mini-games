@@ -148,3 +148,19 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .overlay { padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
 .quick-start details { margin-top:8px;color:#a9bdcf; }.quick-start summary { min-height:44px;display:flex;align-items:center;cursor:pointer;color:#8bd9eb; }
 .quick-start p { margin:3px 0; }.quick-start b { color:#edfaff; }
+
+/* Wide playfields reserve real HUD rows instead of painting over the bricks. */
+@media (min-width:601px), (orientation:landscape) {
+  #word-bar { left:50%;top:7px;transform:translateX(-50%);max-width:38%;padding:4px 12px; }
+  #sector-status { top:58px; }
+}
+@media (orientation:landscape) and (max-height:600px) {
+  #game-wrap { width:100vw;height:100dvh;aspect-ratio:auto;border:0;border-radius:0; }
+  #stats { top:max(7px,env(safe-area-inset-top)); }
+  #recall-btn { bottom:max(12px,env(safe-area-inset-bottom)); }
+  .overlay { align-items:flex-start; } .panel { margin:auto; }
+  .menu-cover { max-height:24dvh;object-fit:cover; }
+}
+@media (min-width:601px), (orientation:landscape) {
+  #stats .chips { gap:4px; } #stats .chip { padding:4px 6px;font-size:11px; }
+}

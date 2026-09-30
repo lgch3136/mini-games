@@ -173,3 +173,21 @@ button { min-height:44px; touch-action:manipulation; } .overlay { overflow-y:aut
 .quick-start details { margin-top:8px;color:#a9bdcf; }.quick-start summary { min-height:44px;display:flex;align-items:center;cursor:pointer;color:#8bd9eb; }
 .quick-start p { margin:3px 0; }.quick-start b { color:#edfaff; }
 @media(max-width:600px){#stats{left:8px;right:8px;}#stats .chips{gap:4px;}#stats .chip{font-size:11px;padding:4px 6px;}#pause-btn,#mute-btn{padding:4px 7px;min-width:44px;}}
+
+/* Short landscape gets side panels: no text or thumbs over maze cells. */
+@media (orientation:landscape) and (max-height:600px) and (min-width:601px) {
+  #game-wrap { width:100vw;height:100dvh;aspect-ratio:auto;border:0;border-radius:0; }
+  #game { width:min(calc(100vw - 360px),calc(100dvh * 1.25));height:auto;aspect-ratio:880/704;left:50%;top:50%;transform:translate(-50%,-50%); }
+  #stats { left:max(12px,env(safe-area-inset-left));right:auto;top:max(12px,env(safe-area-inset-top));width:164px;flex-wrap:wrap;gap:8px; }
+  #stats .chips { gap:4px; } #stats .chip { padding:3px 6px;font-size:11px; }
+  #word-bar { position:absolute;left:12px;top:100px;margin:0;width:164px;padding:6px; }
+  #wb-kind { display:block;margin:0 0 3px; } #wb-word { font-size:16px;letter-spacing:2px; }
+  .mission-strip,.build-strip { left:12px;right:auto;width:164px;text-align:left;line-height:1.5; }
+  .mission-strip { top:185px; } .build-strip { top:228px; }
+  #feedback { left:12px;transform:none;bottom:16px;width:164px;padding:6px;white-space:normal;text-align:left;font-size:11px; }
+  #touch-controls { display:flex;left:auto;right:max(8px,env(safe-area-inset-right));top:0;bottom:0;width:164px;height:auto;flex-direction:column-reverse;justify-content:space-between;align-items:center;padding:24px 4px; }
+  .tc-pad { width:148px;height:136px; } #down-btn { top:84px; }
+  #bomb-btn { flex:none; }
+  .overlay { align-items:flex-start; } .panel { margin:auto; }
+  .menu-cover { max-height:25dvh;object-fit:cover; }
+}

@@ -92,3 +92,5 @@ RANGER_TEST_WIDTH=540 node english-word-ranger/tests/playthrough.mjs
 浏览器检查入口：`english-word-ranger/tests/ui.html`（正式页面输入与资源释放）和 `english-word-ranger/tests/playback.html`（正常输入实时回放、暂停、单步）。后者不是正式游戏的自动游玩模式。检查结束后关闭测试标签页并停止服务器。其余旧游戏仍保留各自的 `?selftest` / `?fuzz` 参数，本轮未重新验收。
 
 2026-09-30 深度移动质量迭代（独立开发版本）：15 款的玩法循环、规则公平性、训练/结算反馈、移动操作与原创 Blender/Godot 资源见 [本轮记录](docs/mobile-quality-20260930/README.md)。可复现测试与尚未完成的浏览器/真机门槛分开记录；不据此宣称完成 iOS 实机认证。
+
+本轮已按授权发布到正式入口；[发布记录](docs/mobile-quality-20260930/PRODUCTION.md)区分已确认的部署/线上检查与尚未完成的 iPhone、Safari 和 GPU 设备验收。

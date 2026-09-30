@@ -288,3 +288,28 @@ test('Flappy: terminal ground impact cannot subsequently earn a crossing or rout
  const result=f.element('over-stats').innerHTML;
  f.evaluate('checkCollisions();');assert.equal(f.evaluate('Game.score'),0);assert.equal(f.element('over-stats').innerHTML,result);
 });
+
+test('Breaker: live portrait shrink reflows complete brick boxes without overlap or lost letter state',()=>{
+ const f=fixture('english-word-breaker',{mobile:true,width:390,height:844});
+ f.evaluate('startGame();Game.bricks[0].hp=7;');
+ const letters=f.evaluate('Game.bricks.filter(k=>k.letter).map(k=>`${k.index}:${k.letter}`).join(",")');
+ for(const [width,height] of [[320,568],[844,390],[390,844],[568,320],[320,568]]) {
+  f.element('game-wrap').clientWidth=width;f.element('game-wrap').clientHeight=height;f.evaluate('resizeArena();');
+  assert.equal(f.evaluate('W'),width);assert.equal(f.evaluate('H'),height);
+  assert.equal(f.evaluate('Game.bricks.every(k=>k.y>=playTop()&&k.y+k.h<Game.paddle.y-60)'),true,`${width}x${height} HUD/paddle clearance`);
+  assert.equal(f.evaluate('Game.bricks.every((a,i)=>Game.bricks.every((b,j)=>i===j||a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y))'),true,`${width}x${height} brick boxes overlap`);
+  assert.equal(f.evaluate('Game.bricks.filter(k=>k.letter).map(k=>`${k.index}:${k.letter}`).join(",")'),letters);
+  assert.equal(f.evaluate('Game.bricks[0].hp'),7);
+  assert.equal(f.evaluate('Game.balls.every(b=>b.stuck&&b.x===Game.paddle.x+Game.paddle.w/2&&b.y<Game.paddle.y)'),true);
+ }
+});
+
+test('Breaker: an assisted target stays separate and hittable through rotation',()=>{
+ const f=fixture('english-word-breaker',{mobile:true,width:390,height:844});
+ f.evaluate('startGame();launchStuck();Game.targetIdle=18;updateTargetAssist(0);');
+ assert.equal(f.evaluate('Game.bricks.some(k=>k.lowered)'),true);
+ f.element('game-wrap').clientWidth=844;f.element('game-wrap').clientHeight=390;f.evaluate('resizeArena();');
+ assert.equal(f.evaluate('Game.bricks.every((a,i)=>Game.bricks.every((b,j)=>i===j||a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y))'),true);
+ assert.equal(f.evaluate('Game.bricks.every(k=>k.y+k.h<Game.paddle.y-60)'),true);
+ assert.equal(f.evaluate('playTop()>=80&&Game.balls.every(b=>b.y>=playTop()+b.r&&b.y<Game.paddle.y)'),true);
+});

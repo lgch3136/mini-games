@@ -58,10 +58,13 @@ const Game = {
   logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
-function basePaddleWidth() { return W < 600 ? 90 : 110; }
-function playTop() { return W < 600 ? 130 : 40; }
+function portraitArena() { return W < 600 && H > W; }
+function basePaddleWidth() { return portraitArena() ? 90 : 110; }
+function playTop() { return portraitArena() ? 130 : 80; }
+function paddleY() { return H - (portraitArena() ? 98 : 70); }
+function brickStep() { return Math.min(portraitArena() ? 27 : 22, Math.max(14, (paddleY() - playTop() - 80) / 6)); }
 function newPaddle() {
-  return { x: W / 2 - basePaddleWidth()/2, w: basePaddleWidth(), h: 14, y: H - (W < 600 ? 98 : 42), targetX: null, widthBoosts: [] };
+  return { x: W / 2 - basePaddleWidth()/2, w: basePaddleWidth(), h: 14, y: paddleY(), targetX: null, widthBoosts: [] };
 }
 
 function newBall(x, y, angleDeg) {
@@ -149,7 +152,7 @@ function buildLevel() {
   const letterAt = new Map(Game.letterLayout.map(([r, c], index) => [`${r}:${c}`, { letter: letters[index], index }]));
 
   Game.bricks = [];
-  const bw = (W - 40) / 10, bh = W < 600 ? 27 : 22;
+  const bw = (W - 40) / 10, bh = brickStep();
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < grid[r].length; c++) {
       const cell = grid[r][c];
@@ -748,7 +751,7 @@ function updateTargetAssist(dt) {
   const target=Game.bricks.find(k=>k.letter && k.index===Game.word.progress);
   if(!target) return;
   const bottom=Math.max(...Game.bricks.map(k=>k.y+k.h),playTop()+180);
-  if(bottom+target.h < Game.paddle.y-140) { target.y=bottom+10;target.hp=1;showFeedback('目标已下移 · 绿色字母等待击破'); }
+  if(bottom+target.h < Game.paddle.y-140) { target.y=bottom+10;target.lowered=true;target.hp=1;showFeedback('目标已下移 · 绿色字母等待击破'); }
 }
 function drawTargetLine() {
   const ball=Game.balls.find(b=>b.stuck);
@@ -760,18 +763,38 @@ function drawTargetLine() {
 }
 function resizeArena() {
   const wrap=$id('game-wrap'),width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);
-  const mobile=matchMedia('(max-width:600px) and (orientation:portrait)').matches;
-  const nw=mobile?width:720,nh=mobile?height:560;
+  // Use actual CSS pixels in every orientation: HUD and physics share one scale.
+  const nw=width,nh=height;
   const dpr=Math.min(window.devicePixelRatio||1,2,Math.sqrt(1400000/(width*height)));
   if(W===nw&&H===nh&&canvas.width===Math.round(width*dpr)&&canvas.height===Math.round(height*dpr))return;
-  const sx=nw/W,sy=nh/H,oldTop=playTop(),oldBottom=Game.paddle?.y || H-42;
-  const newTop=nw<600?130:40,newBottom=nh-(nw<600?98:42);
-  const mapY=y=>newTop+(y-oldTop)*(newBottom-newTop)/Math.max(1,oldBottom-oldTop);
-  const brickYs=Game.bricks.map(k=>mapY(k.y));
-  for(const item of [...Game.bricks,...Game.balls,...Game.powerups,...Game.particles,...Game.floaters]) { item.x*=sx;item.y*=sy;if(item.w)item.w*=sx; }
-  Game.bricks.forEach((brick,i)=>{brick.y=brickYs[i];});
+  const sx=nw/W,sy=nh/H,oldTop=playTop(),oldBottom=Game.paddle?.y || paddleY();
+  const oldBricks=Game.bricks.map(k=>({y:k.y,h:k.h}));
+  for(const item of [...Game.balls,...Game.powerups,...Game.particles,...Game.floaters]) { item.x*=sx;item.y*=sy; }
   W=nw;H=nh;
-  if(Game.paddle) { Game.paddle.x=clamp(Game.paddle.x*sx,8,W-Game.paddle.w-8);Game.paddle.y=H-(W<600?98:42);Game.paddle.targetX=null; }
+  const bw=(W-40)/10,bh=brickStep(),playScale=(paddleY()-playTop())/Math.max(1,oldBottom-oldTop);
+  // Reflow rows as complete boxes, rather than shrinking their positions alone.
+  // HP, letter order and destroyed bricks survive rotation unchanged.
+  Game.bricks.forEach((brick,i)=>{
+    if(Number.isInteger(brick.row)&&Number.isInteger(brick.column)) {
+      brick.x=20+brick.column*bw;brick.y=playTop()+16+brick.row*bh;brick.w=bw-3;brick.h=bh-3;
+    } else {
+      brick.x*=sx;brick.w*=sx;brick.y=playTop()+(oldBricks[i].y-oldTop)*playScale;brick.h=oldBricks[i].h*playScale;
+    }
+  });
+  for(const brick of Game.bricks.filter(k=>k.lowered)) {
+    const bottom=Math.max(...Game.bricks.filter(k=>k!==brick).map(k=>k.y+k.h),playTop());
+    if(bottom+10+brick.h<paddleY()-64) brick.y=bottom+10;
+    else brick.lowered=false;
+  }
+  if(Game.paddle) {
+    Game.paddle.w=Math.min(W*.44,basePaddleWidth()+Game.paddle.widthBoosts.length*34);
+    Game.paddle.x=clamp(Game.paddle.x*sx,8,W-Game.paddle.w-8);Game.paddle.y=paddleY();Game.paddle.targetX=null;
+    for(const ball of Game.balls) {
+      ball.x=clamp(ball.x,ball.r,W-ball.r);
+      ball.y=clamp(ball.y,playTop()+ball.r,Game.paddle.y-ball.r-2);
+      if(ball.stuck) { ball.x=Game.paddle.x+Game.paddle.w/2;ball.y=Game.paddle.y-ball.r-2; }
+    }
+  }
   canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);arenaKey='';
   if(Game.state!=='playing') render();
 }
