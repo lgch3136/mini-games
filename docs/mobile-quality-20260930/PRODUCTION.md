@@ -21,7 +21,7 @@ All required browser assets and complete procedural authoring scripts are includ
 
 ## Ongoing validation
 
-The prior QUALITY-GATES and VALIDATION documents describe the pre-publication checkpoint. Actual post-publication gameplay and responsive-layout checks continue; successful deployment is not a claim of finished iPhone/Safari quality.
+The prior QUALITY-GATES and VALIDATION documents describe the pre-publication checkpoint. The bounded post-publication browser sweep is complete, as recorded in BROWSER-QA.md; successful deployment is not a claim of finished iPhone/Safari quality.
 
 Current cloud graphics capability previously reported WebGL disabled. 3D gameplay needs a permitted GPU-capable browser/device; physical multi-touch, Safari keyboard/safe areas, listening tests, sustained performance and thermal/battery behavior remain separate device checks.
 
@@ -34,14 +34,22 @@ Real browser testing exposed two layout/geometry defects that simulation-only va
 - Bomber short landscape HUD/word text overlapped the maze; side panels now separate information, playfield and touch buttons
 - Breaker kept fixed brick heights while scaling row positions during rotation; complete brick boxes now reflow, preserve progress and reserve HUD space
 
-Two new production resize regressions were added, and the full suite passes559/559. The follow-up also corrects the workbench's viewport border sizing. These fixes must be rechecked in the deployed browser; physical iPhone validation remains open.
+Two new production resize regressions were added, and the full suite passes559/559. The follow-up also corrects the workbench's viewport border sizing. These fixes were rechecked in the deployed browser; physical iPhone validation remains open.
 
 ## Additional live-readable interface corrections
 
-The next focused correction protects Apex/Strike failure-text contrast, lifts Fury's failure alert out of the isolated arena layer, and fixes Typebound coach contrast, narrow header overlap and short-landscape keyboard placement. The workbench forwards its build tag to game HTML URLs, preventing stale entry pages during rapid verification. Per-game live evidence and remaining boundaries are tracked in [BROWSER-QA.md](BROWSER-QA.md).
+The next focused correction protects Apex/Strike failure-text contrast, lifts Fury's failure alert out of the isolated arena layer, and fixes Typebound coach contrast, narrow header overlap and short-landscape typing-card placement. The workbench forwards its build tag to game HTML URLs, preventing stale entry pages during rapid verification. Per-game live evidence and remaining boundaries are tracked in [BROWSER-QA.md](BROWSER-QA.md).
 
 The same focused bundle also keeps Flappy's portrait flight world centered in short landscape with essential controls outside the narrow canvas, and raises Snake's landscape direction/boost targets to44px in its normal footer flow. This preserves the existing flight pace and keeps touch buttons off the board. All remaining device and timing-sensitivity boundaries still apply.
 
 ## Bounded review completed across15 entries
 
 The review reached all15 entries: ten2D titles had live input/state-transition coverage, and five3D titles had disabled-WebGL fallback coverage only. r4 visual corrections were rechecked successfully. The remaining scoped correction stacks Ranger's portrait goal/notice/boss messages, gives a living boss priority while preserving goal progress, and makes Miner's dynamite target44px. Boss entry/defeat/retry visibility has a production-HUD regression; an actual live boss victory is not claimed. Final deployed pixel checks are recorded in BROWSER-QA.md.
+
+## Final deployed checkpoint
+
+Runtime release `1c18094c0c4ef2d4a028a5145ea575d2e88a75e2` completed [Pages deployment 36735824461](https://github.com/lgch3136/mini-games/actions/runs/36735824461) successfully. The live collection is <https://lgch3136.github.io/mini-games/>.
+
+Final automated validation passed 565/565 tests, 168 JavaScript syntax checks and 290 resource/import references across 149 production source files. All 15 entries received the bounded live browser checks documented in [BROWSER-QA.md](BROWSER-QA.md): 10 with real 2D input/state evidence and five with disabled-WebGL recovery evidence only. Every concrete visual defect found in that sweep was corrected and rechecked online. The last checks confirmed Ranger's 8px portrait message separation and Miner's 44px landscape dynamite target.
+
+This closes the accessible browser sweep, not real-device acceptance. GPU gameplay, physical iPhone/Safari touch and safe areas, sound/calibration, sustained performance and the explicitly listed uncompleted victory routes remain unverified.
