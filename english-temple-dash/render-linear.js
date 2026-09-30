@@ -51,7 +51,8 @@ const hash = (n) => {
 const tmp = new T.Object3D(),
   color = new T.Color(),
   direction = new T.Vector3(),
-  up = new T.Vector3(0, 1, 0);
+  up = new T.Vector3(0, 1, 0),
+  rodRotation = new T.Euler();
 const roundedBox = () => {
   const s = new T.Shape(),
     r = 0.08;
@@ -79,7 +80,7 @@ const roundedBox = () => {
   return g;
 };
 
-class Batch {
+export class Batch {
   constructor(scene, geometry, material, capacity, shadow = true) {
     this.mesh = new T.InstancedMesh(geometry, material, capacity);
     this.mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
@@ -105,8 +106,16 @@ class Batch {
   }
   finish() {
     this.mesh.count = this.count;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.mesh.instanceColor.needsUpdate = true;
+    // Capacity is a safety ceiling, not the amount that needs uploading. Three's
+    // update ranges count scalar components (16 per matrix, 3 per RGB instance).
+    const matrix = this.mesh.instanceMatrix, colors = this.mesh.instanceColor;
+    matrix.clearUpdateRanges();
+    colors.clearUpdateRanges();
+    if (!this.count) return;
+    matrix.addUpdateRange(0, this.count * matrix.itemSize);
+    colors.addUpdateRange(0, this.count * colors.itemSize);
+    matrix.needsUpdate = true;
+    colors.needsUpdate = true;
   }
 }
 
@@ -116,6 +125,8 @@ export class Renderer {
     this.width = 1152;
     this.height = 720;
     this.lastFrame = 0;
+    this.waterColor = new T.Color();
+    this.surfaceWidth = this.surfaceHeight = this.pixelRatio = 0;
     this.gl = new T.WebGLRenderer({
       canvas,
       antialias: true,
@@ -214,9 +225,12 @@ export class Renderer {
   resize() {
     const r = this.canvas.getBoundingClientRect();
     if (!r.width || !r.height) return;
+    const ratio = Math.min(devicePixelRatio || 1, 1.5);
+    if (r.width === this.surfaceWidth && r.height === this.surfaceHeight && ratio === this.pixelRatio) return;
+    this.surfaceWidth = r.width; this.surfaceHeight = r.height; this.pixelRatio = ratio;
     const spec = cameraSpec(r.width, r.height);
     this.width = (720 * r.width) / r.height;
-    this.gl.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
+    this.gl.setPixelRatio(ratio);
     this.gl.setSize(r.width, r.height, false);
     Object.assign(this.camera, {
       left: -spec.worldWidth / 2,
@@ -245,7 +259,7 @@ export class Renderer {
     direction.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
     const length = direction.length();
     tmp.quaternion.setFromUnitVectors(up, direction.normalize());
-    const e = new T.Euler().setFromQuaternion(tmp.quaternion);
+    const e = rodRotation.setFromQuaternion(tmp.quaternion);
     this.batches.pole.add(
       (a[0] + b[0]) / 2,
       (a[1] + b[1]) / 2,
@@ -272,7 +286,7 @@ export class Renderer {
       mix = clamp((this.distance % SECTOR_LENGTH) / 28, 0, 1);
     const palette = PALETTES[sector % 3],
       old = PALETTES[Math.max(0, sector - 1) % 3];
-    this.waterColor = new T.Color(old.water).lerp(
+    this.waterColor.set(old.water).lerp(
       color.set(palette.water),
       mix,
     );

@@ -123,3 +123,8 @@ button:focus-visible { outline: 3px solid #bae6fd; outline-offset: 2px; }
 
 /* 封面横幅 */
 .menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
+
+/* Noninteractive word feedback never intercepts an aiming drag. */
+#word-bar, #feedback { pointer-events: none; }
+#score, #lives, #level, #drop { font-variant-numeric: tabular-nums; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }

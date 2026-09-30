@@ -1,8 +1,11 @@
 import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260929-fluid-r2";
-import { View } from "./view.mjs?v=20260929-fluid-r2";
+import { View } from "./view.mjs?v=20260930-polish-r1";
 import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
+import { FrameSnapshot } from "./render-state.mjs?v=20260930-polish-r1";
+const frameSnapshot = new FrameSnapshot();
+let lastHudFrame = -Infinity;
 const $ = (id) => document.getElementById(id),
   audio = new MoonAudio(),
   coarse = matchMedia("(pointer:coarse)");
@@ -83,13 +86,7 @@ function stop() {
 function input() {
   return controls.read();
 }
-const capture = () => ({
-  player: {
-    ...world.player,
-    attack: world.player.attack ? { ...world.player.attack } : null,
-  },
-  enemies: world.enemies.map((e) => ({ ...e })),
-});
+const capture = () => frameSnapshot.capture(world);
 function preview() {
   if (!view?.ready) return;
   view.resize();
@@ -165,12 +162,14 @@ function event(e) {
   if (e.type === "bossClear") toast("月印已夺回 · 前往寺门", 3);
 }
 function hud() {
+  lastHudFrame = world.frame;
   const p = world.player;
   text(
     "chapter",
     `${["壹", "贰", "叁"][world.stage]} · ${STAGES[world.stage].name}`,
   );
   $("hp-fill").style.transform = `scaleX(${p.hp / p.maxHp})`;
+  $("hp-fill").dataset.low = p.hp <= p.maxHp * 0.3;
   text("energy", "◆".repeat(p.energy) + "◇".repeat(10 - p.energy));
   text("score", String(world.score).padStart(5, "0"));
   const combo = world.combo >= 2 ? `${world.combo}<small>连斩</small>` : "";
@@ -208,7 +207,7 @@ function tick(now) {
     acc -= DT;
   }
   view.render(world, previous, clamp(acc / DT, 0, 1), delta);
-  if (world.frame % 4 === 0) hud();
+  if (world.frame - lastHudFrame >= 4) hud();
   toastLife -= delta;
   if (toastLife <= 0) text("toast", "");
   audio.intense = world.bossLocked;

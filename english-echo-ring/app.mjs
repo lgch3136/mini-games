@@ -1,8 +1,9 @@
+import { advanceAfterglow } from "./afterglow.mjs?v=20260930-polish-r1";
 import { Game, STEP, TAU, clamp } from "./sim.mjs?v=20260906-echo-r5";
-import { Controls } from "./input.mjs?v=20260906-echo-r5";
-import { Renderer } from "./render.mjs?v=20260929-membrane-r1";
+import { Controls } from "./input.mjs?v=20260930-polish-r1";
+import { Renderer } from "./render.mjs?v=20260930-polish-r1";
 import { EchoAudio } from "./audio.mjs?v=20260906-echo-r5";
-const VERSION = "20260929-membrane-r1";
+const VERSION = "20260930-polish-r1";
 const $ = (id) => document.getElementById(id);
 const phases = ["01 / 涟漪", "02 / 回流", "03 / 共振", "04 / 深潮"];
 const timeText = (t) =>
@@ -202,8 +203,8 @@ function updateHUD(force = false) {
     ),
   );
   $("health").setAttribute("aria-label", game.p.health + " 格护盾");
-  $("charge").style.width =
-    (game.resonance > 0 ? (game.resonance / 4) * 100 : game.charge) + "%";
+  $("charge").style.transform =
+    `scaleX(${clamp(game.resonance > 0 ? game.resonance / 4 : game.charge / 100, 0, 1)})`;
   set(
     "charge-label",
     game.resonance > 0
@@ -270,9 +271,8 @@ function frame(timestamp) {
     renderer.draw(game, accumulator / STEP);
   } else if (mode === "dying") {
     dying -= dt;
-    renderer.update(dt, game, false);
-    game.ring.step(STEP);
-    renderer.draw(game, 1);
+    accumulator = advanceAfterglow(renderer, game, accumulator, dt);
+    renderer.draw(game, accumulator / STEP);
     if (dying <= 0) finish();
   } else if (mode === "menu" && timestamp < previewUntil) {
     accumulator += dt;

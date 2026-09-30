@@ -134,7 +134,7 @@ export class Controls {
       y = this.axis.y,
       ox = -1,
       oy = -1;
-    for (const [code, order] of [...this.held, ...this.taps]) {
+    for (const source of [this.held, this.taps]) for (const [code, order] of source) {
       const d = directions[code];
       if (!d) continue;
       if (d[0] && order > ox) {
@@ -146,11 +146,10 @@ export class Controls {
         oy = order;
       }
     }
-    const fire =
-      this.fireTap ||
-      this.held.has("Space") ||
-      this.held.has("KeyJ") ||
-      [...this.owners.values()].some((v) => v.action === "fire");
+    let fire = this.fireTap || this.held.has("Space") || this.held.has("KeyJ");
+    if (!fire) for (const owner of this.owners.values()) {
+      if (owner.action === "fire") { fire = true; break; }
+    }
     const result = { x, y, fire, dash: this.dashTap };
     if (consume) {
       this.fireTap = false;

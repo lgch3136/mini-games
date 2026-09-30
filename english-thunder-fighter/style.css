@@ -207,3 +207,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 
 /* 封面横幅 */
 .menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
+
+/* The health readout stays steady while the damage bar eases into place. */
+#score, #combo, #hp-text, #medal-chain { font-variant-numeric: tabular-nums; }
+#hp-bar { transition: width 120ms ease-out; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button:focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { #hp-bar { transition: none; } .pop { animation: none !important; } }

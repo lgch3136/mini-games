@@ -1048,3 +1048,12 @@ body:not([data-race-mode="items"]) .touch-right {
     padding: 13px 20px;
   }
 }
+
+/* Stable instrument spacing and a crisp, readable mini-turbo-ready state. */
+#rank, #lap, #timer, #input-slip, #drift-label {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+#timer { display: inline-block; min-width: 8ch; }
+#drift-gauge[data-ready="true"] { outline: 2px solid #a85f2b; outline-offset: 3px; }
+#drift-gauge[data-ready="true"] small { color: #71471e; background: #fff3d4; }
+#mini-key.ready { border-color: #a85f2b; }

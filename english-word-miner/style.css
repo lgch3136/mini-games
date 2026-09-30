@@ -148,3 +148,10 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
 
 /* 封面横幅 */
 .menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
+
+/* A quiet urgency cue without flashing or shifting the countdown. */
+#timer { display: inline-block; min-width: 2ch; font-variant-numeric: tabular-nums; transition: color .18s ease; }
+#timer.urgent { text-shadow: 0 0 10px rgba(248,113,113,.35); }
+#score, #quota { font-variant-numeric: tabular-nums; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+@media (prefers-reduced-motion: reduce) { #timer, #dynamite-btn { transition: none; } }

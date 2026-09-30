@@ -328,3 +328,14 @@
   background: linear-gradient(110deg, transparent, #0b243a60);
   border-radius: 4px;
 }
+
+/* Ammunition is a primary decision cue; warning text also names the state. */
+#ammo, #reserve, #shield, #reload-label, #dash-label {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+#ammo { display: inline-block; min-width: 2ch; }
+#ammo[data-low="true"] { color: #ffce91; }
+.ammo:has(#ammo[data-low="true"]) #reload-label { color: #ffce91; }
+@media (prefers-reduced-motion: reduce) {
+  #hitmarker { transition: none; }
+}

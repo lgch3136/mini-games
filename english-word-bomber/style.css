@@ -137,3 +137,8 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
 
 /* 封面横幅 */
 .menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
+
+/* Keep the held direction readable without moving its touch target. */
+#up-btn, #down-btn, #left-btn, #right-btn, #bomb-btn { touch-action: none; -webkit-tap-highlight-color: transparent; }
+#up-btn.active, #down-btn.active, #left-btn.active, #right-btn.active { outline: 2px solid #fed7aa; outline-offset: -3px; }
+#score, #lives, #stage, #round { font-variant-numeric: tabular-nums; }

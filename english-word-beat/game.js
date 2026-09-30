@@ -16,7 +16,7 @@
 
 const $id = (x) => document.getElementById(x);
 const canvas = $id('game');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { alpha: false });
 const wrap = $id('game-wrap');
 const StageBackground = new Image();
 StageBackground.src = 'assets/stage-bg-v3.webp';
@@ -67,11 +67,15 @@ const LANE_MODES = {
   7: { keys: ['KeyS','KeyD','KeyF','Space','KeyJ','KeyK','KeyL'], labels: ['S','D','F','␣','J','K','L'],
        degrees: [0, 1, 2, 3, 4, 5, 6] },
 };
+for (const config of Object.values(LANE_MODES)) {
+  config.colors = config.keys.map((key) => KEY_COLORS[key]);
+  config.notes = config.degrees.map(() => 'KS');
+}
 const laneCfg = () => LANE_MODES[LANES];
 const LANE_KEYS = () => laneCfg().keys;
 const LANE_LABEL = () => laneCfg().labels;
-const LANE_COLORS = () => laneCfg().keys.map((key) => KEY_COLORS[key]);
-const LANE_NOTES = () => laneCfg().degrees.map(() => 'KS');
+const LANE_COLORS = () => laneCfg().colors;
+const LANE_NOTES = () => laneCfg().notes;
 function degreeToLane(degree) {
   const degrees = laneCfg().degrees;
   let best = 0;
@@ -721,6 +725,7 @@ function buildChart(retryWord, seamless) {
 
   Game.notes.push(...phraseNotes);
   Game.notes.sort((a, b) => a.hitAt - b.hitAt);
+  pendingNotes = null;
   Game.autoEvents.sort((a, b) => a.hitAt - b.hitAt);
   Game.songEndAt = phraseStart + cursorDuration + beat * .5;
   Game.currentSection = melodyNotes[0]?.section || '主题';
@@ -740,6 +745,7 @@ function startGame() {
   Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   Game.flashLane.fill(0); Game.heldLane.fill(0); Game.judgement = null;
   Game.activeHolds.fill(null);
+  keyboardLanes.clear(); pointerLanes.clear();
   Game.state = 'playing';
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
@@ -786,6 +792,33 @@ function advanceCombo() {
   }
 }
 
+// Advance once over resolved notes. A full score can contain thousands of notes;
+// completed history should not be rescanned by input and both HUD passes at 144 Hz.
+let pendingNotes = null, pendingIndex = 0;
+function firstPendingIndex() {
+  if (pendingNotes !== Game.notes) { pendingNotes = Game.notes; pendingIndex = 0; }
+  while (pendingIndex < Game.notes.length && Game.notes[pendingIndex].judged) pendingIndex++;
+  return pendingIndex;
+}
+function firstPendingNote() { return Game.notes[firstPendingIndex()]; }
+function* visibleNotes(time, speed) {
+  const earliest = time - .2, latest = time + (HIT_Y - 15) / speed;
+  // A held tail may start before the visible time window, but must stay on screen.
+  for (const note of Game.activeHolds)
+    if (note?.holding && note.hitAt < earliest) yield note;
+  let low = 0, high = Game.notes.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (Game.notes[mid].hitAt < earliest) low = mid + 1;
+    else high = mid;
+  }
+  for (let i = low; i < Game.notes.length; i++) {
+    const note = Game.notes[i];
+    if (note.hitAt > latest) break;
+    yield note;
+  }
+}
+
 function judgeHit(lane) {
   if (lane == null || lane < 0 || lane >= LANES) return;
   Game.flashLane[lane] = 1;
@@ -793,11 +826,12 @@ function judgeHit(lane) {
   const t = now();
   const JW = judgeWindows();
   let best = null, bestD = Infinity;
-  for (const n of Game.notes) {
+  for (let i = firstPendingIndex(); i < Game.notes.length; i++) {
+    const n = Game.notes[i];
+    if (n.hitAt > t + .3) break;
     if (n.judged || n.lane !== lane) continue;
     const d = Math.abs(n.hitAt - t);
     if (d < bestD) { bestD = d; best = n; }
-    if (n.hitAt > t + .3) break;
   }
   if (!best || bestD > JW.good) { tapSound(false, lane); return; }
   best.judged = true;
@@ -873,7 +907,8 @@ function scanMisses() {
   const t = now();
   const JW = judgeWindows();
   let changed = false;
-  for (const n of Game.notes) {
+  for (let i = firstPendingIndex(); i < Game.notes.length; i++) {
+    const n = Game.notes[i];
     if (n.judged) continue;
     if (n.hitAt < t - JW.good) {
       n.judged = true;
@@ -901,7 +936,7 @@ function scanMisses() {
   if (changed && Game.notes.length > 240) {
     Game.notes = Game.notes.filter((n) => !n.judged || n.hitAt > t - 2);
   }
-  const remaining = Game.notes.some((n) => !n.judged);
+  const remaining = !!firstPendingNote();
   if (!remaining && t > Game.songEndAt) {
     if (Game.word.progress < Game.word.en.length) {
       buildChart(true, true);
@@ -935,43 +970,52 @@ function gameOver() {
 function totalNotes() { return Game.counts.perfect + Game.counts.great + Game.counts.good + Game.counts.miss; }
 
 /* ---------------- 输入 ---------------- */
+const keyboardLanes = new Set();
 window.addEventListener('keydown', (ev) => {
+  if (ev.isComposing || ev.ctrlKey || ev.metaKey || ev.altKey ||
+      /INPUT|SELECT|TEXTAREA/.test(ev.target?.tagName) || ev.target?.isContentEditable) return;
   const li = LANE_KEYS().indexOf(ev.code);
   if (li >= 0) {
+    if (Game.state !== 'playing') return;
     ev.preventDefault();
-    if (!ev.repeat) { Game.heldLane[li] = 1; judgeHit(li); }
+    if (!ev.repeat && !keyboardLanes.has(li)) { keyboardLanes.add(li); Game.heldLane[li] = 1; judgeHit(li); }
     return;
   }
+  if (ev.repeat) return;
   if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
   if (ev.code === 'KeyM') toggleMute();
   if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
 });
 window.addEventListener('keyup', (ev) => {
   const li = LANE_KEYS().indexOf(ev.code);
-  if (li >= 0) releaseLane(li);
+  if (li >= 0) { keyboardLanes.delete(li); releaseLane(li); }
 });
 const pointerLanes = new Map();
 canvas.addEventListener('pointerdown', (ev) => {
-  if (Game.state !== 'playing') return;
+  if (Game.state !== 'playing' || (ev.button != null && ev.button !== 0) || pointerLanes.has(ev.pointerId)) return;
+  ev.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const x = (ev.clientX - rect.left) * W / rect.width;
   const lane = clamp(Math.floor((x - 20) / ((W - 40) / LANES)), 0, LANES - 1);
   pointerLanes.set(ev.pointerId, lane);
   Game.heldLane[lane] = 1;
-  canvas.setPointerCapture?.(ev.pointerId);
+  try { canvas.setPointerCapture?.(ev.pointerId); } catch {}
   judgeHit(lane);
 });
 function releasePointer(ev) {
   const lane = pointerLanes.get(ev.pointerId);
   pointerLanes.delete(ev.pointerId);
-  if (lane != null && ![...pointerLanes.values()].includes(lane)) releaseLane(lane);
+  if (lane != null) releaseLane(lane);
 }
 function releaseLane(lane) {
+  if (keyboardLanes.has(lane)) return;
+  for (const held of pointerLanes.values()) if (held === lane) return;
   Game.heldLane[lane] = 0;
   if (Game.state === 'playing' && Game.activeHolds[lane] && now() < Game.activeHolds[lane].endAt - .035) breakHold(lane);
 }
 canvas.addEventListener('pointerup', releasePointer);
 canvas.addEventListener('pointercancel', releasePointer);
+canvas.addEventListener('lostpointercapture', releasePointer);
 function togglePause() {
   if (Game.state === 'playing') {
     Game.state = 'paused';
@@ -988,12 +1032,14 @@ function togglePause() {
 }
 function backToMenu() {
   Game.state = 'menu';
+  Game.heldLane.fill(0); keyboardLanes.clear(); pointerLanes.clear();
   Game.actx?.suspend().catch(() => {});
   Game.activeHolds.fill(null);
   $id('paused').classList.add('hidden');
   $id('over').classList.add('hidden');
   $id('word-bar').classList.add('hidden');
   $id('menu').classList.remove('hidden');
+  render();
 }
 
 /* ---------------- 特效 ---------------- */
@@ -1012,7 +1058,11 @@ function showFeedback(text) {
   el.classList.add('show');
 }
 function updateSection() {
-  const next = Game.notes.find((note) => !note.judged && note.section);
+  let next;
+  for (let i = firstPendingIndex(); i < Game.notes.length; i++) {
+    const note = Game.notes[i];
+    if (!note.judged && note.section) { next = note; break; }
+  }
   if (!next) return;
   const sectionChanged = next.section !== Game.currentSection;
   const bpmChanged = next.bpm && next.bpm !== Game.bpm;
@@ -1022,21 +1072,38 @@ function updateSection() {
   if (sectionChanged) showFeedback(`${currentSong().title} · ${Game.currentSection}`);
   updateHud();
 }
+const hudCache = new Map();
+function hudText(id, value) {
+  const text = String(safe(value));
+  if (hudCache.get(id) === text) return;
+  const element = $id(id);
+  if (element) { element.textContent = text; hudCache.set(id, text); }
+}
 function updateHud() {
   const song = currentSong();
-  $id('score').textContent = safe(Game.score, 0);
-  $id('level').textContent = safe(Game.level, 1);
-  $id('bpm').textContent = safe(Game.bpm, 104);
-  const capsules = $id('capsules');
-  if (capsules) capsules.textContent = `💊 ${Game.capsules}/${CAPSULE_MAX}`;
-  $id('life-bar').style.width = clamp(Game.lives, 0, 100) + '%';
+  hudText('score', safe(Game.score, 0));
+  hudText('level', safe(Game.level, 1));
+  hudText('bpm', safe(Game.bpm, 104));
+  hudText('capsules', `💊 ${Game.capsules}/${CAPSULE_MAX}`);
+  const life = clamp(Game.lives, 0, 100) / 100;
+  if (hudCache.get('life') !== life) {
+    $id('life-bar').style.transform = `scaleX(${life})`;
+    hudCache.set('life', life);
+  }
   const w = Game.word;
   if (w && w.en) {
-    $id('wb-kind').textContent = `${song.title} · ${Game.currentSection || song.composer}`;
-    $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
-      i < w.progress ? `<span class="got">${ch}</span>` : (i === w.progress ? `<span class="next">${ch}</span>` : '_')
-    ).join('');
-    $id('wb-zh').textContent = safe(w.zh);
+    hudText('wb-kind', `${song.title} · ${Game.currentSection || song.composer}`);
+    const key = `${w.en}/${w.progress}`;
+    if (hudCache.get('word') !== key) {
+      $id('wb-word').replaceChildren(...[...w.en].map((ch, i) => {
+        const letter = document.createElement('span');
+        letter.textContent = i <= w.progress ? ch : '_';
+        letter.className = i < w.progress ? 'got' : i === w.progress ? 'next' : '';
+        return letter;
+      }));
+      hudCache.set('word', key);
+    }
+    hudText('wb-zh', w.zh);
   }
 }
 
@@ -1230,7 +1297,7 @@ function render() {
   }
 
   const chartTime = now();
-  const firstPending = Game.notes.find((note) => !note.judged);
+  const firstPending = firstPendingNote();
   if (firstPending) {
     const entryAt = firstPending.hitAt - (HIT_Y - 44) / scrollSpeed();
     if (chartTime < entryAt) {
@@ -1243,7 +1310,7 @@ function render() {
 
   // 音符
   const t = chartTime;
-  for (const n of Game.notes) {
+  for (const n of visibleNotes(t, scrollSpeed())) {
     if (n.judged && !n.holding && !n.missed) continue;
     const dt = n.hitAt - t;
     if (dt < -.2 && !n.holding) continue;
@@ -1383,6 +1450,7 @@ document.querySelectorAll('.seg-btn[data-keys]').forEach((b) => b.addEventListen
   b.classList.add('selected');
   Game.keyMode = Number(b.dataset.keys);
   LANES = Game.keyMode;
+  if (Game.state === 'menu') render();
 }));
 $id('speed-select').addEventListener('change', (event) => { Game.scrollMul = Number(event.target.value); });
 function updateSongMenu() {
@@ -1412,11 +1480,13 @@ function resize() {
   const pixelHeight = Math.max(1, Math.round(height * dpr));
   if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
     canvas.width = pixelWidth; canvas.height = pixelHeight;
+    if (Game.state !== 'playing') render();
   }
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 160));
 resize();
+StageBackground.onload = () => { if (Game.state !== 'playing') render(); };
 
 let lastTime = performance.now();
 let rafId = 0;

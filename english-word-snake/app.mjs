@@ -4,7 +4,7 @@ import {
   VERSION,
   wordsFor,
 } from "./engine.mjs?v=20260912-garden-r4";
-import { GardenRenderer } from "./render.mjs?v=20260912-garden-r4";
+import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1";
 import { GardenAudio } from "./audio.mjs?v=20260912-garden-r4";
 import { SnakeInput } from "./input.mjs?v=20260912-garden-r4";
 

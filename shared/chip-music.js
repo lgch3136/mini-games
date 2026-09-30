@@ -293,6 +293,18 @@
   let currentName = null;
   let schedulerTimer = null;
   let songState = null;
+  let stopTimer = null;
+  const voices = new Set();
+  function trackVoice(source, ...nodes) {
+    const voice = { release(stop = false) {
+      if (!voices.delete(voice)) return;
+      if (stop) { try { source.stop(); } catch {} }
+      source.disconnect();
+      for (const node of nodes) node.disconnect();
+    } };
+    voices.add(voice);
+    source.onended = () => voice.release();
+  }
 
   function ensureCtx() {
     if (!ctx) {
@@ -330,6 +342,7 @@
     g.gain.exponentialRampToValueAtTime(Math.max(.0008, vol * .28), t + dur * .82);
     g.gain.exponentialRampToValueAtTime(.0008, t + dur);
     osc.connect(g); g.connect(masterGain);
+    trackVoice(osc, g);
     osc.start(t); osc.stop(t + dur + .02);
   }
 
@@ -341,6 +354,7 @@
     g.gain.setValueAtTime(vol, t + dur * .8);
     g.gain.linearRampToValueAtTime(0, t + dur);
     osc.connect(g); g.connect(masterGain);
+    trackVoice(osc, g);
     osc.start(t); osc.stop(t + dur + .02);
   }
 
@@ -358,6 +372,7 @@
       g.gain.setValueAtTime(vol, t);
       g.gain.exponentialRampToValueAtTime(.001, t + .13);
       osc.connect(g); g.connect(masterGain);
+    trackVoice(osc, g);
       osc.start(t); osc.stop(t + .15);
       return;
     }
@@ -377,6 +392,7 @@
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(.001, t + dur);
     src.connect(f); f.connect(g); g.connect(masterGain);
+    trackVoice(src, f, g);
     src.start(t, Math.random() * .1); src.stop(t + dur + .01);
   }
 
@@ -406,13 +422,18 @@
   function schedulerTick() {
     if (!songState) return;
     const now = ctx.currentTime;
+    // Do not enqueue a burst of stale notes after a stalled tab or CPU hitch.
+    if (songState.nextTime < now - LOOKAHEAD) songState.nextTime = now + .02;
     while (songState.nextTime < now + LOOKAHEAD) {
       scheduleStep(songState.song, songState.step, songState.nextTime);
       songState.nextTime += 60 / songState.song.tempo / 4;
       songState.step++;
       if (songState.song.noLoop && songState.step >= totalSteps(songState.song)) {
         const stopAt = songState.nextTime;
-        setTimeout(() => api.stop(), Math.max(0, (stopAt - now) * 1000 + 400));
+        const ending = songState;
+        stopTimer = setTimeout(() => {
+          if (songState === ending) api.stop();
+        }, Math.max(0, (stopAt - now) * 1000 + 400));
         clearInterval(schedulerTimer);
         schedulerTimer = null;
         return;
@@ -433,6 +454,8 @@
       schedulerTimer = setInterval(schedulerTick, TICK);
     },
     stop() {
+      clearTimeout(stopTimer); stopTimer = null;
+      for (const voice of [...voices]) voice.release(true);
       if (schedulerTimer) { clearInterval(schedulerTimer); schedulerTimer = null; }
       songState = null; currentName = null;
     },

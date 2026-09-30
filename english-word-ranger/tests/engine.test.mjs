@@ -323,3 +323,87 @@ test("long sessions keep live object collections bounded without resource multip
   assert.ok(w.particles.length <= 160);
   assert.ok(w.rings.length < 8);
 });
+
+test("down + jump leaves one-way platforms and catches a lower platform even while held", () => {
+  const w = empty();
+  w.terrain = [
+    { id: 1, x: 0, y: 454, w: 900, h: 200 },
+    { id: 2, x: 50, y: 310, w: 220, h: 16, oneWay: true },
+    { id: 3, x: 50, y: 350, w: 220, h: 16, oneWay: true },
+  ];
+  Object.assign(w.player, { y: 310, py: 310, groundId: 2 });
+  w.step({ y: 1, jump: true });
+  assert.ok(w.player.y > 310);
+  assert.equal(w.player.vy > 0, true);
+  assert.equal(w.metrics.jumps, 0);
+  assert.equal(w.player.jumpBuffer, 0);
+  assert.ok(w.events.some((e) => e.type === "drop"));
+  advance(w, 0.5, { y: 1, jump: true });
+  assert.equal(w.player.y, 350);
+  assert.equal(w.player.groundId, 3);
+  assert.equal(w.player.dropPlatformId, null);
+  w.step();
+  w.step({ y: 1, jump: true });
+  advance(w, 0.5, { y: 1, jump: true });
+  assert.equal(w.player.y, 454);
+});
+
+test("down + jump on solid ground remains a jump, and down alone does not drop", () => {
+  const floor = empty();
+  floor.step({ y: 1, jump: true });
+  assert.ok(floor.player.vy < 0);
+  assert.equal(floor.metrics.jumps, 1);
+  assert.equal(floor.player.dropPlatformId, null);
+  const deck = empty();
+  deck.terrain.push({ id: 900, x: 60, y: 310, w: 220, h: 16, oneWay: true });
+  Object.assign(deck.player, { y: 310, py: 310, groundId: 900 });
+  advance(deck, 0.5, { y: 1 });
+  assert.equal(deck.player.y, 310);
+});
+
+test("dropping detaches from a moving platform and allows a later jump back onto it", () => {
+  const w = empty();
+  w.terrain = [
+    { id: 1, x: 0, y: 454, w: 900, h: 200 },
+    { id: 2, x: 0, base: 0, y: 360, w: 300, h: 16,
+      motion: "x", speed: 2, range: 20, oneWay: true },
+  ];
+  Object.assign(w.player, { y: 360, py: 360, groundId: 2 });
+  w.step({ y: 1, jump: true });
+  const x = w.player.x;
+  advance(w, 0.5);
+  assert.equal(w.player.x, x);
+  assert.equal(w.player.y, 454);
+  advance(w, 0.8, { jump: true });
+  assert.equal(w.player.y, 360);
+  assert.equal(w.player.groundId, 2);
+});
+
+test("crouch and roll cannot stand inside a low ceiling; standing returns after exit", () => {
+  for (const rolling of [false, true]) {
+    const w = empty();
+    w.terrain = [
+      { id: 1, x: 0, y: 454, w: 900, h: 200 },
+      { id: 2, x: 50, y: 340, w: 140, h: 70 },
+    ];
+    Object.assign(w.player, { h: 32, crouch: true, roll: rolling ? 0.02 : 0 });
+    advance(w, 0.1);
+    assert.equal(w.player.h, 32);
+    assert.equal(w.player.crouch, true);
+    assert.equal(overlap(actorBox(w.player), w.terrain[1]), false);
+    advance(w, 1.5, { x: 1 });
+    assert.ok(w.player.x > 203);
+    assert.equal(w.player.h, 60);
+    assert.equal(w.player.crouch, false);
+  }
+});
+
+test("one-way platforms overhead do not force crouching", () => {
+  const w = empty();
+  w.terrain.push({ id: 900, x: 50, y: 410, w: 160, h: 16, oneWay: true });
+  Object.assign(w.player, { h: 32, crouch: true });
+  w.step();
+  assert.equal(w.player.h, 60);
+  assert.equal(w.player.crouch, false);
+  assert.equal(w.player.y, 454);
+});

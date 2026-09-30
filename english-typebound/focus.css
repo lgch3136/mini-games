@@ -55,3 +55,12 @@
   .practice-metrics small { font-size:8px; }
   .practice-metrics em,.pulse-caption,.arena .health,.arena .enemy-intent { display:none; }
 }
+
+/* Quiet, tactile focus feedback without another animated glow surface. */
+.typing-dock:focus-within { border-color:#94d9c999; }
+#battle .run-metrics, .arena .health b, .arena .enemy-intent { font-variant-numeric:tabular-nums; }
+#word > .active:after { border-radius:999px; }
+.spell-picker button:focus-visible, .key:focus-visible { outline:2px solid #bcf6df; outline-offset:3px; }
+@media (prefers-reduced-motion:no-preference) {
+  .typing-dock { transition:border-color .16s ease; }
+}

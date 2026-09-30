@@ -13,6 +13,7 @@ import {
   animateMochiKart,
   roundedBox,
 } from "./mochi-kart.mjs?v=20260918-play-r1";
+const MAP_COLORS = [0xeeb84b, 0x6592d7, 0xdf6f9c, 0x9e84cd, 0x75ad72].map(c => "#" + c.toString(16));
 export class RaceView extends SceneKit {
   constructor(canvas) {
     super(canvas);
@@ -28,6 +29,8 @@ export class RaceView extends SceneKit {
     this.camera.add(this.cockpit);
     this.map = document.getElementById("map");
     this.mapCtx = this.map.getContext("2d");
+    this.mapRoad = document.createElement("canvas");
+    this.mapRoad.width = this.mapRoad.height = 160;
   }
   async preload() {
     // This art direction is native geometry: do not download or retain the
@@ -516,48 +519,39 @@ export class RaceView extends SceneKit {
   }
   cacheMap(track) {
     this.track = track;
-    const xs = track.nodes.map((n) => n.x),
-      zs = track.nodes.map((n) => n.z);
-    this.mapBounds = {
-      minX: Math.min(...xs),
-      minZ: Math.min(...zs),
-      span: Math.max(
-        Math.max(...xs) - Math.min(...xs),
-        Math.max(...zs) - Math.min(...zs),
-      ),
-    };
-  }
-  minimap(world) {
-    if (!this.mapBounds) return;
-    const c = this.mapCtx,
-      w = 160,
-      b = this.mapBounds,
-      point = (p) => [
-        ((p.x - b.minX) / b.span) * 128 + 16,
-        ((p.z - b.minZ) / b.span) * 128 + 16,
-      ];
-    c.clearRect(0, 0, w, w);
+    let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
+    for (const n of track.nodes) {
+      minX = Math.min(minX, n.x); minZ = Math.min(minZ, n.z);
+      maxX = Math.max(maxX, n.x); maxZ = Math.max(maxZ, n.z);
+    }
+    this.mapBounds = { minX, minZ, scale: 128 / Math.max(1, maxX - minX, maxZ - minZ) };
+    // The road is static. Rasterize once per track, not at every HUD refresh.
+    const c = this.mapRoad.getContext("2d"), b = this.mapBounds;
+    c.clearRect(0, 0, 160, 160);
     c.strokeStyle = "#455e857f";
     c.lineWidth = 4;
     c.beginPath();
-    world.track.nodes.forEach((p, i) => {
-      const [x, y] = point(p);
+    track.nodes.forEach((p, i) => {
+      const x = (p.x - b.minX) * b.scale + 16,
+        y = (p.z - b.minZ) * b.scale + 16;
       i ? c.lineTo(x, y) : c.moveTo(x, y);
     });
     c.stroke();
+  }
+  minimap(world) {
+    if (!this.mapBounds) return;
+    const c = this.mapCtx, b = this.mapBounds;
+    c.clearRect(0, 0, 160, 160);
+    c.drawImage(this.mapRoad, 0, 0);
     for (const car of world.cars) {
-      const [x, y] = point(car);
-      c.fillStyle = ["#eeb84b", "#6592d7", "#df6f9c", "#9e84cd", "#75ad72"][
-        car.id
-      ];
+      c.fillStyle = MAP_COLORS[car.id];
       c.beginPath();
-      c.arc(x, y, 2.3, 0, Math.PI * 2);
+      c.arc((car.x - b.minX) * b.scale + 16, (car.z - b.minZ) * b.scale + 16, 2.3, 0, Math.PI * 2);
       c.fill();
     }
-    const [x, y] = point(world.p);
     c.fillStyle = "#ffffff";
     c.beginPath();
-    c.arc(x, y, 4, 0, Math.PI * 2);
+    c.arc((world.p.x - b.minX) * b.scale + 16, (world.p.z - b.minZ) * b.scale + 16, 4, 0, Math.PI * 2);
     c.fill();
   }
   render(w, a = 1, dt = 0) {
@@ -635,7 +629,7 @@ export class RaceView extends SceneKit {
       m.visible =
         !this.showroom && (!c.finishTime || w.time - c.finishTime < 5);
       this.rivalShields[i].visible = c.shield > 0;
-      const old = c.previous || c;
+      const old = c.previous || c, curvature = w.track.curvature(c.s);
       m.position.set(
         lerp(old.x, c.x, a),
         lerp(old.y, c.y, a),
@@ -645,8 +639,8 @@ export class RaceView extends SceneKit {
       animateMochiKart(
         m.children[0],
         c.speed,
-        w.track.curvature(c.s) * -35,
-        w.track.curvature(c.s) * c.speed,
+        curvature * -35,
+        curvature * c.speed,
         c.boostTime > 0,
         w.time + c.id,
         dt,
@@ -655,7 +649,7 @@ export class RaceView extends SceneKit {
         c.boostTime > 0
           ? 0
           : Math.sin(w.time * 3 + c.id) *
-            Math.abs(w.track.curvature(c.s)) *
+            Math.abs(curvature) *
             0.6;
     });
     this.pickupMeshes.forEach((o) => {
@@ -720,14 +714,16 @@ export class RaceView extends SceneKit {
             });
         }
     }
+    let live = 0;
     for (const f of this.fx) {
       f.life -= dt;
       f.x += f.vx * dt;
       f.y += f.vy * dt;
       f.z += f.vz * dt;
       f.vy -= 5 * dt;
+      if (f.life > 0) this.fx[live++] = f;
     }
-    this.fx = this.fx.filter((f) => f.life > 0);
+    this.fx.length = live;
     const d = this.dummy;
     this.fx.forEach((f, i) => {
       d.position.set(f.x, f.y, f.z);
@@ -738,9 +734,7 @@ export class RaceView extends SceneKit {
       this.sparkMesh.setColorAt(i, this.fxColor.setHex(f.color));
     });
     this.sparkMesh.count = this.fx.length;
-    this.sparkMesh.instanceMatrix.needsUpdate = true;
-    if (this.sparkMesh.instanceColor)
-      this.sparkMesh.instanceColor.needsUpdate = true;
+    this.uploadInstances(this.sparkMesh, live, true);
     this.skidMesh.material.uniforms.now.value = w.time;
     if (this.trailVersion !== w.trails.version) {
       this.trailVersion = w.trails.version;
@@ -749,7 +743,9 @@ export class RaceView extends SceneKit {
       this.skidMesh.geometry.setDrawRange(0, w.trails.count * 6);
     }
     let index = 0;
-    for (const item of [...w.missiles, ...w.mines]) {
+    const capacity = this.itemMesh.instanceMatrix.count;
+    for (let i = 0; i < w.missiles.length + w.mines.length && index < capacity; i++) {
+      const item = i < w.missiles.length ? w.missiles[i] : w.mines[i - w.missiles.length];
       const q = w.track.at(item.s, item.offset),
         mine = item.owner !== undefined && item.target === undefined;
       d.position.set(q.x, q.y + (mine ? 0.42 : 1.2), q.z);
@@ -763,9 +759,18 @@ export class RaceView extends SceneKit {
       this.itemMesh.setMatrixAt(index++, d.matrix);
     }
     this.itemMesh.count = index;
-    this.itemMesh.instanceMatrix.needsUpdate = true;
-    if (this.itemMesh.instanceColor)
-      this.itemMesh.instanceColor.needsUpdate = true;
+    this.uploadInstances(this.itemMesh, index, true);
+  }
+  uploadInstances(mesh, count, colors = false) {
+    if (!count) return;
+    mesh.instanceMatrix.clearUpdateRanges();
+    mesh.instanceMatrix.addUpdateRange(0, count * 16);
+    mesh.instanceMatrix.needsUpdate = true;
+    if (colors && mesh.instanceColor) {
+      mesh.instanceColor.clearUpdateRanges();
+      mesh.instanceColor.addUpdateRange(0, count * 3);
+      mesh.instanceColor.needsUpdate = true;
+    }
   }
   releasePools() {
     for (const name of ["sparkMesh", "itemMesh"])

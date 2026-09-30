@@ -1,9 +1,10 @@
+import { canvasBudget } from "../shared/render-budget.mjs?v=20260930-polish-r1";
 import {
   HEIGHT,
   clamp,
   rng,
   weaponPose,
-} from "./engine.mjs?v=20260918-play-r1";
+} from "./engine.mjs?v=20260930-controls-r1";
 
 const mix = (a, b, t) => a + (b - a) * t;
 const TAU = Math.PI * 2;
@@ -56,10 +57,14 @@ export class Renderer {
   }
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    this.width = clamp((rect.width / rect.height) * HEIGHT, 480, 1360);
-    this.ratio = Math.min(window.devicePixelRatio || 1, 1.75);
-    this.canvas.width = Math.round(rect.width * this.ratio);
-    this.canvas.height = Math.round(rect.height * this.ratio);
+    this.width = clamp((rect.width / Math.max(1, rect.height)) * HEIGHT, 480, 1360);
+    const budget = canvasBudget(rect.width, rect.height, window.devicePixelRatio || 1);
+    this.ratio = budget.ratio;
+    if (this.canvas.width !== budget.width || this.canvas.height !== budget.height) {
+      this.canvas.width = budget.width;
+      this.canvas.height = budget.height;
+      this.atmosphere = null;
+    }
     this.scaleX = this.canvas.width / this.width;
     this.scaleY = this.canvas.height / HEIGHT;
   }
@@ -399,11 +404,13 @@ export class Renderer {
         W + world.level.length * 0.12,
         H,
       );
-    const atmosphere = c.createLinearGradient(0, 0, 0, H);
-    atmosphere.addColorStop(0, "#10272b14");
-    atmosphere.addColorStop(0.55, "#153a3e08");
-    atmosphere.addColorStop(1, "#12333f88");
-    this.rect(0, 0, W, H, atmosphere);
+    if (!this.atmosphere) {
+      this.atmosphere = c.createLinearGradient(0, 0, 0, H);
+      this.atmosphere.addColorStop(0, "#10272b14");
+      this.atmosphere.addColorStop(0.55, "#153a3e08");
+      this.atmosphere.addColorStop(1, "#12333f88");
+    }
+    this.rect(0, 0, W, H, this.atmosphere);
     this.drawScenery(world, cam);
     for (const t of world.terrain) {
       const x = mix(t.px ?? t.x, t.x, alpha) - cam,
@@ -726,16 +733,13 @@ export class Renderer {
         ? Math.sin(gait * 2) * 0.9
         : Math.sin(this.time * 2) * 0.4
       : 0;
-    const ground = this.world
-      ?.solids()
-      .filter((t) => p.x > t.x && p.x < t.x + t.w && t.y >= y - 2)
-      .sort((a, b) => a.y - b.y)[0];
-    if (ground) {
-      const distance = Math.max(0, ground.y - y);
+    const ground = shadowSurface(this.world, p.x, y);
+    if (ground !== null) {
+      const distance = Math.max(0, ground - y);
       c.globalAlpha = clamp(1 - distance / 220, 0.12, 1);
       this.ellipse(
         x,
-        ground.y + 1,
+        ground + 1,
         18 - Math.min(distance / 20, 8),
         3.5,
         "#102b3544",
@@ -1578,4 +1582,19 @@ export class Renderer {
       c.globalAlpha = 1;
     }
   }
+}
+
+// One linear pass, with no solids/filter/sort allocations per visible actor.
+export function shadowSurface(world, x, feet) {
+  if (!world) return null;
+  let nearest = Infinity;
+  for (const t of world.terrain)
+    if (x > t.x && x < t.x + t.w && t.y >= feet - 2 && t.y < nearest)
+      nearest = t.y;
+  for (const p of world.props) {
+    const top = p.y - p.h;
+    if (p.hp > 0 && x > p.x - p.w / 2 && x < p.x + p.w / 2 && top >= feet - 2 && top < nearest)
+      nearest = top;
+  }
+  return Number.isFinite(nearest) ? nearest : null;
 }

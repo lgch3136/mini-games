@@ -1076,3 +1076,12 @@ select {
     backdrop-filter: none;
   }
 }
+
+/* Stable garden readouts and a pressed state that reads before finger release. */
+#combo, #progress, #harvest b, #final-score { font-variant-numeric: tabular-nums; }
+.dpad button:active { background:#dcebb9; border-color:#789a5b; box-shadow:inset 0 2px 0 #819b6740; }
+.boost.held { border-color:#88a953; }
+#game:focus-visible { outline:2px solid var(--green); outline-offset:-3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .dpad button { transition:background .08s, transform .08s; }
+}

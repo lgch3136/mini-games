@@ -57,8 +57,12 @@ export class Stage {
     if (!r.width || !r.height) return;
     this.w = r.width; this.h = r.height;
     this.ratio = Math.min(dpr, devicePixelRatio || 1);
-    this.canvas.width = Math.round(this.w * this.ratio);
-    this.canvas.height = Math.round(this.h * this.ratio);
+    const width = Math.round(this.w * this.ratio), height = Math.round(this.h * this.ratio);
+    // VisualViewport often emits duplicate resize events while a keyboard opens.
+    // Assigning either backing dimension clears the canvas and its drawing state.
+    if (this.canvas.width !== width || this.canvas.height !== height) {
+      this.canvas.width = width; this.canvas.height = height;
+    }
   }
   poster(canvas) { canvas.hidden = true; }
   event(e, g) {
@@ -90,20 +94,24 @@ export class Stage {
     };
     // A quiet track remains still; only actual accepted input produces waves.
     c.lineCap = 'round';
+    // One wave path, three strokes: reuse exactly the same geometry for each glow.
+    c.beginPath();
+    for (let i = 0; i <= 90; i++) {
+      const u = i / 90, y = point(u);
+      i ? c.lineTo(x0 + width * u, y) : c.moveTo(x0, y);
+    }
     for (let layer = 2; layer >= 0; layer--) {
       c.strokeStyle = color; c.globalAlpha = [0.85, 0.12, 0.035][layer];
-      c.lineWidth = [1.4, 6, 16][layer]; c.beginPath();
-      for (let i = 0; i <= 90; i++) {
-        const u = i / 90, y = point(u);
-        i ? c.lineTo(x0 + width * u, y) : c.moveTo(x0, y);
-      }
+      c.lineWidth = [1.4, 6, 16][layer];
       c.stroke();
     }
     c.globalAlpha = 0.24; c.strokeStyle = '#9ec9c7'; c.lineWidth = 1;
+    c.beginPath();
     for (let i = 0; i <= 20; i++) {
       const x = x0 + width * i / 20;
-      c.beginPath(); c.moveTo(x, baseline + 17); c.lineTo(x, baseline + (i % 5 ? 20 : 24)); c.stroke();
+      c.moveTo(x, baseline + 17); c.lineTo(x, baseline + (i % 5 ? 20 : 24));
     }
+    c.stroke();
     const u = Math.max(0, Math.min(1, f.position)), x = x0 + width * u, y = point(u);
     if (this.halo.complete && this.halo.naturalWidth) {
       c.globalCompositeOperation = 'lighter'; c.globalAlpha = (0.15 + f.energy * 0.28) * (this.reduced ? 0.45 : 1);

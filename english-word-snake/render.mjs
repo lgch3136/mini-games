@@ -311,30 +311,7 @@ export class GardenRenderer {
       c.restore();
     }
     const points = game.bodyPoints(extra, this.displayLength);
-    const hx = points[0].x,
-      hy = points[0].y;
-    const shiftX = Math.floor(hx / game.cols) * game.cols,
-      shiftY = Math.floor(hy / game.rows) * game.rows;
-    // Only the adjacent wrapped copies can enter the clipped arena; no seam-spanning diagonals.
-    for (let oy = -game.rows; oy <= game.rows; oy += game.rows)
-      for (let ox = -game.cols; ox <= game.cols; ox += game.cols) {
-        const rel = points.map((p) => ({
-          x: p.x - shiftX + ox + 0.5,
-          y: p.y - shiftY + oy + 0.5,
-        }));
-        const minX = Math.min(...rel.map((p) => p.x)),
-          maxX = Math.max(...rel.map((p) => p.x));
-        const minY = Math.min(...rel.map((p) => p.y)),
-          maxY = Math.max(...rel.map((p) => p.y));
-        if (
-          maxX < -0.7 ||
-          minX > game.cols + 0.7 ||
-          maxY < -0.7 ||
-          minY > game.rows + 0.7
-        )
-          continue;
-        this.snake(c, rel, game, time);
-      }
+    this.wrappedSnake(c, points, game, time);
     for (const ring of this.rings) {
       c.globalAlpha = Math.max(0, 1 - ring.age / 0.55);
       c.strokeStyle = ring.color;
@@ -349,6 +326,27 @@ export class GardenRenderer {
     }
     c.globalAlpha = 1;
     c.restore();
+  }
+  wrappedSnake(c, points, game, time) {
+    const shiftX = Math.floor(points[0].x / game.cols) * game.cols,
+      shiftY = Math.floor(points[0].y / game.rows) * game.rows;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    // The trail is immutable presentation input. Measure it once, then translate
+    // visible wrapped copies instead of cloning every point nine times per frame.
+    for (const p of points) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+    for (let oy = -game.rows; oy <= game.rows; oy += game.rows)
+      for (let ox = -game.cols; ox <= game.cols; ox += game.cols) {
+        const dx = ox - shiftX + 0.5, dy = oy - shiftY + 0.5;
+        if (maxX + dx < -0.7 || minX + dx > game.cols + 0.7 ||
+            maxY + dy < -0.7 || minY + dy > game.rows + 0.7) continue;
+        c.save();
+        c.translate(dx, dy);
+        this.snake(c, points, game, time);
+        c.restore();
+      }
   }
   snake(c, points, game, time) {
     c.save();

@@ -4,9 +4,10 @@ import {
   HEIGHT,
   OPERATIONS,
   clamp,
-} from "./engine.mjs?v=20260918-play-r1";
-import { Renderer } from "./render.js?v=20260918-play-r1";
-import { Soundtrack } from "./sound.js?v=20260918-play-r1";
+} from "./engine.mjs?v=20260930-controls-r1";
+import { Renderer } from "./render.js?v=20260930-polish-r1";
+import { Soundtrack } from "./sound.js?v=20260930-controls-r1";
+import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game"),
@@ -37,8 +38,9 @@ const keys = new Set(),
     roll: false,
     aim: null,
   };
-const actionPointers = new Map();
-let mouse = { down: false, x: 0, y: 0 },
+const actionPointers = new Map(),
+  actionLatch = new ActionLatch();
+let mouse = { down: false, x: 0, y: 0, pointerId: null },
   joystickId = null,
   fireId = null,
   fireOrigin = null;
@@ -63,6 +65,8 @@ function cleanInput() {
     aim: null,
   });
   mouse.down = false;
+  mouse.pointerId = null;
+  actionLatch.clear();
   joystickId = fireId = null;
   $("joy-knob").style.transform = "";
   for (const pointers of actionPointers.values()) pointers.clear();
@@ -85,12 +89,11 @@ function inputState() {
     roll: has("ShiftLeft", "ShiftRight") || touch.roll,
   };
   if (Number.isFinite(touch.aim)) input.aim = touch.aim;
-  else if (mouse.down)
-    input.aim = Math.atan2(
-      mouse.y - (world.player.y - 45),
-      mouse.x + world.camera - world.player.x,
-    );
+  else if (mouse.down) input.aim = pointerAim(world.player, mouse, world.camera);
   return input;
+}
+function recordActionEdges() {
+  actionLatch.update(inputState());
 }
 function showScreen(name) {
   screen = name;
@@ -402,9 +405,8 @@ function frame(now) {
   }
   accumulator += Math.min(elapsed, 0.0667);
   if (elapsed > 0.0667) droppedTime += elapsed - 0.0667;
-  const input = inputState();
   while (accumulator >= STEP && world.status === "playing") {
-    world.step(input);
+    world.step(actionLatch.consume(inputState()));
     handleEvents();
     accumulator -= STEP;
   }
@@ -456,9 +458,11 @@ window.addEventListener("keydown", (e) => {
   if (screen !== "playing" || !codes.has(e.code)) return;
   e.preventDefault();
   keys.add(e.code);
+  recordActionEdges();
 });
 window.addEventListener("keyup", (e) => {
   keys.delete(e.code);
+  recordActionEdges();
 });
 window.addEventListener("blur", () => {
   cleanInput();
@@ -539,17 +543,24 @@ function capturePointer(element, event) {
   } catch {}
 }
 canvas.addEventListener("pointerdown", (e) => {
-  if (screen !== "playing" || e.pointerType === "touch") return;
+  if (screen !== "playing" || e.pointerType === "touch" || mouse.down) return;
   e.preventDefault();
   capturePointer(canvas, e);
-  mouse = { ...canvasPoint(e), down: true };
+  mouse = { ...canvasPoint(e), down: true, pointerId: e.pointerId };
+  recordActionEdges();
 });
 canvas.addEventListener("pointermove", (e) => {
-  if (mouse.down) Object.assign(mouse, canvasPoint(e));
+  if (mouse.down && e.pointerId === mouse.pointerId) {
+    Object.assign(mouse, canvasPoint(e));
+    recordActionEdges();
+  }
 });
 for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
-  canvas.addEventListener(event, () => {
+  canvas.addEventListener(event, (e) => {
+    if (e.pointerId !== mouse.pointerId) return;
     mouse.down = false;
+    mouse.pointerId = null;
+    recordActionEdges();
   });
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -600,12 +611,14 @@ for (const [id, action] of [
     pointers.add(e.pointerId);
     touch[action] = true;
     button.classList.add("active");
+    recordActionEdges();
   });
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
     button.addEventListener(event, (e) => {
       pointers.delete(e.pointerId);
       touch[action] = pointers.size > 0;
       button.classList.toggle("active", touch[action]);
+      recordActionEdges();
     });
 }
 const fire = $("fire-touch");
@@ -618,12 +631,14 @@ fire.addEventListener("pointerdown", (e) => {
   touch.fire = true;
   touch.aim = null;
   fire.classList.add("active");
+  recordActionEdges();
 });
 fire.addEventListener("pointermove", (e) => {
   if (e.pointerId !== fireId) return;
   const dx = e.clientX - fireOrigin.x,
     dy = e.clientY - fireOrigin.y;
   if (Math.hypot(dx, dy) > 12) touch.aim = Math.atan2(dy, dx);
+  recordActionEdges();
 });
 for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
   fire.addEventListener(event, (e) => {
@@ -632,6 +647,7 @@ for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
       touch.fire = false;
       touch.aim = null;
       fire.classList.remove("active");
+      recordActionEdges();
     }
   });
 for (const event of ["pointerup", "pointercancel"])
@@ -639,6 +655,7 @@ for (const event of ["pointerup", "pointercancel"])
     for (const [action, pointers] of actionPointers) {
       pointers.delete(e.pointerId);
       touch[action] = pointers.size > 0;
+      $(`${action}-touch`).classList.toggle("active", touch[action]);
     }
     if (e.pointerId === joystickId) {
       joystickId = null;
@@ -651,7 +668,11 @@ for (const event of ["pointerup", "pointercancel"])
       touch.aim = null;
       fire.classList.remove("active");
     }
-    if (e.pointerType === "mouse") mouse.down = false;
+    if (e.pointerId === mouse.pointerId) {
+      mouse.down = false;
+      mouse.pointerId = null;
+    }
+    recordActionEdges();
   });
 
 const resizeObserver = new ResizeObserver(() => {

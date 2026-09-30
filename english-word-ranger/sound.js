@@ -214,6 +214,7 @@ export class Soundtrack {
       this.hiss(now, 0.035, 0.13, 2300);
     } else if (type === "jump") tone(190, 0.14, 0.09, "triangle", 420);
     else if (type === "land") this.hiss(now, 0.065, 0.11, 280);
+    else if (type === "drop") tone(260, 0.09, 0.05, "triangle", 140);
     else if (type === "roll") this.hiss(now, 0.12, 0.12, 850);
     else if (type === "hit") {
       tone(260, 0.045, 0.1, "square", 95);

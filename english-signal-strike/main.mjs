@@ -1,5 +1,5 @@
 import { Strike, MAPS, WEAPONS } from "./world.mjs?v=20260918-play-r1";
-import { StrikeView } from "./view.mjs?v=20260928-light-r1";
+import { StrikeView } from "./view.mjs?v=20260930-polish-r1";
 import {
   Shell,
   $,
@@ -28,6 +28,8 @@ const app = new Shell({
     $("hp-fill").style.transform = `scaleX(${p.hp / 100})`;
     $("shield-fill").style.transform = `scaleX(${p.shield / 50})`;
     text("ammo", p.ammo[p.weapon]);
+    const lowAmmo = p.ammo[p.weapon] <= Math.ceil(WEAPONS[p.weapon].mag * 0.25);
+    $("ammo").dataset.low = lowAmmo;
     text("reserve", "/ " + p.reserve[p.weapon]);
     text("weapon-name", WEAPONS[p.weapon].name);
     text(
@@ -36,7 +38,7 @@ const app = new Shell({
         ? `装填中 / ${p.reload.toFixed(1)}s`
         : p.ammo[p.weapon] === 0
           ? "弹匣已空 · R 换弹"
-          : "R 换弹 · Q 切枪",
+          : lowAmmo ? "弹药不足 · R 换弹" : "R 换弹 · Q 切枪",
     );
     text(
       "dash-label",

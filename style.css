@@ -30,7 +30,7 @@ header h1 {
   cursor: pointer; font-family: inherit;
   background: rgba(12,20,40,.6); border: 1.5px solid rgba(110,190,255,.35);
   color: #b7c6e2; border-radius: 999px; padding: 7px 18px;
-  font-size: 13.5px; font-weight: 700; transition: all .15s;
+  font-size: 13.5px; font-weight: 700; transition: background-color .15s, border-color .15s, color .15s;
 }
 .filter b { opacity: .65; font-weight: 800; margin-left: 2px; }
 .filter:hover { border-color: rgba(110,190,255,.75); color: #e8f1ff; }
@@ -135,4 +135,21 @@ footer { text-align: center; margin-top: 40px; color: #7f96b8; font-size: 13px; 
 @media (max-width: 430px) {
   .grid { grid-template-columns: 1fr; }
   .art { height: 118px; }
+}
+
+/* Quiet material hierarchy: crisp selection, stable numbers and no animated blur. */
+:root { color-scheme: dark; }
+.filter { min-height: 38px; font-variant-numeric: tabular-nums; }
+.filter.selected { box-shadow: 0 3px 12px #38bdf824, inset 0 1px 0 #ffffff38; }
+.card { box-shadow: inset 0 1px 0 #ffffff08; }
+.card:hover { box-shadow: 0 12px 30px #00000050, inset 0 1px 0 #ffffff18; }
+.info h2 { text-wrap: balance; }
+.en { color: #91a8c9; }
+@media (hover: none) {
+  .card:hover { transform: none; }
+  .card:hover .art-cover img { transform: none; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .filter, .art-cover img { transition: none; }
+  .card:hover, .card:hover .art-cover img { transform: none; }
 }

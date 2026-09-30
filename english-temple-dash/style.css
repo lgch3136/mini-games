@@ -1420,3 +1420,12 @@ select {
     margin-top: 0;
   }
 }
+
+/* Gold-line controls and stable timing readouts share the diorama's materials. */
+#track-time, #rhythm-bpm, #timing-error, #accuracy { font-variant-numeric:tabular-nums; }
+#touch-controls button.active { border-color:#f5dfab; box-shadow:inset 0 1px 0 #fff5d666; }
+#touch-controls button:focus-visible { outline-offset:2px; }
+#track-status strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (prefers-reduced-motion:no-preference) {
+  #touch-controls button { transition:background .08s, transform .08s; }
+}

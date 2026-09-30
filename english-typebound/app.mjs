@@ -5,7 +5,7 @@ import {
   RELICS,
 } from "./content.mjs?v=20260918-play-r1";
 import { TypingInput } from "./input.mjs?v=20260918-play-r1";
-import { Stage, practiceMetrics } from "./focus-render.mjs?v=20260928-light-r1";
+import { Stage, practiceMetrics } from "./focus-render.mjs?v=20260930-polish-r1";
 import { TypeAudio } from "./audio.mjs?v=20260918-play-r1";
 const VERSION = "20260928-light-r1";
 const $ = (id) => document.getElementById(id);

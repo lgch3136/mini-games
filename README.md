@@ -13,7 +13,7 @@
 | 团团卡丁 · APEX DRIVE | 萌系兔兔卡丁车；Shift 时长控制轨迹、点油门小喷、连喷 / 断位、双槽道具；三赛道与五位对手 | [english-apex-drive](english-apex-drive/) |
 | 零界突围 · SIGNAL STRIKE | 第一人称城市突围：双武器、掩体、突进、三座中继与核心守卫 | [english-signal-strike](english-signal-strike/) |
 | 月影忍途 · MOONBLADE | 原创单人 2.5D 忍者闯关：三章路线、贴墙蹬跃、三段连斩、疾步、忍术与两阶段首领 | [english-moonblade](english-moonblade/) |
-| 单词突击队 · WORD RANGER | 曙光行动重制：跑跳射击、实体掩体、移动平台、三条编排路线、部件首领战与连续远征，词核提供补给 | [english-word-ranger](english-word-ranger/) |
+| 单词突击队 · WORD RANGER | 曙光行动重制：跑跳射击、实体掩体、移动平台、六条编排路线、部件首领战与连续远征，词核提供补给 | [english-word-ranger](english-word-ranger/) |
 | 🥊 单词斗魂 · 截风擂台 | Blender 角色 / 连续关节动作 / 四键轻重攻击 / 短跳与指令 / 命中确认 / 三局两胜 / 练习与双人 | [english-word-fury](english-word-fury/) |
 | 💣 英语炸弹人 · WORD BOMBER | 炸砖、躲敌、按序收集字母并开启传送门，无限轮次与道具成长 | [english-word-bomber](english-word-bomber/) |
 | ⛏️ 英语挖金子 · WORD MINER | 摆动抓钩按序收字母，兼有石头、炸弹、钻石与限时挑战 | [english-word-miner](english-word-miner/) |
@@ -71,6 +71,8 @@ mini-games/
 2. 在首页 `index.html` 的 `.grid` 中加一张卡片
 3. 提交推送，GitHub Pages 自动部署
 
+2026-09-30：全部 **15 款游戏**完成一轮流畅度与呈现修整；缓存、输入、资源生命周期、逐款改动与验证边界见 [全游戏优化记录](docs/all-games-polish-20260930/README.md)。
+
 ## 开发
 
 在仓库目录运行静态服务器：
@@ -82,7 +84,7 @@ python3 -m http.server 4173 --bind 127.0.0.1
 访问 `http://127.0.0.1:4173/`。单词突击队使用原生 ES Modules，不能直接以 `file://` 双击运行，无需安装 npm 依赖。
 
 ```sh
-node --test english-word-ranger/tests/engine.test.mjs
+node --test english-word-ranger/tests/*.test.mjs
 node english-word-ranger/tests/playthrough.mjs 0 1 2 3 6 9
 RANGER_TEST_WIDTH=540 node english-word-ranger/tests/playthrough.mjs
 ```

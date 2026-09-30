@@ -1,5 +1,5 @@
 import { Race, ITEMS } from "./world.mjs?v=20260918-play-r1";
-import { RaceView } from "./view.mjs?v=20260928-light-r1";
+import { RaceView } from "./view.mjs?v=20260930-polish-r1";
 import {
   Shell,
   $,
@@ -152,9 +152,12 @@ const app = new Shell({
     if (e.type === "camera") app.view.chase = !app.view.chase;
     if (e.type === "launch") app.toast("完美起步 · 抢先一拍", 1.3);
     if (e.type === "miniTurbo" || e.type === "cutDrift") {
-      $("technique").classList.remove("pop");
-      void $("technique").offsetWidth;
-      $("technique").classList.add("pop");
+      const technique = $("technique");
+      technique.getAnimations().forEach(animation => animation.cancel());
+      if (!app.view.reduced) technique.animate([
+        { transform: "translateX(-50%) scale(1.12)", opacity: 0.5 },
+        { transform: "translateX(-50%) scale(1)", opacity: 1 },
+      ], { duration: 180, easing: "cubic-bezier(.2,.9,.3,1)" });
     }
     if (e.type === "pickup")
       app.toast(

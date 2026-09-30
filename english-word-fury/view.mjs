@@ -1,6 +1,6 @@
 import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { pose, interpolatePose, ankle } from "./motion.mjs?v=20260918-play-r1";
+import { ankle } from "./motion.mjs?v=20260918-play-r1";
 import {
   ROSTER,
   lerp,
@@ -8,6 +8,7 @@ import {
   hurtbox,
   attackBox,
 } from "./combat.mjs?v=20260918-play-r1";
+import { PosePair } from "./render-state.mjs?v=20260930-polish-r1";
 const Y = new THREE.Vector3(0, 1, 0),
   Z = new THREE.Vector3(0, 0, 1),
   v = new THREE.Vector3(),
@@ -163,12 +164,13 @@ export class ArenaView {
         }
       });
       this.scene.add(root);
-      this.models[i] = { root, parts, id, trail: [] };
+      this.models[i] = { root, parts, id, trail: [], posePair: new PosePair() };
     });
   }
   resize() {
     const rect = this.canvas.getBoundingClientRect(),
       dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    if (this.w === rect.width && this.h === rect.height && this.dpr === dpr) return;
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(rect.width, rect.height, false);
     this.overlay.width = Math.round(rect.width * dpr);
@@ -209,10 +211,8 @@ export class ArenaView {
     o.quaternion.copy(q);
     o.scale.set(1, 1, 1);
   }
-  actor(model, f, prev, alpha) {
-    const current = pose(f, 0),
-      old = prev && prev.id === f.id ? pose(prev, 0) : current,
-      p = interpolatePose(old, current, alpha);
+  actor(model, f, prev, alpha, tick) {
+    const p = model.posePair.sample(f, prev, alpha, tick);
     const { root, parts } = model;
     model.pose = p;
     root.position.set(lerp(f.px, f.x, alpha), lerp(f.py, f.y, alpha), 0.7);
@@ -319,7 +319,7 @@ export class ArenaView {
       );
     });
     fight.f.forEach((f, i) => {
-      if (this.models[i]) this.actor(this.models[i], f, previous?.[i], alpha);
+      if (this.models[i]) this.actor(this.models[i], f, previous?.[i], alpha, dt > 0 ? fight.frame : undefined);
     });
     this.backdrop.material.map = this.ambient
       ? this.atmosphereTexture

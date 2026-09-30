@@ -480,9 +480,11 @@ h1 span {
 .charge-track i {
   display: block;
   height: 100%;
-  width: 0;
+  width: 100%;
   background: #bfeecf;
-  transition: width 0.12s linear;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.12s linear;
 }
 .resonance-status > span {
   display: inline-block;
@@ -1286,4 +1288,12 @@ h2 {
   .copy .mode-choice span {
     padding: 8px 10px;
   }
+}
+
+/* Stable typography and feedback without extra render layers. */
+#clock, #dash-status, #score, #charge-label { font-variant-numeric: tabular-nums; }
+.mode-choice input:checked + span { box-shadow: inset 0 0 0 1px #bcecd530; }
+@media (prefers-reduced-motion: reduce) {
+  .primary, .primary span, .charge-track i { transition: none; }
+  .primary:hover span, .primary:active { transform: none; }
 }

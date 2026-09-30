@@ -394,6 +394,7 @@ export class StrikeView extends SceneKit {
       30,
     );
     this.geometries.add(this.dropMesh.geometry);
+    this.dropMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
     this.dropMesh.count = 0;
     this.dropMesh.frustumCulled = false;
     this.group.add(this.dropMesh);
@@ -434,8 +435,8 @@ export class StrikeView extends SceneKit {
           max: 0.45,
         });
     }
-    this.effects = this.effects.slice(-100);
-    this.traces = this.traces.slice(-96);
+    if (this.effects.length > 100) this.effects.splice(0, this.effects.length - 100);
+    if (this.traces.length > 96) this.traces.splice(0, this.traces.length - 96);
   }
   render(w, a = 1, dt = 0) {
     const p = w.p,
@@ -455,8 +456,10 @@ export class StrikeView extends SceneKit {
       12,
       dt,
     );
-    this.camera.fov = this.fov;
-    this.camera.updateProjectionMatrix();
+    if (Math.abs(this.camera.fov - this.fov) > 0.01) {
+      this.camera.fov = this.fov;
+      this.camera.updateProjectionMatrix();
+    }
     const moving = Math.min(1, Math.hypot(p.vx, p.vz) / 6),
       bob = this.reduced ? 0 : Math.sin(p.step * 2.7) * 0.009 * moving;
     this.kick = damp(this.kick, 0, 18, dt);
@@ -518,53 +521,7 @@ export class StrikeView extends SceneKit {
       m.ring.position.y = 1.9 + Math.sin(w.time * 2) * 0.06;
       m.ring.visible = !w.relays[i];
     });
-    this.bulletMesh.count = w.bullets.length;
-    w.bullets.forEach((b, i) => {
-      dummy.position.set(b.x, b.y, b.z);
-      dummy.scale.setScalar(b.r / 0.14);
-      dummy.rotation.set(0, w.time, 0);
-      dummy.updateMatrix();
-      this.bulletMesh.setMatrixAt(i, dummy.matrix);
-    });
-    this.bulletMesh.instanceMatrix.needsUpdate = true;
-    this.effects = this.effects.filter((e) => {
-      e.life -= dt;
-      e.x += e.vx * dt;
-      e.y += e.vy * dt;
-      e.z += e.vz * dt;
-      e.vy -= 12 * dt;
-      return e.life > 0;
-    });
-    this.sparkMesh.count = this.effects.length;
-    this.effects.forEach((e, i) => {
-      dummy.position.set(e.x, e.y, e.z);
-      dummy.scale.setScalar(e.life / e.max);
-      dummy.updateMatrix();
-      this.sparkMesh.setMatrixAt(i, dummy.matrix);
-    });
-    this.sparkMesh.instanceMatrix.needsUpdate = true;
-    this.traces = this.traces.filter((t) => {
-      t.life -= dt;
-      return t.life > 0;
-    });
-    this.traces.forEach((t, i) =>
-      this.traceBuffer.set(
-        [t.a.x, t.a.y - 0.1, t.a.z, t.b.x, t.b.y, t.b.z],
-        i * 6,
-      ),
-    );
-    this.traceMesh.geometry.setDrawRange(0, this.traces.length * 2);
-    this.traceMesh.geometry.attributes.position.needsUpdate = true;
-    const drops = w.drops.filter((d) => !d.taken).slice(0, 30);
-    this.dropMesh.count = drops.length;
-    drops.forEach((d, i) => {
-      dummy.position.set(d.x, 0.45 + Math.sin(w.time * 3 + i) * 0.08, d.z);
-      dummy.scale.setScalar(1);
-      dummy.rotation.set(0, w.time, 0);
-      dummy.updateMatrix();
-      this.dropMesh.setMatrixAt(i, dummy.matrix);
-    });
-    this.dropMesh.instanceMatrix.needsUpdate = true;
+    this.updateDynamic(w, dt);
     this.lights.begin(dt,this.camera,this.reduced);
     for (let i=0;i<this.relayModels.length;i++) {
       if (w.relays[i]) continue;
@@ -580,6 +537,67 @@ export class StrikeView extends SceneKit {
     }
     this.lights.end();
     this.renderer.render(this.scene, this.camera);
+  }
+  updateDynamic(w, dt) {
+    const bulletCount = Math.min(w.bullets.length, this.bulletMesh.instanceMatrix.count);
+    this.bulletMesh.count = bulletCount;
+    for (let i = 0; i < bulletCount; i++) {
+      const b = w.bullets[i];
+      dummy.position.set(b.x, b.y, b.z);
+      dummy.scale.setScalar(b.r / 0.14);
+      dummy.rotation.set(0, w.time, 0);
+      dummy.updateMatrix();
+      this.bulletMesh.setMatrixAt(i, dummy.matrix);
+    }
+    this.uploadInstances(this.bulletMesh, bulletCount);
+    let count = 0;
+    for (const e of this.effects) {
+      e.life -= dt;
+      e.x += e.vx * dt; e.y += e.vy * dt; e.z += e.vz * dt;
+      e.vy -= 12 * dt;
+      if (e.life <= 0) continue;
+      this.effects[count] = e;
+      dummy.position.set(e.x, e.y, e.z);
+      dummy.scale.setScalar(e.life / e.max);
+      dummy.updateMatrix();
+      this.sparkMesh.setMatrixAt(count++, dummy.matrix);
+    }
+    this.effects.length = this.sparkMesh.count = count;
+    this.uploadInstances(this.sparkMesh, count);
+    count = 0;
+    for (const t of this.traces) {
+      t.life -= dt;
+      if (t.life <= 0) continue;
+      this.traces[count] = t;
+      const offset = count++ * 6, buffer = this.traceBuffer;
+      buffer[offset] = t.a.x; buffer[offset + 1] = t.a.y - 0.1; buffer[offset + 2] = t.a.z;
+      buffer[offset + 3] = t.b.x; buffer[offset + 4] = t.b.y; buffer[offset + 5] = t.b.z;
+    }
+    this.traces.length = count;
+    this.traceMesh.geometry.setDrawRange(0, count * 2);
+    if (count) {
+      const positions = this.traceMesh.geometry.attributes.position;
+      positions.clearUpdateRanges(); positions.addUpdateRange(0, count * 6);
+      positions.needsUpdate = true;
+    }
+    count = 0;
+    for (const d of w.drops) {
+      if (d.taken) continue;
+      if (count >= this.dropMesh.instanceMatrix.count) break;
+      dummy.position.set(d.x, 0.45 + Math.sin(w.time * 3 + count) * 0.08, d.z);
+      dummy.scale.setScalar(1); dummy.rotation.set(0, w.time, 0);
+      dummy.updateMatrix();
+      this.dropMesh.setMatrixAt(count++, dummy.matrix);
+    }
+    this.dropMesh.count = count;
+    this.uploadInstances(this.dropMesh, count);
+  }
+  uploadInstances(mesh, count) {
+    // count=0 hides stale instances without an unnecessary GPU buffer upload.
+    if (!count) return;
+    mesh.instanceMatrix.clearUpdateRanges();
+    mesh.instanceMatrix.addUpdateRange(0, count * 16);
+    mesh.instanceMatrix.needsUpdate = true;
   }
   dispose() { this.lights?.dispose(); super.dispose(); }
 }

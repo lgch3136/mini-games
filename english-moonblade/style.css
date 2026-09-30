@@ -836,3 +836,9 @@ dialog > p:last-child {
     backdrop-filter: none;
   }
 }
+
+/* Keep the compact ink-and-gold HUD quiet while numbers and health change. */
+#score, #combo { font-variant-numeric: tabular-nums lining-nums; }
+#score { min-width: 5ch; text-align: right; }
+.hp { background: repeating-linear-gradient(90deg, #081824e6 0, #081824e6 calc(25% - 1px), #e4d2aa35 calc(25% - 1px), #e4d2aa35 25%); }
+#hp-fill[data-low="true"] { background: linear-gradient(#f3bd9e, #bf735d); }

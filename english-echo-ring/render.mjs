@@ -1,3 +1,4 @@
+import { canvasBudget } from "../shared/render-budget.mjs?v=20260930-polish-r1";
 import { RADIUS, TAU, mix, random } from "./sim.mjs?v=20260906-echo-r5";
 import { FlowField, ShipShape } from "./field.mjs?v=20260929-membrane-r1";
 import { MembraneSurface } from "./surface.mjs?v=20260929-membrane-r1";
@@ -62,9 +63,10 @@ export class Renderer {
     if (quality === 1) { this.surface?.dispose(); this.surface = null; }
     this.width = width;
     this.height = height;
-    this.dpr = Math.min(window.devicePixelRatio || 1, quality, 2);
-    this.canvas.width = Math.round(width * this.dpr);
-    this.canvas.height = Math.round(height * this.dpr);
+    const budget = canvasBudget(width, height, window.devicePixelRatio || 1, Math.min(quality, 2));
+    this.dpr = budget.ratio;
+    this.canvas.width = budget.width;
+    this.canvas.height = budget.height;
     this.cx = box.x + box.width / 2;
     this.cy = box.y + box.height / 2;
     this.scale = Math.max(
@@ -218,14 +220,15 @@ export class Renderer {
     this.shape.step(dt,
       Math.max(-1, Math.min(1, (-Math.sin(angle) * p.vx + Math.cos(angle) * p.vy) / 220)),
       p.dash > 0 ? 1.3 : 1 + Math.min(1, speed / 220) * 0.075);
+    const particleDrag = Math.exp(-2.7 * dt);
     for (const p of this.particles) {
       p.px = p.x;
       p.py = p.y;
       p.age += dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vx *= Math.exp(-2.7 * dt);
-      p.vy *= Math.exp(-2.7 * dt);
+      p.vx *= particleDrag;
+      p.vy *= particleDrag;
     }
     retainLive(this.particles);
     for (const e of this.effects) e.age += dt;

@@ -188,3 +188,9 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 
 /* 封面横幅 */
 .menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
+
+/* Stable score width and clear touch/keyboard affordances. */
+#score, #combo, #level { font-variant-numeric: tabular-nums; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button:focus-visible { outline: 3px solid #fde68a; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .pop { animation: none !important; } }

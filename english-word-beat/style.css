@@ -228,3 +228,17 @@ select:focus-visible { outline: 3px solid #86c8ff; outline-offset: 2px; }
   #wb-kind, #wb-zh { font-size: 8.5px; }
   #wb-word { font-size: 12px; }
 }
+
+/* Keep the stage readable while hit feedback stays on the compositor. */
+.chips, #over-stats b { font-variant-numeric:tabular-nums; }
+#life-bar { width:100%; transform-origin:left center; transition:transform .16s ease-out; }
+#wb-word > span { display:inline-block; min-width:1ch; }
+#pause-btn, #mute-btn, #exit-btn { min-height:28px; touch-action:manipulation; }
+button.difficulty, .seg-btn { transition:background-color .13s, border-color .13s, color .13s; }
+@media (max-height:480px) and (orientation:landscape) {
+  #pause-btn, #mute-btn, #exit-btn { min-height:24px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  button, #life-bar, #feedback { transition:none !important; }
+  .btn-main:hover, .btn-main:active { transform:none; }
+}

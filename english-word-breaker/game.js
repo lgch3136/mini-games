@@ -57,7 +57,7 @@ const Game = {
 };
 
 function newPaddle() {
-  return { x: W / 2 - 55, w: 110, h: 14, y: H - 42, targetX: null };
+  return { x: W / 2 - 55, w: 110, h: 14, y: H - 42, targetX: null, widthBoosts: [] };
 }
 
 function newBall(x, y, angleDeg) {
@@ -174,6 +174,7 @@ function buildLevel() {
 }
 
 function startGame() {
+  resetInput();
   Game.score = 0; Game.lives = 3; Game.level = 1;
   Game.wordsDone = 0; Game.bestCombo = 0;
   Game.time = 0; Game.shake = 0; Game.fireTimer = 0;
@@ -208,8 +209,8 @@ window.addEventListener('keydown', (ev) => {
     if (Game.state === 'playing') launchStuck();
     else if (Game.state === 'ready') Game.state = 'playing';
   }
-  if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
-  if (ev.code === 'KeyM') toggleMute();
+  if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
+  if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
   if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
 });
 window.addEventListener('keyup', (ev) => {
@@ -219,12 +220,18 @@ window.addEventListener('keyup', (ev) => {
 const input = { left: false, right: false };
 
 // 触屏拖动
-canvas.addEventListener('pointermove', (ev) => {
+function aimPaddle(ev) {
+  if (ev.isPrimary === false) return;
   if (Game.state !== 'playing' && Game.state !== 'ready') return;
   const rect = canvas.getBoundingClientRect();
   Game.paddle.targetX = (ev.clientX - rect.left) * W / rect.width;
-});
-canvas.addEventListener('pointerdown', () => {
+}
+canvas.addEventListener('pointermove', aimPaddle);
+canvas.addEventListener('pointerdown', (ev) => {
+  if (ev.isPrimary === false || (ev.button != null && ev.button !== 0)) return;
+  ev.preventDefault();
+  aimPaddle(ev);
+  try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic pointer */ }
   if (Game.state === 'playing') launchStuck();
 });
 
@@ -233,7 +240,7 @@ function launchStuck() {
 }
 
 function togglePause() {
-  if (Game.state === 'playing') { Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
+  if (Game.state === 'playing') { resetInput(); Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
   else if (Game.state === 'paused') {
     Game.state = 'playing';
     $id('paused').classList.add('hidden');
@@ -270,6 +277,11 @@ function update(dt) {
 
   // 挡板
   const p = Game.paddle;
+  for (let i = p.widthBoosts.length - 1; i >= 0; i--) {
+    p.widthBoosts[i] -= dt;
+    if (p.widthBoosts[i] <= 0) p.widthBoosts.splice(i, 1);
+  }
+  p.w = Math.min(190, 110 + p.widthBoosts.length * 34);
   const speed = 480;
   if (input.left) p.targetX = null, p.x -= speed * dt;
   if (input.right) p.targetX = null, p.x += speed * dt;
@@ -460,8 +472,8 @@ function applyPowerup(kind) {
     }
     showFeedback('⚡ 球分裂!');
   } else if (kind === 'wide') {
-    Game.paddle.w = Math.min(190, Game.paddle.w + 34);
-    setTimeout(() => { if (Game.paddle) Game.paddle.w = Math.max(110, Game.paddle.w - 34); }, 12000);
+    Game.paddle.widthBoosts.push(12);
+    Game.paddle.w = Math.min(190, 110 + Game.paddle.widthBoosts.length * 34);
     showFeedback('📏 挡板加长!');
   } else if (kind === 'slow') {
     for (const b of Game.balls) { b.vx *= .72; b.vy *= .72; }
@@ -526,9 +538,20 @@ function updateHud() {
 }
 
 /* ---------------- 渲染 ---------------- */
-function render() {
-  Game.renderCount++;
-  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+const arenaLayer = document.createElement('canvas');
+let arenaKey = '';
+function drawArenaBackdrop() {
+  const key = [canvas.width, canvas.height, W, H, ArenaBackground.naturalWidth || 0].join(':');
+  if (arenaKey !== key) {
+    arenaKey = key;
+    arenaLayer.width = canvas.width; arenaLayer.height = canvas.height;
+    const layer = arenaLayer.getContext('2d');
+    layer.setTransform(arenaLayer.width / W, 0, 0, arenaLayer.height / H, 0, 0);
+    paintArenaBackdrop(layer);
+  }
+  ctx.drawImage(arenaLayer, 0, 0, W, H);
+}
+function paintArenaBackdrop(ctx) {
   // 宣传图同级的竞技场环境；中央压暗保证砖块、球和字母始终可读。
   if (ArenaBackground.complete && ArenaBackground.naturalWidth) {
     const sw = ArenaBackground.naturalHeight * W / H;
@@ -550,6 +573,13 @@ function render() {
   ctx.strokeStyle = 'rgba(125,211,252,.055)'; ctx.lineWidth = 1;
   for (let x = 0; x <= W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 44); ctx.lineTo(x, H); ctx.stroke(); }
   for (let y = 176; y < H; y += 56) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+}
+
+function render() {
+  Game.renderCount++;
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+  drawArenaBackdrop();
 
   if (Game.state !== 'menu') {
     const sx = Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;
@@ -688,8 +718,16 @@ document.querySelectorAll('.difficulty').forEach((b) => b.addEventListener('clic
   b.classList.add('selected');
   Game.difficulty = b.dataset.difficulty;
 }));
+function resetInput() {
+  input.left = input.right = false;
+  if (Game.paddle) Game.paddle.targetX = null;
+}
+window.addEventListener('blur', () => {
+  resetInput();
+  if (Game.state === 'playing') togglePause();
+});
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && Game.state === 'playing') togglePause();
+  if (document.hidden) { resetInput(); if (Game.state === 'playing') togglePause(); }
 });
 
 /* ---------------- 主循环 ---------------- */
@@ -704,14 +742,14 @@ function ensureLoop() {
 function frame(now) {
   rafId = 0;
   Game.rafCount++;
-  const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
+  const dt = Math.max(0, Math.min(.1, (now - lastTime) / 1000));
   lastTime = now;
   let advanced = false;
   if (Game.state === 'playing') {
     accumulator = Math.min(.1, accumulator + dt);
-    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+    while (accumulator + 1e-9 >= FIXED_STEP && Game.state === 'playing') {
       update(FIXED_STEP);
-      accumulator -= FIXED_STEP;
+      accumulator = Math.max(0, accumulator - FIXED_STEP);
       advanced = true;
     }
   }
@@ -817,3 +855,5 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
 }
 
 render();
+
+ArenaBackground.addEventListener('load', () => { if (Game.state !== 'playing') render(); });

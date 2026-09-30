@@ -1154,3 +1154,11 @@ kbd {
     transition: none !important;
   }
 }
+
+/* Arena clock and combo readouts hold their width through rapid changes. */
+#timer, .combo, #frame-data, [id^="stocks-"], [id^="max-"] {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+#timer { display: inline-block; min-width: 2ch; }
+#timer[data-urgent="true"] { color: #ffb69b; }
+.health { overflow: hidden; }

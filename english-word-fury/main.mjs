@@ -5,8 +5,10 @@ import {
   VERSION,
   clamp,
 } from "./combat.mjs?v=20260918-play-r1";
-import { ArenaView } from "./view.mjs?v=20260918-play-r1";
+import { ArenaView } from "./view.mjs?v=20260930-polish-r1";
 import { FuryAudio } from "./sound.mjs";
+import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1";
+const fighterSnapshots = new FighterSnapshots();
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
 let view,
@@ -56,11 +58,7 @@ function preview() {
   }
 }
 function snapshotFighters() {
-  return game.f.map((f) => ({
-    ...f,
-    held: new Set(f.held),
-    action: f.action ? { ...f.action } : null,
-  }));
+  return fighterSnapshots.capture(game.f);
 }
 function showWord() {
   const w = words[wordIndex % words.length];
@@ -117,6 +115,7 @@ function stop() {
   accumulator = 0;
   release();
   sound.pause();
+  $("combo").getAnimations().forEach(animation => animation.cancel());
 }
 function startLoop() {
   if (raf || destroyed || document.hidden || mode !== "playing") return;
@@ -133,9 +132,12 @@ function event(e) {
     comboUntil = game.frame + 75;
     if (e.combo >= 2) {
       $("combo").innerHTML = `${e.combo}<small>HIT COMBO</small>`;
-      $("combo").classList.remove("pulse");
-      void $("combo").offsetWidth;
-      $("combo").classList.add("pulse");
+      const combo = $("combo");
+      combo.getAnimations().forEach(animation => animation.cancel());
+      if (!view.reducedMotion) combo.animate([
+        { transform: "scale(1.16)", opacity: 0.55 },
+        { transform: "scale(1)", opacity: 1 },
+      ], { duration: 160, easing: "cubic-bezier(.2,.9,.3,1)" });
     }
     if (e.counter) {
       setText("callout", "COUNTER · 破招");
@@ -204,15 +206,18 @@ function updateHud(force = false) {
   );
   if (game.frame > comboUntil) setText("combo", "");
   if (game.frame > calloutUntil) setText("callout", "");
+  $("timer").dataset.urgent = game.mode !== "training" && game.timer <= 15 * 60;
   const ann = $("announcement");
   ann.hidden = !["intro", "roundEnd"].includes(game.state);
   if (game.state === "intro") {
-    ann.innerHTML =
-      game.intro > 36
-        ? `<small>港城会馆 · ${game.f[1].c.title}</small>ROUND ${game.round}`
-        : "FIGHT";
-  } else if (game.state === "roundEnd")
-    ann.innerHTML = game.winner < 0 ? "DRAW" : "K.O.";
+    const message = game.intro > 36
+      ? `<small>港城会馆 · ${game.f[1].c.title}</small>ROUND ${game.round}`
+      : "FIGHT";
+    if (ann.innerHTML !== message) ann.innerHTML = message;
+  } else if (game.state === "roundEnd") {
+    const message = game.winner < 0 ? "DRAW" : "K.O.";
+    if (ann.innerHTML !== message) ann.innerHTML = message;
+  }
   const f = game.f[0],
     m = f.action?.spec;
   if (game.mode === "training")

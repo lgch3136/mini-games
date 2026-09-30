@@ -225,6 +225,7 @@ function buildLevel(initial) {
   if (initial) Game.timeLeft = DIFFS[Game.difficulty].time;
   else Game.timeLeft = Math.min(DIFFS[Game.difficulty].time, Game.timeLeft + 25);
   updateHud();
+  updateHudTimer();
   showFeedback(`目标: ${Game.word.en} (${Game.word.zh})`);
 }
 
@@ -505,11 +506,13 @@ window.addEventListener('keydown', (ev) => {
   if (ev.code === 'Space') ev.preventDefault();
   if ((ev.code === 'Space' || ev.code === 'KeyJ') && !ev.repeat && Game.state === 'playing') shootHook();
   if (ev.code === 'KeyX' && !ev.repeat && Game.state === 'playing') useDynamite();
-  if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
-  if (ev.code === 'KeyM') toggleMute();
+  if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
+  if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
   if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
 });
-canvas.addEventListener('pointerdown', () => {
+canvas.addEventListener('pointerdown', (ev) => {
+  if (ev.isPrimary === false || (ev.button != null && ev.button !== 0)) return;
+  ev.preventDefault();
   if (Game.state === 'playing') shootHook();
 });
 $id('dynamite-btn').addEventListener('pointerdown', (event) => { event.preventDefault(); event.stopPropagation(); useDynamite(); });
@@ -551,11 +554,17 @@ function showFeedback(text) {
   el.textContent = text;
   el.classList.add('show');
 }
+let displayedSecond = -1;
 function updateHudTimer() {
   const t = Math.max(0, Math.ceil(Game.timeLeft));
-  $id('timer').textContent = t;
-  $id('timer').style.color = t <= 10 ? '#f87171' : '#fde68a';
+  if (t === displayedSecond) return;
+  displayedSecond = t;
+  const timer = $id('timer');
+  timer.textContent = t;
+  timer.style.color = t <= 10 ? '#f87171' : '#fde68a';
+  timer.classList.toggle('urgent', t <= 10);
 }
+
 function updateHud() {
   $id('score').textContent = Game.score;
   $id('level').textContent = Game.level;
@@ -580,9 +589,20 @@ function updateDynamiteButton() {
 }
 
 /* ---------------- 渲染 ---------------- */
-function render() {
-  Game.renderCount++;
-  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+const mineLayer = document.createElement('canvas');
+let mineKey = '';
+function drawMineEnvironment() {
+  const key = [canvas.width, canvas.height, W, H].join(':');
+  if (mineKey !== key) {
+    mineKey = key;
+    mineLayer.width = canvas.width; mineLayer.height = canvas.height;
+    const layer = mineLayer.getContext('2d');
+    layer.setTransform(mineLayer.width / W, 0, 0, mineLayer.height / H, 0, 0);
+    paintMineEnvironment(layer);
+  }
+  ctx.drawImage(mineLayer, 0, 0, W, H);
+}
+function paintMineEnvironment(ctx) {
   const bg = ctx.createLinearGradient(0, 90, 0, H);
   // 四层地层色: 表土→黏土→岩层→深矿
   bg.addColorStop(0, '#3d2a12');
@@ -635,12 +655,19 @@ function render() {
     Game._rockPattern = pc;
   }
   ctx.drawImage(Game._rockPattern, 0, 0);
-  drawMineBackdrop();
+  drawMineBackdrop(ctx);
   // 地表
   ctx.fillStyle = '#3d2c17';
   ctx.fillRect(0, 86, W, 14);
   ctx.fillStyle = '#57401f';
   ctx.fillRect(0, 86, W, 5);
+
+}
+
+function render() {
+  Game.renderCount++;
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+  drawMineEnvironment();
 
   const sx = Game.shake > 0 ? rand(-4, 4) * Game.shake : 0;
   ctx.save();
@@ -707,7 +734,7 @@ function render() {
   ctx.globalAlpha = 1;
 }
 
-function drawMineBackdrop() {
+function drawMineBackdrop(ctx) {
   // 深度线和矿脉让空旷区域更易读，也给抓钩距离提供参照。
   ctx.lineWidth = 1;
   for (let y = 150; y < H; y += 72) {
@@ -928,14 +955,19 @@ document.querySelectorAll('.difficulty').forEach((b) => b.addEventListener('clic
   b.classList.add('selected');
   Game.difficulty = b.dataset.difficulty;
 }));
+window.addEventListener('blur', () => { if (Game.state === 'playing') togglePause(); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
 
 let lastW = 0, lastH = 0, lastDpr = 0;
+function canvasDpr(width, height) {
+  return Math.max(.5, Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(1400000 / Math.max(1, width * height))));
+}
 function resize() {
   const cssW = Math.max(1, wrap.clientWidth), cssH = Math.max(1, wrap.clientHeight);
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = canvasDpr(cssW, cssH);
+  if (cssW === lastW && cssH === lastH && dpr === lastDpr) return;
   const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
   const nextW = portrait ? cssW : 720, nextH = portrait ? cssH : 560;
   if (nextW !== W || nextH !== H) {
@@ -953,6 +985,7 @@ function resize() {
   if (Game.state !== 'playing') render();
 }
 window.addEventListener('resize', resize);
+new ResizeObserver(resize).observe(wrap);
 window.addEventListener('orientationchange', () => setTimeout(resize, 160));
 resize();
 
@@ -967,16 +1000,14 @@ function ensureLoop() {
 function frame(now) {
   rafId = 0;
   Game.rafCount++;
-  const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
+  const dt = Math.max(0, Math.min(.1, (now - lastTime) / 1000));
   lastTime = now;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  if (wrap.clientWidth !== lastW || wrap.clientHeight !== lastH || dpr !== lastDpr) resize();
   let advanced = false;
   if (Game.state === 'playing') {
     accumulator = Math.min(.1, accumulator + dt);
-    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+    while (accumulator + 1e-9 >= FIXED_STEP && Game.state === 'playing') {
       update(FIXED_STEP);
-      accumulator -= FIXED_STEP;
+      accumulator = Math.max(0, accumulator - FIXED_STEP);
       advanced = true;
     }
   } else accumulator = 0;
@@ -1056,3 +1087,5 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
     }, 1200);
   });
 }
+
+GameplayAtlas.addEventListener('load', () => { if (Game.state !== 'playing') render(); });

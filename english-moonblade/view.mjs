@@ -420,6 +420,10 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       this.lootMat,
       Math.max(1, world.loot.length),
     );
+    this.lootMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+    this.lootMesh.frustumCulled = false; // Compact visible instances explicitly below.
+    this.lootMesh.count = 0;
+    this.lootSlots = [];
     this.stageGroup.add(this.lootMesh);
     this.lootColors = [new T.Color(0xfb7892), new T.Color(0x81e5e9), new T.Color(0xffdc8e)];
     dressStage(this, world);
@@ -600,15 +604,19 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     return [(vec.x * 0.5 + 0.5) * this.w, (-vec.y * 0.5 + 0.5) * this.h];
   }
   updateLighting(px, py, dt) {
-    const candidates = this.lanterns
-      .filter((l) => Math.abs(l.x - px) < 8 && Math.abs(l.y - py) < 6)
-      .sort((a, b) => Math.abs(a.x - px) - Math.abs(b.x - px));
     for (const slot of this.lampLights) {
       let lamp = this.lanterns[slot.id];
       if (!lamp || (slot.light.intensity < 0.02 && Math.abs(lamp.x - px) > 7)) {
-        lamp = candidates.find(
-          (l) => !this.lampLights.some((s) => s.id === l.id),
-        );
+        // Selection only runs when a slot is free; no full list/filter/sort
+        // on every display frame while the same lantern remains in range.
+        lamp = null;
+        let nearest = Infinity;
+        for (const candidate of this.lanterns) {
+          const distance = Math.abs(candidate.x - px);
+          if (distance >= 8 || distance >= nearest || Math.abs(candidate.y - py) >= 6) continue;
+          if (this.lampLights.some((s) => s.id === candidate.id)) continue;
+          lamp = candidate; nearest = distance;
+        }
         slot.id = lamp?.id ?? -1;
       }
       if (lamp) slot.light.position.set(lamp.x, lamp.y, lamp.z + 0.35);
@@ -678,32 +686,14 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
         this.actor(
           a,
           e,
-          previous?.enemies.find((o) => o.id === e.id),
+          previous?.enemyById ? previous.enemyById.get(e.id) : previous?.enemies.find((o) => o.id === e.id),
           alpha,
           false,
           dt,
           world,
         );
     }
-    for (let i = 0; i < world.loot.length; i++) {
-      const l = world.loot[i];
-      dummy.position.set(
-        l.x,
-        l.y + Math.sin(this.elapsed * 3 + l.id) * 0.1,
-        0.7,
-      );
-      dummy.rotation.set(this.elapsed, 0, this.elapsed * 0.7);
-      dummy.scale.setScalar(l.taken || l.hidden ? 0 : 1);
-      dummy.updateMatrix();
-      this.lootMesh.setMatrixAt(i, dummy.matrix);
-      this.lootMesh.setColorAt(
-        i,
-        this.lootColors[l.kind === "health" ? 0 : l.kind === "energy" ? 1 : 2],
-      );
-    }
-    this.lootMesh.instanceMatrix.needsUpdate = true;
-    if (this.lootMesh.instanceColor)
-      this.lootMesh.instanceColor.needsUpdate = true;
+    this.updateLoot(world);
     syncCaches(this, world);
     this.feedback.locomotion(p, dt, this.reduced || !this.detail);
     this.feedback.advance(dt, world.level.platforms);
@@ -718,6 +708,36 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.renderer.render(this.scene, this.camera);
     this.gpuClock.end();
     this.drawFx(world, dt, alpha);
+  }
+  updateLoot(world) {
+    let count = 0, colorChanged = false;
+    const margin = (this.camera.right - this.camera.left) * 0.5 + 1.5;
+    for (const l of world.loot) {
+      if (l.taken || l.hidden || Math.abs(l.x - this.cx) > margin) continue;
+      if (count >= this.lootMesh.instanceMatrix.count) break;
+      dummy.position.set(l.x, l.y + Math.sin(this.elapsed * 3 + l.id) * 0.1, 0.7);
+      dummy.rotation.set(this.elapsed, 0, this.elapsed * 0.7);
+      dummy.scale.setScalar(1);
+      dummy.updateMatrix();
+      this.lootMesh.setMatrixAt(count, dummy.matrix);
+      if (this.lootSlots[count] !== l) {
+        this.lootMesh.setColorAt(count, this.lootColors[l.kind === "health" ? 0 : l.kind === "energy" ? 1 : 2]);
+        this.lootSlots[count] = l;
+        colorChanged = true;
+      }
+      count++;
+    }
+    this.lootMesh.count = this.lootSlots.length = count;
+    if (count) {
+      this.lootMesh.instanceMatrix.clearUpdateRanges();
+      this.lootMesh.instanceMatrix.addUpdateRange(0, count * 16);
+      this.lootMesh.instanceMatrix.needsUpdate = true;
+    }
+    if (colorChanged) {
+      this.lootMesh.instanceColor.clearUpdateRanges();
+      this.lootMesh.instanceColor.addUpdateRange(0, count * 3);
+      this.lootMesh.instanceColor.needsUpdate = true;
+    }
   }
   drawFx(world, dt, alpha) {
     const c = this.ctx,

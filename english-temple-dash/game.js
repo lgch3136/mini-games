@@ -5,7 +5,7 @@ import {
   biomeAt,
   clamp,
 } from "./engine.mjs?v=20260905-sonic";
-import { Renderer } from "./render-linear.js?v=20260905-sonic";
+import { Renderer } from "./render-linear.js?v=20260930-polish-r1";
 import { WindScore } from "./sound.js?v=20260905-sonic";
 import { RhythmWorld, TRACKS, makeChart } from "./rhythm.mjs?v=20260905-sonic";
 import { RhythmScore } from "./rhythm-audio.js?v=20260905-sonic";

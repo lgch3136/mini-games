@@ -507,7 +507,8 @@ export class World {
       groundId: this.terrain[0].id,
       coyote: 0.09,
       jumpBuffer: 0,
-      jumpHeld: false,
+      dropPlatformId: null,
+      dropTime: 0,
       fireCooldown: 0,
       recoil: 0,
       hp: this.maxHp,
@@ -609,7 +610,7 @@ export class World {
     );
   }
 
-  moveActor(p, dt, dropThrough = false) {
+  moveActor(p, dt, dropPlatformId = null) {
     const solids = this.solids();
     const oldX = p.x,
       oldY = p.y;
@@ -629,7 +630,7 @@ export class World {
     let landing = null;
     for (const s of solids) {
       if (p.x + p.w / 2 - 2 <= s.x || p.x - p.w / 2 + 2 >= s.x + s.w) continue;
-      if (s.oneWay && dropThrough) continue;
+      if (s.oneWay && s.id === dropPlatformId) continue;
       if (
         p.vy >= 0 &&
         oldY <= s.y + 1.5 &&
@@ -755,7 +756,8 @@ export class World {
     const p = this.player;
     const axis = clamp(input.x || 0, -1, 1),
       yAxis = clamp(input.y || 0, -1, 1);
-    const jumpPressed = input.jump && !this.previousInput.jump;
+    const jumpPressed =
+      input.jumpPressed || (input.jump && !this.previousInput.jump);
     p.invincible = Math.max(0, p.invincible - dt);
     p.fireCooldown -= dt;
     p.grenadeCooldown -= dt;
@@ -765,13 +767,37 @@ export class World {
     p.land = approach(p.land, 0, dt * 7);
     p.weaponTime -= dt;
     if (p.weaponTime <= 0) p.weapon = "rifle";
-    p.jumpBuffer = jumpPressed ? 0.13 : Math.max(0, p.jumpBuffer - dt);
+    p.dropTime = Math.max(0, p.dropTime - dt);
+    if (p.dropTime === 0) p.dropPlatformId = null;
+    const support = this.terrain.find((t) => t.id === p.groundId);
+    // Down + a fresh jump drops only through the current one-way platform.
+    // Lower platforms remain solid and holding jump cannot chain drops.
+    const dropping =
+      jumpPressed &&
+      (yAxis > 0.5 || input.dropPressed) &&
+      p.grounded && support?.oneWay && p.roll <= 0;
+    if (dropping) {
+      p.dropPlatformId = support.id;
+      p.dropTime = 0.25;
+      p.grounded = false;
+      p.groundId = null;
+      p.coyote = 0;
+      p.vy = Math.max(p.vy, 120);
+      this.emit("drop");
+    }
+    p.jumpBuffer = dropping
+      ? 0
+      : jumpPressed
+        ? 0.13
+        : Math.max(0, p.jumpBuffer - dt);
     p.coyote = p.grounded ? 0.095 : Math.max(0, p.coyote - dt);
-    p.crouch = (p.grounded && yAxis > 0.5) || p.roll > 0;
+    const standingBox = { x: p.x - p.w / 2, y: p.y - 60, w: p.w, h: 60 };
+    const blockedStanding =
+      p.h < 60 && this.solids().some((s) => !s.oneWay && overlap(standingBox, s));
+    p.crouch = (p.grounded && yAxis > 0.5) || p.roll > 0 || blockedStanding;
     p.h = p.crouch ? 32 : 60;
     if (
-      input.roll &&
-      !this.previousInput.roll &&
+      (input.rollPressed || (input.roll && !this.previousInput.roll)) &&
       p.grounded &&
       p.rollCooldown <= 0
     ) {
@@ -804,7 +830,7 @@ export class World {
     p.vy = Math.min(880, p.vy + 1900 * dt);
     const impactV = p.vy,
       wasGrounded = p.grounded;
-    this.moveActor(p, dt);
+    this.moveActor(p, dt, p.dropPlatformId);
     if (p.grounded && !wasGrounded && impactV > 160) {
       p.gait = 0;
       p.land = clamp(impactV / 900, 0.2, 0.8);
@@ -864,8 +890,7 @@ export class World {
     }
     if (input.fire && p.fireCooldown <= 0 && p.roll <= 0) this.firePlayer();
     if (
-      input.grenade &&
-      !this.previousInput.grenade &&
+      (input.grenadePressed || (input.grenade && !this.previousInput.grenade)) &&
       p.grenades > 0 &&
       p.grenadeCooldown <= 0
     ) {

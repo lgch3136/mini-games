@@ -77,7 +77,10 @@ const BIRD_FRAMES = [
   { sx: 837, sy: 73, sw: 237, sh: 214, ax: 125, ay: 108 },
 ];
 let pendingAssets = 3;
-function assetDone() { pendingAssets = Math.max(0, pendingAssets - 1); }
+function assetDone() {
+  pendingAssets = Math.max(0, pendingAssets - 1);
+  if (Game.state === 'menu') render();
+}
 
 function loadSprite(src, cb) {
   const img = new Image();
@@ -192,9 +195,12 @@ function bumpCombo() {
   Game.maxCombo = Math.max(Game.maxCombo, Game.combo);
   const box = $id('combo-box');
   box.classList.remove('hidden');
-  box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop');
+  if (box.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    box.getAnimations().forEach((animation) => animation.cancel());
+    box.animate([{ transform: 'scale(1.14)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'ease-out' });
+  }
 }
-function feedback(msg) { Game.feedback = msg; Game.feedbackUntil = now() + 2.2; $id('q-feedback').textContent = msg; }
+function feedback(msg) { Game.feedback = msg; Game.feedbackUntil = now() + 2.2; setHud('q-feedback', msg); }
 function banner(text, color) { Game.texts.push({ x: W / 2, y: H * 0.34, text, color: color || '#fff', t: 1.6, max: 1.6 }); }
 
 /* ---------------- 伤害 / 结束 ---------------- */
@@ -417,7 +423,10 @@ function burst(x, y, color, n) {
 /* ---------------- 每帧更新 ---------------- */
 function step(dt) {
   Game.logicFrame++;
+  const previousTime = Game.time;
   Game.time += dt;
+  if ((Game.hintUntil > previousTime && Game.hintUntil <= Game.time) ||
+      (Game.feedbackUntil > previousTime && Game.feedbackUntil <= Game.time)) updateHUD();
   if (Game.state === 'ready') {
     Game.bird.y = H * 0.42 + Math.sin(Game.time * 2.6) * 9;
     return;
@@ -755,16 +764,23 @@ function render() {
 }
 
 /* ---------------- HUD ---------------- */
+const hudValues = new Map();
+function setHud(id, value, html = false) {
+  const text = String(value);
+  if (hudValues.get(id) === text) return;
+  hudValues.set(id, text);
+  $id(id)[html ? 'innerHTML' : 'textContent'] = text;
+}
 function updateHUD() {
-  $id('score').textContent = Game.score;
-  $id('combo').textContent = Game.combo;
+  setHud('score', Game.score);
+  setHud('combo', Game.combo);
   if (Game.combo >= 2) $id('combo-box').classList.remove('hidden'); else $id('combo-box').classList.add('hidden');
-  $id('level').textContent = Game.level;
-  $id('hearts').textContent = '❤️'.repeat(Math.max(0, Game.lives)) + '🖤'.repeat(MAX_LIVES - Math.max(0, Game.lives));
+  setHud('level', Game.level);
+  setHud('hearts', '❤️'.repeat(Math.max(0, Game.lives)) + '🖤'.repeat(MAX_LIVES - Math.max(0, Game.lives)));
 
   if (Game.mode === 'spell' && Game.word) {
-    $id('q-kind').textContent = '🔤 拼单词';
-    $id('q-target').textContent = Game.word.zh;
+    setHud('q-kind', '🔤 拼单词');
+    setHud('q-target', Game.word.zh);
     const hintOn = Game.hintUntil > now();
     let html = '';
     for (let i = 0; i < Game.word.en.length; i++) {
@@ -773,14 +789,13 @@ function updateHUD() {
       else if (i === Game.word.index) html += '<span class="next">_</span> ';
       else html += '<span>_</span> ';
     }
-    $id('q-progress').innerHTML = html;
+    setHud('q-progress', html, true);
   } else if (Game.mode === 'choose' && Game.question) {
-    $id('q-kind').textContent = '🚪 闯关选择';
-    $id('q-target').textContent = Game.question.prompt;
-    $id('q-progress').innerHTML = 'A / B 选项挂在门洞上，穿过<b>正确答案</b>的门洞';
+    setHud('q-kind', '🚪 闯关选择');
+    setHud('q-target', Game.question.prompt);
+    setHud('q-progress', 'A / B 选项挂在门洞上，穿过<b>正确答案</b>的门洞', true);
   }
-  const fb = $id('q-feedback');
-  if (now() > Game.feedbackUntil) fb.textContent = '';
+  if (now() >= Game.feedbackUntil) setHud('q-feedback', '');
 }
 
 /* ---------------- 最高分 ---------------- */
@@ -840,9 +855,12 @@ function flap() {
 }
 
 function togglePause() {
-  if (Game.state === 'playing') { Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
+  if (Game.state === 'playing' || Game.state === 'ready') {
+    Game.resumeState = Game.state;
+    Game.state = 'paused'; $id('paused').classList.remove('hidden');
+  }
   else if (Game.state === 'paused') {
-    Game.state = 'playing';
+    Game.state = Game.resumeState || 'playing';
     $id('paused').classList.add('hidden');
     accumulator = 0;
     ensureLoop();
@@ -919,6 +937,13 @@ $id('hint-btn').addEventListener('click', useHint);
 $id('mute-btn').addEventListener('click', toggleMute);
 $id('mute-btn').textContent = SFX.muted ? '🔇' : '🔊';
 
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && ['ready', 'playing'].includes(Game.state)) togglePause();
+});
+window.addEventListener('blur', () => {
+  if (['ready', 'playing'].includes(Game.state)) togglePause();
+});
+
 /* ---------------- 尺寸适配 ---------------- */
 function resize() {
   const wrap = $id('game-wrap');
@@ -931,8 +956,9 @@ function resize() {
   BIRD_X = portrait ? Math.min(132, W * 0.32) : 132;
   Game.bird.x = BIRD_X;
   Game.bird.y = Math.min(Game.bird.y, GROUND_Y - BIRD_R);
-  canvas.width = Math.max(1, Math.round(cw * dpr));
-  canvas.height = Math.max(1, Math.round(ch * dpr));
+  const width = Math.max(1, Math.round(cw * dpr)), height = Math.max(1, Math.round(ch * dpr));
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
   canvas.style.width = cw + 'px';
   canvas.style.height = ch + 'px';
   if (!['ready', 'playing'].includes(Game.state)) render();
@@ -954,14 +980,14 @@ function ensureLoop() {
 function loop(t) {
   rafId = 0;
   Game.rafCount++;
-  const dt = Math.min(.1, (t - lastT) / 1000 || FIXED_STEP);
+  const dt = Math.max(0, Math.min(.1, (t - lastT) / 1000));
   lastT = t;
   let advanced = false;
   if (['ready', 'playing'].includes(Game.state)) {
     accumulator = Math.min(.1, accumulator + dt);
-    while (accumulator >= FIXED_STEP && ['ready', 'playing'].includes(Game.state)) {
+    while (accumulator + 1e-9 >= FIXED_STEP && ['ready', 'playing'].includes(Game.state)) {
       step(FIXED_STEP);
-      accumulator -= FIXED_STEP;
+      accumulator = Math.max(0, accumulator - FIXED_STEP);
       advanced = true;
     }
   } else accumulator = 0;

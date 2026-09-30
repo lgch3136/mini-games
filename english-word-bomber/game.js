@@ -229,6 +229,7 @@ function startRound() {
 }
 
 function startGame() {
+  resetInput();
   Game.score = 0; Game.lives = 3; Game.stage = 1; Game.round = 1;
   Game.time = 0; Game.shake = 0; Game.flash = 0;
   Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
@@ -308,8 +309,8 @@ window.addEventListener('keydown', (ev) => {
     ev.preventDefault();
     if (Game.state === 'playing') dropBomb();
   }
-  if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
-  if (ev.code === 'KeyM') toggleMute();
+  if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
+  if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
   if (ev.code === 'Enter') {
     if (Game.state === 'menu' || Game.state === 'over') startGame();
     else if (Game.state === 'paused') togglePause();
@@ -318,17 +319,20 @@ window.addEventListener('keydown', (ev) => {
 window.addEventListener('keyup', (ev) => { if (KEYMAP[ev.code]) input[KEYMAP[ev.code]] = false; });
 
 function togglePause() {
-  if (Game.state === 'playing') {
+  if (Game.state === 'playing' || Game.state === 'dying') {
+    resetInput();
+    Game.resumeState = Game.state;
     Game.state = 'paused';
     $id('paused').classList.remove('hidden');
   } else if (Game.state === 'paused') {
-    Game.state = 'playing';
+    Game.state = Game.resumeState || 'playing';
     $id('paused').classList.add('hidden');
     accumulator = 0;
     ensureLoop();
   }
 }
 function backToMenu() {
+  resetInput();
   Game.state = 'menu';
   if (window.ChipMusic) ChipMusic.stop();
   $id('paused').classList.add('hidden');
@@ -770,7 +774,27 @@ function updateParticles(dt) {
 }
 
 /* ---------------- 绘制 ---------------- */
+// Static terrain is copied once per frame; redraw only after a map edit.
+const gridLayer = document.createElement('canvas');
+gridLayer.width = 880; gridLayer.height = 704;
+const gridContext = gridLayer.getContext('2d');
+const gridSnapshot = new Int8Array(COLS * ROWS).fill(-1);
 function drawGrid() {
+  let dirty = false;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const index = r * COLS + c;
+    if (gridSnapshot[index] !== Game.grid[r][c]) {
+      gridSnapshot[index] = Game.grid[r][c]; dirty = true;
+    }
+  }
+  if (dirty) {
+    gridContext.clearRect(0, 0, gridLayer.width, gridLayer.height);
+    paintGrid(gridContext);
+  }
+  ctx.drawImage(gridLayer, 0, 0);
+}
+
+function paintGrid(ctx) {
   // 场地底色
   ctx.fillStyle = '#111827';
   ctx.fillRect(OX, OY, COLS * CELL, ROWS * CELL);
@@ -1169,28 +1193,49 @@ document.querySelectorAll('.difficulty').forEach((b) => b.addEventListener('clic
 // 触屏
 function bindHold(id, prop) {
   const el = $id(id);
-  const release = () => { input[prop] = false; el.classList.remove('active'); };
+  let pointerId = null;
+  const release = (ev) => {
+    if (ev.pointerId !== pointerId) return;
+    pointerId = null; input[prop] = false; el.classList.remove('active');
+  };
   el.addEventListener('pointerdown', (ev) => {
     ev.preventDefault();
-    el.setPointerCapture(ev.pointerId);
+    if (Game.state !== 'playing') return;
+    pointerId = ev.pointerId;
+    try { el.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic pointer */ }
     input[prop] = true; el.classList.add('active');
   });
   el.addEventListener('pointerup', release);
   el.addEventListener('pointercancel', release);
+  el.addEventListener('lostpointercapture', release);
 }
 bindHold('up-btn', 'up'); bindHold('down-btn', 'down');
 bindHold('left-btn', 'left'); bindHold('right-btn', 'right');
 $id('bomb-btn').addEventListener('pointerdown', (ev) => {
   ev.preventDefault();
+  try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic pointer */ }
   $id('bomb-btn').classList.add('active');
   if (Game.state === 'playing') dropBomb();
 });
 $id('bomb-btn').addEventListener('pointerup', () => $id('bomb-btn').classList.remove('active'));
 $id('bomb-btn').addEventListener('pointercancel', () => $id('bomb-btn').classList.remove('active'));
 
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && Game.state === 'playing') togglePause();
-});
+function resetInput() {
+  for (const direction of Object.keys(DIRS)) {
+    input[direction] = false;
+    $id(direction + '-btn').classList.remove('active');
+  }
+  input.bombQueued = false; input.turnRequest = null;
+  if (Game.player) { Game.player.pendingDir = null; Game.player.moving = false; }
+  $id('bomb-btn').classList.remove('active');
+}
+function suspendInput() {
+  resetInput();
+  if (Game.state === 'playing' || Game.state === 'dying') togglePause();
+}
+$id('bomb-btn').addEventListener('lostpointercapture', () => $id('bomb-btn').classList.remove('active'));
+window.addEventListener('blur', suspendInput);
+document.addEventListener('visibilitychange', () => { if (document.hidden) suspendInput(); });
 
 let lastTime = performance.now();
 let accumulator = 0;
@@ -1203,14 +1248,14 @@ function ensureLoop() {
 function frame(now) {
   rafId = 0;
   Game.rafCount++;
-  const dt = Math.min(.1, (now - lastTime) / 1000 || FIXED_STEP);
+  const dt = Math.max(0, Math.min(.1, (now - lastTime) / 1000));
   lastTime = now;
   let advanced = false;
   if (Game.state === 'playing' || Game.state === 'dying') {
     accumulator = Math.min(.1, accumulator + dt);
-    while (accumulator >= FIXED_STEP && (Game.state === 'playing' || Game.state === 'dying')) {
+    while (accumulator + 1e-9 >= FIXED_STEP && (Game.state === 'playing' || Game.state === 'dying')) {
       update(FIXED_STEP);
-      accumulator -= FIXED_STEP;
+      accumulator = Math.max(0, accumulator - FIXED_STEP);
       advanced = true;
     }
   } else accumulator = 0;

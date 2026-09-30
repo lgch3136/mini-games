@@ -209,9 +209,9 @@ window.addEventListener('keydown', (ev) => {
   if (ev.code === 'Space' || ev.code.startsWith('Arrow')) ev.preventDefault();
   if (KEYMAP[ev.code]) { keys.add(KEYMAP[ev.code]); Game.player.pointer = false; }
   if (ev.code === 'Space' || ev.code === 'KeyJ') { SFX.ensure(); Game.fireHeld = true; }
-  if (ev.code === 'KeyB' || ev.code === 'KeyX') { SFX.ensure(); useBomb(); }
-  if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
-  if (ev.code === 'KeyM') toggleMute();
+  if (!ev.repeat && (ev.code === 'KeyB' || ev.code === 'KeyX')) { SFX.ensure(); useBomb(); }
+  if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
+  if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
   if (ev.code === 'Enter') {
     SFX.ensure();
     if (Game.state === 'menu' || Game.state === 'over') startGame();
@@ -241,6 +241,9 @@ function updateTouchMove(ev) {
 }
 
 function releaseTouchControls() {
+  keys.clear();
+  Game.player.pointer = false;
+  Game.player.kvx = Game.player.kvy = 0;
   movePointerId = null;
   moveStart = null;
   firePointerId = null;
@@ -270,6 +273,7 @@ const endTouchMove = (ev) => {
 };
 canvas.addEventListener('pointerup', endTouchMove);
 canvas.addEventListener('pointercancel', endTouchMove);
+canvas.addEventListener('lostpointercapture', endTouchMove);
 window.addEventListener('pointerup', endTouchMove);
 window.addEventListener('pointercancel', endTouchMove);
 window.addEventListener('pointerup', (ev) => { if (ev.pointerType !== 'touch') Game.fireHeld = false; });
@@ -293,6 +297,7 @@ els.fireBtn.addEventListener('pointerdown', (ev) => {
 });
 els.fireBtn.addEventListener('pointerup', stopTouchFire);
 els.fireBtn.addEventListener('pointercancel', stopTouchFire);
+els.fireBtn.addEventListener('lostpointercapture', stopTouchFire);
 window.addEventListener('pointerup', stopTouchFire);
 window.addEventListener('pointercancel', stopTouchFire);
 
@@ -314,9 +319,12 @@ els.pauseBtn.addEventListener('click', () => { SFX.ensure(); togglePause(); });
 els.muteBtn.addEventListener('click', () => { SFX.ensure(); toggleMute(); });
 els.bombBtn.addEventListener('click', () => { SFX.ensure(); useBomb(); });
 
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && Game.state === 'playing') togglePause();
-});
+function suspendControls() {
+  releaseTouchControls();
+  if (Game.state === 'playing') togglePause();
+}
+window.addEventListener('blur', suspendControls);
+document.addEventListener('visibilitychange', () => { if (document.hidden) suspendControls(); });
 
 /* ---------------- 出题 ---------------- */
 function pickDistractors(bank, item, field, count) {
@@ -484,6 +492,7 @@ function spawnBoss() {
     patternT: 5, entering: true, leaving: false,
     hitFlash: 0, dead: false,
   });
+  Game._nextLayoutCheck = 0;
   els.qKind.textContent = 'BOSS';
   els.qPrompt.textContent = '⚠️ 首领来袭';
   els.qHint.textContent = '击毁首领可获得高分与补给！';
@@ -900,20 +909,20 @@ function update(dt) {
     p.x += (p.px - p.x) * k;
     p.y += (p.py - p.y) * k;
   } else {
-    const ax = (keys.has('left') ? -1 : 0) + (keys.has('right') ? 1 : 0);
-    const ay = (keys.has('up') ? -1 : 0) + (keys.has('down') ? 1 : 0);
+    let ax = (keys.has('left') ? -1 : 0) + (keys.has('right') ? 1 : 0);
+    let ay = (keys.has('up') ? -1 : 0) + (keys.has('down') ? 1 : 0);
+    if (ax && ay) { ax *= Math.SQRT1_2; ay *= Math.SQRT1_2; }
     // 雷电式惯性: 目标速度380, 加速响应14/s(≈70ms到位), 松键滑行减速8/s
     if (!p.kvx) p.kvx = 0;
     if (!p.kvy) p.kvy = 0;
     p.kvx += (ax * 380 - p.kvx) * Math.min(1, dt * (ax ? 14 : 8));
     p.kvy += (ay * 380 - p.kvy) * Math.min(1, dt * (ay ? 14 : 8));
-    if (ax && ay) { p.kvx *= .72; p.kvy *= .72; }
     p.x += p.kvx * dt; p.y += p.kvy * dt;
   }
   p.x = clamp(p.x, 30, W - 30);
-  if (Game.time > Game._nextLayoutCheck) {
+  if (Game._nextLayoutCheck === 0) {
     Game._minY = Math.min(H - 80, hudClearanceY());   // 上限保护：防止 min>max 导致钳制反转
-    Game._nextLayoutCheck = Game.time + 0.5;
+    Game._nextLayoutCheck = 1;
   }
   p.y = Math.max(Math.min(p.y, H - 46), Math.min(Game._minY, H - 46));   // 显式顺序钳制，绝不越界
   // 自愈保险：任何异常坐标立即复位到出生点（战机永不消失）
@@ -1172,6 +1181,23 @@ function drawStageBackground() {
   return true;
 }
 
+// Reuse small radial textures rather than rasterizing large gradients per frame.
+const nebulaTextures = new Map();
+function nebulaTexture(center, middle) {
+  const key = center + ':' + (middle || '');
+  if (nebulaTextures.has(key)) return nebulaTextures.get(key);
+  const surface = document.createElement('canvas');
+  surface.width = surface.height = 256;
+  const layer = surface.getContext('2d');
+  const gradient = layer.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gradient.addColorStop(0, center);
+  if (middle) gradient.addColorStop(.7, middle);
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  layer.fillStyle = gradient; layer.fillRect(0, 0, 256, 256);
+  nebulaTextures.set(key, surface);
+  return surface;
+}
+
 function drawNebula() {
   const t = Game.time;
   const blobs = [
@@ -1179,11 +1205,7 @@ function drawNebula() {
     { x: W * 0.8 + Math.cos(t * 0.06) * 90, y: H * 0.65 + Math.sin(t * 0.05) * 70, r: 300, c: 'rgba(180,40,120,0.055)' },
   ];
   for (const b of blobs) {
-    const rg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-    rg.addColorStop(0, b.c);
-    rg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = rg;
-    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(nebulaTexture(b.c), b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
   }
 }
 
@@ -1193,12 +1215,7 @@ function drawStars(dt) {
   for (const n of (Game.nebulae || [])) {
     n.y += n.speed * dt * speedMul;
     if (n.y - n.r > H) { n.y = -n.r; n.x = Math.random() * W; }
-    const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
-    g.addColorStop(0, n.tint + '88');
-    g.addColorStop(.7, n.tint + '33');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
+    ctx.drawImage(nebulaTexture(n.tint + '88', n.tint + '33'), n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
   }
   const starTints = [
     (a) => 'rgba(190,205,255,' + a + ')',   // 偏蓝
@@ -1612,6 +1629,7 @@ function drawFloaters() {
 
 /* ---------------- HUD ---------------- */
 function updateQuestionBar() {
+  Game._nextLayoutCheck = 0;
   const q = Game.question;
   if (!q) return;
   els.qKind.textContent = q.kind;
@@ -1639,9 +1657,10 @@ function updateHud() {
     els.comboBox.classList.remove('hidden');
     els.combo.textContent = Game.combo;
     if (Game.combo !== Game._lastCombo) {
-      els.comboBox.classList.remove('pop');
-      void els.comboBox.offsetWidth;
-      els.comboBox.classList.add('pop');
+      if (els.comboBox.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        els.comboBox.getAnimations().forEach((animation) => animation.cancel());
+        els.comboBox.animate([{ transform: 'scale(1.14)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'ease-out' });
+      }
     }
   } else {
     els.comboBox.classList.add('hidden');
@@ -1766,6 +1785,8 @@ function canvasDpr(width, height) {
 function resize() {
   const w = Math.max(1, wrap.clientWidth), h = Math.max(1, wrap.clientHeight);
   const dpr = canvasDpr(w, h);
+  if (w === lastW && h === lastH && dpr === lastDpr) return;
+  Game._nextLayoutCheck = 0;
   const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
   const nextW = portrait ? w : 900;
   const nextH = portrait ? h : 640;
@@ -1786,7 +1807,9 @@ function resize() {
   ctx.imageSmoothingQuality = 'high';
   lastW = w; lastH = h; lastDpr = dpr;
 }
-window.addEventListener('resize', resize);
+window.addEventListener('resize', () => { resize(); if (Game.state !== 'playing') render(0); });
+new ResizeObserver(() => { resize(); if (Game.state !== 'playing') render(0); }).observe(wrap);
+new ResizeObserver(() => { Game._nextLayoutCheck = 0; }).observe($id('question-bar'));
 resize();
 
 /* ---------------- 主循环 ---------------- */
@@ -1800,16 +1823,14 @@ function ensureLoop() {
 }
 function frame(now) {
   rafId = 0;
-  const dt = Math.min((now - last) / 1000 || FIXED_STEP, 0.1);
+  const dt = Math.max(0, Math.min((now - last) / 1000, 0.1));
   last = now;
-  const dpr = canvasDpr(Math.max(1, wrap.clientWidth), Math.max(1, wrap.clientHeight));
-  if (wrap.clientWidth !== lastW || wrap.clientHeight !== lastH || dpr !== lastDpr) resize();
   if (Game.state === 'playing') {
     accumulator = Math.min(.1, accumulator + dt);
-    while (accumulator >= FIXED_STEP && Game.state === 'playing') {
+    while (accumulator + 1e-9 >= FIXED_STEP && Game.state === 'playing') {
       update(FIXED_STEP);
       updateFx(FIXED_STEP);
-      accumulator -= FIXED_STEP;
+      accumulator = Math.max(0, accumulator - FIXED_STEP);
     }
   } else {
     accumulator = 0;
@@ -1986,3 +2007,13 @@ if (/[?&]fuzz/.test(location.search)) {
     document.title = 'FUZZ-ERR:' + err.message;
   }
 }
+
+StageBackground.addEventListener('load', () => { if (Game.state !== 'playing') render(0); });
+ShipAtlas.addEventListener('load', () => { if (Game.state !== 'playing') render(0); });
+
+window.addEventListener('pagehide', (event) => {
+  if (event.persisted) return; // Keep the renderer valid for back-forward cache.
+  cancelAnimationFrame(rafId); rafId = 0;
+  FX.dispose?.();
+  SFX.ac?.close().catch(() => {});
+});

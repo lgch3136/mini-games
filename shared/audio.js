@@ -12,6 +12,20 @@
   const music = new Audio(new URL('platformer-theme.ogg', base));
   const pools = {};
   let muted = false;
+  const voices = new Set();
+  const MAX_VOICES = 24;
+  function silenceVoices() {
+    for (const voice of [...voices]) voice.release(true);
+  }
+  function trackVoice(osc, gain) {
+    const voice = { release(stop = false) {
+      if (!voices.delete(voice)) return;
+      if (stop) { try { osc.stop(); } catch {} }
+      osc.disconnect(); gain.disconnect();
+    } };
+    voices.add(voice);
+    osc.onended = () => voice.release();
+  }
 
   try {
     const saved = localStorage.getItem(key);
@@ -41,6 +55,7 @@
     setMuted(value) {
       muted = Boolean(value);
       music.muted = muted;
+      if (muted) silenceVoices();
       Object.values(pools).flat().forEach((audio) => { audio.muted = muted; });
       try { localStorage.setItem(key, muted ? '1' : '0'); } catch (e) { /* ignore */ }
       if (!muted) this.start();
@@ -55,7 +70,7 @@
     stopBgm() { music.pause(); },
     play(name, volume, rate) {
       if (muted || !files[name]) return;
-      // 高频音效走WebAudio合成(零主线程开销); 低频事件走HTMLAudio池
+      // 高频音效走有上限的 WebAudio 音源池；低频事件走 HTMLAudio 池
       if (name === 'laser') { synthLaser(volume, rate); return; }
       if (name === 'click') { synthClick(volume, rate); return; }
       const pool = soundPool(name);
@@ -67,7 +82,7 @@
     },
   };
 
-  /* ---- WebAudio 合成音效: 高频调用零卡顿 ---- */
+  /* ---- Bounded WebAudio voices, disconnected as soon as playback ends ---- */
   let actx = null;
   function ctx() {
     if (!actx) {
@@ -78,6 +93,7 @@
     return actx;
   }
   function synthLaser(volume, rate) {
+    if (voices.size >= MAX_VOICES) return;
     const a = ctx(); if (!a) return;
     const t = a.currentTime;
     const vol = volume == null ? 0.32 : volume;
@@ -89,9 +105,11 @@
     g.gain.setValueAtTime(vol * .5, t);
     g.gain.exponentialRampToValueAtTime(.001, t + .1);
     osc.connect(g); g.connect(a.destination);
+    trackVoice(osc, g);
     osc.start(t); osc.stop(t + .11);
   }
   function synthClick(volume, rate) {
+    if (voices.size >= MAX_VOICES) return;
     const a = ctx(); if (!a) return;
     const t = a.currentTime;
     const vol = volume == null ? 0.18 : volume;
@@ -102,8 +120,17 @@
     g.gain.setValueAtTime(vol * .6, t);
     g.gain.exponentialRampToValueAtTime(.001, t + .05);
     osc.connect(g); g.connect(a.destination);
+    trackVoice(osc, g);
     osc.start(t); osc.stop(t + .06);
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    music.pause();
+    for (const pool of Object.values(pools)) for (const audio of pool) audio.pause();
+    silenceVoices();
+    if (actx?.state === 'running') actx.suspend().catch(() => {});
+  });
 
   window.ArcadeAudio = api;
   const unlock = () => api.start();
