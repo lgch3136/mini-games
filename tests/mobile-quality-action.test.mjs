@@ -370,3 +370,22 @@ test('Fury: actual renderer-construction failure promotes its alert outside the 
   assert.equal(get('loading').children[0].href, '../');
   assert.equal(get('loading').children[0].textContent, '返回游戏合集');
 });
+
+test('Ranger portrait keeps boss status, tactical goals and onboarding in one wrapping flow without changing landscape geometry', () => {
+  const html = readFileSync(new URL('../english-word-ranger/index.html', import.meta.url), 'utf8');
+  const stack = html.match(/<div id="field-messages">([\s\S]*?)<\/div>\s*<div id="combo"/);
+  assert.ok(stack, 'all messages need a common flow container');
+  assert.match(stack[1], /id="boss-hud" hidden/);
+  assert.ok(stack[1].indexOf('id="boss-hud"') < stack[1].indexOf('id="field-contract"'));
+  assert.match(stack[1], /id="field-contract"/);
+  assert.match(stack[1], /id="notice" role="status" hidden/);
+  assert.ok(stack[1].indexOf('id="field-contract"') < stack[1].indexOf('id="notice"'));
+  const css = readFileSync(new URL('../english-word-ranger/style.css', import.meta.url), 'utf8');
+  const layout = css.slice(css.indexOf('/* Portrait messages share natural flow:'));
+  assert.match(layout, /#field-messages\s*\{\s*display:\s*contents;/, 'existing absolute positions remain in landscape');
+  assert.match(layout, /@media\s*\(max-width:\s*720px\)\s*and\s*\(orientation:\s*portrait\)/);
+  assert.match(layout, /display:\s*flex;[\s\S]*flex-direction:\s*column;[\s\S]*gap:\s*8px;/);
+  assert.match(layout, /#field-messages\s*>\s*#boss-hud,\s*#field-messages\s*>\s*#field-contract,\s*#field-messages\s*>\s*#notice\s*\{\s*position:\s*static;\s*transform:\s*none;/);
+  assert.match(layout, /min-width:\s*0;\s*max-width:\s*100%;/);
+  assert.match(layout, /#field-messages\s+#boss-state\s*\{\s*display:\s*block;/);
+});

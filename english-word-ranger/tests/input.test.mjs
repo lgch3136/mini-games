@@ -150,7 +150,7 @@ async function fixture() {
   });
   const source = fs.readFileSync(new URL("../game.js", import.meta.url), "utf8")
     .replace(/import[\s\S]*?from\s+"[^"]+";/g, "");
-  await vm.runInContext(`(async () => { ${source}\nwindow.testGame = { begin, frame, world: () => world }; })()`, context);
+  await vm.runInContext(`(async () => { ${source}\nwindow.testGame = { begin, frame, updateHUD, world: () => world }; })()`, context);
   window.testGame.begin();
   let now = 100;
   window.testGame.frame(now);
@@ -265,4 +265,31 @@ test("ordinary Ranger page unload releases audio and resize resources once", asy
   f.window.send("pagehide", { persisted: false });
   assert.equal(f.lifecycle.destroys, 1); assert.equal(f.lifecycle.disconnects, 1);
   assert.equal(f.window.rangerDiagnostics().rendering.rafActive, false);
+});
+
+
+test("production HUD prioritizes living bosses and restores goals after defeat or checkpoint retry", async () => {
+  const f = await fixture(), hud = () => f.window.testGame.updateHUD();
+  hud();
+  assert.equal(f.get("field-contract").hidden, false);
+  assert.equal(f.get("boss-hud").hidden, true);
+  Object.assign(f.world.boss, { active: true, hp: 20, maxHp: 40, phase: "telegraph", attack: "mortar", exposed: false });
+  hud();
+  assert.equal(f.get("field-contract").hidden, true);
+  assert.equal(f.get("boss-hud").hidden, false);
+  assert.equal(f.get("boss-health").style.width, "50.0%");
+  assert.equal(f.get("boss-state").textContent, "空袭预备 · 离开标记");
+  f.world.boss.hp = 0;
+  hud();
+  assert.equal(f.get("field-contract").hidden, false);
+  assert.equal(f.get("boss-hud").hidden, true);
+  f.world.boss.hp = 20;
+  hud();
+  assert.equal(f.get("field-contract").hidden, true);
+  f.get("pause-btn").send("click");
+  f.get("restart-btn").send("click");
+  hud();
+  assert.notEqual(f.window.testGame.world(), f.world);
+  assert.equal(f.get("field-contract").hidden, false);
+  assert.equal(f.get("boss-hud").hidden, true);
 });

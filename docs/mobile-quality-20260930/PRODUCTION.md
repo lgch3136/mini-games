@@ -41,3 +41,7 @@ Two new production resize regressions were added, and the full suite passes559/5
 The next focused correction protects Apex/Strike failure-text contrast, lifts Fury's failure alert out of the isolated arena layer, and fixes Typebound coach contrast, narrow header overlap and short-landscape keyboard placement. The workbench forwards its build tag to game HTML URLs, preventing stale entry pages during rapid verification. Per-game live evidence and remaining boundaries are tracked in [BROWSER-QA.md](BROWSER-QA.md).
 
 The same focused bundle also keeps Flappy's portrait flight world centered in short landscape with essential controls outside the narrow canvas, and raises Snake's landscape direction/boost targets to44px in its normal footer flow. This preserves the existing flight pace and keeps touch buttons off the board. All remaining device and timing-sensitivity boundaries still apply.
+
+## Bounded review completed across15 entries
+
+The review reached all15 entries: ten2D titles had live input/state-transition coverage, and five3D titles had disabled-WebGL fallback coverage only. r4 visual corrections were rechecked successfully. The remaining scoped correction stacks Ranger's portrait goal/notice/boss messages, gives a living boss priority while preserving goal progress, and makes Miner's dynamite target44px. Boss entry/defeat/retry visibility has a production-HUD regression; an actual live boss victory is not claimed. Final deployed pixel checks are recorded in BROWSER-QA.md.

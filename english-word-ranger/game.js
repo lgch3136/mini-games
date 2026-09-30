@@ -259,11 +259,13 @@ function handleEvents() {
 }
 function updateHUD() {
   const p = world.player;
+  const bossActive = world.boss.active && world.boss.hp > 0;
   const goals = world.contract.goals(), nextGoal = goals.find(g => !world.contract.claimed.has(g.id));
   setText("field-objective", nextGoal ? `${world.contract.claimed.size}/3 战术目标 · ${nextGoal.label} ${Math.min(nextGoal.value, nextGoal.target)}/${nextGoal.target}` : "✓ 三项战术目标已达成");
   setText("field-coach", fieldCoach(world));
   setText("roll-ready", p.rollCooldown > 0 ? `翻滚 ${p.rollCooldown.toFixed(1)}s` : "翻滚就绪");
-  $("field-contract").hidden = screen === "menu";
+  // During boss combat the attack cue takes priority over supplemental goals.
+  $("field-contract").hidden = screen === "menu" || bossActive;
   const healthKey = `${p.hp}/${world.maxHp}`;
   if (lastHealth !== healthKey) {
     $("health").replaceChildren(
@@ -316,7 +318,7 @@ function updateHUD() {
       );
     lastCombo = world.combo;
   }
-  $("boss-hud").hidden = !world.boss.active || world.boss.hp <= 0;
+  $("boss-hud").hidden = screen === "menu" || !bossActive;
   if (world.boss.active) {
     $("boss-health").style.width =
       Math.max(0, (world.boss.hp / world.boss.maxHp) * 100).toFixed(1) + "%";

@@ -1,8 +1,8 @@
 # Live browser QA checkpoint · 2026-09-30
 
-Updated 15:00 UTC. Cloud Chrome browser. Public workbench: <https://lgch3136.github.io/mini-games/tests/mobile-quality-browser.html?build=11ceb608>. Production commits observed: initial `1ce991fd4555ba013326c63920521b344f519555`, then corrected `11ceb6081f3c460ff5ea24aa60518d4b03a932fe`.
+Updated 15:14 UTC. Cloud Chrome browser. Public workbench: <https://lgch3136.github.io/mini-games/tests/mobile-quality-browser.html?build=3e19d9b6>. Production commits observed: initial `1ce991fd4555ba013326c63920521b344f519555`, then corrected `11ceb6081f3c460ff5ea24aa60518d4b03a932fe`, then visual-fix release `3e19d9b6c03a486d9dcf6edeaabcd48799f8a82d`.
 
-**Coverage is not a blanket pass.** At this checkpoint 8 two-dimensional titles have meaningful live input/state coverage, and 5 WebGL titles have fallback-only coverage: 13/15 inspected beyond a menu. Beat and Ranger remain pending. Five WebGL games cannot run in this browser: console explicitly reports `GL_VENDOR = Disabled`, `GL_RENDERER = Disabled`. No graphics/security settings were bypassed.
+**Coverage is not a blanket pass.** All 10 two-dimensional titles now have meaningful live input/state coverage, and 5 WebGL titles have fallback-only coverage: 15/15 inspected beyond a menu. This does not mean every level, success route or input method passed. Five WebGL games cannot run in this browser: console explicitly reports `GL_VENDOR = Disabled`, `GL_RENDERER = Disabled`. No graphics/security settings were bypassed.
 
 The initial workbench's borders made nominal 390×844 / 320×568 / 844×390 into 388×842 / 318×566 / 842×388. Release r3 corrected this; the new 844×390 content dimensions were directly measured through the rendered HTML. Sizes below use the corrected intended dimensions unless marked initial.
 
@@ -10,33 +10,35 @@ Screenshots were visually inspected at the states described below. No standalone
 
 | Game | Actual input/state evidence | Layout evidence and open boundary |
 |---|---|---|
-| Word Bomber | Start, bomb produced real life loss, pause/resume, resize | r3 screenshot recheck at all3 sizes: fixed landscape separates left HUD, central maze, right controls; portrait retained. No full round/supply completion in browser |
-| Word Miner | Initial live cast earned113, aim guide visible, pause/resume, smaller resize | Initial two portrait screens readable; landscape pause visible. No full contract/shop; active landscape still needs further look |
-| Word Breaker | Launch→recall charge1→0→aim line→relaunch, score and lost life. r3 landscape brick hit/reflection and return to portrait preserve destroyed brick/score | r3 all3 sizes: brick boxes no longer overlap, HUD clears top row. Shorter landscape field is brisk; multi-second interaction latency cannot certify human reaction balance. No whole level clear |
-| Thunder Fighter | Dash visibly enters7s cooldown, natural failure results/medal, Retry resets100HP/0score, pause/resume | Initial all3 sizes readable. No boss/refit completion; no physical simultaneous drag/fire test |
-| Typebound | Eight real words committed with normal typing/Space; one deliberate wrong key then correction; pause mid-word; truthful97.9%,2-star result; Retry resets0/8 | Both portraits usable, result scrolls. Open defects awaitingr4: low-contrast coach,320px header brand/button overlap,844×390 typing card/keyboard clipped after Retry/rotation |
-| Echo Ring |90s trial starts, natural collision failure at13s gives0 stars, Retry resets3 shields/01:30, pause works. Keyboard fire/dash attempt made but success not separately established before failure |All3 sizes visually checked;320×568 play/result screenshots. No90s completion |
-| Apex Drive |Renderer fails as expected in disabled-WebGL browser; visible fallback and return-to-hub actually works |All3 sizes. Open defect awaitingr4: dark-on-dark explanation. No3D gameplay pass |
-| Signal Strike |Visible WebGL requirement / return fallback; expected constructor failure |All3 sizes readable. No3D gameplay pass |
-| Moonblade |Visible foreground WebGL/resource failure and return link; measured return target46px high |All3 sizes readable. No3D gameplay pass |
-| Word Fury |Start changes to loading-failed; WebGL error text exists |All3 sizes show failure layer behind menu. Open stacking defect awaitingr4. No3D gameplay pass |
-| Temple Dash |Clear unavailable-WebGL panel; Reload returns to actionable failure; return-to-hub actually works |All3 sizes readable and buttons reachable. No3D gameplay pass |
-| Flappy Word |Actual takeoff/collision, truthful1-crossing/0-answer failure, Retry resets3 hearts/0progress, pause/resume |Portrait clear. Open landscape defect: narrow wrapper clips HUD controls; a fixed-world side-panel correction is prepared forr4. Glide hand-feel unverified |
-| Word Snake |Five-word start, actual direction change, pause/resume, rotation pauses with preserved-board explanation, return-to-menu |All3 sizes readable. Landscape direction targets measured34px; enlargement to44px is prepared forr4. No full basket completion |
-| Word Beat |Pending |No live acceptance yet; audio calibration requires listening |
-| Word Ranger |Pending |No live acceptance yet |
+| Word Bomber | Start, bomb produced real life loss, pause/resume, resize | r3 screenshot recheck at all three sizes: fixed landscape separates left HUD, central maze, right controls; portrait retained. No full round/supply completion in browser |
+| Word Miner | Initial live cast earned 113; aim guide, pause/resume and smaller resize work. Active landscape cast, natural timer-expiry result, then Retry reset to 75 seconds / 0 score / fresh word | All three sizes observed. Landscape dynamite target measured 42px; scoped 44px minimum prepared for the final batch. No successful contract/shop completion |
+| Word Breaker | Launch→recall charge1→0→aim line→relaunch, score and lost life. r3 landscape brick hit/reflection and return to portrait preserve destroyed brick/score | r3 all three sizes: brick boxes no longer overlap, HUD clears top row. Shorter landscape field is brisk; multi-second interaction latency cannot certify human reaction balance. No whole level clear |
+| Thunder Fighter | Dash visibly enters 7s cooldown, natural failure results/medal, Retry resets 100 HP / 0 score, pause/resume | Initial all three sizes readable. No boss/refit completion; no physical simultaneous drag/fire test |
+| Typebound | Eight real words committed with normal typing/Space; one deliberate wrong key then correction; pause mid-word; truthful 97.9%, 2-star result; Retry resets 0/8 | r4: coach and 320px header fixed; full landscape typing card visible after another real 8-word completion / Retry / rotation, then normal typing and Space committed another word. Portrait keyboard used successfully; desktop fine-pointer CSS intentionally hides the wide keyboard, so coarse-pointer landscape remains unverified |
+| Echo Ring |90s trial starts, natural collision failure at 13s gives 0 stars, Retry resets 3 shields/01:30, pause works. Keyboard fire/dash attempt made but success not separately established before failure |All three sizes visually checked;320×568 play/result screenshots. No 90s completion |
+| Apex Drive |Renderer fails as expected in disabled-WebGL browser; visible fallback and return-to-hub actually works |r4 all three sizes: explanation now clearly readable. No 3D gameplay pass |
+| Signal Strike |Visible WebGL requirement / return fallback; expected constructor failure |All three sizes readable. No 3D gameplay pass |
+| Moonblade |Visible foreground WebGL/resource failure and return link; measured return target 46px high |All three sizes readable. No 3D gameplay pass |
+| Word Fury |Start changes to loading-failed; WebGL error text exists |r4 all three sizes: failure layer now foreground; its return link actually reaches the hub. No 3D gameplay pass |
+| Temple Dash |Clear unavailable-WebGL panel; Reload returns to actionable failure; return-to-hub actually works |All three sizes readable and buttons reachable. No 3D gameplay pass |
+| Flappy Word |Actual takeoff/collision, truthful 1-crossing / 0-answer failure, Retry resets 3 hearts / 0 progress, pause/resume |r4 all three sizes: portrait flight centered with separate landscape panels; hint/sound/pause each measured 44×44 and inside the viewport. Takeoff→pause and portrait restoration work. Sustained glide hand-feel unverified |
+| Word Snake |Five-word start, actual direction change, pause/resume, rotation pauses with preserved-board explanation, return-to-menu and new start reset 3 hearts / 0 words |r4 landscape direction targets measured 44×44, sit below the board, and accept input; portrait restoration works. No full basket completion |
+| Word Beat | Selected 4K, started song, paused/resumed, sent normal lane keys, observed moving notes, natural 20-miss failure and weakest-lane advice; Retry and pause work | Small portrait play, tall portrait result and landscape play/result captured. Result scroll reaches Retry. No full practice-song completion or audio/calibration listening |
+| Word Ranger | Started mission, normal grenade input changed count 3→2, paused, checkpoint retry restored 3; jump/roll keys sent but their individual outcome not separately established | All three sizes rendered. Portrait tactical card overlaps the opening notice; scoped flow-layout fix pending. No mission victory, boss UI or physical dual-thumb test |
 
 ## Confirmed defects and disposition
 
-1. Bomber landscape mission/build text covered maze; fixed and rechecked live inr3
-2. Breaker resized brick positions without corresponding complete-box reflow; rows overlapped, and landscape HUD covered top bricks; fixed and rechecked live inr3. Two new production regression tests, full local559/559 at that revision
-3. Apex failure explanation inherits dark text; a scoped high-contrast fix is implemented, deployment/recheck pending
-4. Fury failure alert remains behind out-of-arena menu; the scoped fix moves the alert to body to escape stacking context, deployment/recheck pending
-5. Typebound coach contrast,320header overlap, and short-landscape grid placement; scoped CSS fixes are implemented, deployment/recheck pending
+1. Bomber landscape mission/build text covered maze; fixed and rechecked live in r3
+2. Breaker resized brick positions without corresponding complete-box reflow; rows overlapped, and landscape HUD covered top bricks; fixed and rechecked live in r3. Two new production regression tests, full local 559/559 at that revision
+3. Apex failure explanation inherited dark text; high-contrast fix rechecked live at all three sizes in r4
+4. Fury failure alert was behind the menu; foreground alert and usable return link rechecked live in r4
+5. Typebound coach contrast, 320px header overlap, and short-landscape typing-card placement fixed and rechecked in r4. Clarification: the wide on-screen keyboard is intentionally hidden for this desktop fine-pointer browser; its absence alone is not a mobile clipping defect
 
-6. Flappy short-landscape wrapper clipped essential controls; scoped portrait-world/side-panel fix prepared forr4
-7. Snake landscape direction targets were34px with no coarse-pointer enlargement;44px in-flow controls prepared forr4
+6. Flappy short-landscape wrapper clipped essential controls; portrait-world side panels and 44px control bounds rechecked live in r4
+7. Snake landscape direction targets were 34px; enlarged 44px in-flow controls measured and rechecked live in r4
+8. Ranger portrait tactical card overlaps the opening instruction notice; scoped normal-flow message stack pending
+9. Miner landscape dynamite target is 42px; scoped 44px minimum pending
 
 ## Next bounded checks
 
-Recheck the pending visual fixes after verified publication. Complete remaining titles through understandable start, one real input, pause/resume, retry or appropriate result, and screenshots at the three sizes. Do not spend unbounded tool-latency time attempting timing-sensitive full clears. Record unverified success routes and physical-device/audio limits explicitly.
+Only the Ranger portrait message stack and Miner 44px dynamite correction remain to be rechecked after their final publication. All titles have now received bounded coverage; do not turn those partial paths into a full-game success claim. Do not spend unbounded tool-latency time attempting timing-sensitive full clears. Record unverified success routes and physical-device/audio limits explicitly.
