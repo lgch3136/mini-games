@@ -120,6 +120,10 @@ export class Strike {
     this.hits = 0;
     this.combo = 0;
     this.comboClock = 0;
+    this.interrupts = 0;
+    this.damageTaken = 0;
+    this.lastDamage = 0;
+    this.shieldRecovering = false;
     this.p = {
       x: 0,
       y: 0,
@@ -261,6 +265,14 @@ export class Strike {
         hit.hp -=
           w.damage * (p.weapon === 1 ? clamp(1 - near / 60, 0.45, 1) : 1);
         hit.stun = 0.12;
+        // A telegraph is an interruptible commitment, not a homing attack.
+        if (hit.wind > 0 && hit.kind !== "boss") {
+          hit.wind = 0;
+          hit.timer = Math.max(hit.timer, 1.1);
+          hit.lock = null;
+          this.interrupts++;
+          this.events.push({ type: "interrupt", x: hit.x, y: hit.y, z: hit.z });
+        }
         any = true;
         if (hit.hp <= 0) this.kill(hit);
       }
@@ -304,6 +316,8 @@ export class Strike {
     const p = this.p;
     if (p.invuln > 0 || p.dash > 0 || this.dead) return;
     damage *= this.easy ? 0.55 : 1;
+    this.lastDamage = this.time;
+    this.damageTaken += damage;
     const shield = Math.min(p.shield, damage);
     p.shield -= shield;
     p.hp = Math.max(0, p.hp - (damage - shield));
@@ -317,19 +331,20 @@ export class Strike {
   }
   enemyShot(e, d, spread = 0) {
     const o = { x: e.x, y: e.y, z: e.z };
-    const dy = this.p.y + 1 - o.y,
-      dx = this.p.x - o.x,
-      dz = this.p.z - o.z,
-      len = hypot(dx, dy, dz),
+    const target = e.lock || { x: this.p.x, y: this.p.y + 1, z: this.p.z };
+    const dy = target.y - o.y,
+      dx = target.x - o.x,
+      dz = target.z - o.z,
+      len = Math.max(0.001, hypot(dx, dy, dz)),
       a = Math.atan2(dx, dz) + spread;
     const speed = e.kind === "boss" ? 13 : 11;
     this.bullets.push({
       x: o.x,
       y: o.y,
       z: o.z,
-      vx: Math.sin(a) * speed,
+      vx: Math.sin(a) * speed * hypot(dx, dz) / len,
       vy: (dy / len) * speed,
-      vz: Math.cos(a) * speed,
+      vz: Math.cos(a) * speed * hypot(dx, dz) / len,
       life: 5,
       damage: d,
       r: e.kind === "boss" ? 0.24 : 0.13,
@@ -350,6 +365,8 @@ export class Strike {
       (input.lookLeft ? 1.7 * dt : 0);
     p.pitch = clamp(p.pitch - (input.lookY || 0), -1.05, 1.05);
     p.kick = damp(p.kick, 0, 13, dt);
+    this.shieldRecovering = this.time - this.lastDamage >= 4 && p.shield < 50;
+    if (this.shieldRecovering) p.shield = Math.min(50, p.shield + 9 * dt);
     p.cooldown = Math.max(0, p.cooldown - dt);
     p.invuln = Math.max(0, p.invuln - dt);
     p.dashCD = Math.max(0, p.dashCD - dt);
@@ -436,6 +453,7 @@ export class Strike {
           if (e.wind <= 0 && dist < 2) this.hurt(16);
         } else if (dist < 1.75 && sees) {
           e.wind = 0.48;
+          e.lock = { x: p.x, y: p.y + 1, z: p.z };
           this.events.push({ type: "warn" });
         } else if (sees) {
           const a = Math.atan2(dx, dz);
@@ -488,7 +506,12 @@ export class Strike {
             e.shot = 0.2;
           }
         } else if (e.timer <= 0 && sees) {
-          e.wind = e.kind === "boss" ? 0.75 : 0.55;
+          // Cap simultaneous ranged tells. Queued enemies keep moving and
+          // acquire a fresh visible target when their own windup begins.
+          const charging = this.enemies.filter(other => !other.dead && other !== e && other.kind !== "spider" && other.wind > 0).length;
+          if (charging >= 2) { e.timer = 0.18; continue; }
+          e.wind = e.kind === "boss" ? 0.85 : 0.65;
+          e.lock = { x: p.x, y: p.y + 1, z: p.z };
           this.events.push({ type: "warn" });
         }
         if (e.kind === "boss" && sees)
@@ -571,6 +594,9 @@ export class Strike {
       checkpoint: this.checkpoint,
       relays: [...this.relays],
       kills: this.kills,
+      interrupts: this.interrupts,
+      damageTaken: this.damageTaken,
+      shieldRecovering: this.shieldRecovering,
       shots: this.shots,
       hits: this.hits,
       remaining: this.remaining,

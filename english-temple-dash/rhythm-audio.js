@@ -1,5 +1,5 @@
-import { WindScore } from "./sound.js?v=20260905-sonic";
-import { makeChart } from "./rhythm.mjs?v=20260905-sonic";
+import { WindScore } from "./sound.js?v=20260905-sonic&mobile=20260930-quality-r2";
+import { makeChart } from "./rhythm.mjs?v=20260905-sonic&mobile=20260930-quality-r2";
 
 export function scoreEvents(track) {
   const { beat, leadIn } = makeChart(track);

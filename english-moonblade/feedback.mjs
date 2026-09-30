@@ -35,7 +35,14 @@ export class Feedback {
   emit(e, reduced = false) {
     const x = e.x || 0, y = e.y || 0, dir = e.dir || 1;
     const count = (n) => Math.ceil(n * (reduced ? 0.4 : 1));
-    if (["hit", "kill", "break", "deflect", "impact"].includes(e.type)) {
+    if (e.type === "riposte") {
+      // A small radial punctuation inside the existing fixed particle/ring pools.
+      for (let i = 0; i < count(10); i++) {
+        const a = i / count(10) * Math.PI * 2;
+        this.spawn(x, y, Math.cos(a) * 3.2, Math.sin(a) * 3.2, "mote", "#fff2b0", .033, .3);
+      }
+      if (!reduced) this.ring(x, y, "#fff2b0", .85);
+    } else if (["hit", "kill", "break", "deflect", "impact"].includes(e.type)) {
       const wood = e.type === "break", cool = e.type === "deflect";
       const color = cool ? "#baf8ff" : wood ? "#d9ac71" : "#ffd7a1";
       for (let i = 0; i < count(wood ? 22 : e.type === "kill" ? 25 : 15); i++) {

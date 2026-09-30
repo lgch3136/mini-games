@@ -173,6 +173,7 @@ export class World {
     this.load(stage);
   }
   load(stage, checkpoint = 0) {
+    if (!this.chapterSkills || this.stage !== stage) this.chapterSkills = { started: this.time, damage: 0, deflects: 0, ripostes: 0, retries: 0 };
     this.stage = stage;
     this.level = STAGES[stage];
     this.checkpoint = checkpoint;
@@ -209,6 +210,8 @@ export class World {
       jumpBuffer: 0,
       dash: 0,
       dashCool: 0,
+      focus: 0,
+      deflectCool: 0,
       wallKick: 0,
       attackBuffer: 0,
       attack: null,
@@ -281,6 +284,7 @@ export class World {
   }
   retry() {
     this.deaths++;
+    this.chapterSkills.retries++;
     this.load(this.stage, this.checkpoint);
   }
   next() {
@@ -356,6 +360,8 @@ export class World {
   hurt(damage, dir) {
     const p = this.player;
     if (p.inv > 0 || this.state !== "playing") return false;
+    this.chapterSkills.damage += damage;
+    p.focus = 0;
     p.hp = Math.max(0, p.hp - damage);
     p.inv = this.easy ? 1.4 : 1.0;
     p.stun = 0.17;
@@ -419,7 +425,7 @@ export class World {
     p.px = p.x;
     p.py = p.y;
     const edge = (k) => !!input[k + "Pressed"] || (!!input[k] && !p.held[k]);
-    for (const k of ["inv", "stun", "dashCool", "wallMemory", "comboLife"])
+    for (const k of ["inv", "stun", "dashCool", "wallMemory", "comboLife", "focus", "deflectCool"])
       if (k === "comboLife") this.comboLife = Math.max(0, this.comboLife - dt);
       else p[k] = Math.max(0, p[k] - dt);
     if (!this.comboLife) this.combo = 0;
@@ -546,20 +552,34 @@ export class World {
         for (const shot of this.projectiles)
           if (shot.life > 0 && shot.owner === "enemy" && overlap(r, { x: shot.x - shot.w / 2, y: shot.y - shot.h / 2, w: shot.w, h: shot.h })) {
             shot.life = 0;
-            this.emit("deflect", { x: shot.x, y: shot.y, dir: p.facing });
             this.score += 15;
+            this.chapterSkills.deflects++;
+            const focusGranted = p.deflectCool <= 0;
+            const energyBefore = p.energy;
+            if (focusGranted) {
+              p.energy = Math.min(10, p.energy + 1);
+              p.focus = 2.4;
+              p.deflectCool = .25;
+            }
+            this.emit("deflect", { x: shot.x, y: shot.y, dir: p.facing, focusGranted, energyGain: p.energy - energyBefore });
           }
       }
       if (r)
         for (const e of this.enemies)
           if (!e.dead && overlap(r, box(e)) && !a.hits.has(e.id)) {
             a.hits.add(e.id);
-            this.hitEnemy(
+            const riposte = p.focus > 0 && !(e.kind === "boss" && ["tell", "rush", "sweep", "leap"].includes(e.state));
+            const struck = this.hitEnemy(
               e,
-              a.kind === "dive" ? 3 : [2, 2, 3][a.chain],
+              (a.kind === "dive" ? 3 : [2, 2, 3][a.chain]) + (riposte ? 1 : 0),
               p.facing,
               a.id,
             );
+            if (struck && riposte) {
+              p.focus = 0;
+              this.chapterSkills.ripostes++;
+              this.emit("riposte", { x: e.x, y: e.y + 1, dir: p.facing });
+            }
           }
       const end = a.kind === "dive" ? 85 : [17, 20, 26][a.chain];
       if (a.frame >= end) {
@@ -810,6 +830,7 @@ export class World {
       collected: this.collected,
       props: this.props.map(({ id, x, y, broken }) => ({ id, x, y, broken })),
       deaths: this.deaths,
+      chapterSkills: { ...this.chapterSkills },
       player: {
         x: p.x,
         y: p.y,
@@ -832,6 +853,7 @@ export class World {
             }
           : null,
         dash: p.dash,
+        focus: p.focus,
         inv: p.inv,
       },
       enemies: this.enemies

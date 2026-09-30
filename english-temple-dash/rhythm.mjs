@@ -120,6 +120,10 @@ export class RhythmWorld extends World {
   constructor(options = {}) {
     super(options);
     this.rhythm = true;
+    this.repeatSong = options.repeatSong !== false;
+    this.cleared = false;
+    this.timingErrors = [];
+    this.gestureStats = {};
     this.track = TRACKS.find((t) => t.id === options.track) || TRACKS[0];
     this.chart = makeChart(this.track, this.difficulty);
     this.notes = this.chart.notes.map((n) => ({
@@ -310,6 +314,10 @@ export class RhythmWorld extends World {
     n.status = "hit";
     n.grade = grade;
     this.judgements[grade]++;
+    this.timingErrors.push(error / this.speedScale);
+    if (this.timingErrors.length > 256) this.timingErrors.shift();
+    const gesture = this.gestureStats[n.cue] ||= { total: 0, miss: 0 };
+    gesture.total++;
     this.judged++;
     this.cleanRows++;
     this.combo++;
@@ -362,6 +370,8 @@ export class RhythmWorld extends World {
     if (n.status === "miss" || n.status === "hit") return;
     n.status = "miss";
     this.judgements.miss++;
+    const gesture = this.gestureStats[n.cue] ||= { total: 0, miss: 0 };
+    gesture.total++; gesture.miss++;
     this.judged++;
     this.hits++;
     const saved = this.capsules > 0;
@@ -453,6 +463,13 @@ export class RhythmWorld extends World {
     const sector = Math.floor(this.distance / SECTOR_LENGTH);
     if (sector !== this.sector) this.sector = sector;
     if (local >= this.chart.duration) {
+      if (!this.repeatSong) {
+        this.status = "complete";
+        this.cleared = true;
+        this.clearInput();
+        this.emit("songComplete");
+        return;
+      }
       this.cycle++;
       this.cursor = 0;
       this.spawnCursor = 0;
@@ -481,6 +498,9 @@ export class RhythmWorld extends World {
     return {
       ...super.diagnostics(),
       mode: "rhythm",
+      repeatSong: this.repeatSong,
+      cleared: this.cleared,
+      timingSamples: this.timingErrors.length,
       track: this.track.id,
       scoreTime: this.scoreTime,
       songTime:

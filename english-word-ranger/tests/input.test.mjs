@@ -4,6 +4,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 import { ActionLatch, pointerAim } from "../input.mjs";
 import * as engine from "../engine.mjs";
+import { fieldCoach, rememberRanger, storedMedal } from "../contracts.mjs";
 
 test("short action taps survive release and are consumed exactly once", () => {
   const latch = new ActionLatch();
@@ -129,18 +130,19 @@ async function fixture() {
     setWorld() {}
     async load() {}
   }
+  const lifecycle = { starts: 0, pauses: 0, destroys: 0, disconnects: 0 };
   class Soundtrack {
     constructor() { this.voices = new Map(); }
-    pause() {}
-    start() {}
+    pause() { lifecycle.pauses++; }
+    start() { lifecycle.starts++; }
     sound() {}
     setMuted() {}
-    destroy() {}
+    destroy() { lifecycle.destroys++; }
   }
   const context = vm.createContext({
-    ...engine, World, ActionLatch, pointerAim, Renderer, Soundtrack, document, window,
+    ...engine, World, ActionLatch, pointerAim, fieldCoach, rememberRanger, storedMedal, Renderer, Soundtrack, document, window,
     matchMedia: () => ({ matches: true, addEventListener() {} }),
-    ResizeObserver: class { observe() {} disconnect() {} },
+    ResizeObserver: class { observe() {} disconnect() { lifecycle.disconnects++; } },
     performance, setTimeout, clearTimeout,
     localStorage: { getItem() { return null; }, setItem() {} },
     requestAnimationFrame: () => 1,
@@ -153,7 +155,7 @@ async function fixture() {
   let now = 100;
   window.testGame.frame(now);
   return {
-    window, get, steps, world: window.testGame.world(),
+    window, document, lifecycle, get, steps, world: window.testGame.world(),
     tick(ms = 10) { window.testGame.frame(now += ms); },
     key(type, code) { window.send(type, { code }); },
   };
@@ -235,4 +237,32 @@ test("pause clears unconsumed taps before resuming", async () => {
   f.tick();
   assert.equal(f.world.metrics.jumps, 0);
   assert.equal(f.steps.some((input) => input.jumpPressed), false);
+});
+
+
+test("BFCache pagehide before visibilitychange preserves the run in resumable pause", async () => {
+  const f = await fixture();
+  f.key("keydown", "KeyD");
+  f.key("keydown", "KeyJ");
+  const time = f.world.time, starts = f.lifecycle.starts;
+  f.window.send("pagehide", { persisted: true });
+  assert.equal(f.window.rangerDiagnostics().screen, "paused");
+  assert.equal(f.window.rangerDiagnostics().rendering.rafActive, false);
+  assert.equal(f.lifecycle.destroys, 0); assert.equal(f.lifecycle.disconnects, 0);
+  f.document.hidden = true; f.document.send("visibilitychange");
+  f.document.hidden = false; f.window.send("pageshow", { persisted: true });
+  assert.equal(f.window.rangerDiagnostics().screen, "paused");
+  assert.equal(f.world.time, time); assert.equal(f.lifecycle.starts, starts);
+  assert.equal(f.window.rangerDiagnostics().input.fire, false);
+  assert.equal(f.window.rangerDiagnostics().input.x, 0);
+  f.get("resume-btn").send("click"); f.tick(); f.tick();
+  assert.equal(f.window.rangerDiagnostics().screen, "playing");
+  assert.ok(f.world.time > time); assert.equal(f.lifecycle.starts, starts + 1);
+  assert.equal(f.world.metrics.shots, 0);
+});
+test("ordinary Ranger page unload releases audio and resize resources once", async () => {
+  const f = await fixture();
+  f.window.send("pagehide", { persisted: false });
+  assert.equal(f.lifecycle.destroys, 1); assert.equal(f.lifecycle.disconnects, 1);
+  assert.equal(f.window.rangerDiagnostics().rendering.rafActive, false);
 });

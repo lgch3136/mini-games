@@ -5,7 +5,7 @@ import {
 } from "../shared/first-person/scene.mjs?v=20260918-play-r1";
 import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs";
 import { SectorBatch } from "./sector-batch.mjs?v=20260918-play-r1";
-import { GUARDRAIL } from "./world.mjs?v=20260918-play-r1";
+import { GUARDRAIL } from "./world.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
 import { TRAIL_LIFE } from "./tyre-trails.mjs";
 import { LightPool, loadLightTexture } from '../shared/light/pool.mjs?v=20260928-light-r1';
 import {

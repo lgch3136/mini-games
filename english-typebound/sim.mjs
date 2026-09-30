@@ -38,6 +38,7 @@ export class Journey {
     mode = "journey",
     seed = 1,
     review = [],
+    focusGoal = 0,
   }) {
     this.rng = new RNG(seed);
     this.seed = seed;
@@ -45,6 +46,7 @@ export class Journey {
     this.level = ["easy", "medium", "hard"].includes(level) ? level : "easy";
     this.pace = ["gentle", "steady", "swift"].includes(pace) ? pace : "gentle";
     this.mode = mode;
+    this.focusGoal = mode === "focus" && [8, 20].includes(Number(focusGoal)) ? Number(focusGoal) : 0;
     this.pool =
       mode === "review" && review.length
         ? review.map((v) => ({ en: v.en, zh: v.zh }))
@@ -176,7 +178,7 @@ export class Journey {
     const base = ENEMIES[route.kind],
       scale = 1 + Math.min(2, this.depth * 0.08);
     const maxHp =
-      this.mode === "review"
+      this.mode === "review" || this.focusGoal
         ? 100000
         : Math.round(base.hp * scale * (route.elite ? 1.2 : 1));
     this.enemy = {
@@ -386,6 +388,10 @@ export class Journey {
         this.event("sentence", { text: this.passage.en });
       }
     }
+    if (this.focusGoal && this.stats.words >= this.focusGoal) {
+      this.phase = "complete";
+      this.event("practiceComplete", { words: this.stats.words });
+    }
     if (this.phase === "combat") this.newWord();
   }
   damage(amount, canFinish) {
@@ -535,7 +541,7 @@ export class Journey {
     return true;
   }
   continue() {
-    if (this.phase !== "complete" || this.mode === "review") return false;
+    if (this.phase !== "complete" || this.mode === "review" || this.focusGoal) return false;
     this.depth++;
     this.phase = "map";
     this.routes = this.makeRoutes();
@@ -545,6 +551,7 @@ export class Journey {
     return JSON.parse(
       JSON.stringify({
         phase: this.phase,
+        focusGoal: this.focusGoal,
         depth: this.depth,
         chapter: this.chapter,
         mode: this.mode,

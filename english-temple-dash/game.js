@@ -1,3 +1,5 @@
+import { showStartupFailure } from "./startup.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { rhythmRecap, templeRecordKey } from "./recap.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   World,
   STEP,
@@ -5,11 +7,12 @@ import {
   biomeAt,
   clamp,
 } from "./engine.mjs?v=20260905-sonic";
-import { Renderer } from "./render-linear.js?v=20260930-polish-r1";
-import { WindScore } from "./sound.js?v=20260905-sonic";
-import { RhythmWorld, TRACKS, makeChart } from "./rhythm.mjs?v=20260905-sonic";
-import { RhythmScore } from "./rhythm-audio.js?v=20260905-sonic";
+import { Renderer } from "./render-linear.js?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { WindScore } from "./sound.js?v=20260905-sonic&mobile=20260930-quality-r2";
+import { RhythmWorld, TRACKS, makeChart } from "./rhythm.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { RhythmScore } from "./rhythm-audio.js?v=20260905-sonic&mobile=20260930-quality-r2";
 
+try {
 const $ = (id) => document.getElementById(id),
   canvas = $("game"),
   renderer = new Renderer(canvas),
@@ -33,7 +36,8 @@ const save = (key, value) => {
 };
 const recordAt = (key) => {
   try {
-    return JSON.parse(read(key, "null"));
+    const record = JSON.parse(read(key, "null"));
+    return record && Number.isFinite(record.score) && record.score >= 0 && Number.isFinite(record.distance) && record.distance >= 0 ? record : null;
   } catch {
     return null;
   }
@@ -108,14 +112,15 @@ function selectDifficulty() {
   updateBest();
 }
 function updateBest() {
-  const best = recordAt(
-    `${key}-${mode}-${mode === "rhythm" ? trackId : "run"}-${difficulty}-${speed}`,
-  );
-  text(
-    "best",
-    `${wordBank().length} 个项目单词${best ? (mode === "rhythm" ? ` · 最佳 ${best.score} 分` : ` · 最远 ${best.distance} m`) : " · 开始新的纪录"}`,
-  );
+  const repeatSong = $("session-select").value === "loop";
+  const options = { mode, track: trackId, difficulty, speed, repeatSong };
+  const recordKey = templeRecordKey(options);
+  const best = recordAt(recordKey) || (mode === "rhythm" && repeatSong ? recordAt(`${key}-${mode}-${trackId}-${difficulty}-${speed}`) : null);
+  const masteryKey = templeRecordKey({ ...options, mastery: true });
+  text("best", `${wordBank().length} 个项目单词${mode === "rhythm" && !repeatSong ? ` · 本曲 ${Math.max(0, Math.min(3, Number(read(masteryKey, "0")) || 0))}/3 星` : ""}${best ? (mode === "rhythm" ? ` · ${repeatSong ? "巡演" : "单曲"}最佳 ${best.score} 分` : ` · 最远 ${best.distance} m`) : " · 开始新的纪录"}`);
+  document.querySelector(".session-goals").textContent = repeatSong ? "完整曲目循环 · 累计分单独记录 · 随时结束查看成绩" : "★ 完成全曲　★ 85% 准确率　★ 95% 准确率";
 }
+
 function setupMode() {
   if (mode === "rhythm") rhythmAudio.load();
   document.querySelector(".menu-copy h2").textContent =
@@ -126,7 +131,7 @@ function setupMode() {
       : "穿过庭院、悬桥与矿道。稳走安全路线，或跃过机关，带走宝藏。";
   document.querySelector(".menu-footer").textContent =
     mode === "rhythm"
-      ? "完整曲目 · 组合动作 · 40 连击保护胶囊 · 项目词库"
+      ? "一曲收官 · 三星目标 · 组合动作 · 40 连击保护胶囊"
       : "线性匀速 · 跳跃取宝 · 分岔奖励 · 拼词补充护符";
   document
     .querySelectorAll("[data-mode]")
@@ -448,7 +453,7 @@ function finish() {
       distance: Math.floor(world.distance),
       score: Math.floor(world.score),
     },
-    recordKey = `${key}-${mode}-${mode === "rhythm" ? trackId : "run"}-${difficulty}-${world.speedScale}`;
+    recordKey = templeRecordKey({ mode, track: trackId, difficulty, speed: world.speedScale, repeatSong: world.repeatSong });
   const previous = recordAt(recordKey);
   if (
     !previous ||
@@ -528,6 +533,21 @@ function finish() {
         "每正确完成 6 拍获得一枚词印。按完整乐曲练习，逐步提高准确率。",
       );
   }
+  const recap = world.rhythm ? rhythmRecap(world) : null;
+  const earnedStars = recap?.stars || 0;
+  $("mastery-medal").hidden = earnedStars === 0;
+  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp`;
+  $("mastery-medal").alt = `${earnedStars} 星完成奖章`;
+  $("result-stars").hidden = !recap || world.repeatSong;
+  text("result-title", world.cleared ? "终章落定，远征完成。" : "这一程，留有回响。");
+  if (recap) {
+    text("result-stars", "★".repeat(recap.stars) + "☆".repeat(3 - recap.stars));
+    $("result-stars").setAttribute("aria-label", `${recap.stars} 星，完成全曲、85%准确率、95%准确率各一星`);
+    text("practice-advice", recap.advice);
+    text("retry-btn", world.cleared ? "再奏一次 · 挑战更稳的节拍 ↗" : "重练这首曲目 ↗");
+    const masteryKey = templeRecordKey({ mode, track: trackId, difficulty, speed: world.speedScale, repeatSong: world.repeatSong, mastery: true });
+    save(masteryKey, Math.max(Math.max(0, Math.min(3, Number(read(masteryKey, "0")) || 0)), recap.stars));
+  } else text("practice-advice", world.hits ? "下一程：先观察前方两排机关，保住生命比多拿一枚金币更重要。" : "路线已经很稳，试着跳跃收集高处宝藏。" );
   $("retry-btn").focus({ preventScroll: true });
 }
 function frame(now) {
@@ -566,7 +586,7 @@ function frame(now) {
     dropped++;
     accumulator %= STEP;
   }
-  if (world.status === "dead") {
+  if (world.status === "dead" || world.status === "complete") {
     finish();
     return;
   }
@@ -597,6 +617,7 @@ async function start(same = false) {
     words: wordBank(),
     track: trackId,
     offset: latency,
+    repeatSong: $("session-select").value === "loop",
   });
   uiCache = {};
   wordSignature = "";
@@ -703,6 +724,7 @@ $("song-select").replaceChildren(
     return o;
   }),
 );
+$("session-select").addEventListener("change", updateBest);
 $("song-select").value = trackId;
 $("song-select").addEventListener("change", () => {
   trackId = $("song-select").value;
@@ -874,7 +896,7 @@ const percentile = (list, n) =>
     ? [...list].sort((a, b) => a - b)[Math.floor((list.length - 1) * n)]
     : 0;
 window.templeDiagnostics = () => ({
-  build: "20260905-sonic",
+  build: "20260930-quality-r1",
   state,
   ...world.diagnostics(),
   seed,
@@ -908,3 +930,8 @@ ready = true;
 setupMode();
 $("start-btn").disabled = false;
 resize();
+
+} catch (error) {
+  showStartupFailure(document, error);
+  console.error("Temple Dash startup failed", error);
+}

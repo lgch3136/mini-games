@@ -1,4 +1,5 @@
-import { Journey, STEP } from "./sim.mjs?v=20260918-play-r1";
+import { practiceProgress, typingCoach, practiceAdvice } from "./practice.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { Journey, STEP } from "./sim.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   makeLexicon,
   safeReview,
@@ -6,8 +7,8 @@ import {
 } from "./content.mjs?v=20260918-play-r1";
 import { TypingInput } from "./input.mjs?v=20260918-play-r1";
 import { Stage, practiceMetrics } from "./focus-render.mjs?v=20260930-polish-r1";
-import { TypeAudio } from "./audio.mjs?v=20260918-play-r1";
-const VERSION = "20260928-light-r1";
+import { TypeAudio } from "./audio.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
+const VERSION = "20260930-quality-r1";
 const $ = (id) => document.getElementById(id);
 const read = (k, fallback) => {
   try {
@@ -98,6 +99,7 @@ function savePrefs() {
     meaning: $("meaning-toggle").checked,
     reduced: $("reduced").checked,
     saving: $("energy-saving").checked,
+    focusGoal: Number($("focus-goal").value),
   };
   save("typebound-prefs-v1", prefs);
 }
@@ -173,6 +175,7 @@ function begin(modeOverride) {
     mode,
     seed: seed[0],
     review: [...review.values()],
+    focusGoal: Number($("focus-goal").value),
   });
   stage.clear();
   perf.frames = 0;
@@ -181,6 +184,7 @@ function begin(modeOverride) {
   countWords();
   savePrefs();
   syncView();
+  if (journey.focusGoal) startRoom(journey.routes[0].id);
 }
 function startRoom(id) {
   if (!journey.enter(id)) return;
@@ -265,6 +269,7 @@ function persist(record = false) {
       level: journey.level,
       pace: journey.pace,
       mode: journey.mode,
+      focusGoal: journey.focusGoal,
       words: journey.stats.words,
       accuracy: journey.accuracy,
       wpm: journey.wpm,
@@ -584,6 +589,10 @@ function updateHUD() {
       g.spell
     ],
   );
+  const progress = practiceProgress(g);
+  set("practice-goal-label", progress.label);
+  $("practice-goal-fill").style.transform = `scaleX(${progress.fraction})`;
+  set("typing-coach", typingCoach(g));
   const metrics = practiceMetrics(g);
   set('wpm', metrics.wpm ?? '—');
   set('session-time', timeText(metrics.seconds));
@@ -604,7 +613,9 @@ function updateHUD() {
   set("enemy-name", e.name);
   set(
     "enemy-hp",
-    g.mode === "review"
+    g.focusGoal
+      ? `${g.stats.words} / ${g.focusGoal} 词`
+      : g.mode === "review"
       ? `${g.stats.words} / ${g.reviewTarget} 词`
       : `${Math.ceil(stage.displayEnemyHP ?? e.hp)} / ${e.maxHp}`,
   );
@@ -740,6 +751,15 @@ function renderResult() {
     signature = `${g.depth}/${g.phase}/${g.stats.words}/${endedReason}`;
   if (signature === resultSignature) return;
   resultSignature = signature;
+  const progress = practiceProgress(g);
+  const earnedStars = progress.stars;
+  $("mastery-medal").hidden = earnedStars === 0;
+  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp`;
+  $("mastery-medal").alt = `${earnedStars} 星完成奖章`;
+  $("practice-stars").hidden = !g.focusGoal;
+  set("practice-stars", "★".repeat(progress.stars) + "☆".repeat(3 - progress.stars));
+  $("practice-stars").setAttribute("aria-label", `${progress.stars} 星：完成目标、95%准确率、全程无错各一星`);
+  set("practice-advice", practiceAdvice(g));
   const win = g.phase === "complete",
     reviewDone = g.mode === "review" && win;
   set(
@@ -754,7 +774,9 @@ function renderResult() {
   );
   set(
     "result-title",
-    reviewDone
+    g.focusGoal && win
+      ? `这 ${g.focusGoal} 个词，写进记忆了。`
+      : reviewDone
       ? "遗落的字，重新记住了。"
       : win
         ? "九道书页，已被点亮。"
@@ -781,7 +803,7 @@ function renderResult() {
   }
   if (!seen.size)
     $("result-words").append(el("p", "下一次，从第一个字母开始。"));
-  $("continue").hidden = !win || g.mode === "review";
+  $("continue").hidden = !win || g.mode === "review" || !!g.focusGoal;
   $("result-review").disabled = !review.size;
   persist(true);
 }
@@ -798,6 +820,7 @@ function syncView() {
         : phase;
   const viewChanged = $("app").dataset.view !== view;
   $("app").dataset.view = view;
+  $("app").dataset.practiceTarget = journey?.focusGoal ? "true" : "false";
   $("app").dataset.chapter = menuMode
     ? "0"
     : String(Math.floor((journey?.depth || 0) / 3) % 3);
@@ -893,6 +916,7 @@ try {
   $("reduced").checked =
     prefs.reduced ?? matchMedia("(prefers-reduced-motion:reduce)").matches;
   $("energy-saving").checked = !!prefs.saving;
+  $("focus-goal").value = [0, 8, 20].includes(prefs.focusGoal) ? String(prefs.focusGoal) : "8";
   input = new TypingInput({
     input: $("typing-input"),
     active: () =>
@@ -908,6 +932,8 @@ try {
   createKeyboard();
   updatePreferences();
   countWords();
+  on($("warmup-start"), "click", () => { $("focus-goal").value = "8"; begin("focus"); });
+  on($("focus-goal"), "change", savePrefs);
   on($("start"), "click", () => begin());
   on($("review-start"), "click", () => begin("review"));
   on($("brand"), "click", (e) => {
@@ -929,7 +955,7 @@ try {
   on($("exit"), "click", () => endRun());
   on($("pause-exit"), "click", () => endRun());
   on($("result-menu"), "click", toMenu);
-  on($("again"), "click", () => begin());
+  on($("again"), "click", () => begin(journey?.mode));
   on($("result-review"), "click", () => begin("review"));
   on($("continue"), "click", () => {
     if (journey.continue()) {

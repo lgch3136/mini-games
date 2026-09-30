@@ -1,4 +1,4 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1&mobile=20260930-quality-r2";
 // Original 32-bar broken-beat arrangement; bounded audio engine shared with Ranger.
 export class FuryAudio extends Soundtrack {
   schedule() {
@@ -62,6 +62,7 @@ export class FuryAudio extends Soundtrack {
     const t = this.ctx.currentTime,
       tone = (f, d, v, type = "triangle", end = null, delay = 0) =>
         this.tone(f, t + delay, d, v, type, this.effects, end);
+    if (e.type === "lesson") [660, 830, 990].forEach((f, i) => tone(f, .18, .045, "sine", null, i * .07));
     if (e.type === "swing")
       this.hiss(
         t,

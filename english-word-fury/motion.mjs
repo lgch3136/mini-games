@@ -1,4 +1,4 @@
-import { clamp, lerp, total } from "./combat.mjs?v=20260918-play-r1";
+import { clamp, lerp, total } from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
 const PI = Math.PI;
 const smooth = (t) => {
   t = clamp(t, 0, 1);

@@ -415,8 +415,10 @@ function wordBank() {
 /* ---------------- 状态 ---------------- */
 const Game = {
   state: 'menu',
+  build: '20260930-quality-r1',
+  session: 'song', timingOffset: 0, timingErrors: [], laneMistakes: [0,0,0,0,0,0,0], completed: false,
   difficulty: 'medium',
-  keyMode: 7, scrollMul: 1.25, songId: 'joy', section: 0, currentSection: '',
+  keyMode: window.matchMedia?.('(pointer:coarse)').matches ? 4 : 7, scrollMul: 1.25, songId: 'joy', section: 0, currentSection: '',
   score: 0, lives: 100,
   capsules: 0,           // 每 15 连击 +1；把一次 MISS 转成 GOOD
   combo: 0, maxCombo: 0, comboAt: -Infinity,
@@ -458,6 +460,19 @@ function ensureAudioClock() {
   return Game.actx;
 }
 let sfxCtx = null, noiseBuf = null;
+const audioVoices = new Map();
+function trackVoice(source, nodes) {
+  audioVoices.set(source, nodes);
+  source.onended = () => { source.disconnect(); for (const node of nodes) node.disconnect(); audioVoices.delete(source); };
+}
+function stopVoices() {
+  for (const [source,nodes] of audioVoices) {
+    source.onended = null;
+    try { source.stop(); } catch {}
+    source.disconnect(); for (const node of nodes) node.disconnect();
+  }
+  audioVoices.clear();
+}
 function initSfx() { ensureAudioClock(); sfxCtx = Game.actx; }
 
 function playTone(freq, when, duration, volume, type = 'sine') {
@@ -469,6 +484,7 @@ function playTone(freq, when, duration, volume, type = 'sine') {
   gain.gain.exponentialRampToValueAtTime(Math.max(.0002, volume * .22), when + Math.min(.1, duration * .45));
   gain.gain.exponentialRampToValueAtTime(.0001, when + duration);
   osc.connect(gain); gain.connect(Game.master);
+  trackVoice(osc, [gain]);
   osc.start(when); osc.stop(when + duration + .02);
 }
 
@@ -504,7 +520,7 @@ function playPianoMidi(midi, when, duration, volume) {
     gain.gain.linearRampToValueAtTime(volume, when + .008);
     gain.gain.exponentialRampToValueAtTime(Math.max(.0002, volume * .38), Math.min(end - .02, when + .34));
     gain.gain.exponentialRampToValueAtTime(.0001, end);
-    source.connect(gain); gain.connect(Game.master); source.start(when); source.stop(end + .08);
+    source.connect(gain); gain.connect(Game.master); trackVoice(source, [gain]); source.start(when); source.stop(end + .08);
     return;
   }
   const freq = midiFrequency(midi);
@@ -553,6 +569,7 @@ function missSound() {
   const g = sfxCtx.createGain();
   g.gain.setValueAtTime(.075, t); g.gain.exponentialRampToValueAtTime(.0001, t + .12);
   src.connect(f); f.connect(g); g.connect(Game.master);
+  trackVoice(src, [f,g]);
   src.start(t);
 }
 
@@ -735,11 +752,14 @@ function buildChart(retryWord, seamless) {
 }
 
 function startGame() {
+  stopVoices();
   ensureAudioClock(); initSfx();
   LANES = Game.keyMode || 7;
   Game.scrollMul = Game.scrollMul || 1.25;
   Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0; Game.comboAt = -Infinity;
   Game.capsules = 0;
+  Game.timingErrors = []; Game.laneMistakes.fill(0); Game.completed = false;
+  Game.particles.length = Game.floaters.length = Game.pulses.length = 0;
   Game.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   Game.level = 1; Game.wordsDone = 0; Game.time = 0; Game.section = 0; Game.currentSection = '';
   Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
@@ -772,6 +792,8 @@ function nextChart() {
 
 /* ---------------- 判定 ---------------- */
 function now() { return Game.actx ? Game.actx.currentTime - Game.audioStart : 0; }
+// Calibration shifts judgment only. The accompaniment remains on its unmodified audio clock.
+function judgeNow() { return now() - Game.timingOffset; }
 
 function capsuleSound(earned) {
   if (!sfxCtx || Game.muted) return;
@@ -823,7 +845,7 @@ function judgeHit(lane) {
   if (lane == null || lane < 0 || lane >= LANES) return;
   Game.flashLane[lane] = 1;
   if (Game.state !== 'playing') return;
-  const t = now();
+  const t = judgeNow();
   const JW = judgeWindows();
   let best = null, bestD = Infinity;
   for (let i = firstPendingIndex(); i < Game.notes.length; i++) {
@@ -836,6 +858,8 @@ function judgeHit(lane) {
   if (!best || bestD > JW.good) { tapSound(false, lane); return; }
   best.judged = true;
   const offsetMs = Math.round((t - best.hitAt) * 1000);
+  Game.timingErrors.push(offsetMs);
+  if (Game.timingErrors.length > 256) Game.timingErrors.shift();
   let verdict, pts;
   if (bestD <= JW.perfect) { verdict = 'PERFECT'; pts = 300; Game.counts.perfect++; }
   else if (bestD <= JW.great) { verdict = 'GREAT'; pts = 200; Game.counts.great++; }
@@ -878,18 +902,25 @@ function breakHold(lane) {
   if (!note) return;
   note.holding = false; note.holdBroken = true;
   Game.activeHolds[lane] = null;
-  Game.combo = 0; Game.lives -= 6; Game.counts.miss++;
+  Game.combo = 0; Game.lives -= 6; Game.counts.miss++; Game.laneMistakes[lane]++;
   Game.judgement = { text: 'HOLD BREAK', timing: 'TOO EARLY', color: '#ff6688', until: Game.time + .52 };
   missSound();
   updateHud();
-  if (Game.lives <= 0) gameOver();
+  if (Game.lives <= 0 && Game.session !== "practice") gameOver();
+  else Game.lives = Math.max(1, Game.lives);
 }
 
 function updateHolds() {
-  const t = now();
+  if (Game.state !== "playing") return;
+  const t = judgeNow();
   for (let lane = 0; lane < LANES; lane++) {
     const note = Game.activeHolds[lane];
     if (!note) continue;
+    if (note.regrip) {
+      if (Game.heldLane[lane]) note.regrip = false;
+      else if (t < Game.regripUntil) continue;
+      else { breakHold(lane); continue; }
+    }
     if (t >= note.endAt - .035) {
       note.holding = false; note.holdComplete = true;
       Game.activeHolds[lane] = null;
@@ -904,7 +935,8 @@ function updateHolds() {
 }
 
 function scanMisses() {
-  const t = now();
+  if (Game.state !== "playing") return;
+  const t = judgeNow();
   const JW = judgeWindows();
   let changed = false;
   for (let i = firstPendingIndex(); i < Game.notes.length; i++) {
@@ -925,11 +957,13 @@ function scanMisses() {
       }
       n.missed = true;
       Game.counts.miss++;
+      Game.laneMistakes[n.lane]++;
       Game.combo = 0;
       Game.lives -= n.isLetter ? 8 : 4;
       Game.judgement = { text: 'MISS', color: '#ff6688', until: Game.time + .42 };
       missSound();
-      if (Game.lives <= 0) { gameOver(); return; }
+      if (Game.lives <= 0 && Game.session !== "practice") { gameOver(); return; }
+      Game.lives = Math.max(1, Game.lives);
     } else break;
   }
   if (changed) updateHud();
@@ -938,6 +972,7 @@ function scanMisses() {
   }
   const remaining = !!firstPendingNote();
   if (!remaining && t > Game.songEndAt) {
+    if (Game.session !== "endless") { Game.completed = true; gameOver(); return; }
     if (Game.word.progress < Game.word.en.length) {
       buildChart(true, true);
       showFeedback(`还差 ${Game.word.en.length - Game.word.progress} 个字母 · 继续!`);
@@ -946,12 +981,16 @@ function scanMisses() {
 }
 
 function gameOver() {
+  if (Game.state !== "playing") return;
   Game.state = 'over';
+  Game.lives = Math.max(0, Game.lives);
+  stopVoices();
+  Game.heldLane.fill(0); keyboardLanes.clear(); pointerLanes.clear();
   Game.actx?.suspend().catch(() => {});
   Game.activeHolds.fill(null);
   $id('word-bar').classList.add('hidden');
   $id('over').classList.remove('hidden');
-  const key = 'word-beat-highscore-' + Game.difficulty;
+  const key = `word-beat-highscore-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
   let high = 0;
   try {
     high = Number(localStorage.getItem(key) || 0);
@@ -960,12 +999,40 @@ function gameOver() {
   const tn = totalNotes();
   const acc = tn ? Math.round(((Game.counts.perfect + Game.counts.great * .7 + Game.counts.good * .35) / tn) * 100) : 0;
   $id('over-kicker').textContent = `第${Game.level}谱 · BPM ${Game.bpm} · 准确率 ${safe(acc, 0)}%`;
-  $id('over-title').textContent = Game.score >= high ? '新纪录！' : '再来一局？';
+  $id('over-title').textContent = Game.completed ? '完整演出，落下最后一拍' : Game.score >= high ? '留下了新的纪录' : '再来一次，会更从容';
   $id('over-stats').innerHTML =
     `<div><span>本局得分</span><b>${safe(Game.score, 0)}</b></div>` +
     `<div><span>最高连击</span><b>${safe(Game.maxCombo, 0)}</b></div>` +
     `<div><span>PERFECT</span><b>${safe(Game.counts.perfect, 0)}</b></div>` +
     `<div><span>MISS</span><b>${safe(Game.counts.miss, 0)}</b></div>`;
+  const recap = performanceRecap();
+  $id('mastery-medal').hidden = recap.stars === 0;
+  $id('mastery-medal').src = `../shared/mobile-art/medal-${['bronze','bronze','silver','gold'][recap.stars]}.webp`;
+  $id('mastery-medal').alt = `${recap.stars} 星完成奖章`;
+  $id('result-stars').textContent = '★'.repeat(recap.stars) + '☆'.repeat(3 - recap.stars);
+  $id('result-advice').textContent = recap.advice;
+  $id('result-timing').textContent = recap.samples >= 12 ? `最近 ${recap.samples} 次命中 · ${recap.bias > 0 ? '偏晚' : '偏早'}中位数 ${Math.abs(recap.bias)} ms` : '再多演奏几拍，就能看到稳定的时差分析';
+  $id('retry-btn').textContent = Game.completed ? '同曲再奏' : '再试这首曲目';
+  try {
+    const masteryKey = `word-beat-mastery-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
+    localStorage.setItem(masteryKey, String(Math.max(Math.max(0, Math.min(3, Number(localStorage.getItem(masteryKey)) || 0)), recap.stars)));
+  } catch {}
+  $id('retry-btn').focus?.({ preventScroll: true });
+}
+function performanceRecap() {
+  const notes = totalNotes(), accuracy = notes ? (Game.counts.perfect + Game.counts.great * .7 + Game.counts.good * .35) / notes * 100 : 0;
+  const errors = Game.timingErrors.filter(Number.isFinite).slice().sort((a,b) => a-b);
+  const bias = errors.length ? errors[Math.floor(errors.length / 2)] : 0;
+  const spreads = errors.map((v) => Math.abs(v-bias)).sort((a,b)=>a-b), spread = spreads[Math.floor(spreads.length/2)] || 0;
+  const stars = Game.completed ? 1 + Number(accuracy >= 85) + Number(accuracy >= 95) : 0;
+  let advice = '先用 4K 与宽判定，盯住发光判定线；长条需要一直按到尾端。';
+  if (errors.length >= 12 && spread < 65 && Math.abs(bias) > 25)
+    advice = `你这次稳定${bias > 0 ? '偏晚' : '偏早'}。在选曲页把节拍校准尝试调到 ${Math.round(clamp(Game.timingOffset * 1000 + bias, -200, 200))} ms，再听一轮确认。`;
+  else if (Game.laneMistakes.some(Boolean)) {
+    const lane = Game.laneMistakes.indexOf(Math.max(...Game.laneMistakes));
+    advice = `第 ${lane + 1} 轨失误最多（${Game.laneMistakes[lane]} 次）。试试「完整练习」，先练稳这一轨与长条。`;
+  } else if (accuracy >= 95 && notes >= 12) advice = '节拍非常稳定。下一次可以增加键数，或选高一级密度的曲目挑战全连。';
+  return { accuracy, stars, bias, samples: errors.length, advice };
 }
 function totalNotes() { return Game.counts.perfect + Game.counts.great + Game.counts.good + Game.counts.miss; }
 
@@ -1011,7 +1078,7 @@ function releaseLane(lane) {
   if (keyboardLanes.has(lane)) return;
   for (const held of pointerLanes.values()) if (held === lane) return;
   Game.heldLane[lane] = 0;
-  if (Game.state === 'playing' && Game.activeHolds[lane] && now() < Game.activeHolds[lane].endAt - .035) breakHold(lane);
+  if (Game.state === 'playing' && Game.activeHolds[lane] && judgeNow() < Game.activeHolds[lane].endAt - .035) breakHold(lane);
 }
 canvas.addEventListener('pointerup', releasePointer);
 canvas.addEventListener('pointercancel', releasePointer);
@@ -1019,18 +1086,22 @@ canvas.addEventListener('lostpointercapture', releasePointer);
 function togglePause() {
   if (Game.state === 'playing') {
     Game.state = 'paused';
+    Game.heldLane.fill(0); keyboardLanes.clear(); pointerLanes.clear();
+    for (const note of Game.activeHolds) if (note) note.regrip = true;
     Game.pauseStartedAt = Game.actx.currentTime;
     Game.actx.suspend().catch(() => {});
     $id('paused').classList.remove('hidden');
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
     Game.audioStart += Game.actx.currentTime - Game.pauseStartedAt;
+    Game.regripUntil = judgeNow() + .5;
     ensureAudioClock();
     $id('paused').classList.add('hidden');
     ensureLoop();
   }
 }
 function backToMenu() {
+  stopVoices();
   Game.state = 'menu';
   Game.heldLane.fill(0); keyboardLanes.clear(); pointerLanes.clear();
   Game.actx?.suspend().catch(() => {});
@@ -1430,6 +1501,27 @@ function drawMenuDemo() {
   ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
 }
 
+function savePlayPrefs() {
+  try { localStorage.setItem('word-beat-play-prefs-v1', JSON.stringify({ keyMode: Game.keyMode, session: Game.session, timingOffset: Game.timingOffset })); } catch {}
+}
+try {
+  const prefs = JSON.parse(localStorage.getItem('word-beat-play-prefs-v1') || '{}');
+  if ([4,5,7].includes(prefs.keyMode)) Game.keyMode = prefs.keyMode;
+  if (['song','practice','endless'].includes(prefs.session)) Game.session = prefs.session;
+  if (Number.isFinite(prefs.timingOffset)) Game.timingOffset = clamp(prefs.timingOffset, -.2, .2);
+} catch {}
+LANES = Game.keyMode;
+$id('session-select').value = Game.session;
+$id('timing-offset').value = Math.round(Game.timingOffset * 1000);
+$id('timing-offset-value').textContent = `${Math.round(Game.timingOffset * 1000)} ms`;
+$id('session-select').addEventListener('change', (event) => { Game.session = event.target.value; savePlayPrefs(); });
+$id('timing-offset').addEventListener('input', (event) => {
+  Game.timingOffset = clamp(Number(event.target.value) || 0, -200, 200) / 1000;
+  $id('timing-offset-value').textContent = `${Math.round(Game.timingOffset * 1000)} ms`; savePlayPrefs();
+});
+document.querySelectorAll('.seg-btn[data-keys]').forEach((b) => {
+  if (Number(b.dataset.keys) === Game.keyMode) b.classList.add('selected'); else b.classList.remove('selected');
+});
 /* ---------------- 绑定 ---------------- */
 function toggleMute() { Game.muted = !Game.muted; $id('mute-btn').textContent = Game.muted ? '已静音' : '声音'; }
 $id('mute-btn').addEventListener('click', toggleMute);
@@ -1449,6 +1541,7 @@ document.querySelectorAll('.seg-btn[data-keys]').forEach((b) => b.addEventListen
   document.querySelectorAll('.seg-btn[data-keys]').forEach((x) => x.classList.remove('selected'));
   b.classList.add('selected');
   Game.keyMode = Number(b.dataset.keys);
+  savePlayPrefs();
   LANES = Game.keyMode;
   if (Game.state === 'menu') render();
 }));
@@ -1467,6 +1560,8 @@ $id('song-select').addEventListener('change', (event) => {
 });
 $id('song-select').value = Game.songId;
 updateSongMenu();
+window.addEventListener('blur', () => { if (Game.state === 'playing') togglePause(); });
+window.addEventListener('pagehide', () => { if (Game.state === 'playing') togglePause(); stopVoices(); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && Game.state === 'playing') togglePause();
 });
@@ -1505,8 +1600,13 @@ function frame(nowMs) {
     Game.time += dt;
     scheduleBackingBeat();
     updateHolds();
+    if (Game.state !== "playing") { render(); return; }
     scanMisses();
+    if (Game.state !== "playing") { render(); return; }
     updateSection();
+    const songFraction = Math.max(0, Math.min(1, (now() - Game.phraseStartAt) / Math.max(1, Game.songEndAt - Game.phraseStartAt)));
+    $id('song-progress-fill').style.transform = `scaleX(${songFraction})`;
+    hudText('session-label', Game.session === 'endless' ? '连续巡演' : Game.session === 'practice' ? '完整练习 · 不会失败' : '一曲挑战');
     for (let lane = 0; lane < Game.flashLane.length; lane++) Game.flashLane[lane] = Math.max(0, Game.flashLane[lane] - dt * 7.5);
     Game.bgPulse = Math.max(0, Game.bgPulse - dt * .72);
     for (let i = Game.particles.length - 1; i >= 0; i--) {

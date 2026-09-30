@@ -1,3 +1,4 @@
+import { DojoCourse } from "./dojo.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
 export const VERSION = "20260918-play-r1";
 export const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -383,6 +384,8 @@ export class Fight {
     this.winner = -1;
     this.endWait = 0;
     this.training = "idle";
+    this.course = new DojoCourse();
+    this.coachNext = 0;
     this.stage = 0;
     this.sessionHits = 0;
     this.serial = 0;
@@ -396,7 +399,12 @@ export class Fight {
     return this.seed / 4294967296;
   }
   emit(type, data = {}) {
-    this.events.push({ type, frame: this.frame, ...data });
+    const event = { type, frame: this.frame, ...data };
+    this.events.push(event);
+    if (this.mode === "training" && this.training === "coach") {
+      const lesson = this.course.observe(event);
+      if (lesson) { this.coachNext = this.frame + 100; this.events.push({ type: "lesson", title: lesson, completed: this.course.lesson, frame: this.frame }); }
+    }
     if (this.events.length > 120) this.events.shift();
   }
   direction(f) {
@@ -642,6 +650,20 @@ export class Fight {
     if (this.mode === "versus") return;
     if (this.mode === "training") {
       e.held.clear();
+      if (this.training === "coach") {
+        // The coached defender uses the real move system and real frame data.
+        // Predictable heavy punches create an honest block/punish exercise.
+        if ([1, 2].includes(this.course.lesson)) {
+          const distance = Math.abs(p.x - e.x);
+          if (distance > 1.55) e.held.add(p.x > e.x ? "right" : "left");
+          else if (!e.action && !e.stun && !e.down && this.frame >= this.coachNext) {
+            this.queue(e, "C");
+            this.coachNext = this.frame + 135;
+            this.emit("coachTell", { side: 1 });
+          }
+        }
+        return;
+      }
       if (this.training === "guard") e.held.add("guard");
       if (this.training === "crouch") {
         e.held.add("down");
@@ -1227,6 +1249,7 @@ export class Fight {
   }
   snapshot() {
     return {
+      course: { lesson: this.course.lesson, progress: this.course.progress },
       version: VERSION,
       frame: this.frame,
       state: this.state,

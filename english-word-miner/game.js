@@ -1,5 +1,7 @@
 'use strict';
 
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
 /* ============================================================
  * 英语挖金子 · WORD MINER —— FC Gold Miner × 拼单词
  *
@@ -55,7 +57,8 @@ const Game = {
   state: 'menu',            // menu | playing | paused | shop | over
   difficulty: 'easy',
   score: 0, lives: 3, level: 1,
-  wordsDone: 0,
+  wordsDone: 0, wallet: 0, precision: 0, bestPrecision: 0, launches: 0, catches: 0,
+  contractName: '晨光矿脉',
   timeLeft: 0, time: 0, shake: 0,
   items: [], particles: [], floaters: [],
   word: null, lastWord: '',
@@ -74,7 +77,7 @@ function newHook() {
     dir: 1,
     swingSpeed: 1.15 + Math.min(.35, Game.level * .05),
     len: 46,                         // 当前绳长
-    maxLen: Math.hypot(W / 2, H - 96) + 24,
+    maxLen: Math.hypot(W / 2, mineFloor() - 96) + 24,
     state: 'swing',                  // swing | shoot | retract
     grabbed: null,
     speed: 420,
@@ -100,13 +103,15 @@ function reachableFrom(hx, hy, target, items, ignoreIdx) {
   return true;
 }
 
+function mineFloor() { return H - (W < 600 ? 180 : 82); }
+
 function spawnItems() {
   Game.items = [];
   const w = Game.word;
   // 字母块: 按词序分布深度带, 且必须可达(最多重试12次找无遮挡位置)
   const letters = [...w.en.toUpperCase()];
   const bands = letters.length;
-  const bandHeight = Math.max(40, (H - 205) / bands);
+  const bandHeight = Math.max(20, (mineFloor() - 155) / bands);
   for (let i = 0; i < bands; i++) {
     const bandTop = 140 + bandHeight * i;
     let placed = null;
@@ -128,7 +133,7 @@ function spawnItems() {
     for (let attempt = 0; attempt < 8; attempt++) {
       const cand = {
         kind: Math.random() < .16 ? 'bomb' : 'rock',
-        x: rand(60, W - 60), y: rand(170, H - 45),
+        x: rand(60, W - 60), y: rand(170, Math.max(180, mineFloor())),
         r: rand(14, 21), weight: rand(1.8, 3.2), value: -50,
         wobble: Math.random() * TAU,
       };
@@ -191,7 +196,7 @@ function spawnItems() {
   }
   const diamonds = (Game.level >= 2 ? 1 : 0) + Game.luck;
   for (let i = 0; i < diamonds; i++) {
-    Game.items.push({ kind: 'diamond', x: rand(60, W - 60), y: rand(H - 150, H - 45),
+    Game.items.push({ kind: 'diamond', x: rand(60, W - 60), y: rand(Math.max(180,mineFloor()-100), Math.max(200,mineFloor())),
       r: 14, weight: 1.2, value: 500 + Game.luck * 100, wobble: Math.random() * TAU });
   }
   // 原版标志物: 大小金块(大金块=高分重物)
@@ -200,7 +205,7 @@ function spawnItems() {
     const big = i === 0;
     let placed = null;
     for (let attempt = 0; attempt < 8; attempt++) {
-      const cand = { kind: 'gold', x: rand(70, W - 70), y: rand(200, H - 50),
+      const cand = { kind: 'gold', x: rand(70, W - 70), y: rand(190, Math.max(210,mineFloor())),
         r: big ? 24 : 16, weight: big ? 2.6 : 1.4, value: big ? 350 : 150,
         wobble: Math.random() * TAU };
       if (!Game.items.some((it2) => Math.hypot(it2.x - cand.x, it2.y - cand.y) < it2.r + cand.r + 12)) { placed = cand; break; }
@@ -209,27 +214,62 @@ function spawnItems() {
   }
 }
 
+// Make the current letter physically obtainable after earlier letters are removed.
+// Valuable objects may be collected to clear a line, but a future letter must never trap it.
+function repairContract() {
+  const letters = Game.items.filter(it => it.kind === 'letter').sort((a,b) => a.index-b.index);
+  const hx=W/2, hy=96;
+  for(const item of Game.items) {
+    item.y=clamp(item.y,170,Math.max(190,mineFloor()));
+    const reach=(item.y-hy)/Math.tan(Math.PI*.18)-item.r-10;
+    item.x=clamp(item.x,Math.max(item.r+12,hx-reach),Math.min(W-item.r-12,hx+reach));
+  }
+  const blocks = (target, other) => {
+    const dx=target.x-hx,dy=target.y-hy,d2=dx*dx+dy*dy;
+    const t=((other.x-hx)*dx+(other.y-hy)*dy)/d2;
+    return t>0 && t<1 && Math.hypot(other.x-hx-dx*t,other.y-hy-dy*t)<other.r+10;
+  };
+  if (letters.some((it,i) => letters.slice(i+1).some(other => blocks(it,other)))) {
+    const order=letters.slice();
+    for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+    order.forEach((it,i) => { it.x=45+(W-90)*(i+.5)/letters.length; it.y=Math.max(188,mineFloor()-26); });
+  }
+  // Remove hazards intersecting a required letter ray; all validation is after gold/diamonds.
+  Game.items = Game.items.filter(it => it.kind === 'letter' || !letters.some(letter => blocks(letter,it)));
+  const safeValue = Game.items.reduce((sum,it) => sum + (it.kind==='gold'||it.kind==='diamond' ? it.value : it.kind==='rock' ? Math.round(300/it.weight) : 0),0);
+  if (safeValue < Game.quota+150) {
+    // A visible reserve vein prevents a random map from having an impossible quota.
+    Game.items.push({ kind:'gold', x:W*.22, y:Math.max(176,Math.min(mineFloor()-60,H*.43)), r:23, weight:2.3,
+      value:Game.quota+150-safeValue, wobble:0, reserve:true });
+  }
+  for (const it of Game.items) { it.homeX=it.x; it.homeY=it.y; }
+}
+
 function buildLevel(initial) {
   const bank = wordBank();
   let item;
   do { item = bank[Math.floor(Math.random() * bank.length)]; }
   while (item.en === Game.lastWord && bank.length > 1);
   Game.lastWord = item.en;
-  if (!initial) Game.score += 200;
+  if (!initial) { Game.score += 200; Game.wallet += 200; }
   Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   Game.treasureEarned = 0;
   Game.contractTimer = 0;
   Game.quota = 420 + Math.min(480, Game.level * 60);
   spawnItems();
+  repairContract();
+  Game.contractName = ['晨光矿脉','琥珀阶地','星钻深井'][(Game.level-1)%3];
+  Game.launches = 0; Game.catches = 0; Game.precision = 0;
   Game.hook = newHook();
   if (initial) Game.timeLeft = DIFFS[Game.difficulty].time;
-  else Game.timeLeft = Math.min(DIFFS[Game.difficulty].time, Game.timeLeft + 25);
+  else Game.timeLeft = DIFFS[Game.difficulty].time + Math.min(15, Math.floor(Game.timeLeft * .2));
   updateHud();
   updateHudTimer();
-  showFeedback(`目标: ${Game.word.en} (${Game.word.zh})`);
+  showFeedback(`${Game.contractName} · 对准再点按 · 飞行中再点可收钩`);
 }
 
 function startGame() {
+  Game.wallet = 0; Game.precision = 0; Game.bestPrecision = 0;
   Game.score = 0; Game.lives = 1; Game.level = 1; Game.contracts = 0;
   Game.strength = 0; Game.luck = 0; dynamiteCount = 1;
   Game.wordsDone = 0; Game.time = 0; Game.shake = 0;
@@ -272,7 +312,10 @@ function useDynamite() {
 
 function shootHook() {
   const h = Game.hook;
+  if (!h || Game.contractTimer > 0) return;
+  if (h.state === 'shoot') { h.state = 'retract'; showFeedback('收钩 · 空钩不消耗雷管'); return; }
   if (h.state !== 'swing') return;
+  Game.launches++;
   h.state = 'shoot';
   if (window.ArcadeAudio) ArcadeAudio.play('click', .14, .9);
 }
@@ -333,6 +376,9 @@ function updateHook(dt) {
     for (const it of Game.items) {
       if (it.grabbed) continue;
       if (Math.hypot(tipX - it.x, tipY - it.y) < it.r + 10) {
+        it.homeX = it.x; it.homeY = it.y;
+        const cross = Math.abs((it.x-h.x)*Math.sin(h.angle)-(it.y-h.y)*Math.cos(h.angle));
+        it.precise = cross <= it.r*.4;
         it.grabbed = true;
         h.grabbed = it;
         h.state = 'retract';
@@ -360,6 +406,14 @@ function updateHook(dt) {
 }
 
 function deliverItem(it) {
+  const beforeScore = Game.score;
+  const useful = it.kind === 'gold' || it.kind === 'diamond' || (it.kind === 'letter' && it.index === Game.word.progress);
+  Game.catches++;
+  if (useful && it.precise) {
+    Game.precision++; Game.bestPrecision = Math.max(Game.bestPrecision,Game.precision);
+    Game.timeLeft += Math.min(3, 1 + Game.precision*.5);
+    floatText('精准 +' + Math.min(3,1+Game.precision*.5) + ' 秒', W/2, 150, '#67e8f9');
+  } else if (!useful) Game.precision = 0;
   Game.items = Game.items.filter((x) => x !== it);
   const x = it.x, y = it.y;
   if (it.kind === 'letter') {
@@ -375,7 +429,8 @@ function deliverItem(it) {
       if (w.progress >= w.en.length) wordComplete();
     } else {
       // 错序: 放回原处附近(惩罚是浪费时间)
-      it.grabbed = false;
+      it.grabbed = false; it.precise = false;
+      it.x = it.homeX ?? W*.5; it.y = it.homeY ?? Math.max(185,mineFloor()-30);
       Game.items.push(it);
       floatText('需要「' + w.en[w.progress] + '」', W / 2, 160, '#fca5a5');
       if (window.ArcadeAudio) ArcadeAudio.play('click', .12, .55);
@@ -405,6 +460,7 @@ function deliverItem(it) {
     floatText('+石头', x, y, '#a8a29e');
     if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .7);
   }
+  Game.wallet += Math.max(0, Game.score-beforeScore);
   updateHud();
   if (Game.state === 'playing' && levelReady()) queueShop();
 }
@@ -436,11 +492,11 @@ function openShop() {
   if (Game.state !== 'playing' || !levelReady()) return;
   Game.state = 'shop';
   Game.contracts++;
-  Game.score += 300;
+  Game.score += 300; Game.wallet += 300;
   Game.hook = newHook();
   $id('word-bar').classList.add('hidden');
   $id('shop').classList.remove('hidden');
-  $id('shop-summary').textContent = `第 ${Game.level} 关完成 · 余额 ${Game.score}`;
+  $id('shop-summary').textContent = `第 ${Game.level} 关完成 · 余额 ${Game.wallet}`;
   updateHud();
   renderShop();
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .38, 1.45);
@@ -451,16 +507,16 @@ function renderShop() {
   document.querySelectorAll('.shop-buy').forEach((button) => {
     const item = button.dataset.item;
     const capped = (item === 'dynamite' && dynamiteCount >= 5) || (item === 'strength' && Game.strength >= 3) || (item === 'luck' && Game.luck >= 2);
-    button.disabled = capped || Game.score < prices[item];
+    button.disabled = capped || Game.wallet < prices[item];
   });
-  $id('shop-summary').textContent = `第 ${Game.level} 关完成 · 余额 ${Game.score} · 雷管 ${dynamiteCount}/5 · 力量 ${Game.strength}/3 · 幸运 ${Game.luck}/2`;
+  $id('shop-summary').textContent = `第 ${Game.level} 关完成 · 余额 ${Game.wallet} · 雷管 ${dynamiteCount}/5 · 力量 ${Game.strength}/3 · 幸运 ${Game.luck}/2`;
 }
 
 function buyUpgrade(item) {
   if (Game.state !== 'shop') return false;
   const price = item === 'dynamite' ? 250 : item === 'strength' ? 400 : item === 'luck' ? 500 : Infinity;
-  if (Game.score < price || (item === 'dynamite' && dynamiteCount >= 5) || (item === 'strength' && Game.strength >= 3) || (item === 'luck' && Game.luck >= 2)) return false;
-  Game.score -= price;
+  if (Game.wallet < price || (item === 'dynamite' && dynamiteCount >= 5) || (item === 'strength' && Game.strength >= 3) || (item === 'luck' && Game.luck >= 2)) return false;
+  Game.wallet -= price;
   if (item === 'dynamite') dynamiteCount++;
   if (item === 'strength') Game.strength++;
   if (item === 'luck') Game.luck++;
@@ -481,6 +537,8 @@ function continueFromShop() {
 }
 
 function gameOver() {
+  const medalPoints=Game.contracts*3;
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
   Game.state = 'over';
   if (window.ChipMusic) ChipMusic.stop();
   $id('word-bar').classList.add('hidden');
@@ -497,7 +555,7 @@ function gameOver() {
     `<div><span>本局得分</span><b>${Game.score}</b></div>` +
     `<div><span>最高纪录</span><b>${high}</b></div>` +
     `<div><span>完成单词</span><b>${Game.wordsDone}</b></div>`;
-  $id('over-stats').innerHTML += `<div><span>金牌合约</span><b>${Game.contracts}</b></div>`;
+  $id('over-stats').innerHTML += `<div><span>完成合约</span><b>${Game.contracts}</b></div><div><span>精准连钩</span><b>${Game.bestPrecision}</b></div>`;
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .3, .45);
 }
 
@@ -515,6 +573,7 @@ canvas.addEventListener('pointerdown', (ev) => {
   ev.preventDefault();
   if (Game.state === 'playing') shootHook();
 });
+$id('cast-btn').addEventListener('pointerdown', ev => { ev.preventDefault(); if(Game.state==='playing') shootHook(); });
 $id('dynamite-btn').addEventListener('pointerdown', (event) => { event.preventDefault(); event.stopPropagation(); useDynamite(); });
 document.querySelectorAll('.shop-buy').forEach((button) => button.addEventListener('click', () => buyUpgrade(button.dataset.item)));
 $id('next-level-btn').addEventListener('click', continueFromShop);
@@ -570,6 +629,7 @@ function updateHud() {
   $id('level').textContent = Game.level;
   $id('quota').textContent = Math.min(Game.quota, Game.treasureEarned) + '/' + Game.quota;
   updateDynamiteButton();
+  $id('contract-status').textContent = `${Game.contractName} · 精准连钩 ${Game.precision} · 钱包 ${Game.wallet}`;
   const w = Game.word;
   if (w) {
     $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
@@ -669,9 +729,9 @@ function render() {
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   drawMineEnvironment();
 
-  const sx = Game.shake > 0 ? rand(-4, 4) * Game.shake : 0;
+  const sx = !reducedMotion.matches && Game.shake > 0 ? rand(-4, 4) * Game.shake : 0;
   ctx.save();
-  ctx.translate(sx, Game.shake > 0 ? rand(-3, 3) * Game.shake : 0);
+  ctx.translate(sx, !reducedMotion.matches && Game.shake > 0 ? rand(-3, 3) * Game.shake : 0);
 
   // 矿工小人(简笔)
   drawMiner();
@@ -679,6 +739,7 @@ function render() {
   // 绳+钩
   const h = Game.hook;
   if (h) {
+    if (h.state === 'swing') drawAimGuide(h);
     const tipX = h.x + Math.cos(h.angle) * h.len;
     const tipY = h.y + Math.sin(h.angle) * h.len;
     // 原版式分节链条: 沿绳每隔14px画椭圆链环
@@ -732,6 +793,28 @@ function render() {
     ctx.fillText(f.text, f.x, f.y);
   }
   ctx.globalAlpha = 1;
+}
+
+function aimTarget(h) {
+  const dx=Math.cos(h.angle), dy=Math.sin(h.angle);
+  let target=null, nearest=Infinity;
+  for (const it of Game.items) {
+    if(it.grabbed) continue;
+    const along=(it.x-h.x)*dx+(it.y-h.y)*dy;
+    const off=Math.abs((it.x-h.x)*dy-(it.y-h.y)*dx);
+    if(along>46 && off<it.r+10 && along<nearest) { nearest=along; target=it; }
+  }
+  return target;
+}
+function drawAimGuide(h) {
+  const target=aimTarget(h);
+  const length=target ? Math.hypot(target.x-h.x,target.y-h.y) : Math.min(h.maxLen,200);
+  ctx.save(); ctx.setLineDash([3,9]); ctx.lineWidth=1.5;
+  ctx.strokeStyle=target && (target.kind !== 'letter' || target.index===Game.word.progress) ? '#a7f3d0' : 'rgba(253,230,138,.35)';
+  ctx.beginPath(); ctx.moveTo(h.x+Math.cos(h.angle)*50,h.y+Math.sin(h.angle)*50);
+  ctx.lineTo(h.x+Math.cos(h.angle)*length,h.y+Math.sin(h.angle)*length); ctx.stroke(); ctx.setLineDash([]);
+  if(target) { ctx.beginPath(); ctx.arc(target.x,target.y,target.r+6,0,TAU); ctx.stroke(); }
+  ctx.restore();
 }
 
 function drawMineBackdrop(ctx) {
@@ -972,13 +1055,19 @@ function resize() {
   const nextW = portrait ? cssW : 720, nextH = portrait ? cssH : 560;
   if (nextW !== W || nextH !== H) {
     const sx = nextW / W, sy = nextH / H;
-    for (const item of [...Game.items, ...Game.particles, ...Game.floaters]) { item.x *= sx; item.y *= sy; }
+    for (const item of [...Game.items, ...Game.particles, ...Game.floaters]) { item.x *= sx; item.y *= sy; if(item.homeX!=null) { item.homeX*=sx; item.homeY*=sy; } }
     if (Game.hook) {
-      Game.hook.x *= sx; Game.hook.y *= sy;
+      Game.hook.x = nextW/2; Game.hook.y = 96;
       Game.hook.len *= Math.min(sx, sy);
       Game.hook.maxLen = Math.hypot(nextW / 2, nextH - 96) + 24;
+      if(Game.hook.grabbed) {Game.hook.grabbed.x=Game.hook.x+Math.cos(Game.hook.angle)*Game.hook.len;Game.hook.grabbed.y=Game.hook.y+Math.sin(Game.hook.angle)*Game.hook.len;}
     }
     W = nextW; H = nextH; Game._rockPattern = null;
+    // Rotation must not strand objects beneath the thumb controls.
+    for(const item of Game.items) {
+      item.homeY=Math.min(item.homeY??item.y,mineFloor());
+      if(!item.grabbed) item.y=Math.min(item.y,mineFloor());
+    }
   }
   canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
   lastW = cssW; lastH = cssH; lastDpr = dpr;

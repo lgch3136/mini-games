@@ -1,5 +1,5 @@
 // Reuse the bounded Web Audio voice/lifecycle engine, not Ranger's composition.
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260905-dawn";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260905-dawn&mobile=20260930-quality-r2";
 export class WindScore extends Soundtrack {
   constructor() {
     super();

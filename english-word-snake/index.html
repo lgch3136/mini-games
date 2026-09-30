@@ -13,7 +13,9 @@
       content="一条丝滑的小蛇，一座会开花的单词花园。转向、冲刺、串起字母，把英语吃进记忆。"
     />
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1" />
-  </head>
+    <link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20260930-quality-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
   <body>
     <main id="app" data-phase="menu">
       <header class="topbar">
@@ -54,6 +56,7 @@
             >◈</span
           >
         </div>
+        <div class="expedition-track" aria-label="本次远征目标"><span id="expedition-title">五词小花园</span><b id="expedition-progress">0 / 5 词</b><i><em id="expedition-fill"></em></i></div>
         <div class="word-panel">
           <div class="word-caption">
             <span id="meaning"></span
@@ -95,6 +98,7 @@
                 <b>答案猎手</b><small>游向正确的语法答案</small>
               </button>
             </div>
+            <label class="session-choice">今天想走多远？<select id="expedition"><option value="basket">五词小花园 · 完成一篮</option><option value="orchard">十词果园 · 长一点的挑战</option><option value="endless">自由漫游 · 没有终点</option></select></label>
             <div class="settings">
               <label
                 >词库<select id="difficulty">
@@ -151,10 +155,13 @@
         <div id="over-screen" class="screen veil" hidden>
           <div class="small-card">
             <span class="eyebrow">A GOOD LITTLE ADVENTURE</span>
-            <h2>这一篮，收获满满</h2>
+            <h2 id="result-title">这一篮，收获满满</h2>
+            <img id="mastery-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="完成奖章" hidden>
+          <div id="expedition-stars" class="expedition-stars" aria-label="远征星级"></div>
             <b id="final-score" class="final-score">0</b>
             <p id="final-details"></p>
             <div id="word-review"></div>
+            <p id="expedition-next" class="expedition-next"></p>
             <button id="restart" class="primary">再去一次 ↗</button
             ><button id="over-menu" class="quiet">返回选单</button>
           </div>
@@ -193,6 +200,6 @@
         questions: GRAMMAR,
       };
     </script>
-    <script type="module" src="app.mjs?v=20260930-polish-r1"></script>
+    <script type="module" src="app.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2"></script>
   </body>
 </html>

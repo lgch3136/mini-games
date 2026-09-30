@@ -1,12 +1,12 @@
 import * as T from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { MotionTrack } from "./motion.mjs?v=20260929-fluid-r2";
+import { MotionTrack } from "./motion.mjs?v=20260929-fluid-r2&mobile=20260930-quality-r2";
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
-import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1";
+import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { bevelBox, dressStage, syncCaches } from "./dressing.mjs?v=20260929-fluid-r2";
 import { platformLayers } from "./terrain.mjs?v=20260929-reaction-r1";
 import { prepareRigidSkin, createRigidSkin } from "./rig.mjs?v=20260918-play-r1";
-import { clamp, lerp } from "./world.mjs?v=20260929-fluid-r2";
+import { clamp, lerp } from "./world.mjs?v=20260929-fluid-r2&mobile=20260930-quality-r2";
 import { spatialBatches } from "./cadence.mjs?v=20260929-fluid-r2";
 import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2";
 import { GpuClock } from "./gpu-clock.mjs?v=20260929-fluid-r2";

@@ -1,14 +1,14 @@
 import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { ankle } from "./motion.mjs?v=20260918-play-r1";
+import { ankle } from "./motion.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
 import {
   ROSTER,
   lerp,
   clamp,
   hurtbox,
   attackBox,
-} from "./combat.mjs?v=20260918-play-r1";
-import { PosePair } from "./render-state.mjs?v=20260930-polish-r1";
+} from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
+import { PosePair } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 const Y = new THREE.Vector3(0, 1, 0),
   Z = new THREE.Vector3(0, 0, 1),
   v = new THREE.Vector3(),

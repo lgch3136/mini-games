@@ -1,0 +1,41 @@
+.warmup-card { display:flex; align-items:center; justify-content:space-between; gap:15px; border:1px solid #a8d9c13d; padding:13px 14px; border-radius:15px; background:linear-gradient(125deg,#8be2c315,#ffe3a608); margin:16px 0 10px }
+.warmup-card div { display:grid; gap:6px }
+.warmup-card strong { color:#d6ebcc; font-size:13px }
+.warmup-card span { color:#a8c1b6; font-size:11px }
+.warmup-card button { border:1px solid #cce6b966; color:#e7f5c6; border-radius:12px; padding:10px; min-height:44px; background:#a4dbad14; font:600 12px inherit; white-space:nowrap }
+.practice-choice { display:flex; align-items:center; gap:12px; color:#aec7bd; font-size:12px; margin-bottom:10px }
+.practice-choice select { flex:1; min-height:44px; min-width:0; background:#183c43; color:#e2efe3; border:1px solid #a0cabb40; border-radius:10px; padding:8px; font:inherit }
+.practice-ribbon { display:flex; align-items:center; gap:15px; padding:4px 2px 8px; color:#b4d6c7; font-size:11px; font-variant-numeric:tabular-nums }
+.practice-ribbon > i { flex:1; height:3px; background:#d4efcb22; border-radius:4px; overflow:hidden }
+.practice-ribbon em { display:block; height:100%; background:linear-gradient(90deg,#a8e8cd,#e8d49c); transform-origin:left; transition:transform .2s }
+.typing-coach { min-height:20px; margin:5px 0 8px; color:#416759; font-size:12px; line-height:1.5 }
+.practice-stars { color:#dac27f; font-size:34px; letter-spacing:.15em }
+.practice-advice { padding:12px 15px; color:#bfdbcc; font-size:13px; line-height:1.8; border:1px solid #a4dfc328; border-radius:13px; background:#b1dca308; text-align:left }
+#result { overflow-y:auto; max-height:100dvh; overscroll-behavior:contain }
+@media (max-width:580px) {
+  .warmup-card { padding:11px; margin:11px 0 8px; }
+  .practice-choice select { font-size:16px; }
+  .typing-coach { font-size:11px; margin:3px 0 5px; }
+  .practice-ribbon { padding:3px 3px 5px; }
+  .key { min-height:44px; }
+  #keyboard { padding-bottom:max(5px,env(safe-area-inset-bottom)); }
+}
+@media (max-height:650px) and (max-width:580px) { .typing-coach { font-size:10px; min-height:15px; margin:2px 0; } }
+@media (prefers-reduced-motion:reduce) { .practice-ribbon em { transition:none; } }
+/* A focused session does not need dormant combat controls taking keyboard space. */
+#app[data-practice-target="true"] .spell-picker,
+#app[data-practice-target="true"] #guard,
+#app[data-practice-target="true"] .hero-health,
+#app[data-practice-target="true"] .enemy-intent { display:none; }
+#app[data-practice-target="true"] .enemy-health { left:15px; right:15px; width:auto; }
+@media (max-width:580px) {
+  #battle { overflow-y:auto; overscroll-behavior:contain; }
+  #battle > * { flex-shrink:0; }
+  #app[data-practice-target="true"] .battle-top { display:none; }
+  #app[data-practice-target="true"] .typing-dock { min-height:0; }
+  #app[data-practice-target="true"] .keyboard-caption { display:none; }
+}
+@media (max-width:580px) and (max-height:650px) {
+  #app[data-practice-target="true"] #battle .arena { min-height:108px; height:108px; flex:0 0 108px; }
+  #app[data-practice-target="true"] .practice-metrics { inset:10px 12px auto; }
+}

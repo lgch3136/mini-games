@@ -194,3 +194,15 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button:focus-visible { outline: 3px solid #fde68a; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .pop { animation: none !important; } }
+
+#route-status { align-self:center;font:700 11px system-ui;color:#d1ffed;padding:5px 12px;border-radius:999px;background:#123d42cc; }
+#glide-btn { position:absolute;right:16px;bottom:max(19px,env(safe-area-inset-bottom));pointer-events:auto;touch-action:none;min-height:54px;border:1px solid #fce7a0;border-radius:18px;background:#153f4eeb;color:#fff4ba;font:800 13px system-ui;padding:12px 18px;cursor:pointer; }
+#glide-charge { display:inline-block;min-width:3ch;margin-left:6px;color:#acfff1;font-variant-numeric:tabular-nums; }
+.hud-btn { min-width:44px;min-height:44px; } #q-target { white-space:normal;line-height:1.3; } #question-bar { max-height:132px; }
+@media(max-width:600px){#hud-top{gap:4px;padding:5px 7px;}#hud-top .left{gap:3px;flex-wrap:wrap;}#hud-top .right{gap:3px;}.stat-chip{font-size:11px;padding:4px 6px;}#route-status{font-size:10px;}#hint-bar{display:none;}#howto{font-size:12px;}.menu-cover{max-height:22dvh;object-fit:cover;}}
+
+/* Menus remain zoomable and scrollable; only direct play controls capture touch. */
+.overlay { padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+.quick-start details { margin-top:8px;color:#a9bdcf; }.quick-start summary { min-height:44px;display:flex;align-items:center;cursor:pointer;color:#8bd9eb; }
+.quick-start p { margin:3px 0; }.quick-start b { color:#edfaff; }
+@media(max-width:600px){#hud-top{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;}#hud-top .left{justify-content:flex-start;}#hud-top .right{flex-wrap:nowrap;}#mode-select{grid-template-columns:1fr 1fr;}.mode-btn{min-height:66px;}.mode-btn small{display:block;margin-top:5px;font-size:10px;}#logo-img{max-height:88px;}#menu h1{font-size:26px;}}

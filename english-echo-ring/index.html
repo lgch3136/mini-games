@@ -13,7 +13,9 @@
     />
     <title>回响边界 · Echo Ring</title>
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1" />
-  </head>
+    <link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20260930-quality-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
   <body>
     <main id="app">
       <canvas
@@ -56,6 +58,8 @@
               ></label
             >
           </fieldset>
+          <label class="trial-select">本次挑战<select id="session"><option value="trial">90 秒试炼 · 赢得三枚星</option><option value="survival">无限生存 · 追逐最高分</option></select></label>
+          <p class="trial-brief">★ 坚持 90 秒　★ 回弹击杀 5 次　★ 达成 10 连击</p>
           <button id="start" class="primary">进入圆环 <span>↗</span></button>
           <p class="best-line">
             个人最佳 <b id="menu-best">0</b><span>只在本机保存</span>
@@ -125,6 +129,7 @@
             <div id="health" aria-label="3 格护盾">◇ ◇ ◇</div>
           </div>
         </div>
+        <div class="trial-ribbon"><span id="trial-label">90 秒试炼</span><b id="trial-clock">1:30</b><i><em id="trial-fill"></em></i></div>
         <div class="resonance-status">
           <div class="charge-track"><i id="charge"></i></div>
           <span id="charge-label">共鸣 0%</span><b id="combo"></b>
@@ -184,6 +189,8 @@
             <div><b id="final-combo">0</b><span>最高连击</span></div>
             <div><b id="final-return">0</b><span>回弹击杀</span></div>
           </div>
+          <img id="mastery-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="完成奖章" hidden>
+          <div id="trial-result" class="trial-result"></div>
           <p id="result-tip"></p>
           <button id="retry" class="primary">再来一圈 <span>↗</span></button
           ><button id="result-menu" class="secondary">返回开始界面</button>
@@ -195,6 +202,6 @@
         <a href="../">返回合集</a>
       </div>
     </main>
-    <script type="module" src="app.mjs?v=20260930-polish-r1"></script>
+    <script type="module" src="app.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2"></script>
   </body>
 </html>

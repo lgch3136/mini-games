@@ -234,7 +234,7 @@ export class Soundtrack {
       tone(660, 0.1, 0.08, "sine");
       tone(990, 0.13, 0.045, "sine", null, 0.045);
     } else if (
-      ["health", "weapon", "checkpoint", "word", "win"].includes(type)
+      ["health", "weapon", "checkpoint", "word", "win", "contract"].includes(type)
     ) {
       const notes =
         type === "word" || type === "win"

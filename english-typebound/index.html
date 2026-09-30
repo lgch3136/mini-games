@@ -16,7 +16,9 @@
     <link rel="stylesheet" href="story.css?v=20260918-play-r1" />
     <link rel="stylesheet" href="combat.css?v=20260918-play-r1" />
     <link rel="stylesheet" href="focus.css?v=20260930-polish-r1" />
-  </head>
+    <link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20260930-quality-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
   <body>
     <main id="app" data-view="menu">
       <div class="landscape" aria-hidden="true"></div>
@@ -71,6 +73,8 @@
               ></label
             >
           </fieldset>
+          <div class="warmup-card"><div><strong>初次来访？从八词开始</strong><span>无伤害 · 跟随亮键 · 有清晰终点</span></div><button id="warmup-start">八词热身 ↗</button></div>
+          <label class="practice-choice">静心练习目标<select id="focus-goal"><option value="8">8 词 · 一页小练习</option><option value="20">20 词 · 专注挑战</option><option value="0">自由练习 · 完整旅程</option></select></label>
           <button class="primary" id="start">翻开旅程 <span>↗</span></button>
           <div class="menu-foot">
             <button id="review-start">
@@ -142,6 +146,7 @@
       </section>
 
       <section id="battle" hidden aria-label="打字战斗">
+        <div class="practice-ribbon"><span id="practice-goal-label"></span><i><em id="practice-goal-fill"></em></i></div>
         <div class="battle-top">
           <div class="chapter-label">
             <span id="chapter-en"></span><b id="room-label"></b>
@@ -191,6 +196,7 @@
               <kbd>3</kbd><b>生息</b><small>回复 · 无错 +4 生命</small>
             </button>
           </div>
+          <p id="typing-coach" class="typing-coach" role="status" aria-live="polite"></p>
           <div class="typing-heading">
             <span id="typing-label">书写即施法</span><b id="combo"></b
             ><button id="guard" title="Enter 释放护盾">
@@ -297,6 +303,8 @@
           <p class="eyebrow" id="result-eyebrow"></p>
           <h2 id="result-title"></h2>
           <p id="result-copy"></p>
+          <img id="mastery-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="完成奖章" hidden>
+          <div id="practice-stars" class="practice-stars"></div><p id="practice-advice" class="practice-advice"></p>
           <div class="victory-stats" id="result-stats"></div>
           <div class="review-list">
             <div class="list-heading">
@@ -323,6 +331,6 @@
       </div>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="app.mjs?v=20260930-polish-r1"></script>
+    <script type="module" src="app.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2"></script>
   </body>
 </html>

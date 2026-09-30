@@ -1,3 +1,4 @@
+import { DrivingContract } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   clamp,
   lerp,
@@ -239,6 +240,7 @@ export class Race {
       cutDrifts: 0,
       bestChain: 0,
     };
+    this.contract = new DrivingContract();
     this.missiles = [];
     this.mines = [];
     this.serial = 0;
@@ -642,6 +644,7 @@ export class Race {
     this.bendSharp = Math.abs(bend) > 0.7;
     this.clean += dt;
     this.score += p.speed * dt * (p.nitro ? 1.2 : 1);
+    this.contract.step(this);
     this.sampleClock += dt;
     if (this.sampleClock > 0.1) {
       this.sampleClock = 0;
@@ -864,6 +867,7 @@ export class Race {
       trails: { segments: this.trails.count, capacity: this.trails.capacity },
       difficulty: this.difficulty,
       stats: { ...this.stats },
+      goals: [...this.contract.claimed],
       features: this.features,
       missiles: this.missiles.map((m) => ({ ...m })),
       mines: this.mines.map((m) => ({ ...m })),

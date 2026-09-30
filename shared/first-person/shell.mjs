@@ -1,5 +1,5 @@
 import { Controls } from "./input.mjs?v=20260908-mochi-r1";
-import { Audio } from "./audio.mjs?v=20260908-mochi-r1";
+import { Audio } from "./audio.mjs?v=20260908-mochi-r1&mobile=20260930-quality-r2";
 export const $ = (id) => document.getElementById(id);
 export const text = (id, v) => {
   const e = $(id),
@@ -93,16 +93,14 @@ export class Shell {
     );
     addEventListener(
       "pagehide",
-      (e) => {
-        this.stop();
-        if (!e.persisted) this.dispose();
-      },
+      (e) => this.pageHide(e),
       opt,
     );
+    addEventListener("pageshow", (e) => this.pageShow(e), opt);
     addEventListener(
       "resize",
       () => {
-        if (this.view.ready) {
+        if (this.view.ready && this.world) {
           this.view.resize();
           if (this.mode !== "playing") this.view.render(this.world, 1, 0);
         }
@@ -113,8 +111,10 @@ export class Shell {
       "change",
       () => {
         this.view.quality = +$("quality").value;
-        this.view.resize();
-        if (this.mode !== "playing") this.view.render(this.world, 1, 0);
+        if (this.view.ready && this.world) {
+          this.view.resize();
+          if (this.mode !== "playing") this.view.render(this.world, 1, 0);
+        }
       },
       opt,
     );
@@ -154,6 +154,21 @@ export class Shell {
       perf: metrics ? this.metrics() : undefined,
       game: this.world?.snapshot(),
     });
+  }
+  pageHide(event) {
+    // Safari may dispatch pagehide before visibilitychange. Preserve a resumable
+    // paused state in BFCache instead of restoring a frozen "playing" screen.
+    if (event.persisted && this.mode === "playing") this.pause();
+    else this.stop();
+    if (!event.persisted) this.dispose();
+  }
+  pageShow(event) {
+    if (!event.persisted || this.destroyed || !this.view.ready || !this.world) return;
+    if (this.mode === "playing") this.pause();
+    this.controls.clear();
+    this.view.resize();
+    this.view.render(this.world, 1, 0);
+    this.applyMode();
   }
   async init() {
     try {

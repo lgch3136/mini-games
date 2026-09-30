@@ -1,5 +1,7 @@
 'use strict';
 
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
 /* ============================================================
    飞鸟背单词 · FLAPPY WORDS — 游戏引擎
    - 拼单词模式：穿过管道收集字母气泡——所有气泡都是当前
@@ -63,6 +65,8 @@ const Game = {
   word: null, question: null, lastWord: '',
   hintUntil: 0, feedback: '', feedbackUntil: 0, flash: 0, shake: 0,
   logicFrame: 0, rafCount: 0, renderCount: 0,
+  passedPipes: 0, perfectPipes: 0, featherMeter: 0, featherShield: 0, glideEnergy: 2.4, gliding: false,
+  pipeOrdinal: 0, lastGap: null, routeNames: ['晴岚林','琥珀峡谷','星光海湾'],
 };
 
 const D = () => DIFFS[Game.difficulty];
@@ -177,6 +181,7 @@ function newQuestion() {
   if (Math.random() < 0.5) { const t = q.optA; q.optA = q.optB; q.optB = t; q.correct = q.correct === 'A' ? 'B' : 'A'; }
   q.answerText = q['opt' + q.correct];
   Game.question = q;
+  for(const wall of Game.walls) if(!wall.done) assignWallQuestion(wall,q);
 }
 
 /* ---------------- 关卡 / 计分 ---------------- */
@@ -216,6 +221,8 @@ function loseLife(fromWrongAnswer) {
 
 function hit() {
   if (Game.state !== 'playing' || Game.bird.inv > 0) return;
+  if(Game.featherShield>0) {Game.featherShield--;Game.bird.inv=1.4;Game.bird.vy=-180;burst(BIRD_X,Game.bird.y,'#67e8f9',20);feedback('羽盾抵挡 · 完美穿越可补充');updateHUD();return; }
+  Game.featherMeter=0;Game.gliding=false;
   SFX.hit();
   Game.bird.inv = 1.6;
   Game.bird.vy = -300;
@@ -223,16 +230,19 @@ function hit() {
 }
 
 function gameOver() {
+  const medalPoints=Math.floor(Game.passedPipes/8)+Math.floor(Game.perfectPipes/3);
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
   if (Game.state === 'over') return;
   Game.state = 'over';
   if (window.ChipMusic) ChipMusic.stop();
-  SFX.over();
+  SFX.over();Game.gliding=false;
   const isNew = saveHS();
   $id('over-stats').innerHTML =
     '<div class="stat-row"><span>⭐ 得分</span><b>' + Game.score + '</b></div>' +
     '<div class="stat-row"><span>✅ 完成题目</span><b>' + Game.wordsDone + '</b></div>' +
     '<div class="stat-row"><span>🎯 答对字母/门洞</span><b>' + (Game.correctLetters + Game.correctAnswers) + '</b></div>' +
     '<div class="stat-row"><span>🔥 最高连击</span><b>x' + Game.maxCombo + '</b></div>' +
+    '<div class="stat-row"><span>羽翼徽章</span><b>' + Math.floor(Game.passedPipes/8) + ' · 完美 ' + Game.perfectPipes + '</b></div>' +
     '<div class="stat-row"><span>🚩 关卡</span><b>' + Game.level + '</b></div>' +
     '<div class="stat-row"><span>🏆 最高分</span><b>' + loadHS() + (isNew ? ' 🎉新纪录' : '') + '</b></div>';
   $id('over').classList.remove('hidden');
@@ -283,8 +293,10 @@ function answerWall(wall, hole) {
     burst(wall.x - Game.dist + wall.w / 2, hole.cy, '#7dffa8', 16);
   } else {
     SFX.wrong();
-    feedback('❌ 正确答案：' + Game.question.answerText);
-    banner('❌ ' + Game.question.answerText, '#ff6b6b');
+    const answer=wall.question?.answerText || Game.question.answerText;
+    feedback('❌ 正确答案：' + answer);
+    banner('❌ ' + answer, '#ff6b6b');
+    Game.bird.inv=Math.max(1,Game.bird.inv);
     loseLife(false);
     if (Game.state === 'over') { updateHUD(); return; }
   }
@@ -294,32 +306,46 @@ function answerWall(wall, hole) {
 }
 
 /* ---------------- 生成障碍 ---------------- */
+function flightBounds() { return { top:Math.min(200,GROUND_Y*.4), bottom:GROUND_Y-32 }; }
 function spawnPipe(x) {
-  const d = D();
-  const minC = 130 + d.gap / 2, maxC = GROUND_Y - 130 - d.gap / 2;
-  const gapY = rand(minC, maxC);
-  Game.pipes.push({ x, gapY, gapH: d.gap, w: d.pipeW, passed: false });
+  const d=D(),bounds=flightBounds();
+  const route=Math.floor(Game.pipeOrdinal/8)%3, beat=Game.pipeOrdinal%8;
+  const gapH=Math.min(d.gap*(beat===0?1.1:route===1?.94:1),bounds.bottom-bounds.top-24);
+  const minC=bounds.top+gapH/2,maxC=bounds.bottom-gapH/2;
+  const desired=(minC+maxC)/2+Math.sin(Game.pipeOrdinal*(route===2?.7:1.15))*(maxC-minC)*.35+rand(-18,18);
+  const previous=Game.lastGap ?? clamp(H*.42,minC,maxC);
+  const reach=Math.min(85,d.pipeEvery/Math.max(1,Game.speed)*65);
+  const gapY=clamp(clamp(desired,previous-reach,previous+reach),minC,maxC);
+  Game.pipes.push({x,gapY,gapH,w:d.pipeW,passed:false,ordinal:Game.pipeOrdinal++,route});
+  Game.lastGap=gapY;
 }
-
+function assignWallQuestion(wall,q) {
+  const correctTop=wall.holes[0].correct;
+  wall.question={...q};
+  wall.holes[0].label=correctTop?q['opt'+q.correct]:q['opt'+(q.correct==='A'?'B':'A')];
+  wall.holes[1].label=correctTop?q['opt'+(q.correct==='A'?'B':'A')]:q['opt'+q.correct];
+}
 function spawnWall(x) {
-  const d = D();
-  const top = { cy: rand(132, 198), r: d.holeR };
-  const bottom = { cy: rand(GROUND_Y - 198, GROUND_Y - 132), r: d.holeR };
-  const q = Game.question;
-  const correctTop = Math.random() < 0.5;
-  const holes = [
-    { cy: top.cy, r: top.r, label: correctTop ? q['opt' + q.correct] : q['opt' + (q.correct === 'A' ? 'B' : 'A')] },
-    { cy: bottom.cy, r: bottom.r, label: correctTop ? q['opt' + (q.correct === 'A' ? 'B' : 'A')] : q['opt' + q.correct] },
-  ];
-  holes[0].correct = correctTop; holes[1].correct = !correctTop;
-  Game.walls.push({ x, w: 92, holes, done: false, answered: null });
+  const d=D(),bounds=flightBounds();
+  const radius=Math.min(d.holeR,(bounds.bottom-bounds.top-30)/4);
+  const correctTop=Math.random()<.5;
+  const wall={x,w:92,holes:[
+    {cy:bounds.top+radius+6,r:radius,correct:correctTop},
+    {cy:bounds.bottom-radius-6,r:radius,correct:!correctTop}
+  ],done:false,answered:null};
+  assignWallQuestion(wall,Game.question);Game.walls.push(wall);
 }
-
 function spawnBubble(x) {
-  // 与管道重叠时把字母放在缺口中心，保证“正确字母”一定有安全航线。
-  const pipe = Game.pipes.find((item) => Math.abs(item.x + item.w / 2 - x) < item.w * .8);
-  const y = pipe ? pipe.gapY : rand(140, GROUND_Y - 90);
-  Game.bubbles.push({ x, y, r: 24, correct: true, taken: false, phase: rand(0, TAU) });
+  const pipe=Game.pipes.find(item=>Math.abs(item.x+item.w/2-x)<item.w*.8);
+  let y;
+  if(pipe) y=pipe.gapY;
+  else {
+    const left=Game.pipes.filter(p=>p.x+p.w/2<=x).at(-1);
+    const right=Game.pipes.find(p=>p.x+p.w/2>x);
+    if(left&&right) {const t=clamp((x-left.x-left.w/2)/(right.x-left.x),0,1);y=left.gapY+(right.gapY-left.gapY)*t;}
+    else y=(left||right)?.gapY ?? H*.44;
+  }
+  Game.bubbles.push({x,y,r:24,correct:true,taken:false,phase:rand(0,TAU)});
 }
 
 function spawnAhead() {
@@ -348,12 +374,14 @@ function circleRect(cx, cy, r, rx, ry, rw, rh) {
 }
 
 function checkCollisions() {
+  if (Game.state !== 'playing') return;
   const b = Game.bird;
   // 地面 / 天花板
   if (b.y > GROUND_Y - BIRD_R) {
     b.y = GROUND_Y - BIRD_R;
     if (b.vy > 0) { if (b.inv <= 0) hit(); else b.vy = 0; }
   }
+  if (Game.state !== 'playing') return;
   if (b.y < BIRD_R) { b.y = BIRD_R; b.vy = Math.max(b.vy, 0); }
 
   // 管道
@@ -361,10 +389,12 @@ function checkCollisions() {
     const sx = p.x - Game.dist;
     if (sx > W + 60 || sx + p.w < -60) continue;
     if (!p.passed && p.x + p.w < b.x + Game.dist) {
-      p.passed = true;
+      p.passed = true;Game.passedPipes++;
+      if(Game.passedPipes%8===0) {Game.glideEnergy=Math.min(3,Game.glideEnergy+1);banner('航段完成 · 羽翼徽章 +1','#fde68a');}
       Game.score += 1;
       if (Math.abs(b.y - p.gapY) < p.gapH * .18) {
-        bumpCombo();
+        bumpCombo();Game.perfectPipes++;Game.featherMeter++;Game.glideEnergy=Math.min(3,Game.glideEnergy+.45);
+        if(Game.featherMeter>=3) {Game.featherMeter=0;Game.featherShield=1;feedback('三次完美穿越 · 羽盾就绪');}
         Game.score += 3;
         burst(BIRD_X, b.y, '#67e8f9', 7);
         if (Game.combo % 5 === 0) banner('完美穿越 ×' + Game.combo, '#67e8f9');
@@ -375,6 +405,7 @@ function checkCollisions() {
     const topH = p.gapY - p.gapH / 2;
     if (circleRect(b.x, b.y, BIRD_R - 2, sx, 0, p.w, topH) ||
         circleRect(b.x, b.y, BIRD_R - 2, sx, p.gapY + p.gapH / 2, p.w, GROUND_Y - p.gapY - p.gapH / 2)) hit();
+    if (Game.state !== 'playing') return;
   }
 
   // 门洞墙
@@ -386,12 +417,14 @@ function checkCollisions() {
       if (Math.abs(b.y - h1.cy) <= h1.r + 8) answerWall(wl, h1);
       else if (Math.abs(b.y - h2.cy) <= h2.r + 8) answerWall(wl, h2);
       else hit();
+      if (Game.state !== 'playing') return;
     }
     if (!wl.done && b.inv <= 0) {
       const h1 = wl.holes[0], h2 = wl.holes[1];
       if (circleRect(b.x, b.y, BIRD_R - 2, sx, 0, wl.w, h1.cy - h1.r) ||
           circleRect(b.x, b.y, BIRD_R - 2, sx, h1.cy + h1.r, wl.w, h2.cy - h2.r - (h1.cy + h1.r)) ||
           circleRect(b.x, b.y, BIRD_R - 2, sx, h2.cy + h2.r, wl.w, GROUND_Y - h2.cy - h2.r)) hit();
+      if (Game.state !== 'playing') return;
     }
   }
 
@@ -437,7 +470,11 @@ function step(dt) {
   spawnAhead();
 
   const b = Game.bird;
-  b.vy = Math.min(b.vy + GRAVITY * dt, MAX_FALL);
+  const gliding=Game.gliding&&Game.glideEnergy>0;
+  if(gliding) Game.glideEnergy=Math.max(0,Game.glideEnergy-dt);
+  else if(Game.gliding) Game.gliding=false;
+  b.vy = Math.min(b.vy + (gliding?GRAVITY*.26:GRAVITY) * dt, gliding?125:MAX_FALL);
+  setHud('glide-charge',Game.glideEnergy.toFixed(1)+'s');
   b.y += b.vy * dt;
   // 原版式非对称旋转: 上冲立即抬头25°, 下坠缓慢俯冲至80°
   const targetRot = b.vy < 0 ? -0.44 : clamp((b.vy - 200) / 500, 0, 1) * 1.4;
@@ -757,7 +794,11 @@ function render() {
   }
   ctx.restore();
 
-  if (Game.flash > 0) {
+  if(Game.state!=='menu'&&(Game.featherShield||Game.gliding)) {
+    ctx.save();ctx.strokeStyle=Game.featherShield?'#b3fff1':'#fff3ab';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(BIRD_X,Game.bird.y,29,25,0,0,TAU);ctx.stroke();
+    if(Game.gliding) {ctx.beginPath();ctx.moveTo(BIRD_X-42,Game.bird.y+7);ctx.quadraticCurveTo(BIRD_X,Game.bird.y-22,BIRD_X+42,Game.bird.y+7);ctx.stroke();}ctx.restore();
+  }
+  if (!reducedMotion.matches && Game.flash > 0) {
     ctx.fillStyle = 'rgba(255,60,60,' + (Game.flash * 0.35) + ')';
     ctx.fillRect(0, 0, W, H);
   }
@@ -776,6 +817,8 @@ function updateHUD() {
   setHud('combo', Game.combo);
   if (Game.combo >= 2) $id('combo-box').classList.remove('hidden'); else $id('combo-box').classList.add('hidden');
   setHud('level', Game.level);
+  setHud('route-status',`${Game.routeNames[Math.floor(Game.passedPipes/8)%3]} · ${Game.passedPipes%8}/8 · ${Game.featherShield?'羽盾就绪':'完美 '+Game.featherMeter+'/3'}`);
+  setHud('glide-charge',Game.glideEnergy.toFixed(1)+'s');
   setHud('hearts', '❤️'.repeat(Math.max(0, Game.lives)) + '🖤'.repeat(MAX_LIVES - Math.max(0, Game.lives)));
 
   if (Game.mode === 'spell' && Game.word) {
@@ -818,6 +861,7 @@ function startGame() {
   Game.lives = MAX_LIVES; Game.level = 1;
   Game.wordsDone = 0; Game.correctLetters = 0; Game.correctAnswers = 0;
   Game.dist = 0; Game.time = 0; Game.speed = baseSpeed();
+  Game.passedPipes=0;Game.perfectPipes=0;Game.featherMeter=0;Game.featherShield=0;Game.glideEnergy=2.4;Game.gliding=false;Game.pipeOrdinal=0;Game.lastGap=null;
   Game.pipes = []; Game.walls = []; Game.bubbles = []; Game.particles = []; Game.texts = [];
   Game.nextX = W + 40; Game.patternIdx = 0; Game.bubbleNextX = W;
   Game.bird.x = BIRD_X; Game.bird.y = H * 0.42; Game.bird.vy = 0; Game.bird.rot = 0; Game.bird.inv = 0;
@@ -836,7 +880,7 @@ function startGame() {
 }
 
 function backToMenu() {
-  Game.state = 'menu';
+  Game.state = 'menu';Game.gliding=false;
   $id('paused').classList.add('hidden');
   $id('over').classList.add('hidden');
   $id('hud').classList.add('hidden');
@@ -856,6 +900,7 @@ function flap() {
 
 function togglePause() {
   if (Game.state === 'playing' || Game.state === 'ready') {
+    Game.gliding=false;
     Game.resumeState = Game.state;
     Game.state = 'paused'; $id('paused').classList.remove('hidden');
   }
@@ -899,6 +944,8 @@ document.addEventListener('keydown', (e) => {
     if (Game.state === 'playing' || Game.state === 'paused') { e.preventDefault(); togglePause(); }
   } else if (k === 'KeyM') {
     toggleMute();
+  } else if (k === 'KeyG') {
+    if(Game.state==='playing')Game.gliding=true;
   } else if (k === 'KeyH') {
     useHint();
   } else if (k === 'Enter') {
@@ -907,7 +954,9 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+document.addEventListener('keyup',e=>{if(e.code==='KeyG')Game.gliding=false;});
 canvas.addEventListener('pointerdown', (e) => {
+  if(e.isPrimary===false||(e.button!=null&&e.button!==0)) return;
   e.preventDefault();
   SFX.ensure();
   if (Game.state === 'over') return;
@@ -933,6 +982,9 @@ $id('menu-btn').addEventListener('click', backToMenu);
 $id('pause-menu-btn').addEventListener('click', backToMenu);
 $id('resume-btn').addEventListener('click', togglePause);
 $id('pause-btn').addEventListener('click', togglePause);
+const glideButton=$id('glide-btn');
+glideButton.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(Game.state==='playing'){Game.gliding=true;try{glideButton.setPointerCapture(e.pointerId);}catch{}}});
+for(const event of ['pointerup','pointercancel','lostpointercapture']) glideButton.addEventListener(event,()=>{Game.gliding=false;});
 $id('hint-btn').addEventListener('click', useHint);
 $id('mute-btn').addEventListener('click', toggleMute);
 $id('mute-btn').textContent = SFX.muted ? '🔇' : '🔊';
@@ -950,9 +1002,17 @@ function resize() {
   const cw = wrap.clientWidth || 420, ch = wrap.clientHeight || 660;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+  const oldGround=GROUND_Y,oldWidth=W;
   W = portrait ? cw : 420;
   H = portrait ? ch : 660;
   GROUND_Y = H - GROUND_H;
+  if(oldGround!==GROUND_Y||oldWidth!==W) {
+    const ratio=GROUND_Y/Math.max(1,oldGround),bounds=flightBounds();
+    for(const pipe of Game.pipes) {pipe.gapH=Math.min(pipe.gapH,bounds.bottom-bounds.top-24);pipe.gapY=clamp(pipe.gapY*ratio,bounds.top+pipe.gapH/2,bounds.bottom-pipe.gapH/2);}
+    for(const wall of Game.walls) {const radius=Math.min(D().holeR,(bounds.bottom-bounds.top-30)/4);wall.holes[0].cy=bounds.top+radius+6;wall.holes[1].cy=bounds.bottom-radius-6;wall.holes.forEach(h=>{h.r=radius;});}
+    for(const bubble of Game.bubbles) bubble.y=clamp(bubble.y*ratio,bounds.top+26,bounds.bottom-26);
+    Game.bird.y*=ratio;Game.lastGap=Game.pipes.at(-1)?.gapY??null;Game.gliding=false;
+  }
   BIRD_X = portrait ? Math.min(132, W * 0.32) : 132;
   Game.bird.x = BIRD_X;
   Game.bird.y = Math.min(Game.bird.y, GROUND_Y - BIRD_R);

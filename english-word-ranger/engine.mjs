@@ -1,3 +1,4 @@
+import { FieldContract } from "./contracts.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 // All positions use world pixels; actor y is ALWAYS the sole of the feet.
 // This module deliberately has no DOM, audio, wall clock, or rendering dependency.
 export const STEP = 1 / 120;
@@ -547,6 +548,7 @@ export class World {
       shotTimer: 0,
       shots: 0,
     };
+    this.contract = new FieldContract();
     this.previousInput = {};
     this.metrics = {
       shots: 0,
@@ -564,7 +566,9 @@ export class World {
     return { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   }
   emit(type, data = {}) {
-    this.events.push({ type, ...data });
+    const event = { type, ...data };
+    this.events.push(event);
+    this.contract?.observe(this, event);
   }
   particle(x, y, color, count = 7, power = 130, kind = "spark") {
     for (let i = 0; i < count && this.particles.length < 160; i++) {
@@ -1245,6 +1249,14 @@ export class World {
           );
       } else if (this.player.invincible <= 0 && this.player.roll <= 0.13)
         check(actorBox(this.player), this.player, "player");
+      else if (b.owner !== "player" && this.player.invincible <= 0 && this.player.roll > .13 && !b.evaded) {
+        const evasion = segmentBox(b.x, b.y, dx, dy, actorBox(this.player), b.radius || 0);
+        if (evasion !== null && evasion < best) {
+        // Only count a real swept projectile crossing, once for that projectile.
+        b.evaded = true;
+        this.emit("evade");
+        }
+      }
       b.x += dx * Math.min(best, 1);
       b.y += dy * Math.min(best, 1);
       if (target) {
@@ -1519,6 +1531,8 @@ export class World {
       words: this.wordList,
       width: this.viewW,
     });
+    fresh.contract = new FieldContract(this.contract.snapshot());
+    fresh.contract.retries++;
     const saved = { ...this.checkpoint };
     if (saved.x > 200) {
       fresh.player.x = fresh.player.px = fresh.player.safeX = saved.x;

@@ -1,4 +1,4 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1&mobile=20260930-quality-r2";
 export class MoonAudio extends Soundtrack {
   schedule() {
     if (!this.ctx || !this.running || this.muted) return;
@@ -57,6 +57,9 @@ export class MoonAudio extends Soundtrack {
     } else if (e.type === "deflect") {
       tone(1900, 0.08, 0.075, 740);
       this.hiss(t, 0.035, 0.055, 4600);
+    } else if (e.type === "riposte") {
+      tone(740, .12, .06, 1480);
+      this.tone(1110, t + .05, .14, .04, "sine", this.effects);
     } else if (e.type === "impact") {
       this.hiss(t, 0.045, 0.035, 3100);
     } else if (e.type === "hurt") {

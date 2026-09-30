@@ -155,3 +155,22 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
 #score, #quota { font-variant-numeric: tabular-nums; }
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) { #timer, #dynamite-btn { transition: none; } }
+
+#contract-status { position:absolute; left:12px; right:12px; top:57px; text-align:center; color:#a7f3d0; font-size:12px; }
+#cast-btn { position:absolute; bottom:18px; left:18px; min-height:48px; padding:12px 20px; border-radius:16px; border:1px solid #facc15; color:#332306; background:linear-gradient(#fde68a,#f59e0b); font:800 14px system-ui; pointer-events:auto; cursor:pointer; }
+button { min-height:44px; } .overlay { overflow-y:auto; overscroll-behavior:contain; }
+#word-bar { bottom:78px; } #feedback { white-space:normal;text-align:center; }
+@media (max-width:600px) {
+  #stats { flex-direction:row; align-items:flex-start; } #stats .chips { flex-wrap:wrap;gap:3px; } #stats .chips:first-child { max-width:65%;justify-content:flex-start; }
+  #pause-btn,#mute-btn { padding:6px 8px; } #contract-status { top:calc(76px + env(safe-area-inset-top));font-size:11px; }
+  #cast-btn { bottom:max(18px,env(safe-area-inset-bottom)); left:12px; min-height:54px; }
+  #word-bar { bottom:88px; } #dynamite-btn { min-height:54px; right:12px; }
+  .panel { margin:auto; padding:24px 16px; } .menu-cover { max-height:24dvh;object-fit:cover; }
+  .panel p.sub { font-size:13px; } .btn-main { min-height:50px; }
+  .shop-grid { grid-template-columns:1fr; } .shop-buy { min-height:82px; text-align:left;padding:14px; } .shop-buy span { min-height:0; }
+}
+
+/* Menus remain zoomable and scrollable; only direct play controls capture touch. */
+.overlay { padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+.quick-start details { margin-top:8px;color:#a9bdcf; }.quick-start summary { min-height:44px;display:flex;align-items:center;cursor:pointer;color:#8bd9eb; }
+.quick-start p { margin:3px 0; }.quick-start b { color:#edfaff; }

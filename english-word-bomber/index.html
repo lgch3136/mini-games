@@ -2,9 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>英语炸弹人 · WORD BOMBER</title>
-<link rel="stylesheet" href="style.css?v=20260930-polish-r1">
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20260930-quality-r2">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 </head>
 <body>
 <div id="game-wrap">
@@ -26,7 +27,8 @@
         <button id="pause-btn">暂停</button>
       </div>
     </div>
-    <div id="feedback"></div>
+    <div id="feedback" role="status"></div>
+    <div id="mission" class="mission-strip"></div><div id="build-status" class="build-strip"></div>
   </div>
 
   <div id="touch-controls">
@@ -41,10 +43,10 @@
 
   <div class="overlay" id="menu">
     <div class="panel">
-      <img class="menu-cover" src="assets/cover.png" alt="">
+      <img class="menu-cover" src="../shared/mobile-art/bomber-diorama.webp" alt="">
 
       <h1>英语炸弹人<small>WORD BOMBER</small></h1>
-      <p class="sub">炸开砖墙，按顺序收集隐藏字母，拼出单词开启传送门。<br>小心敌人和自己的炸弹——计时器不等人！</p>
+      <p class="sub">炸开砖墙，按顺序收集隐藏字母，拼出单词开启传送门。<br>先放炸弹，转过拐角躲开橙色预警。每轮选升级，挑战无伤徽章。</p>
       <div class="keys">
         <span>方向键 / WASD 移动</span><span>空格 / J 放炸弹</span><span>P 暂停</span><span>M 静音</span>
       </div>
@@ -57,6 +59,12 @@
     </div>
   </div>
 
+  <div class="overlay hidden" id="supply">
+    <div class="panel"><p class="mission-kicker">远征补给 · 每轮选一项</p><h1>下一程怎么走？</h1>
+      <img id="supply-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本轮表现徽章"><p id="supply-summary" class="sub"></p>
+      <div class="supply-grid"><button id="supply-fire"><b>扩散核心</b><span>火力 +1 · 达上限后增加容量</span></button><button id="supply-speed"><b>轻盈靴</b><span>移动更快 · 升级整局保留</span></button><button id="supply-heart"><b>安全补给</b><span>恢复 1 颗心 · 最多 5 颗</span></button></div>
+    </div>
+  </div>
   <div class="overlay hidden" id="paused">
     <div class="panel">
       <h1 style="font-size:30px;">暂停中</h1>
@@ -71,6 +79,7 @@
     <div class="panel">
       <p class="eyebrow" id="over-kicker" style="color:#fbbf24;letter-spacing:4px;font-size:12px;margin-bottom:6px;">行动结束</p>
       <h1 id="over-title" style="font-size:32px;">再战一轮？</h1>
+      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本局徽章">
       <div id="over-stats"></div>
       <p class="sub" id="over-recap" style="min-height:20px;"></p>
       <div class="btn-row">
@@ -82,8 +91,8 @@
 </div>
 
 <script src="../shared/vocabulary.js"></script>
-<script src="../shared/audio.js?v=20260930-polish-r1"></script>
-<script src="../shared/chip-music.js?v=20260930-polish-r1"></script>
-<script src="game.js?v=20260930-polish-r1"></script>
+<script src="../shared/audio.js?v=20260930-mobile-r2"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2"></script>
+<script src="game.js?v=20260930-mobile-r2&mobile=20260930-quality-r2"></script>
 </body>
 </html>

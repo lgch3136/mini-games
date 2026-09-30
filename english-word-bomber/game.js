@@ -1,5 +1,7 @@
 'use strict';
 
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
 /* ============================================================
  * 英语炸弹人 · WORD BOMBER —— FC炸弹人机制 × 拼单词开门
  *
@@ -66,6 +68,8 @@ const Game = {
   word: null, lastWord: '',
   player: null,
   exitTimer: 0,
+  build: { speed: 168, bombPower: 2, bombMax: 3 }, roundStarted: 0, roundHits: 0, medals: 0,
+  roundNames: ['初晴庭院', '回声回廊', '追猎工坊', '星门守卫'],
   feedback: '', feedbackUntil: 0,
   logicFrame: 0, rafCount: 0, renderCount: 0,
 };
@@ -74,8 +78,8 @@ function newPlayer() {
   return {
     col: 1, row: 1,         // 逻辑格(炸弹归属用)
     px: 0, py: 0,           // 像素位置(真实坐标, 自由移动)
-    speed: 168,
-    bombPower: 2, bombMax: 3,
+    speed: Game.build.speed,
+    bombPower: Game.build.bombPower, bombMax: Game.build.bombMax,
     kicking: false,
     moving: false, facing: 'down', pendingDir: null, turnLock: 0,
     inv: 2,                 // 出生无敌
@@ -149,7 +153,8 @@ function buildStage() {
     }
   }
   // 连通性保障: 出生点周围3x3必为空地
-  for (let r = 1; r <= 2; r++) for (let c = 1; c <= 2; c++) Game.grid[r][c] = 0;
+  // An L-shaped escape route is longer than the first blast, with a safe corner.
+  for (const [c, r] of [[1,1],[2,1],[3,1],[3,2],[1,2],[1,3],[2,3]]) Game.grid[r][c] = 0;
 }
 
 function placeLettersAndPortal() {
@@ -168,8 +173,12 @@ function placeLettersAndPortal() {
   for (let r = 1; r < ROWS - 1; r++)
     for (let c = 1; c < COLS - 1; c++)
       if (Game.grid[r][c] === 2) bricks.push({ c, r });
-  shuffle(bricks);
+  // Sparse patterns still contain every letter and an independent exit.
   const n = Game.word.en.length;
+  for (let r = ROWS - 2; r > 2 && bricks.length < n + 1; r--)
+    for (let c = COLS - 2; c > 2 && bricks.length < n + 1; c--)
+      if (Game.grid[r][c] === 0) { Game.grid[r][c] = 2; bricks.push({ c, r }); }
+  shuffle(bricks);
   for (let i = 0; i < n && bricks.length; i++) {
     const b = bricks.pop();
     Game.grid[b.r][b.c] = 2;   // 确保是砖
@@ -190,7 +199,7 @@ function placeLettersAndPortal() {
 function spawnEnemies() {
   Game.enemies = [];
   const conf = DIFFS[Game.difficulty];
-  const count = conf.enemyCount + Math.floor((Game.stage - 1) * 1.2) + Math.floor(Game.round / 3);
+  const count = Math.min(10, conf.enemyCount + Math.floor((Game.stage - 1) * 1.2) + Math.floor(Game.round / 3));
   const kinds = ['blob', 'ghost', 'runner'];
   for (let i = 0; i < count; i++) {
     // 出生在远离玩家的空地
@@ -207,7 +216,7 @@ function spawnEnemies() {
       col: c, row: r, kind,
       px: OX + c * CELL + CELL / 2,
       py: OY + r * CELL + CELL / 2,
-      speed: conf.enemySpeed * (kind === 'runner' ? 1.35 : kind === 'ghost' ? .8 : 1) * (1 + (Game.stage - 1) * .06 + Game.round * .012),
+      speed: conf.enemySpeed * (kind === 'runner' ? 1.35 : kind === 'ghost' ? .8 : 1) * (1 + Math.min(.5, (Game.stage - 1) * .06) + Game.round * .012),
       dir: null, moveT: 0, phase: Math.random() * TAU,
       dead: false,
     });
@@ -223,7 +232,7 @@ function startRound() {
   Game.player.px = OX + 1 * CELL + CELL / 2;
   Game.player.py = OY + 1 * CELL + CELL / 2;
   Game.bombs = []; Game.flames = []; Game.pickups = []; Game.particles = []; Game.floaters = [];
-  Game.exitTimer = 0;
+  Game.exitTimer = 0; Game.roundStarted = Game.time; Game.roundHits = 0;
   updateHud();
   showFeedback(`第 ${Game.stage}-${Game.round} 轮 · 目标: ${Game.word.en} (${Game.word.zh})`);
 }
@@ -232,6 +241,8 @@ function startGame() {
   resetInput();
   Game.score = 0; Game.lives = 3; Game.stage = 1; Game.round = 1;
   Game.time = 0; Game.shake = 0; Game.flash = 0;
+  Game.build = { speed: 168, bombPower: 2, bombMax: 3 }; Game.medals = 0;
+  $id('supply').classList.add('hidden');
   Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   Game.state = 'playing';
   $id('menu').classList.add('hidden');
@@ -248,15 +259,26 @@ function startGame() {
 }
 
 function roundClear() {
+  if (Game.state === 'supply') return;
+  const seconds = Math.round(Game.time - Game.roundStarted);
+  const stars = 1 + (Game.roundHits === 0 ? 1 : 0) + (seconds <= 90 ? 1 : 0);
+  Game.medals += stars;
+  const recap = `${'★'.repeat(stars)}${'☆'.repeat(3-stars)} · ${seconds} 秒 · ${Game.roundHits === 0 ? '无伤清场' : '成功撤离'}`;
+  Game.score += stars * 100;
   Game.score += 500 + Game.stage * 100 + Game.round * 50;
   if (Game.round >= 4) { Game.round = 1; Game.stage++; }
   else Game.round++;
   Game.player.inv = 1.5;
   startRound();
+  resetInput(); Game.state = 'supply';
+  $id('supply-medal').src='../shared/mobile-art/medal-'+['bronze','silver','gold'][stars-1]+'.webp';
+  $id('supply-summary').textContent = recap;
+  $id('supply').classList.remove('hidden');
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .3, 1.2);
 }
 
 function loseLife() {
+  Game.roundHits++;
   Game.lives--;
   updateHud();
   if (Game.lives <= 0) { gameOver(); return; }
@@ -267,6 +289,8 @@ function loseLife() {
 }
 
 function gameOver() {
+  const medalPoints=Game.medals;
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
   Game.state = 'over';
   if (window.ChipMusic) ChipMusic.stop();
   $id('word-bar').classList.add('hidden');
@@ -279,6 +303,7 @@ function gameOver() {
   } catch (e) { /* ignore */ }
   $id('over-kicker').textContent = `第 ${Game.stage}-${Game.round} 轮`;
   $id('over-title').textContent = Game.score >= high && Game.score > 0 ? '新纪录！' : '再战一轮？';
+  $id('over-recap').textContent = `远征徽章 ${Game.medals} ★ · 下次先找拐角，再放炸弹`;
   $id('over-stats').innerHTML =
     `<div><span>本局得分</span><b>${Game.score}</b></div>` +
     `<div><span>最高纪录</span><b>${high}</b></div>` +
@@ -336,6 +361,7 @@ function backToMenu() {
   Game.state = 'menu';
   if (window.ChipMusic) ChipMusic.stop();
   $id('paused').classList.add('hidden');
+  $id('supply').classList.add('hidden');
   $id('over').classList.add('hidden');
   $id('word-bar').classList.add('hidden');
   $id('menu').classList.remove('hidden');
@@ -546,7 +572,8 @@ function updatePlayer(dt) {
     if (Math.hypot(p.px - kx, p.py - ky) < CELL * .62) {
       if (k.kind === 'bomb+') { p.bombMax = Math.min(6, p.bombMax + 1); showFeedback('💣 炸弹容量 +1（当前 ' + p.bombMax + '）'); }
       else if (k.kind === 'fire+') { p.bombPower = Math.min(8, p.bombPower + 1); showFeedback('🔥 火力 +1（当前 ' + p.bombPower + '）'); }
-      else { p.speed = Math.min(210, p.speed + 14); showFeedback('👟 移速提升！'); }
+      else { p.speed = Math.min(224, p.speed + 14); showFeedback('👟 移速提升！'); }
+      Game.build = { speed: p.speed, bombPower: p.bombPower, bombMax: p.bombMax };
       Game.score += 80;
       Game.pickups.splice(i, 1);
       if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1.15);
@@ -1125,12 +1152,13 @@ function render() {
   // 背景
   ctx.fillStyle = '#0b1220';
   ctx.fillRect(0, 0, 880, 704);
-  const sx = Game.shake > 0 ? rand(-4, 4) * Game.shake : 0;
-  const sy = Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;
+  const sx = !reducedMotion.matches && Game.shake > 0 ? rand(-4, 4) * Game.shake : 0;
+  const sy = !reducedMotion.matches && Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;
   ctx.save();
   ctx.translate(sx, sy);
   if (Game.state !== 'menu') {
     drawGrid();
+    drawTacticalReadout();
     drawPortal();
     drawLetters();
     drawPickups();
@@ -1141,7 +1169,7 @@ function render() {
     drawParticles();
   }
   ctx.restore();
-  if (Game.flash > 0) {
+  if (!reducedMotion.matches && Game.flash > 0) {
     ctx.fillStyle = 'rgba(255,220,140,' + (Game.flash * .8) + ')';
     ctx.fillRect(0, 0, 880, 704);
   }
@@ -1155,6 +1183,8 @@ function updateHud() {
   $id('round').textContent = Game.round;
   const w = Game.word;
   if (w) {
+    $id('mission').textContent = `${Game.roundNames[(Game.round - 1) % 4]} · 找字母 → 清敌 → 进星门`;
+    $id('build-status').textContent = `火力 ${Game.build.bombPower} · 容量 ${Game.build.bombMax} · 徽章 ${Game.medals}★`;
     const html = [...w.en].map((ch, i) => {
       if (i < w.progress) return `<span class="got">${ch}</span>`;
       if (i === w.progress) return `<span class="next">${ch}</span>`;
@@ -1171,12 +1201,59 @@ function showFeedback(text) {
   el.classList.add('show');
 }
 
+
+// A route-preview uses exactly the same wall-stop rules as the explosion.
+function blastPreview(bomb) {
+  const cells = [{ col: bomb.col, row: bomb.row }];
+  for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]) for (let i = 1; i <= bomb.power; i++) {
+    const col = bomb.col + dc * i, row = bomb.row + dr * i;
+    if (!Game.grid[row] || Game.grid[row][col] == null || Game.grid[row][col] === 1) break;
+    cells.push({ col, row });
+    if (Game.grid[row][col] === 2) break;
+  }
+  return cells;
+}
+function chooseSupply(kind) {
+  if (Game.state !== 'supply') return false;
+  if (!['fire', 'speed', 'heart'].includes(kind)) return false;
+  if (kind === 'fire') {
+    if (Game.build.bombPower < 6) Game.build.bombPower++;
+    else Game.build.bombMax = Math.min(6, Game.build.bombMax + 1);
+  }
+  if (kind === 'speed') Game.build.speed = Math.min(224, Game.build.speed + 14);
+  if (kind === 'heart') Game.lives = Math.min(5, Game.lives + 1);
+  Object.assign(Game.player, Game.build);
+  Game.state = 'playing'; Game.player.inv = 2;
+  $id('supply').classList.add('hidden'); updateHud();
+  showFeedback(`${Game.roundNames[(Game.round - 1) % 4]} · 升级会在整次远征保留`);
+  accumulator = 0; ensureLoop(); return true;
+}
+function drawTacticalReadout() {
+  for (const bomb of Game.bombs) {
+    ctx.fillStyle = bomb.fuse < .7 ? 'rgba(251,113,133,.3)' : 'rgba(251,191,36,.12)';
+    ctx.strokeStyle = bomb.fuse < .7 ? '#fb7185' : 'rgba(251,191,36,.55)';
+    ctx.lineWidth = 1.5;
+    for (const cell of blastPreview(bomb)) {
+      const x = OX + cell.col * CELL + 5, y = OY + cell.row * CELL + 5;
+      ctx.fillRect(x,y,CELL-10,CELL-10); ctx.strokeRect(x,y,CELL-10,CELL-10);
+    }
+  }
+  const target = Game.letters.find(letter => letter.index === Game.word.progress && !letter.taken);
+  if (target && target.hidden && Game.time - Game.roundStarted > 8) {
+    ctx.strokeStyle = '#a7f3d0'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(OX+(target.col+.5)*CELL,OY+(target.row+.5)*CELL,16+Math.sin(Game.time*3)*2,0,TAU); ctx.stroke();
+  }
+}
+
 /* ---------------- 主循环 ---------------- */
 function toggleMute() {
   if (window.ArcadeAudio) ArcadeAudio.toggle();
   if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
   $id('mute-btn').textContent = ArcadeAudio.muted ? '已静音' : '声音';
 }
+$id('supply-fire').addEventListener('click', () => chooseSupply('fire'));
+$id('supply-speed').addEventListener('click', () => chooseSupply('speed'));
+$id('supply-heart').addEventListener('click', () => chooseSupply('heart'));
 $id('mute-btn').addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
 $id('start-btn').addEventListener('click', () => { if (window.ChipMusic) ChipMusic.unlock(); startGame(); });

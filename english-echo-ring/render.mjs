@@ -1,5 +1,5 @@
 import { canvasBudget } from "../shared/render-budget.mjs?v=20260930-polish-r1";
-import { RADIUS, TAU, mix, random } from "./sim.mjs?v=20260906-echo-r5";
+import { RADIUS, TAU, mix, random } from "./sim.mjs?v=20260906-echo-r5&mobile=20260930-quality-r2";
 import { FlowField, ShipShape } from "./field.mjs?v=20260929-membrane-r1";
 import { MembraneSurface } from "./surface.mjs?v=20260929-membrane-r1";
 const C = {

@@ -1,6 +1,7 @@
-import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260929-fluid-r2";
-import { View } from "./view.mjs?v=20260930-polish-r1";
-import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1";
+import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260929-fluid-r2&mobile=20260930-quality-r2";
+import { View } from "./view.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
 import { FrameSnapshot } from "./render-state.mjs?v=20260930-polish-r1";
@@ -158,7 +159,8 @@ function event(e) {
   }
   if (e.type === "checkpoint") toast("检查点已记录 · 体力回复");
   if (e.type === "break") toast("补给箱破开 · 靠近收取忍力", 1.2);
-  if (e.type === "deflect") toast("刀锋截弹", 0.7);
+  if (e.type === "deflect") toast(e.focusGranted ? `刀锋截弹${e.energyGain ? " · 忍力 +1" : ""} · 月息反击就绪` : "刀锋截弹", 1.1);
+  if (e.type === "riposte") toast("月息反击 · 伤害 +1", .9);
   if (e.type === "bossClear") toast("月印已夺回 · 前往寺门", 3);
 }
 function hud() {
@@ -183,7 +185,10 @@ function hud() {
   const boss = world.enemies.find((e) => e.kind === "boss" && !e.dead);
   $("boss").hidden = !boss || !world.bossLocked;
   if (boss) $("boss-fill").style.transform = `scaleX(${boss.hp / boss.maxHp})`;
-  text("hint", world.hint);
+  text("hint", moonCoach(world));
+  $("hint").dataset.focus = p.focus > 0;
+  text("moon-mastery", `截弹 ${world.chapterSkills.deflects} · 反击 ${world.chapterSkills.ripostes} · 本章受伤 ${world.chapterSkills.damage}`);
+  text("dash-state", p.dashCool > 0 ? `疾步 ${p.dashCool.toFixed(1)}s` : "疾步就绪");
   text(
     "status",
     `${STAGES[world.stage].name} · 检查点 ${world.checkpoint + 1} / 3`,
@@ -221,6 +226,7 @@ function tick(now) {
   raf = requestAnimationFrame(guardedTick);
 }
 function panel(kicker, title, body, label) {
+  $("chapter-medal").hidden = true;
   text("panel-kicker", kicker);
   text("panel-title", title);
   text("panel-text", body);
@@ -247,7 +253,7 @@ function finish() {
     panel(
       "RISE AGAIN",
       "重整刀锋",
-      `从本章第 ${world.checkpoint + 1} 个检查点再来。没有次数限制。`,
+      `从本章第 ${world.checkpoint + 1} 个检查点再来。没有次数限制。\n${rememberChapter(world).tip}`,
       "检查点重试",
     );
   else {
@@ -256,12 +262,15 @@ function finish() {
       localStorage.setItem("moonblade-unlocked-v1", unlocked);
     } catch {}
     updateUnlock();
+    const report = rememberChapter(world);
     panel(
       mode === "won" ? "DAWN RETURNS" : "CHAPTER COMPLETE",
       mode === "won" ? "长夜已尽" : "这一程，已过",
-      `得分 ${world.score} · 击倒 ${world.kills} · 重试 ${world.deaths} 次`,
+      `得分 ${world.score} · 击倒 ${world.kills} · 本章重试 ${world.chapterSkills.retries} 次\n${report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join("\n")}\n${report.tip}${report.improved ? "\n本章勋章已升级" : ""}`,
       mode === "won" ? "再走一程" : "进入下一章",
     );
+    $("chapter-medal").hidden = !report.stars;
+    if (report.stars) $("chapter-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
   }
 }
 function menu() {
@@ -482,7 +491,13 @@ try {
   text("sound-btn", audio.muted ? "声音 关" : "声音 开");
   preview();
 } catch (e) {
-  text("loading", "画面未能载入，请刷新重试。");
+  text("loading", "3D 画面未能启动。需要 WebGL 2 与完整角色资源，可刷新重试或返回合集。 ");
+  $("loading").setAttribute("role", "alert");
+  const back = document.createElement("a"); back.href = "../"; back.textContent = "返回游戏合集"; $("loading").append(back);
   text("status", e.message);
   console.error(e);
 }
+
+function refreshChapterRecord() { text("chapter-record", storedMedal(`moonblade-mastery-v1-${$("chapter-select").value}-${$("easy").checked ? "easy" : "normal"}`)); }
+for (const id of ["chapter-select", "easy", "menu-action", "exit-btn"]) $(id).addEventListener(id.includes("action") || id.endsWith("btn") ? "click" : "change", refreshChapterRecord);
+refreshChapterRecord();

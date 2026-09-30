@@ -128,3 +128,23 @@ button:focus-visible { outline: 3px solid #bae6fd; outline-offset: 2px; }
 #word-bar, #feedback { pointer-events: none; }
 #score, #lives, #level, #drop { font-variant-numeric: tabular-nums; }
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+#sector-status { position:absolute; left:12px; right:12px; top:34px; text-align:center; font-size:11px;color:#88c9dd; }
+#recall-btn { position:absolute; right:16px; bottom:16px; pointer-events:auto; min-height:48px; padding:10px 16px; border:1px solid #67e8f9; border-radius:14px; color:#c9faff; background:#103249; font:700 13px system-ui; cursor:pointer; }
+#recall-btn:disabled { opacity:.42; } button { min-height:44px; } .overlay { overflow-y:auto;overscroll-behavior:contain; }
+@media (max-width:600px) and (orientation:portrait) {
+  #game-wrap { width:100vw;height:100dvh;aspect-ratio:auto;border:0;border-radius:0; }
+  #stats { top:env(safe-area-inset-top);left:8px;right:8px;align-items:flex-start; } #stats .chips { flex-wrap:wrap;gap:3px; }
+  #stats .chips:first-child { max-width:66%; } #stats .chip { font-size:11px;padding:4px 7px; }
+  #pause-btn,#mute-btn { padding:4px 8px; } #sector-status { top:calc(58px + env(safe-area-inset-top)); }
+  #word-bar { top:calc(95px + env(safe-area-inset-top));left:50%;transform:translate(-50%,-50%);padding:4px 14px;min-width:190px; }
+  #recall-btn { bottom:max(18px,env(safe-area-inset-bottom));left:50%;right:auto;transform:translateX(-50%);white-space:nowrap;min-height:52px; }
+  #feedback { top:53%;white-space:normal;text-align:center; }
+  .panel { margin:auto;padding:24px 16px; } .menu-cover { max-height:24dvh;object-fit:cover; } .panel p.sub { font-size:13px; } .btn-main { min-height:50px; }
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
+/* Menus remain zoomable and scrollable; only direct play controls capture touch. */
+.overlay { padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+.quick-start details { margin-top:8px;color:#a9bdcf; }.quick-start summary { min-height:44px;display:flex;align-items:center;cursor:pointer;color:#8bd9eb; }
+.quick-start p { margin:3px 0; }.quick-start b { color:#edfaff; }

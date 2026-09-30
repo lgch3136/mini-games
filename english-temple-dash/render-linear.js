@@ -11,7 +11,7 @@ import {
   clamp,
 } from "./engine.mjs?v=20260905-sonic";
 import { runnerPose, footPose } from "./motion.mjs?v=20260905-sonic";
-import { LEAD, CUE_HEIGHT, CUE_FRONT } from "./rhythm.mjs?v=20260905-sonic";
+import { LEAD, CUE_HEIGHT, CUE_FRONT } from "./rhythm.mjs?v=20260905-sonic&mobile=20260930-quality-r2";
 
 // A real orthographic diorama: depth-tested solid geometry, a single camera and
 // one physical scale. Nothing grows, flattens or eases as it approaches the feet.

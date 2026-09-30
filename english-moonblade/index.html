@@ -8,8 +8,9 @@
     />
     <meta name="theme-color" content="#0b1724" />
     <title>月影忍途 · Moonblade</title>
-    <link rel="stylesheet" href="style.css?v=20260930-polish-r1" />
-  </head>
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
   <body>
     <main id="shell">
       <header class="topbar">
@@ -35,6 +36,7 @@
               </div>
             </div>
             <div id="combo"></div>
+            <div id="moon-mastery"></div><div id="dash-state"></div>
             <div class="boss" id="boss" hidden>
               <span>无明 · 寺门守卫</span>
               <div><i id="boss-fill"></i></div>
@@ -78,6 +80,7 @@
                 >
                 <label><input type="checkbox" id="comfort" />减少动态效果</label>
               </div>
+              <p id="chapter-record" class="keys"></p>
               <button id="start-btn" class="primary" disabled>
                 准备角色中…
               </button>
@@ -93,7 +96,7 @@
             <div class="panel">
               <p id="panel-kicker" class="eyebrow"></p>
               <h2 id="panel-title"></h2>
-              <p id="panel-text"></p>
+              <img id="chapter-medal" class="mastery-medal" alt="章节勋章" hidden /><p id="panel-text"></p>
               <button id="primary-action" class="primary"></button
               ><button id="menu-action">返回出发点</button>
             </div>
@@ -130,7 +133,7 @@
           <dt>三段刀击</dt>
           <dd>J 出刀，连续点按接三段。空中也能出刀；↓ + J 是下落斩。</dd>
           <dt>刀锋截弹 / 封印补给</dt>
-          <dd>刀刃生效时能截断来袭飞镖。斩击或忍术击碎金色封条的木箱，再靠近收取忍力。</dd>
+          <dd>刀刃生效时能截断来袭飞镖，回复一格忍力并获得 2.4 秒月息；下一次有效刀击伤害 +1，受伤会失去月息。斩击或忍术击碎金色封条的木箱，再靠近收取忍力。</dd>
           <dt>疾步 / 忍术</dt>
           <dd>
             L 或 Shift 短距闪避，有冷却；I
@@ -146,6 +149,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20260930-polish-r1"></script>
+    <script type="module" src="main.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2"></script>
   </body>
 </html>

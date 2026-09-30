@@ -2,9 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>英语打砖块 · WORD BREAKER</title>
-<link rel="stylesheet" href="style.css?v=20260930-polish-r1">
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20260930-quality-r2">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 </head>
 <body>
 <div id="game-wrap">
@@ -27,15 +28,16 @@
       <span id="wb-kind">拼单词</span><span id="wb-word"></span>
       <div id="wb-zh"></div>
     </div>
-    <div id="feedback"></div>
+    <div id="feedback" role="status"></div><div id="sector-status"></div>
+    <button id="recall-btn" type="button">召回瞄准 <b id="recall-count">1</b> · R</button>
   </div>
 
   <div class="overlay" id="menu">
     <div class="panel">
-      <img class="menu-cover" src="assets/cover.png" alt="">
+      <img class="menu-cover" src="../shared/mobile-art/breaker-diorama.webp" alt="">
 
       <h1>英语打砖块<small>WORD BREAKER</small></h1>
-      <p class="sub">弹球撞碎砖墙，收集砖上字母按顺序拼单词。<br>字母集齐自动过关，挡板角度决定球的去向！</p>
+      <p class="sub">弹球撞碎砖墙，收集砖上字母按顺序拼单词。<br>板心精准接球可攒召回；危急时召回球，再瞄准绿色字母。四座星区循环递进。</p>
       <div class="keys">
         <span>← → / A D 移动挡板</span><span>空格 发射</span><span>每破 4 块必掉 M/W/S/F 胶囊</span><span>P 暂停</span><span>M 静音</span><span>📱 拖动 + 点击</span>
       </div>
@@ -62,6 +64,7 @@
     <div class="panel">
       <p id="over-kicker" style="color:#7dd3fc;letter-spacing:4px;font-size:12px;margin-bottom:6px;">行动结束</p>
       <h1 id="over-title" style="font-size:32px;color:#e0f2fe;text-shadow:0 3px 16px rgba(80,160,255,.4);">再来一局？</h1>
+      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本局徽章">
       <div id="over-stats"></div>
       <div class="btn-row">
         <button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
@@ -72,8 +75,8 @@
 </div>
 
 <script src="../shared/vocabulary.js"></script>
-<script src="../shared/audio.js?v=20260930-polish-r1"></script>
-<script src="../shared/chip-music.js?v=20260930-polish-r1"></script>
-<script src="game.js?v=20260930-polish-r1"></script>
+<script src="../shared/audio.js?v=20260930-mobile-r2"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2"></script>
+<script src="game.js?v=20260930-mobile-r2&mobile=20260930-quality-r2"></script>
 </body>
 </html>

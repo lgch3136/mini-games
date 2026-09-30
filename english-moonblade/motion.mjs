@@ -1,8 +1,8 @@
 import {
   solvePose,
   interpolatePose,
-} from "../english-word-fury/motion.mjs?v=20260918-play-r1";
-import { lerp, clamp } from "./world.mjs?v=20260929-fluid-r2";
+} from "../english-word-fury/motion.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
+import { lerp, clamp } from "./world.mjs?v=20260929-fluid-r2&mobile=20260930-quality-r2";
 import { gait, strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2";
 export { interpolatePose };
 const mix = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));

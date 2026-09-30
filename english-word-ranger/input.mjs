@@ -1,4 +1,4 @@
-import { weaponPose } from "./engine.mjs?v=20260930-controls-r1";
+import { weaponPose } from "./engine.mjs?v=20260930-controls-r1&mobile=20260930-quality-r2";
 
 const ACTIONS = ["jump", "fire", "grenade", "roll"];
 

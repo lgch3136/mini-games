@@ -1,11 +1,12 @@
+import { EXPEDITIONS, expeditionProgress } from "./expedition.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   SnakeGame,
   STEP,
   VERSION,
   wordsFor,
-} from "./engine.mjs?v=20260912-garden-r4";
-import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1";
-import { GardenAudio } from "./audio.mjs?v=20260912-garden-r4";
+} from "./engine.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { GardenAudio } from "./audio.mjs?v=20260912-garden-r4&mobile=20260930-quality-r2";
 import { SnakeInput } from "./input.mjs?v=20260912-garden-r4";
 
 const $ = (id) => document.getElementById(id);
@@ -30,6 +31,7 @@ let game = null,
 let mode = "spell",
   menu = true,
   best = 0,
+  expeditionRecords = {},
   completedWords = [],
   lastWordKey = "",
   lastCursor = -1;
@@ -85,12 +87,17 @@ try {
     settings.speed <= 4
   )
     $("menu-speed").value = settings.speed;
+  if (EXPEDITIONS[settings.expedition]) $("expedition").value = settings.expedition;
   best = Number(localStorage.getItem("word-snake-garden-best")) || 0;
+  const savedStars = JSON.parse(localStorage.getItem("word-snake-expedition-stars-v1") || "{}");
+  if (savedStars && typeof savedStars === "object" && !Array.isArray(savedStars)) expeditionRecords = savedStars;
 } catch {}
+function expeditionKey() { return `${$("expedition").value}-${mode}-${$("difficulty").value}-${$("arena").value}`; }
+function bestStars() { return Math.max(0, Math.min(3, Number(expeditionRecords[expeditionKey()]) || 0)); }
 function record() {
   const count = wordsFor(banks.words[$("difficulty").value]).length;
   $("record").textContent =
-    `项目词库 ${count} 词${best ? ` · 最高收获 ${best.toLocaleString()} 分` : " · 无时间限制，按自己的节奏来"}`;
+    `项目词库 ${count} 词${$("expedition").value !== "endless" ? ` · 本目标 ${bestStars()}/3 星` : ""}${best ? ` · 最高收获 ${best.toLocaleString()} 分` : " · 无时间限制，按自己的节奏来"}`;
 }
 function save() {
   try {
@@ -100,6 +107,7 @@ function save() {
         difficulty: $("difficulty").value,
         arena: $("arena").value,
         speed: Number($("menu-speed").value),
+        expedition: $("expedition").value,
       }),
     );
   } catch {}
@@ -238,6 +246,10 @@ function hud(force = false) {
   $("harvest").hidden = !game.bonus.length || game.bonusRemaining <= 0;
   $("harvest").querySelector("b").textContent =
     `${game.bonusRemaining.toFixed(1)}s`;
+  const progress = expeditionProgress(game);
+  $("expedition-progress").textContent = progress.title;
+  $("expedition-title").textContent = game.wordGoal === 5 ? "五词小花园" : game.wordGoal === 10 ? "十词果园" : "自在生长";
+  $("expedition-fill").style.transform = `scaleX(${progress.fraction})`;
   wordHud(force);
 }
 function events() {
@@ -348,6 +360,7 @@ function start() {
     words: banks.words[$("difficulty").value],
     questions: banks.questions[$("difficulty").value],
     seed: Date.now(),
+    wordGoal: EXPEDITIONS[$("expedition").value]?.goal || 0,
   });
   eventId = 0;
   revision = -1;
@@ -398,13 +411,27 @@ function finish() {
   try {
     localStorage.setItem("word-snake-garden-best", String(best));
   } catch {}
+  const progress = expeditionProgress(game);
+  if (game.wordGoal) {
+    expeditionRecords[expeditionKey()] = Math.max(bestStars(), progress.stars);
+    try { localStorage.setItem("word-snake-expedition-stars-v1", JSON.stringify(expeditionRecords)); } catch {}
+  }
+  const earnedStars = progress.stars;
+  $("mastery-medal").hidden = earnedStars === 0;
+  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp`;
+  $("mastery-medal").alt = `${earnedStars} 星完成奖章`;
+  $("result-title").textContent = game.won ? "这一篮，圆满收官" : "种下的每个词，都算数";
+  $("expedition-stars").textContent = game.wordGoal ? "★".repeat(progress.stars) + "☆".repeat(3 - progress.stars) : "✿";
+  $("expedition-stars").setAttribute("aria-label", `${progress.stars} 星，完成目标、无碰撞、不用提示各一星`);
+  $("expedition-next").textContent = game.won ? `完成目标 ★ · 无碰撞 ${game.hits ? "☆" : "★"} · 独立作答 ${game.mistakes || game.hints ? "☆" : "★"}。${progress.next}` : game.wordGoal ? `已走到 ${game.completed}/${game.wordGoal} 词。可以慢一档，再试一次。` : progress.next;
+  $("restart").textContent = game.won ? "再收一篮 ↗" : "再试同样目标 ↗";
   $("final-score").textContent = game.score.toLocaleString();
   $("final-details").textContent =
     `完成 ${game.completed} 个${game.mode === "spell" ? "单词" : "答案"} · 最高 ${game.bestCombo} 连 · 游了 ${Math.floor(game.time)} 秒`;
   $("word-review").replaceChildren();
   for (const item of completedWords.slice(-12)) {
     const span = document.createElement("span");
-    span.textContent = item.word;
+    span.textContent = `${item.word} · ${item.meaning}`;
     span.title = item.meaning;
     $("word-review").append(span);
   }
@@ -467,6 +494,7 @@ for (const button of document.querySelectorAll("[data-mode]"))
     mode = button.dataset.mode;
     for (const b of document.querySelectorAll("[data-mode]"))
       b.setAttribute("aria-pressed", String(b === button));
+    record();
   });
 $("start").addEventListener("click", start);
 $("restart").addEventListener("click", start);
@@ -484,6 +512,8 @@ $("hint").addEventListener("click", () => {
   }
 });
 $("difficulty").addEventListener("change", record);
+$("expedition").addEventListener("change", record);
+$("arena").addEventListener("change", record);
 $("menu-speed").addEventListener("input", () => {
   $("menu-speed-label").value = labels[Number($("menu-speed").value)];
 });

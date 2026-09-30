@@ -4,7 +4,7 @@ import {
   clamp,
   rng,
   weaponPose,
-} from "./engine.mjs?v=20260930-controls-r1";
+} from "./engine.mjs?v=20260930-controls-r1&mobile=20260930-quality-r2";
 
 const mix = (a, b, t) => a + (b - a) * t;
 const TAU = Math.PI * 2;

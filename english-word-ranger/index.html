@@ -12,8 +12,9 @@
       content="单词突击队：曙光行动。独立瞄准、分层路线、掩体战斗与重装首领；收集词核，为下一次突围补充能量。"
     />
     <title>单词突击队 · 曙光行动</title>
-    <link rel="stylesheet" href="style.css?v=20260930-polish-r1" />
-  </head>
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
   <body>
     <main id="app">
       <div id="viewport">
@@ -52,6 +53,7 @@
             </button>
           </div>
         </header>
+        <div id="field-contract" hidden><b id="field-objective"></b><small id="field-coach"></small><span id="roll-ready"></span></div>
         <div id="boss-hud" hidden>
           <div>
             <span>重装守卫 · ATLAS</span><b id="boss-state">正在接近</b>
@@ -119,6 +121,8 @@
                 ></label
               >
             </div>
+            <p class="save-note" id="operation-record"></p>
+            <p class="save-note">三项战术目标：避弹 / 踩击、4 连击、完整词核</p>
             <p class="save-note" id="best-score">
               原创动作关卡 · 项目词库 · 触屏双手操作
             </p>
@@ -157,7 +161,7 @@
             <span class="edition" id="result-label">MISSION REPORT</span>
             <h2 id="result-title">行动结束</h2>
             <p id="result-description"></p>
-            <div id="result-stats"></div>
+            <img id="field-medal" class="mastery-medal" alt="行动勋章" hidden /><div id="result-stats"></div><p id="field-recap"></p>
             <div id="word-recap"></div>
             <button id="result-primary" class="primary">
               再试一次 <span>→</span></button
@@ -202,6 +206,6 @@
       </footer>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="game.js?v=20260930-polish-r1"></script>
+    <script type="module" src="game.js?v=20260930-polish-r1&mobile=20260930-quality-r2"></script>
   </body>
 </html>

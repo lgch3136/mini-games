@@ -1,0 +1,22 @@
+/* A finite, readable learning loop while keeping the garden's tactile identity. */
+.session-choice { display:grid; gap:7px; margin:15px 0; color:#31524a; font-size:12px; font-weight:650 }
+.session-choice select { width:100%; min-height:46px; border:1px solid #a9baa1; background:#fffdf2; color:#244a3f; border-radius:13px; padding:10px 12px; font:inherit }
+.expedition-track { display:flex; align-items:center; gap:10px; position:relative; padding:5px 1px 10px; color:#476253; font-size:11px }
+.expedition-track b { margin-left:auto; font-variant-numeric:tabular-nums }
+.expedition-track > i { position:absolute; height:3px; bottom:3px; left:0; right:0; border-radius:8px; overflow:hidden; background:#385c3d15 }
+.expedition-track em { display:block; height:100%; transform-origin:left; background:linear-gradient(90deg,#539b65,#cfb959); transition:transform .4s ease }
+.expedition-stars { font-size:36px; letter-spacing:.15em; color:#a97925; margin:10px 0 }
+.expedition-next { color:#49694f; line-height:1.8; font-size:12px; background:#e5ecd4; padding:12px; border-radius:13px }
+#word-review { max-height:100px; overflow-y:auto }
+#word-review span { font-size:12px; line-height:1.6 }
+button, select, input { touch-action:manipulation }
+button:focus-visible, select:focus-visible { outline:3px solid #3d8968; outline-offset:3px }
+@media (max-width:650px) {
+  .session-choice { margin:10px 0; }
+  .session-choice select { font-size:16px; }
+  .expedition-track { font-size:11px; }
+  #controls { padding-bottom:max(10px,env(safe-area-inset-bottom)); }
+  #controls .dpad button { min-width:44px; min-height:44px; }
+  .small-card { max-height:calc(100dvh - 90px); overflow-y:auto; overscroll-behavior:contain; }
+}
+@media (prefers-reduced-motion:reduce) { .expedition-track em { transition:none; } }

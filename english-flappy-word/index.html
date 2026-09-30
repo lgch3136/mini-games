@@ -2,10 +2,11 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a1a2f">
 <title>飞鸟背单词 · FLAPPY WORDS</title>
-<link rel="stylesheet" href="style.css?v=20260930-polish-r1">
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20260930-quality-r2">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 </head>
 <body>
 <div id="game-wrap">
@@ -36,15 +37,16 @@
         <button class="hud-btn" id="pause-btn" title="暂停 (P)">⏸</button>
       </div>
     </div>
+    <div id="route-status"></div><button id="glide-btn" type="button" aria-label="按住滑翔">按住滑翔 <b id="glide-charge">2.4s</b></button>
     <div id="hint-bar">🖱 点击 / 空格 / ⬆ 扇翅膀 · 💡 H 提示 · P 暂停 · M 静音</div>
   </div>
 
   <!-- 主菜单 -->
   <div id="menu" class="overlay">
-    <img id="logo-img" class="menu-cover" src="assets/cover.png" alt="FLAPPY WORDS">
+    <img id="logo-img" class="menu-cover" src="assets/cover-mobile.webp" alt="FLAPPY WORDS">
     <h1>飞鸟背单词</h1>
     <h2>FLAPPY WORDS</h2>
-    <p class="sub">扇动翅膀 · 穿越管道 · 拼出单词 · 攻克语法</p>
+    <p class="sub">三段飞行路线 · 完美穿越蓄羽盾 · 按住滑翔救急</p>
     <div id="mode-select">
       <button class="mode-btn selected" data-mode="spell">🔤 拼单词<br><small>看中文释义，飞过字母气泡按顺序拼单词</small></button>
       <button class="mode-btn" data-mode="choose">🚪 闯关选择<br><small>看题目，穿过写有正确答案的门洞</small></button>
@@ -55,12 +57,7 @@
       <button class="diff-btn" data-diff="hard">🔴 高级<br><small>高中词汇 · 难点语法</small></button>
     </div>
     <button class="btn" id="start-btn">🐦 开始游戏</button>
-    <div id="howto">
-      <p>🎯 <b style="color:#7dd3fc;">拼单词</b>：顶部显示中文释义和字母进度，途中飘来的字母气泡<b>都是当前需要的下一个字母</b>，碰到即收集，按顺序拼出单词（无干扰项、无惩罚）。</p>
-      <p>🎯 <b style="color:#7dd3fc;">闯关选择</b>：题目在顶部，墙壁上有上下两个门洞，各挂一个选项——穿过<b>正确答案</b>的门洞得分，穿错扣 1 条命。</p>
-      <p>🐦 撞到管道、墙壁或地面都会扣命，共 3 条命。💡 H 提示（扣 15 分）：拼单词显示完整单词；闯关模式高亮正确门洞。</p>
-      <p>⭐ 每完成 5 个单词/题目升 1 关：速度加快并回复 1 条命。连击有额外加分。📱 触屏点按扇翅膀。</p>
-    </div>
+    <div id="howto" class="quick-start"><p><b>点一下，扇一下</b> · 不用按住屏幕</p><p><b>看绿色缺口</b> · 居中穿越攒羽盾</p><p><b>快落地时按住滑翔</b> · 完美穿越补充能量</p><details><summary>更多规则与键盘操作</summary><p>拼词：接住下一字母。选择：穿过正确答案门洞。完成 5 题升级并回复生命。每 8 根管道获得航段徽章。</p><p>空格 / ↑ 扇翅 · G 滑翔 · H 提示（15 分）· P 暂停 · M 静音</p></details></div>
     <div id="highscore">🏆 最高分 <span id="hs-value">0</span></div>
     <a id="hub-link" href="https://lgch3136.github.io/mini-games/" target="_blank" rel="noopener">🎮 返回游戏合集 →</a>
   </div>
@@ -68,6 +65,7 @@
   <!-- 游戏结束 -->
   <div id="over" class="overlay hidden">
     <h1>💥 游戏结束</h1>
+    <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本局徽章">
     <div id="over-stats"></div>
     <div class="btn-row">
       <button class="btn" id="retry-btn">🔁 再来一局</button>
@@ -86,10 +84,10 @@
   </div>
 </div>
 
-<script src="../shared/audio.js?v=20260930-polish-r1"></script>
-<script src="../shared/chip-music.js?v=20260930-polish-r1"></script>
+<script src="../shared/audio.js?v=20260930-mobile-r2"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2"></script>
 <script src="data.js?v=20260814c"></script>
 <script src="../shared/vocabulary.js?v=20260820a"></script>
-<script src="game.js?v=20260930-polish-r1"></script>
+<script src="game.js?v=20260930-mobile-r2&mobile=20260930-quality-r2"></script>
 </body>
 </html>

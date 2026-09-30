@@ -1,5 +1,7 @@
 'use strict';
 
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
 /* ============================================================
    雷霆战机 · 英语风暴 —— 游戏引擎
    Canvas 战斗层 + 封面同风格像素战机与深空场景。
@@ -173,7 +175,8 @@ const Game = {
   _lastCombo: 0,
   _minY: 120,
   _nextLayoutCheck: 0,
-  fireHeld: false,
+  fireHeld: false, dashCooldown: 0, dashCount: 0, reactor: 0, sectors: 0, refitPending: false,
+  questionStarted: 0, review: [],
 };
 
 for (let i = 0; i < 110; i++) {
@@ -209,6 +212,7 @@ window.addEventListener('keydown', (ev) => {
   if (ev.code === 'Space' || ev.code.startsWith('Arrow')) ev.preventDefault();
   if (KEYMAP[ev.code]) { keys.add(KEYMAP[ev.code]); Game.player.pointer = false; }
   if (ev.code === 'Space' || ev.code === 'KeyJ') { SFX.ensure(); Game.fireHeld = true; }
+  if (!ev.repeat && (ev.code === 'ShiftLeft' || ev.code === 'ShiftRight')) dashPlayer();
   if (!ev.repeat && (ev.code === 'KeyB' || ev.code === 'KeyX')) { SFX.ensure(); useBomb(); }
   if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
   if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
@@ -413,7 +417,7 @@ function spawnSupplyShip(baseY, speedBase, conf) {
 
 function spawnStreamEnemy(option) {
   const conf = DIFF_CONF[Game.difficulty];
-  const speedBase = conf.speed * (1 + (Game.level - 1) * 0.09);
+  const speedBase = conf.speed * (1 + Math.min(1,(Game.level - 1) * 0.09));
   const edge = W < 600 ? Math.max(62, W * 0.17) : 60;
   if (!Game.encounterKind || Game.encounterSlot >= 4) {
     Game.encounterKind = pickEncounter();
@@ -463,13 +467,14 @@ function updateDirector(dt) {
   if (activeShips >= 9) { Game.spawnTimer = .2; return; }
   if (!Game.carrierQueue.length) Game.carrierQueue = shuffle(Game.question.options.slice());
   const hasCarrier = Game.enemies.some((e) => e.option && !e.retreating);
-  spawnStreamEnemy(!hasCarrier || Math.random() < .42 ? Game.carrierQueue.shift() : null);
+  const missingAnswer = Game.time-Game.questionStarted>6 && !Game.enemies.some(e=>e.option?.correct && !e.retreating) && !Game.powerups.some(u=>u.kind==='answer'&&u.correct);
+  spawnStreamEnemy(missingAnswer ? Game.question.options.find(o=>o.correct) : !hasCarrier || Math.random() < .42 ? Game.carrierQueue.shift() : null);
   Game.spawnTimer = rand(.55, 1.05) / (1 + Game.level * .035);
 }
 
 function spawnQuestionWave() {
   Game.phase = 'question';
-  Game.question = makeQuestion();
+  Game.question = makeQuestion(); Game.questionStarted=Game.time;
   Game.questionIndex++;
   Game.stats.questions++;
   Game.carrierQueue = shuffle(Game.question.options.slice());
@@ -502,6 +507,7 @@ function spawnBoss() {
 }
 
 function nextWave() {
+  if(Game.refitPending) { openRefit(); return; }
   if (Game.bossPending) {
     Game.bossPending = false;
     for (const e of Game.enemies) {
@@ -573,6 +579,7 @@ function killEnemy(e, byCrash) {
     return;
   }
   if (e.boss) {
+    Game.sectors++; Game.refitPending=true;
     Game.score += 1000;
     Game.enemyBullets.length = 0;
     toast('+1000', '#ffd166', e.x, e.y - 30, 22);
@@ -708,6 +715,8 @@ function applyPowerup(u) {
     } else {
       Game.combo = 0;
       Game.stats.wrongAnswers++;
+      Game.review.push(Game.question.isGrammar ? Game.question.prompt.replace('___',Game.question.answer) : `${Game.question.en} = ${Game.question.zh}`);
+      if(Game.review.length>5) Game.review.shift();
       els.qFeedback.textContent = '干扰数据，继续寻找';
       els.qFeedback.style.color = '#ffb36b';
       toast('未匹配 · 连击中断', '#ffb36b', u.x, u.y - 14, 16);
@@ -758,7 +767,7 @@ function firePlayerWeapon() {
 /* ---------------- 射击 ---------------- */
 function fireAtPlayer(e, speed, color) {
   const p = Game.player;
-  const dx = p.x - e.x, dy = p.y - e.y;
+  const dx = (e.aimLocked ? e.aimX : p.x) - e.x, dy = (e.aimLocked ? e.aimY : p.y) - e.y;
   const d = Math.hypot(dx, dy) || 1;
   const ang = Math.atan2(dy, dx) + rand(-0.06, 0.06);
   Game.enemyBullets.push({ x: e.x, y: e.y + 6, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, r: 5, color: color || e.bulletColor || '#ff9b45', kind: 'orb' });
@@ -767,7 +776,7 @@ function fireAtPlayer(e, speed, color) {
 
 function aimedSpread(e, n, spread) {
   const p = Game.player;
-  const base = Math.atan2(p.y - e.y, p.x - e.x);
+  const base = Math.atan2((e.aimLocked?e.aimY:p.y) - e.y, (e.aimLocked?e.aimX:p.x) - e.x);
   const speed = DIFF_CONF[Game.difficulty].bulletSpeed + Game.level * 6;
   for (let i = 0; i < n; i++) {
     const ang = base + (i - (n - 1) / 2) * spread;
@@ -807,14 +816,16 @@ function roseShoot(e, petals = 5, speed = 175) {
 }
 // 弹幕状态机: Boss按阶段轮换图案, 每种有独立的节拍
 function bossDanmaku(e, dt) {
-  if (e.danmakuKind == null) { e.danmakuKind = 0; e.danmakuTimer = 2.2; e.danmakuTick = 0; }
+  if (e.danmakuKind == null) { e.danmakuKind = 0; e.danmakuTimer = 2.2; e.danmakuTick = 0; e.patternWarmup=.75; }
+  if(e.patternWarmup>0) { e.patternWarmup=Math.max(0,e.patternWarmup-dt);return; }
   e.danmakuTimer -= dt;
   e.danmakuTick -= dt;
   const phase2 = Game.level >= 3 || e.hp < e.maxHp * .55;
   if (e.danmakuTimer <= 0) {
     e.danmakuKind = (e.danmakuKind + 1) % (phase2 ? 4 : 3);
     e.danmakuTimer = phase2 ? 3.4 : 4.2;
-    e.danmakuTick = 0;
+    e.danmakuTick = 0; e.patternWarmup=.75;
+    return;
   }
   if (e.danmakuTick > 0) return;
   switch (e.danmakuKind) {
@@ -902,6 +913,8 @@ function updateFx(dt) {
 function update(dt) {
   Game.time += dt;
   Game.shake = Math.max(0, Game.shake - dt * 2.2);
+  const oldDash=Math.ceil(Game.dashCooldown);Game.dashCooldown=Math.max(0,Game.dashCooldown-dt);
+  if(oldDash!==Math.ceil(Game.dashCooldown)) updateDashHud();
 
   const p = Game.player;
   if (p.pointer) {
@@ -1079,10 +1092,17 @@ function updateEnemies(dt) {
     const canFire = waveAge > 1;
     if (canFire && e.y > 30 && e.y < H * 0.85) {
       e.nextShot -= dt;
+      if(e.nextShot<=.55&&!e.aimLocked) { e.aimLocked=true;e.aimX=Game.player.x;e.aimY=Game.player.y; }
       if (e.nextShot <= 0) {
-        e.nextShot = e.shotInterval * rand(0.8, 1.3);
-        if (e.elite) aimedSpread(e, 3, .16);
-        else fireAtPlayer(e, conf.bulletSpeed + Game.level * 6);
+        if (Math.hypot(e.x - Game.player.x, e.y - Game.player.y) < 100) {
+          // Delay only the shot. Ramming and off-screen cleanup still run below.
+          e.nextShot = .65;
+        } else {
+          e.nextShot = e.shotInterval * rand(0.8, 1.3);
+          if (e.elite) aimedSpread(e, 3, .16);
+          else fireAtPlayer(e, Math.min(320, conf.bulletSpeed + Game.level * 6));
+        }
+        e.aimLocked = false;
       }
     }
 
@@ -1150,13 +1170,14 @@ function render(dt) {
   drawStars(dt);
 
   ctx.save();
-  if (Game.shake > 0) {
+  if (!reducedMotion.matches && Game.shake > 0) {
     const shakePx = Math.min(4, Game.shake * 8);
     ctx.translate(rand(-1, 1) * shakePx, rand(-1, 1) * shakePx);
   }
 
   drawPowerups();
   drawEnemies();
+  drawThreats();
   drawEnemyBullets();
   drawBullets();
   drawPlayer();   // 任何状态都绘制战机：死亡后以残骸态保留在爆炸位置
@@ -1627,6 +1648,54 @@ function drawFloaters() {
   ctx.shadowBlur = 0;
 }
 
+
+function updateDashHud() {
+  $id('dash-btn').textContent=Game.dashCooldown>0 ? `冲刺 ${Math.ceil(Game.dashCooldown)}s` : '冲刺 · SHIFT';
+  $id('dash-btn').disabled=Game.dashCooldown>0;
+}
+function dashPlayer() {
+  if(Game.state!=='playing'||Game.dashCooldown>0) return false;
+  const p=Game.player;
+  let dx=(keys.has('right')?1:0)-(keys.has('left')?1:0),dy=(keys.has('down')?1:0)-(keys.has('up')?1:0);
+  if(!dx&&!dy&&p.pointer) { dx=p.px-p.x;dy=p.py-p.y; }
+  if(Math.hypot(dx,dy)<2&&!keys.size) { dx=0;dy=-1; }
+  const length=Math.hypot(dx,dy)||1;
+  explode(p.x,p.y,'#67e8f9',14,.75);
+  p.x=clamp(p.x+dx/length*110,30,W-30);p.y=clamp(p.y+dy/length*110,Math.min(Game._minY,H-46),H-46);
+  p.px=p.x;p.py=p.y;p.invuln=Math.max(p.invuln,.65);p.kvx=p.kvy=0;
+  Game.dashCooldown=7;Game.dashCount++;updateDashHud();return true;
+}
+function openRefit() {
+  Game.state='refit';releaseTouchControls();Game.enemyBullets.length=0;Game.enemies.length=0;Game.bullets.length=0;Game.powerups.length=0;
+  $id('refit-summary').textContent=`航段 ${Game.sectors} 完成 · ${Game.stats.correct} 组数据 · 选择一个永久强化`;
+  $id('refit').classList.remove('hidden');
+}
+function chooseRefit(kind) {
+  if(Game.state!=='refit'||!['reactor','repair','weapon'].includes(kind))return false;
+  if(kind==='reactor') {Game.reactor=Math.min(3,Game.reactor+1);Game.player.fireInterval=.15-Game.reactor*.015;}
+  if(kind==='repair') {Game.hp=100;Game.shield=1;}
+  if(kind==='weapon') {Game.player.weaponLevel=Math.min(3,Game.player.weaponLevel+1);Game.bombs=Math.min(3,Game.bombs+1);}
+  Game.state='playing';Game.refitPending=false;Game.player.invuln=2;Game.dashCooldown=0;
+  $id('refit').classList.add('hidden');spawnQuestionWave();updateHud();accumulator=0;ensureLoop();return true;
+}
+function drawThreats() {
+  ctx.save();ctx.lineWidth=1.5;
+  for(const e of Game.enemies) {
+    if(e.aimLocked&&!e.entering&&!e.retreating) {
+      ctx.strokeStyle='rgba(255,185,110,.58)';ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.aimX,e.aimY);ctx.stroke();ctx.setLineDash([]);
+      ctx.strokeStyle='#ffd166';ctx.beginPath();ctx.arc(e.x,e.y,e.r+8,0,Math.PI*2*clamp(1-e.nextShot/.55,0,1));ctx.stroke();
+    }
+    if(e.boss && e.patternWarmup>0) {
+      ctx.strokeStyle='#fb7185';ctx.beginPath();ctx.arc(e.x,e.y,e.r+16,0,Math.PI*2);ctx.stroke();
+      ctx.font='700 13px system-ui';ctx.fillStyle='#ffe0e4';ctx.textAlign='center';ctx.fillText(['锁定射击 · 横移','旋转弹幕 · 穿空隙','花瓣展开 · 外绕','三向风暴 · 留冲刺'][e.danmakuKind||0],W/2,Math.max(190,e.y+75));
+    }
+  }
+  const p=Game.player;
+  ctx.strokeStyle=Game.dashCooldown<=0?'#67e8f9':'rgba(170,199,220,.5)';ctx.setLineDash([]);ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.stroke();ctx.restore();
+}
+$id('dash-btn').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();dashPlayer();});
+for(const kind of ['reactor','repair','weapon']) $id('refit-'+kind).addEventListener('click',()=>chooseRefit(kind));
+
 /* ---------------- HUD ---------------- */
 function updateQuestionBar() {
   Game._nextLayoutCheck = 0;
@@ -1640,6 +1709,8 @@ function updateQuestionBar() {
 }
 
 function updateHud() {
+  updateDashHud();
+  $id('sector-progress').textContent = Game.phase==='boss' ? '核心守卫 · 读懂预警再穿行' : `航段 ${Game.sectors+1} · 数据 ${Game.stats.correct%8}/8 · 冲刺可穿过弹幕`;
   els.score.textContent = Game.score;
   els.level.textContent = Game.level;
   els.bombs.textContent = Game.bombs;
@@ -1676,6 +1747,8 @@ function updateHighScore() {
 /* ---------------- 流程控制 ---------------- */
 function startGame() {
   Game.state = 'playing';
+  Game.dashCooldown=0;Game.dashCount=0;Game.reactor=0;Game.sectors=0;Game.refitPending=false;Game.review=[];
+  $id('refit').classList.add('hidden');
   releaseTouchControls();
   if (window.ChipMusic) ChipMusic.play('thunder-stage');
   Game.score = 0; Game.combo = 0; Game.maxCombo = 0; Game._lastCombo = 0; Game.graze = 0; Game.medalChain = 0;
@@ -1697,7 +1770,7 @@ function startGame() {
   Game.particles.length = 0; Game.shockwaves.length = 0; Game.floaters.length = 0;
   const p = Game.player;
   p.x = p.px = W / 2; p.y = p.py = H - 90;
-  p.weapon = 'spread'; p.weaponLevel = 1;
+  p.weapon = 'spread'; p.weaponLevel = 1;p.fireInterval=.15;
   p.double = 0; p.invuln = 1.5; p.pointer = false; p.spawnRing = 3; p.muzzle = 0; p.berserk = 0;
   Game.lastEncounter = null;
   Game.encounterKind = null;
@@ -1729,7 +1802,7 @@ function resumeGame() { if (Game.state === 'paused') togglePause(); }
 
 function backToMenu() {
   releaseTouchControls();
-  Game.state = 'menu';
+  Game.state = 'menu';$id('refit').classList.add('hidden');
   if (window.ChipMusic) ChipMusic.stop();
   SFX.ac?.suspend().catch(() => {});
   els.hud.classList.add('hidden');
@@ -1742,6 +1815,8 @@ function backToMenu() {
 }
 
 function gameOver() {
+  const medalPoints=Game.sectors*4+Math.floor(Game.stats.correct/2);
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
   if (window.ChipMusic) ChipMusic.stop();
   releaseTouchControls();
   Game.state = 'over';
@@ -1766,6 +1841,7 @@ function gameOver() {
     '<div class="stat-row"><span>掌握单词</span><b>' + Game.stats.vocab + ' 个</b></div>' +
     '<div class="stat-row"><span>攻克语法</span><b>' + Game.stats.grammar + ' 题</b></div>' +
     '<div class="stat-row"><span>到达关卡</span><b>第 ' + Game.level + ' 关</b></div>';
+  if(Game.review.length) { const review=document.createElement('p');review.className='review-recap';review.textContent='回看数据 · '+[...new Set(Game.review)].join(' / ');els.overStats.appendChild(review); }
   els.hud.classList.add('hidden');
   els.over.classList.remove('hidden');
   updateHighScore();
@@ -1995,6 +2071,7 @@ if (/[?&]fuzz/.test(location.search)) {
         if (answer) { answer.x = Game.player.x; answer.y = Game.player.y; }
       }
       if (i % 240 === 0 && Game.powerups[0]) { Game.powerups[0].x = Game.player.x; Game.powerups[0].y = Game.player.y; }
+      if(Game.state==='refit') chooseRefit('reactor');
       update(1 / 60);
       updateFx(1 / 60);
       if (Game.level > beforeLevel) levels++;

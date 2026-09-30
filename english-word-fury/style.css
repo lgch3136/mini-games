@@ -1162,3 +1162,15 @@ kbd {
 #timer { display: inline-block; min-width: 2ch; }
 #timer[data-urgent="true"] { color: #ffb69b; }
 .health { overflow: hidden; }
+
+#dojo-coach { position: absolute; z-index: 8; top: 110px; left: 50%; transform: translateX(-50%); width: min(440px, 72vw); background: #172b39ec; border: 1px solid #bca47a99; color: #fff1cf; border-radius: 9px; padding: 8px 12px; pointer-events: none; text-align: center; font: 700 12px/1.4 system-ui; }
+#dojo-coach span { display: block; color: #d5e6e9; margin-top: 3px; font-size: 11px; font-weight: 500; }
+#fight-recap { white-space: pre-line; font-size: 13px; line-height: 1.7; color: #cde4e6; }
+#fight-medal { width: 72px; height: 72px; object-fit: contain; float: right; }
+@media (max-height: 480px) { #dojo-coach { top: 66px; font-size: 10px; padding: 5px 9px; } #dojo-coach span { font-size: 10px; } }
+@media (pointer: coarse) { #touch button { min-height: 44px; min-width: 44px; } }
+
+#loading a { display: inline-block; padding: 12px; color: #e9cb94; text-decoration: underline; }
+
+#loading[role="alert"] { position: fixed; z-index: 100; inset: 0; width: auto; padding: max(24px, env(safe-area-inset-top)); display: grid; place-content: center; background: #10232af5; color: #f2dfb9; line-height: 1.7; }
+.panel-screen .panel { max-height: calc(100% - 18px); overflow-y: auto; overscroll-behavior: contain; }

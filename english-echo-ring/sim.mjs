@@ -64,10 +64,13 @@ export class Membrane {
   }
 }
 export class Game {
-  constructor({ seed = 9173, mode = "flow" } = {}) {
+  constructor({ seed = 9173, mode = "flow", duration = 0 } = {}) {
     this.seed = seed;
     this.rng = random(seed);
     this.mode = mode;
+    this.duration = duration === 90 ? 90 : 0;
+    this.won = false;
+    this.dashes = 0;
     this.time = 0;
     this.score = 0;
     this.combo = 0;
@@ -299,6 +302,7 @@ export class Game {
       p.dy = my / Math.hypot(mx, my);
     }
     if (input.dash && p.dashCooldown === 0) {
+      this.dashes++;
       p.dash = 0.16;
       p.dashCooldown = 2.6;
       this.emit("dash", { x: p.x, y: p.y });
@@ -441,10 +445,20 @@ export class Game {
     }
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.enemies = this.enemies.filter((e) => !e.dead);
+    if (!this.over && this.duration && this.time + 1e-7 >= this.duration) {
+      this.time = this.duration;
+      this.won = true;
+      this.over = true;
+      this.reason = "90 秒试炼完成，回响已留下。";
+      this.emit("clear", { score: this.score });
+    }
   }
   snapshot() {
     return {
       time: this.time,
+      duration: this.duration,
+      won: this.won,
+      dashes: this.dashes,
       seed: this.seed,
       mode: this.mode,
       p: { ...this.p },

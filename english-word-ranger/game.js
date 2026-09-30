@@ -1,13 +1,14 @@
+import { fieldCoach, rememberRanger, storedMedal } from "./contracts.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   World,
   STEP,
   HEIGHT,
   OPERATIONS,
   clamp,
-} from "./engine.mjs?v=20260930-controls-r1";
-import { Renderer } from "./render.js?v=20260930-polish-r1";
-import { Soundtrack } from "./sound.js?v=20260930-controls-r1";
-import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1";
+} from "./engine.mjs?v=20260930-controls-r1&mobile=20260930-quality-r2";
+import { Renderer } from "./render.js?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { Soundtrack } from "./sound.js?v=20260930-controls-r1&mobile=20260930-quality-r2";
+import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1&mobile=20260930-quality-r2";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game"),
@@ -106,6 +107,7 @@ function showScreen(name) {
   $("touch-controls").hidden = !coarse.matches || name !== "playing";
   if (name === "menu") {
     $("notice").hidden = $("combo").hidden = $("boss-hud").hidden = true;
+    $("field-contract").hidden = true;
   }
   renderer.resize();
   world.viewW = renderer.width;
@@ -184,6 +186,7 @@ function menu() {
   sound.pause();
   cleanInput();
   selectedStage %= OPERATIONS.length;
+  setText("operation-record", storedMedal(`ranger-field-v1-${selectedStage}-${difficulty}`));
   document.querySelectorAll("#operation-select button").forEach((b) => {
     const selected = Number(b.dataset.stage) === selectedStage;
     b.classList.toggle("selected", selected);
@@ -226,7 +229,9 @@ function echo(text) {
 function handleEvents() {
   for (const e of world.events) {
     sound.sound(e.type, e);
-    if (e.type === "letter") echo(e.letter);
+    if (e.type === "contract") notice("战术目标达成 · " + e.reward, e.label, 3);
+    else if (e.type === "evade") echo("EVADE");
+    else if (e.type === "letter") echo(e.letter);
     else if (e.type === "word") {
       echo(e.en);
       notice("词核充能 · 生命 +1 / 手雷 +1", `${e.en}  ·  ${e.zh}`, 4);
@@ -254,6 +259,11 @@ function handleEvents() {
 }
 function updateHUD() {
   const p = world.player;
+  const goals = world.contract.goals(), nextGoal = goals.find(g => !world.contract.claimed.has(g.id));
+  setText("field-objective", nextGoal ? `${world.contract.claimed.size}/3 战术目标 · ${nextGoal.label} ${Math.min(nextGoal.value, nextGoal.target)}/${nextGoal.target}` : "✓ 三项战术目标已达成");
+  setText("field-coach", fieldCoach(world));
+  setText("roll-ready", p.rollCooldown > 0 ? `翻滚 ${p.rollCooldown.toFixed(1)}s` : "翻滚就绪");
+  $("field-contract").hidden = screen === "menu";
   const healthKey = `${p.hp}/${world.maxHp}`;
   if (lastHealth !== healthKey) {
     $("health").replaceChildren(
@@ -333,6 +343,10 @@ function finish() {
   showScreen("result");
   updateHUD();
   const won = world.status === "won";
+  const report = rememberRanger(world);
+  $("field-medal").hidden = !report.stars;
+  if (report.stars) $("field-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+  setText("field-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip + (report.improved ? "\n行动勋章已升级" : ""));
   setText(
     "result-label",
     won ? "SIGNAL RESTORED / 任务完成" : "REGROUP / 重整旗鼓",
@@ -474,11 +488,28 @@ document.addEventListener("visibilitychange", () => {
     pause();
   }
 });
-window.addEventListener("pagehide", () => {
+window.addEventListener("pagehide", (event) => {
+  // Safari may send pagehide before visibilitychange. Preserve the live run
+  // for BFCache, but require an explicit resume gesture after restoration.
+  cleanInput();
+  if (screen === "playing") pause();
   cancelAnimationFrame(raf);
+  raf = 0;
   clearTimeout(audioEndTimer);
-  sound.destroy();
-  resizeObserver.disconnect();
+  sound.pause();
+  if (!event.persisted) {
+    sound.destroy();
+    resizeObserver.disconnect();
+  }
+});
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  cleanInput();
+  sound.pause();
+  if (screen === "playing") pause();
+  renderer.resize();
+  world.viewW = renderer.width;
+  renderer.render(world, 1);
 });
 function toggleSound() {
   sound.setMuted(!sound.muted);
@@ -510,6 +541,7 @@ $("result-primary").addEventListener("click", () => {
 document.querySelectorAll("#operation-select button").forEach((el) =>
   el.addEventListener("click", () => {
     selectedStage = Number(el.dataset.stage);
+    setText("operation-record", storedMedal(`ranger-field-v1-${selectedStage}-${difficulty}`));
     document.querySelectorAll("#operation-select button").forEach((b) => {
       b.classList.toggle("selected", b === el);
       b.setAttribute("aria-pressed", String(b === el));
@@ -521,6 +553,7 @@ document.querySelectorAll("#operation-select button").forEach((el) =>
 document.querySelectorAll("#difficulty-select button").forEach((el) =>
   el.addEventListener("click", () => {
     difficulty = el.dataset.difficulty;
+    setText("operation-record", storedMedal(`ranger-field-v1-${selectedStage}-${difficulty}`));
     document.querySelectorAll("#difficulty-select button").forEach((b) => {
       b.classList.toggle("selected", b === el);
       b.setAttribute("aria-pressed", String(b === el));
@@ -708,6 +741,7 @@ window.rangerDiagnostics = () => ({
   },
   boss: { hp: world.boss.hp, phase: world.boss.phase },
   kills: world.kills,
+  contract: world.contract.snapshot(),
   words: world.learned.map((word) => ({ ...word })),
   word: { ...world.word },
   rendering: {

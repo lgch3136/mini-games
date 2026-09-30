@@ -13,7 +13,9 @@
     />
     <title>遗迹词途 · 音速远征</title>
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1" />
-  </head>
+    <link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20260930-quality-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
   <body>
     <main id="app">
       <div id="viewport">
@@ -49,6 +51,8 @@
               <label class="select-label" for="song-select">选择完整曲目</label>
               <select id="song-select"></select>
               <p id="song-detail"></p>
+              <label class="select-label" for="session-select">远征长度</label><select id="session-select"><option value="song">一曲收官 · 完成后结算</option><option value="loop">连续巡演 · 完整曲目循环</option></select>
+              <p class="session-goals">★ 完成全曲　★ 85% 准确率　★ 95% 准确率</p>
             </div>
             <div id="difficulty" class="segments" aria-label="选择难度">
               <button data-level="easy" aria-pressed="false">探索</button>
@@ -184,11 +188,14 @@
         <section id="result-screen" class="screen dialog-screen" hidden>
           <div class="dialog result-dialog">
             <p class="eyebrow">A JOURNEY WORTH KEEPING</p>
-            <h2>这一程，留有回响。</h2>
+            <h2 id="result-title">这一程，留有回响。</h2>
+            <img id="mastery-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="完成奖章" hidden>
+          <div id="result-stars" class="result-stars"></div>
             <p id="result-summary"></p>
             <div id="result-stats"></div>
             <div id="objectives"></div>
             <div id="word-recap"></div>
+            <p id="practice-advice" class="practice-advice"></p>
             <button id="retry-btn" class="primary">再跑一次 · 相同路线 ↗</button
             ><button id="new-btn" class="secondary">探索一条新路线</button
             ><button id="result-menu" class="text-button">返回出发地</button>
@@ -200,7 +207,19 @@
         ><span>方向键 / 轻扫 · Ctrl 爆发 · P 暂停 · M 静音</span>
       </footer>
     </main>
+    <section id="startup-error" class="startup-error" role="alert" hidden>
+      <div><p class="eyebrow">TAKE ANOTHER PATH</p><h2>古道暂时没有打开</h2><p id="startup-error-detail">资源未能载入。检查网络后重试，或先返回合集。</p><button onclick="location.reload()">重新载入</button><a id="startup-home" href="../">返回游戏合集 ↗</a></div>
+    </section>
+    <script>
+      // Static-module load failures happen before game.js can run its own guard.
+      window.addEventListener('error', function (event) {
+        if (event.target && event.target.tagName === 'SCRIPT' && event.target.type === 'module') {
+          document.getElementById('startup-error').hidden = false;
+          document.getElementById('start-btn').textContent = '资源加载失败';
+        }
+      }, true);
+    </script>
     <script src="../shared/vocabulary.js?v=20260820a"></script>
-    <script type="module" src="game.js?v=20260930-polish-r1"></script>
+    <script type="module" src="game.js?v=20260930-quality-r1&mobile=20260930-quality-r2"></script>
   </body>
 </html>

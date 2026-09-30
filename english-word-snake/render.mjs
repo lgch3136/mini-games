@@ -1,4 +1,4 @@
-import { DIRS, mod, random } from "./engine.mjs";
+import { DIRS, mod, random } from "./engine.mjs?mobile=20260930-quality-r2";
 
 const THEMES = [
   {

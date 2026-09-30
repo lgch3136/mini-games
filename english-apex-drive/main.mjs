@@ -1,12 +1,15 @@
-import { Race, ITEMS } from "./world.mjs?v=20260918-play-r1";
-import { RaceView } from "./view.mjs?v=20260930-polish-r1";
+import { drivingGoals, saveDrivingRecord, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { Race, ITEMS } from "./world.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
+import { RaceView } from "./view.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260928-light-r1";
-const app = new Shell({
+} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20260930-quality-r2";
+let app;
+try {
+app = new Shell({
   kind: "race",
   view: new RaceView($("game")),
   create: () =>
@@ -21,6 +24,8 @@ const app = new Shell({
   hud(app) {
     const w = app.world;
     if (!w) return;
+    $("license-recap").hidden = app.mode !== "finished";
+    if (app.mode !== "finished") $("license-medal").hidden = true;
     app.view.showroom = app.mode === "menu";
     const p = w.p,
       touch = app.coarse.matches;
@@ -28,6 +33,9 @@ const app = new Shell({
       swapKey = touch ? "点换位" : "Q";
     document.body.dataset.raceMode = w.mode;
     document.body.dataset.autoGas = w.autoGas;
+    const goals = drivingGoals(w), next = goals.find(g => g.value < g.target);
+    text("driver-goal", next ? `${goals.filter(g => g.value >= g.target).length}/3 驾驶目标 · ${next.label} ${Math.min(next.value, next.target)}/${next.target}` : "✓ 本场驾驶目标全部达成");
+    text("driver-coach", next?.help || "每项 +15% 氮气 · 下次挑战更高强度");
     text("rank", w.rank);
     text("rank-total", w.mode === "cruise" ? " / SOLO" : " / 6");
     text(
@@ -149,6 +157,7 @@ const app = new Shell({
     }
   },
   event(e, app) {
+    if (e.type === "contract") { app.audio.event({ type: "pickup" }); app.toast(`✓ ${e.label} · 氮气 +15%`, 2); saveDrivingRecord(app.world); }
     if (e.type === "camera") app.view.chase = !app.view.chase;
     if (e.type === "launch") app.toast("完美起步 · 抢先一拍", 1.3);
     if (e.type === "miniTurbo" || e.type === "cutDrift") {
@@ -180,6 +189,10 @@ const app = new Shell({
   },
   finish(app) {
     const w = app.world;
+    const report = saveDrivingRecord(w);
+    $("license-medal").hidden = !report.stars;
+    if (report.stars) $("license-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+    text("license-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip + (report.improved ? "\n赛道驾驶勋章已升级" : ""));
     let best = null;
     try {
       const key = `apex-best-mochi-${w.mode}-${w.track.id}-${w.difficulty}`;
@@ -209,3 +222,25 @@ $("camera-toggle").addEventListener("click", () => {
   }
 });
 app.init();
+
+function refreshLicense() {
+  const mode = $("mode").value;
+  text("license-record", storedMedal(`apex-license-v1-${mode === "freestyle" ? 3 : $("track").value}-${mode === "freestyle" ? "cruise" : mode}-${$("difficulty").value}`));
+}
+for (const id of ["track", "mode", "difficulty", "menu-btn", "exit-btn"]) $(id).addEventListener(id.endsWith("btn") ? "click" : "change", refreshLicense);
+refreshLicense();
+
+} catch (error) {
+  // Renderer construction can fail before Shell.init gets a chance to catch it.
+  $("loading").hidden = true;
+  $("start").disabled = true;
+  const fatal = $("fatal");
+  fatal.hidden = false;
+  fatal.setAttribute("role", "alert");
+  fatal.textContent = "3D 画面未能启动。此游戏需要 WebGL 2；请检查浏览器图形支持，或返回合集选择其他游戏。 ";
+  const back = document.createElement("a");
+  back.href = "../";
+  back.textContent = "返回游戏合集";
+  fatal.append(back);
+  console.error(error);
+}

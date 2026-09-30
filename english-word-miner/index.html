@@ -2,9 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>英语挖金子 · WORD MINER</title>
-<link rel="stylesheet" href="style.css?v=20260930-polish-r1">
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20260930-quality-r2">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 </head>
 <body>
 <div id="game-wrap">
@@ -27,16 +28,17 @@
       <span id="wb-kind">挖字母</span><span id="wb-word"></span>
       <div id="wb-zh"></div>
     </div>
-    <div id="feedback"></div>
+    <div id="feedback" role="status"></div><div id="contract-status"></div>
+    <button id="cast-btn" type="button">发射 / 空钩收回</button>
     <button id="dynamite-btn" type="button" aria-disabled="true">💥 雷管 <b id="dynamites">1</b></button>
   </div>
 
   <div class="overlay" id="menu">
     <div class="panel">
-      <img class="menu-cover" src="assets/cover.png" alt="">
+      <img class="menu-cover" src="../shared/mobile-art/miner-diorama.webp" alt="">
 
       <h1>英语挖金子<small>WORD MINER</small></h1>
-      <p class="sub">摆动抓钩，掐准时机发射！<br>限时内拼完单词并赚够目标金额；过关后可购买雷管、力量和幸运升级。</p>
+      <p class="sub">摆动抓钩，掐准时机发射！<br>瞄准虚线，点按出钩；再次点按可空钩收回。精准抓取奖励时间，完成合约后用钱包购买永久升级。</p>
       <div class="keys">
         <span>空格 发射 · X 引爆放弃</span><span>P 暂停</span><span>M 静音</span><span>📱 触屏点按</span>
       </div>
@@ -63,6 +65,7 @@
     <div class="panel">
       <p id="over-kicker" style="color:#fbbf24;letter-spacing:4px;font-size:12px;margin-bottom:6px;">行动结束</p>
       <h1 id="over-title" style="font-size:32px;color:#fde68a;text-shadow:0 3px 16px rgba(250,204,21,.4);">再来一局？</h1>
+      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本局徽章">
       <div id="over-stats"></div>
       <div class="btn-row">
         <button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
@@ -86,8 +89,8 @@
 </div>
 
 <script src="../shared/vocabulary.js"></script>
-<script src="../shared/audio.js?v=20260930-polish-r1"></script>
-<script src="../shared/chip-music.js?v=20260930-polish-r1"></script>
-<script src="game.js?v=20260930-polish-r1"></script>
+<script src="../shared/audio.js?v=20260930-mobile-r2"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2"></script>
+<script src="game.js?v=20260930-mobile-r2&mobile=20260930-quality-r2"></script>
 </body>
 </html>

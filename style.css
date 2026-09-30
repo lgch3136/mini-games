@@ -153,3 +153,38 @@ footer { text-align: center; margin-top: 40px; color: #7f96b8; font-size: 13px; 
   .card, .filter, .art-cover img { transition: none; }
   .card:hover, .card:hover .art-cover img { transform: none; }
 }
+/* Pocket arcade: confident typography and useful choices before the card wall. */
+.page { padding-top:max(32px,env(safe-area-inset-top)); padding-right:max(16px,env(safe-area-inset-right)); padding-left:max(16px,env(safe-area-inset-left)); padding-bottom:max(28px,env(safe-area-inset-bottom)); }
+header { text-align:left; margin-bottom:28px; }
+.eyebrow { display:block; color:#70e1c3; letter-spacing:.24em; font-size:11px; font-weight:800; margin-bottom:10px; }
+header h1 { font-size:clamp(28px,4.4vw,46px); letter-spacing:-.04em; line-height:1.2; }
+header .sub { margin-top:12px; letter-spacing:.04em; line-height:1.8; color:#a6bbce; }
+.discovery { margin-bottom:16px; }
+.search-row { display:flex; align-items:center; gap:14px; margin:18px 0 12px; }
+.search-box { flex:1; display:flex; align-items:center; gap:10px; border:1px solid #adc6df2c; background:#0e1a29; border-radius:14px; padding:0 14px; min-width:0; }
+.search-box:focus-within { outline:2px solid #76dfc5; outline-offset:2px; }
+.search-box>span { font-size:26px; color:#70e1c3; }
+.search-box input { width:100%; min-width:0; height:50px; border:0; outline:0; background:transparent; color:#eef8ff; font:16px system-ui,sans-serif; }
+.search-box input::placeholder { color:#90a5bc; }
+#catalog-count { color:#a3b8cc; white-space:nowrap; font-size:12px; font-variant-numeric:tabular-nums; }
+.pace-filters { display:flex; flex-wrap:wrap; gap:8px; }
+.pace-filters button,#clear-search { font:600 13px system-ui; min-height:44px; padding:8px 15px; border:1px solid #aec4db25; border-radius:12px; color:#bed0e0; background:#0e1a2a; cursor:pointer; }
+.pace-filters button[aria-pressed="true"] { background:#80e4c8; color:#09291f; border-color:#a7ffde; }
+.pace-filters button:focus-visible,#clear-search:focus-visible,.recent-game:focus-visible { outline:3px solid #8fe5d2; outline-offset:3px; }
+.filters { justify-content:flex-start; gap:8px; }
+.filter { min-height:44px; box-shadow:none; padding:8px 14px; }
+.recent-game { display:flex; align-items:center; gap:14px; background:linear-gradient(100deg,#17433a,#112537); border:1px solid #6dddc137; border-radius:15px; padding:15px 18px; color:#d3efea; text-decoration:none; min-height:56px; }
+.recent-game[hidden],#catalog-empty[hidden] { display:none; }
+.recent-game>span { font-size:12px; color:#b0d0cc; }
+.recent-game>strong { flex:1; font-size:15px; }
+.control-chip { position:absolute; z-index:2; bottom:10px; left:10px; padding:5px 8px; border:1px solid #ffffff25; background:#071b2bdc; color:#e4f2fc; border-radius:7px; font-size:11px; font-weight:650; }
+.art-label { font-size:9px; }
+#catalog-empty { padding:24px 0; color:#b8c7d9; }
+.card { border-radius:20px; }
+.art { height:180px; }
+.info { padding:18px; gap:8px; }
+.info h2 { letter-spacing:0; }
+.en { letter-spacing:.16em; }
+@media(max-width:680px){ header .sub { font-size:13px; letter-spacing:0; } .art { height:130px; } .info { padding:13px; } .recent-game { gap:8px; padding:13px; } .recent-game>span:last-child { font-size:11px; } }
+@media(max-width:430px){ .art { height:168px; } .info { padding:16px; } .info h2 { font-size:20px; } .desc { font-size:13px; } }
+.art img[src*="-diorama.webp"] { object-fit:contain; background:#152b32; }

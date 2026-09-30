@@ -1057,3 +1057,12 @@ body:not([data-race-mode="items"]) .touch-right {
 #drift-gauge[data-ready="true"] { outline: 2px solid #a85f2b; outline-offset: 3px; }
 #drift-gauge[data-ready="true"] small { color: #71471e; background: #fff3d4; }
 #mini-key.ready { border-color: #a85f2b; }
+
+#driver-contract { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); width: max-content; max-width: 70%; text-align: center; border-radius: 9px; background: #153431d9; color: #fff4d2; padding: 7px 14px; font: 700 12px/1.4 system-ui; }
+#driver-contract small { display: block; font-size: 10px; color: #d2eae0; margin-top: 2px; }
+#license-recap { font-size: 13px; white-space: pre-line; line-height: 1.7; }
+#license-medal { width: 76px; height: 76px; object-fit: contain; float: right; }
+@media (max-height: 480px) { #driver-contract { top: 48px; padding: 4px 9px; font-size: 10px; max-width: 58%; } #driver-contract small { display: none; } }
+@media (max-width: 520px) and (min-height: 481px) { #driver-contract { top: 126px; max-width: 92%; font-size: 11px; } }
+
+#fatal a { display: inline-block; padding: 12px 16px; margin-top: 12px; border: 1px solid currentColor; border-radius: 8px; color: #bdebdc; }

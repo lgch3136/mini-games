@@ -1,9 +1,10 @@
-import { advanceAfterglow } from "./afterglow.mjs?v=20260930-polish-r1";
-import { Game, STEP, TAU, clamp } from "./sim.mjs?v=20260906-echo-r5";
+import { trialProgress, coachTip } from "./trial.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { advanceAfterglow } from "./afterglow.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { Game, STEP, TAU, clamp } from "./sim.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import { Controls } from "./input.mjs?v=20260930-polish-r1";
-import { Renderer } from "./render.mjs?v=20260930-polish-r1";
-import { EchoAudio } from "./audio.mjs?v=20260906-echo-r5";
-const VERSION = "20260930-polish-r1";
+import { Renderer } from "./render.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { EchoAudio } from "./audio.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+const VERSION = "20260930-quality-r1";
 const $ = (id) => document.getElementById(id);
 const phases = ["01 / 涟漪", "02 / 回流", "03 / 共振", "04 / 深潮"];
 const timeText = (t) =>
@@ -26,8 +27,8 @@ function saveStore(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {}
 }
-function best(mode) {
-  const n = Number(records?.[mode]);
+function best(mode, session = "survival") {
+  const n = Number(records?.[`${mode}-${session}`] ?? (session === "survival" ? records?.[mode] : 0));
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 let records = readStore("echo-ring-best-v1", {}),
@@ -117,6 +118,7 @@ function start() {
   game = new Game({
     seed: crypto.getRandomValues(new Uint32Array(1))[0],
     mode: selected(),
+    duration: $("session").value === "trial" ? 90 : 0,
   });
   mode = "playing";
   hudAt = -1;
@@ -164,13 +166,36 @@ function menu() {
 function finish() {
   stop();
   mode = "result";
-  const previousBest = best(game.mode),
+  const session = game.duration ? "trial" : "survival";
+  const previousBest = best(game.mode, session),
     isBest = game.score > previousBest;
   if (isBest) {
-    records[game.mode] = game.score;
+    records[`${game.mode}-${session}`] = game.score;
     saveStore("echo-ring-best-v1", records);
   }
-  set("result-tag", isBest ? "A NEW PERSONAL BEST" : "ONE MORE ECHO");
+  set("result-tag", game.won ? "TRIAL COMPLETE" : isBest ? "A NEW PERSONAL BEST" : "ONE MORE ECHO");
+  set("result-title", game.won ? "这一圈，你稳稳接住了。" : "下一圈，还能更从容。");
+  const trial = trialProgress(game);
+  const earnedStars = trial.stars;
+  $("mastery-medal").hidden = earnedStars === 0;
+  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp`;
+  $("mastery-medal").alt = `${earnedStars} 星完成奖章`;
+  $("trial-result").hidden = !trial.timed;
+  $("trial-result").replaceChildren();
+  if (trial.timed) {
+    const stars = document.createElement("strong");
+    stars.textContent = "★".repeat(trial.stars) + "☆".repeat(3 - trial.stars);
+    stars.setAttribute("aria-label", `${trial.stars} 星`);
+    $("trial-result").append(stars);
+    for (const goal of trial.goals) {
+      const p = document.createElement("p");
+      p.textContent = `${goal.done ? "✓" : "○"} ${goal.label} · ${goal.value}/${goal.target}`;
+      $("trial-result").append(p);
+    }
+    const recordKey = `trial-${game.mode}`;
+    records[recordKey] = Math.max(Math.max(0, Math.min(3, Number(records[recordKey]) || 0)), trial.stars);
+    saveStore("echo-ring-best-v1", records);
+  }
   set("final-score", game.score.toLocaleString("en-US"));
   set("reason", game.reason);
   set("final-time", timeText(game.time));
@@ -178,7 +203,9 @@ function finish() {
   set("final-return", game.returns);
   set(
     "result-tip",
-    game.reason.includes("回弹")
+    game.won
+      ? "已完成试炼。下一圈试着拿下回弹击杀与连击双星，或挑战一击结束的一线模式。"
+      : game.reason.includes("回弹")
       ? "开火之后，横向离开弹道。必要时松开射击，或用穿行躲开回弹。"
       : "别停在同一个角落。沿着圆周移动，拉开距离再寻找射击角度。",
   );
@@ -187,13 +214,19 @@ function finish() {
   $("retry").focus({ preventScroll: true });
 }
 function refreshBest() {
-  set("menu-best", best(selected()).toLocaleString("en-US"));
+  set("menu-best", best(selected(), $("session").value).toLocaleString("en-US"));
+  const brief = document.querySelector(".trial-brief");
+  brief.textContent = $("session").value === "trial" ? `★ 坚持 90 秒　★ 回弹击杀 5 次　★ 达成 10 连击 · 最佳 ${Math.max(0, Math.min(3, Number(records[`trial-${selected()}`]) || 0))}/3 星` : "没有终点 · 回弹、擦弹与共鸣创造更高分";
 }
 function updateHUD(force = false) {
   if (!force && game.time - hudAt < 0.06) return;
   hudAt = game.time;
   set("score", game.score.toLocaleString("en-US"));
   set("clock", timeText(game.time));
+  const trial = trialProgress(game);
+  set("trial-label", trial.timed ? `90 秒试炼 · ${trial.goals.filter((g) => g.done).length}/3 星` : "无限生存 · 继续保持流动");
+  set("trial-clock", trial.timed ? timeText(trial.remaining) : "∞");
+  $("trial-fill").style.transform = `scaleX(${trial.fraction})`;
   set("phase", phases[game.phase]);
   const max = game.mode === "edge" ? 1 : 3;
   set(
@@ -223,7 +256,9 @@ function updateHUD(force = false) {
     "aria-label",
     game.p.dashCooldown > 0 ? "穿行冷却中" : "穿行，短暂无敌",
   );
-  $("hint").style.opacity = game.time < 9 ? "1" : "0";
+  const tip = coachTip(game);
+  set("hint", tip);
+  $("hint").style.opacity = tip ? "1" : "0";
   if (game.time > noticeUntil) $("notice").style.opacity = "0";
 }
 function frame(timestamp) {
@@ -244,7 +279,8 @@ function frame(timestamp) {
       for (const e of game.drainEvents()) {
         renderer.event(e);
         audio.event(e);
-        if (e.type === "resonance") notify("共鸣 · 回弹清除，得分翻倍", 2.2);
+        if (e.type === "clear") notify("试炼完成 · 你的回响，成为星光", 2);
+        else if (e.type === "resonance") notify("共鸣 · 回弹清除，得分翻倍", 2.2);
         else if (e.type === "phase")
           notify(
             [
@@ -335,6 +371,7 @@ try {
     onPause: pause,
     active: () => mode === "playing",
   });
+  on($("session"), "change", refreshBest);
   on($("start"), "click", start);
   on($("retry"), "click", start);
   on($("pause"), "click", pause);

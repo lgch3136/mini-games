@@ -1,5 +1,7 @@
 'use strict';
 
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
 /* ============================================================
  * 英语打砖块 · WORD BREAKER —— FC打砖块 × 拼单词
  *
@@ -44,7 +46,7 @@ const Game = {
   state: 'menu',            // menu | ready | playing | paused | over
   difficulty: 'easy',
   score: 0, lives: 3, level: 1,
-  wordsDone: 0, bestCombo: 0,
+  wordsDone: 0, bestCombo: 0, recalls: 1, preciseReturns: 0, rescueArmed: false, targetIdle: 0, sectorName: '晨星拱廊',
   time: 0, shake: 0,
   bricks: [], balls: [], powerups: [], particles: [], floaters: [], trails: [],
   word: null, lastWord: '',
@@ -56,12 +58,14 @@ const Game = {
   logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
+function basePaddleWidth() { return W < 600 ? 90 : 110; }
+function playTop() { return W < 600 ? 130 : 40; }
 function newPaddle() {
-  return { x: W / 2 - 55, w: 110, h: 14, y: H - 42, targetX: null, widthBoosts: [] };
+  return { x: W / 2 - basePaddleWidth()/2, w: basePaddleWidth(), h: 14, y: H - (W < 600 ? 98 : 42), targetX: null, widthBoosts: [] };
 }
 
 function newBall(x, y, angleDeg) {
-  const sp = DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12;
+  const sp = Math.min(430, DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12);
   const a = (angleDeg == null ? rand(-125, -55) : angleDeg) * Math.PI / 180;
   return { x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 7, stuck: false };
 }
@@ -145,13 +149,13 @@ function buildLevel() {
   const letterAt = new Map(Game.letterLayout.map(([r, c], index) => [`${r}:${c}`, { letter: letters[index], index }]));
 
   Game.bricks = [];
-  const bw = (W - 40) / 10, bh = 22;
+  const bw = (W - 40) / 10, bh = W < 600 ? 27 : 22;
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < grid[r].length; c++) {
       const cell = grid[r][c];
       if (!cell) continue;
       const brick = {
-        x: 20 + c * bw, y: 56 + r * bh, w: bw - 3, h: bh - 3,
+        x: 20 + c * bw, y: playTop() + 16 + r * bh, w: bw - 3, h: bh - 3,
         row: r, column: c,
         hp: cell.hp + (Game.level > 4 ? 1 : 0),
         letter: null, index: -1,
@@ -166,17 +170,19 @@ function buildLevel() {
     }
   }
 
+  Game.sectorName = ['晨星拱廊','磁环堡垒','流光棋阵','钻石核心'][(Game.level-1)%4];
+  Game.targetIdle = 0; Game.rescueArmed = false;
   Game.paddle = newPaddle();
   Game.balls = [Object.assign(newBall(W / 2, Game.paddle.y - 12), { stuck: true })];
   Game.particles = []; Game.floaters = []; Game.trails = [];
   updateHud();
-  showFeedback(`第 ${Game.level} 关 · 拼出「${Game.word.zh}」`);
+  showFeedback(`${Game.sectorName} · 板心接球积蓄召回 · 追踪绿色字母`);
 }
 
 function startGame() {
   resetInput();
   Game.score = 0; Game.lives = 3; Game.level = 1;
-  Game.wordsDone = 0; Game.bestCombo = 0;
+  Game.wordsDone = 0; Game.bestCombo = 0; Game.recalls = 1; Game.preciseReturns = 0;
   Game.time = 0; Game.shake = 0; Game.fireTimer = 0;
   Game.levelClearTimer = 0;
   Game.dropMeter = 0; Game.powerups = [];
@@ -194,7 +200,7 @@ function startGame() {
 }
 
 function nextLevel() {
-  Game.level++;
+  Game.level++; Game.recalls = Math.max(1,Game.recalls);
   Game.score += 300 + Game.lives * 100;
   buildLevel();
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .3, 1.25);
@@ -210,6 +216,7 @@ window.addEventListener('keydown', (ev) => {
     else if (Game.state === 'ready') Game.state = 'playing';
   }
   if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
+  if (ev.code === 'KeyR' && !ev.repeat) recallBall();
   if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
   if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
 });
@@ -236,7 +243,22 @@ canvas.addEventListener('pointerdown', (ev) => {
 });
 
 function launchStuck() {
-  for (const b of Game.balls) if (b.stuck) { b.stuck = false; b.vy = -Math.abs(b.vy || 260); b.vx = b.vx || rand(-90, 90); }
+  for (const b of Game.balls) if (b.stuck) {
+    b.stuck = false;
+    const target = Game.bricks.find(k=>k.index===Game.word.progress && k.letter);
+    if (Game.rescueArmed && target) {
+      const dx=target.x+target.w/2-b.x,dy=target.y+target.h/2-b.y,dist=Math.hypot(dx,dy);
+      const speed=Math.min(430,DIFFS[Game.difficulty].ballSpeed+(Game.level-1)*12);
+      b.vx=dx/dist*speed;b.vy=dy/dist*speed;
+    } else { b.vy=-Math.abs(b.vy||260);b.vx=b.vx||rand(-90,90); }
+  }
+  Game.rescueArmed=false;
+}
+function recallBall() {
+  if(Game.state!=='playing'||Game.levelClearTimer>0||Game.recalls<=0||!Game.balls.some(b=>!b.stuck)) return false;
+  const ball=Game.balls.find(b=>!b.stuck); Game.recalls--;Game.rescueArmed=true;
+  ball.stuck=true;ball.x=Game.paddle.x+Game.paddle.w/2;ball.y=Game.paddle.y-ball.r-2;
+  burst(ball.x,ball.y,'#67e8f9',12);showFeedback('召回成功 · 移动挡板，点击瞄准绿色目标');updateHud();return true;
 }
 
 function togglePause() {
@@ -281,7 +303,7 @@ function update(dt) {
     p.widthBoosts[i] -= dt;
     if (p.widthBoosts[i] <= 0) p.widthBoosts.splice(i, 1);
   }
-  p.w = Math.min(190, 110 + p.widthBoosts.length * 34);
+  p.w = Math.min(W*.44, basePaddleWidth() + p.widthBoosts.length * 34);
   const speed = 480;
   if (input.left) p.targetX = null, p.x -= speed * dt;
   if (input.right) p.targetX = null, p.x += speed * dt;
@@ -294,7 +316,7 @@ function update(dt) {
     if (b.stuck) { b.x = p.x + p.w / 2; b.y = p.y - b.r - 2; continue; }
     // Arkanoid速度守恒: 球速缓慢回归基准(减速道具效果渐退)
     {
-      const base = DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12;
+      const base = Math.min(430, DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12);
       const sp = Math.hypot(b.vx, b.vy);
       if (sp < base && sp > 0) {
         const k = 1 + Math.min(.4, .12 * dt);
@@ -306,7 +328,7 @@ function update(dt) {
     // 墙壁
     if (b.x < b.r + 6) { b.x = b.r + 6; b.vx = Math.abs(b.vx); wallHit(); }
     if (b.x > W - b.r - 6) { b.x = W - b.r - 6; b.vx = -Math.abs(b.vx); wallHit(); }
-    if (b.y < b.r + 40) { b.y = b.r + 40; b.vy = Math.abs(b.vy); wallHit(); }
+    if (b.y < b.r + playTop()) { b.y = b.r + playTop(); b.vy = Math.abs(b.vy); wallHit(); }
 
     // 掉落
     if (b.y > H + 20) {
@@ -329,6 +351,11 @@ function update(dt) {
       b.vx = Math.sin(ang) * sp;
       b.vy = -Math.abs(Math.cos(ang) * sp);
       b.y = p.y - b.r - 1;
+      if (Math.abs(rel)<.22) {
+        Game.preciseReturns++;Game.score+=15;
+        if(Game.preciseReturns%3===0) { Game.recalls=Math.min(2,Game.recalls+1);floatText('精准 ×3 · 召回 +1',p.x+p.w/2,p.y-40,'#67e8f9'); }
+        updateHud();
+      }
       if (Game.comboCount >= 3) floatText('连击 x' + Game.comboCount + '!', p.x + p.w / 2, p.y - 24, '#fbbf24');
       Game.comboCount = 0; Game.comboTimer = 0;
       if (window.ArcadeAudio) ArcadeAudio.play('click', .1, 1.1);
@@ -346,12 +373,15 @@ function update(dt) {
       const overlapL = b.x + b.r - k.x, overlapR = k.x + k.w - (b.x - b.r);
       const overlapT = b.y + b.r - k.y, overlapB = k.y + k.h - (b.y - b.r);
       const minX = Math.min(overlapL, overlapR), minY = Math.min(overlapT, overlapB);
-      if (minY < minX) b.vy = -b.vy; else b.vx = -b.vx;
+      if (minY < minX) { b.y=b.vy>0?k.y-b.r-.2:k.y+k.h+b.r+.2;b.vy=-b.vy; }
+      else { b.x=b.vx>0?k.x-b.r-.2:k.x+k.w+b.r+.2;b.vx=-b.vx; }
 
       hitBrick(k, i);
       break;
     }
   }
+
+  updateTargetAssist(dt);
 
   // 道具下落
   for (let i = Game.powerups.length - 1; i >= 0; i--) {
@@ -398,7 +428,7 @@ function hitBrick(k, idx) {
     return;
   }
   // 空中连击: 球触板前每碎一块砖连击+1
-  Game.comboCount++; Game.comboTimer = 3;
+  Game.comboCount++; Game.comboTimer = 3; Game.bestCombo=Math.max(Game.bestCombo,Game.comboCount);
   Game.score += 10 * Math.min(5, Game.comboCount);
   if (Game.fireTimer > 0) k.hp = 1;
   k.hp--;
@@ -435,7 +465,7 @@ function collectLetter(brick) {
     floatText(brick.letter, brick.x + brick.w / 2, brick.y, '#94a3b8');
     return;
   }
-  w.progress++;
+  w.progress++; Game.targetIdle=0;
   Game.score += 50;
   floatText('✓ ' + brick.letter, brick.x + brick.w / 2, brick.y, '#86efac');
   updateHud();
@@ -465,6 +495,7 @@ function applyPowerup(kind) {
     for (const b of cur) {
       if (b.stuck) continue;
       for (const da of [-.5, .5]) {
+        if (Game.balls.length>=8) break;
         const sp = Math.hypot(b.vx, b.vy);
         const a = Math.atan2(b.vy, b.vx) + da;
         Game.balls.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: b.r, stuck: false });
@@ -472,8 +503,9 @@ function applyPowerup(kind) {
     }
     showFeedback('⚡ 球分裂!');
   } else if (kind === 'wide') {
-    Game.paddle.widthBoosts.push(12);
-    Game.paddle.w = Math.min(190, 110 + Game.paddle.widthBoosts.length * 34);
+    if(Game.paddle.widthBoosts.length<3) Game.paddle.widthBoosts.push(12);
+    else Game.paddle.widthBoosts[0]=12;
+    Game.paddle.w = Math.min(W*.44, basePaddleWidth() + Game.paddle.widthBoosts.length * 34);
     showFeedback('📏 挡板加长!');
   } else if (kind === 'slow') {
     for (const b of Game.balls) { b.vx *= .72; b.vy *= .72; }
@@ -488,6 +520,8 @@ function applyPowerup(kind) {
 }
 
 function gameOver() {
+  const medalPoints=Game.wordsDone*2;
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
   Game.state = 'over';
   if (window.ChipMusic) ChipMusic.stop();
   $id('word-bar').classList.add('hidden');
@@ -528,6 +562,9 @@ function updateHud() {
   $id('lives').textContent = Game.lives;
   $id('level').textContent = Game.level;
   $id('drop').textContent = `${Game.dropMeter}/4`;
+  $id('recall-count').textContent = Game.recalls;
+  $id('recall-btn').disabled = Game.recalls<=0;
+  $id('sector-status').textContent = `${Game.sectorName} · 精准 ${Game.preciseReturns} · 最佳连击 ${Game.bestCombo}`;
   const w = Game.word;
   if (w) {
     $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
@@ -582,10 +619,11 @@ function render() {
   drawArenaBackdrop();
 
   if (Game.state !== 'menu') {
-    const sx = Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;
+    const sx = !reducedMotion.matches && Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;
     ctx.save();
-    ctx.translate(sx, Game.shake > 0 ? rand(-2, 2) * Game.shake : 0);
+    ctx.translate(sx, !reducedMotion.matches && Game.shake > 0 ? rand(-2, 2) * Game.shake : 0);
 
+    drawTargetLine();
     // 砖块
     for (const k of Game.bricks) {
       const base = `hsl(${k.hue},62%,${k.hp > 1 ? 46 : 58}%)`;
@@ -700,12 +738,53 @@ function drawMenuDemo() {
   ctx.beginPath(); ctx.arc(W / 2, H - 60, 7, 0, TAU); ctx.fill();
 }
 
+
+// The objective never remains hidden behind a long, unlucky bounce cycle.
+function updateTargetAssist(dt) {
+  if(Game.balls.every(b=>b.stuck)) return;
+  Game.targetIdle+=dt;
+  if(Game.targetIdle<18) return;
+  Game.targetIdle=0;
+  const target=Game.bricks.find(k=>k.letter && k.index===Game.word.progress);
+  if(!target) return;
+  const bottom=Math.max(...Game.bricks.map(k=>k.y+k.h),playTop()+180);
+  if(bottom+target.h < Game.paddle.y-140) { target.y=bottom+10;target.hp=1;showFeedback('目标已下移 · 绿色字母等待击破'); }
+}
+function drawTargetLine() {
+  const ball=Game.balls.find(b=>b.stuck);
+  if(!ball||!Game.rescueArmed) return;
+  const target=Game.bricks.find(k=>k.letter&&k.index===Game.word.progress);
+  if(!target) return;
+  ctx.save();ctx.strokeStyle='rgba(103,232,249,.65)';ctx.lineWidth=2;ctx.setLineDash([4,9]);
+  ctx.beginPath();ctx.moveTo(ball.x,ball.y);ctx.lineTo(target.x+target.w/2,target.y+target.h/2);ctx.stroke();ctx.restore();
+}
+function resizeArena() {
+  const wrap=$id('game-wrap'),width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);
+  const mobile=matchMedia('(max-width:600px) and (orientation:portrait)').matches;
+  const nw=mobile?width:720,nh=mobile?height:560;
+  const dpr=Math.min(window.devicePixelRatio||1,2,Math.sqrt(1400000/(width*height)));
+  if(W===nw&&H===nh&&canvas.width===Math.round(width*dpr)&&canvas.height===Math.round(height*dpr))return;
+  const sx=nw/W,sy=nh/H,oldTop=playTop(),oldBottom=Game.paddle?.y || H-42;
+  const newTop=nw<600?130:40,newBottom=nh-(nw<600?98:42);
+  const mapY=y=>newTop+(y-oldTop)*(newBottom-newTop)/Math.max(1,oldBottom-oldTop);
+  const brickYs=Game.bricks.map(k=>mapY(k.y));
+  for(const item of [...Game.bricks,...Game.balls,...Game.powerups,...Game.particles,...Game.floaters]) { item.x*=sx;item.y*=sy;if(item.w)item.w*=sx; }
+  Game.bricks.forEach((brick,i)=>{brick.y=brickYs[i];});
+  W=nw;H=nh;
+  if(Game.paddle) { Game.paddle.x=clamp(Game.paddle.x*sx,8,W-Game.paddle.w-8);Game.paddle.y=H-(W<600?98:42);Game.paddle.targetX=null; }
+  canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);arenaKey='';
+  if(Game.state!=='playing') render();
+}
+window.addEventListener('resize',resizeArena);
+new ResizeObserver(resizeArena).observe($id('game-wrap'));
+
 /* ---------------- 绑定 ---------------- */
 function toggleMute() {
   if (window.ArcadeAudio) ArcadeAudio.toggle();
   if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
   $id('mute-btn').textContent = ArcadeAudio.muted ? '已静音' : '声音';
 }
+$id('recall-btn').addEventListener('pointerdown',e=>{e.preventDefault();recallBall();});
 $id('mute-btn').addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
 $id('start-btn').addEventListener('click', () => { if (window.ChipMusic) ChipMusic.unlock(); startGame(); });
@@ -854,6 +933,7 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
   });
 }
 
+resizeArena();
 render();
 
 ArenaBackground.addEventListener('load', () => { if (Game.state !== 'playing') render(); });

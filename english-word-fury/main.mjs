@@ -1,13 +1,14 @@
+import { rememberCombat, storedMedal } from "./dojo.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   Fight,
   ROSTER,
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20260918-play-r1";
-import { ArenaView } from "./view.mjs?v=20260930-polish-r1";
-import { FuryAudio } from "./sound.mjs";
-import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1";
+} from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
+import { ArenaView } from "./view.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
+import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 const fighterSnapshots = new FighterSnapshots();
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
@@ -127,6 +128,15 @@ function startLoop() {
 function event(e) {
   view.event(e);
   sound.combat(e);
+  if (e.type === "lesson") {
+    rememberCombat(game);
+    setText("callout", e.completed === 4 ? "道场课程完成 · 攻防入门" : "✓ " + e.title + " 达成");
+    calloutUntil = game.frame + 120;
+  }
+  if (e.type === "coachTell") {
+    setText("callout", "陪练准备重拳 · 先防守");
+    calloutUntil = game.frame + 30;
+  }
   if (e.type === "hit" && e.side === 0) {
     wordHit();
     comboUntil = game.frame + 75;
@@ -220,6 +230,13 @@ function updateHud(force = false) {
   }
   const f = game.f[0],
     m = f.action?.spec;
+  const guided = game.mode === "training" && game.training === "coach";
+  $("dojo-coach").hidden = !guided;
+  if (guided) {
+    const lesson = game.course.current;
+    setText("dojo-title", lesson ? `${lesson.title} · ${lesson.goal} ${game.course.progress}/${lesson.target}` : "✓ 四课完成 · 攻防基础已掌握");
+    setText("dojo-tip", lesson?.tip || "可切换实战陪练，或回到街机挑战运用这些技巧");
+  }
   if (game.mode === "training")
     setText(
       "frame-data",
@@ -327,6 +344,8 @@ function resume() {
 function menu() {
   stop();
   mode = "menu";
+  refreshDojoRecord();
+  $("dojo-coach").hidden = true;
   $("menu").hidden = false;
   $("pause").hidden =
     $("result").hidden =
@@ -360,6 +379,10 @@ function finish() {
   );
   setText("result-eyebrow", win ? "VICTORY / 港城新锐" : "MATCH COMPLETE");
   const p = game.f[0];
+  const report = rememberCombat(game);
+  $("fight-medal").hidden = !report.stars || versus;
+  if (report.stars) $("fight-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+  setText("fight-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip);
   $("result-stats").innerHTML =
     `<div><b>${p.stats.hits}</b><small>有效命中</small></div><div><b>${p.best}</b><small>最高连击</small></div><div><b>${wordsDone}</b><small>记忆单词</small></div>`;
   setText("next-btn", win && !versus ? "迎战下一位" : "再战一场");
@@ -555,6 +578,7 @@ document.querySelectorAll("[data-hero]").forEach((button) =>
       .querySelectorAll("[data-hero]")
       .forEach((b) => b.classList.toggle("selected", b === button));
     setText("hero-description", ROSTER[hero].text);
+    refreshDojoRecord();
     game = new Fight({ hero, enemy: opponent });
     view?.select([hero, opponent]);
     preview();
@@ -650,6 +674,12 @@ try {
   preview();
 } catch (error) {
   console.error(error);
-  setText("loading", "角色载入失败。请检查网络后刷新重试。");
+  setText("loading", "3D 画面未能启动。需要 WebGL 2 与完整角色资源，可刷新重试或返回合集。 ");
+  $("loading").setAttribute("role", "alert");
+  const back = document.createElement("a"); back.href = "../"; back.textContent = "返回游戏合集"; $("loading").append(back);
   setText("start-btn", "载入失败，请刷新");
 }
+
+function refreshDojoRecord() { setText("dojo-record", storedMedal(`fury-dojo-v1-${hero}-${$("difficulty").value}`)); }
+$("difficulty").addEventListener("change", refreshDojoRecord);
+refreshDojoRecord();

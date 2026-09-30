@@ -214,3 +214,18 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button:focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { #hp-bar { transition: none; } .pop { animation: none !important; } }
+
+#sector-progress { text-align:center;color:#9cc5da;font-size:11px; }
+#dash-btn { position:absolute;left:20px;bottom:30px;min-width:98px;min-height:54px;border:1px solid #67e8f9;border-radius:18px;background:#11324b;color:#d9fbff;font:800 13px system-ui;pointer-events:auto;touch-action:none;cursor:pointer; }
+#dash-btn:disabled { opacity:.45; } .hud-btn { min-width:44px;min-height:44px; }
+.refit-options { display:grid;gap:12px;width:min(390px,88%);margin-top:24px; }
+.refit-options button { padding:17px;border:1px solid #3b7394;border-radius:16px;text-align:left;background:#12283e;color:#d6f9ff;cursor:pointer; }
+.refit-options b,.refit-options span { display:block; } .refit-options b { font-size:18px; } .refit-options span { margin-top:6px;color:#90b0c5; }
+.review-recap { font-size:12px;line-height:1.8;color:#f9cda6;max-width:390px;margin-top:12px; }
+@media(max-width:600px){#dash-btn{bottom:max(35px,calc(env(safe-area-inset-bottom) + 24px));left:14px;}#fire-btn{width:84px;height:84px;}#sector-progress{font-size:10px;}#howto{font-size:12px;}.menu-cover{max-height:23dvh;object-fit:cover;}}
+
+/* Menus remain zoomable and scrollable; only direct play controls capture touch. */
+.overlay { padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+.quick-start details { margin-top:8px;color:#a9bdcf; }.quick-start summary { min-height:44px;display:flex;align-items:center;cursor:pointer;color:#8bd9eb; }
+.quick-start p { margin:3px 0; }.quick-start b { color:#edfaff; }
+@media(max-width:600px){#hud-top .left{flex-wrap:wrap;}#q-prompt{white-space:normal;line-height:1.3;}#sector-progress{max-width:95%;align-self:center;}.medal-chip{display:none;}}

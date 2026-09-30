@@ -1,5 +1,5 @@
 // Grid decisions, continuous travel. No DOM, wall-clock, audio, or rendering state.
-export const VERSION = "20260912-garden-r4";
+export const VERSION = "20260930-quality-r1";
 export const STEP = 1 / 120;
 export const SPEEDS = [5, 6.5, 8, 10, 12];
 export const DIRS = [
@@ -58,6 +58,7 @@ export class SnakeGame {
     words = fallbackWords,
     questions = fallbackQuestions,
     seed = Date.now(),
+    wordGoal = 0,
   } = {}) {
     this.cols = clamp(Math.floor(cols), 12, 40);
     this.rows = clamp(Math.floor(rows), 8, 40);
@@ -70,6 +71,9 @@ export class SnakeGame {
     this.arena = arena === "classic" ? arena : "garden";
     this.speedSetting = clamp(Math.round(Number(speed) || 0), 0, 4);
     this.speed = SPEEDS[this.speedSetting];
+    this.wordGoal = [5, 10].includes(Number(wordGoal)) ? Number(wordGoal) : 0;
+    this.won = false;
+    this.hints = 0;
     this.time = 0;
     this.distance = 0;
     this.steps = 0;
@@ -252,6 +256,8 @@ export class SnakeGame {
     this.emit("word", { word: this.word.en || this.word.prompt });
   }
   hint() {
+    if (this.phase !== "playing") return;
+    this.hints++;
     this.hintAge = 4;
     this.score = Math.max(0, this.score - 15);
     this.emit("hint");
@@ -265,6 +271,7 @@ export class SnakeGame {
     return 1 + Math.min(3, Math.floor(this.combo / 5));
   }
   collect(tile) {
+    if (this.phase !== "playing" || !tile) return;
     if (this.mode === "spell" && tile.id !== this.cursor) return; // Future letters are previews, not traps.
     if (!tile.correct) {
       this.tiles = this.tiles.filter((t) => t !== tile);
@@ -305,6 +312,13 @@ export class SnakeGame {
       meaning: this.word.zh || this.word.prompt,
       clean: this.wordClean,
     });
+    if (this.wordGoal && this.completed >= this.wordGoal) {
+      this.won = true;
+      this.phase = "over";
+      this.clearInput();
+      this.emit("expedition", { goal: this.wordGoal });
+      return;
+    }
     if (this.completed % 3 === 0) this.startBonus();
     this.nextWord();
   }
@@ -498,6 +512,9 @@ export class SnakeGame {
   snapshot() {
     return {
       version: VERSION,
+      wordGoal: this.wordGoal,
+      won: this.won,
+      hints: this.hints,
       phase: this.phase,
       cols: this.cols,
       rows: this.rows,
