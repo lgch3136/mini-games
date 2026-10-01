@@ -1,6 +1,6 @@
 import * as T from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { MotionTrack } from "./motion.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261001-quality3-r1";
+import { MotionTrack } from "./motion.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261001-quality3-r8";
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1&quality2=20261001-action-r1";
 import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2&quality2=20261001-action-r1";
 import { bevelBox, dressStage, syncCaches } from "./dressing.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";

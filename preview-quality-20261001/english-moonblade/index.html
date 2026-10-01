@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#0b1724" />
     <title>月影忍途 · Moonblade</title>
-    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r7" />
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r8" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261001-quality3-r2">
 </head>
   <body>
@@ -49,6 +49,25 @@
             <div id="toast" role="status"></div>
           </section>
           <div id="loading">正在准备月夜、角色与刀光…</div>
+
+        </div>
+      </div>
+      <footer>
+        <span id="status">壹 · 雨城屋脊</span><span>单人闯关 · 自动检查点</span>
+      </footer>
+      <section id="touch" hidden aria-label="触屏操作">
+        <div class="dpad">
+          <button data-input="left" aria-label="向左移动">◀</button
+          ><button data-input="right" aria-label="向右移动">▶</button
+          ><button data-input="down" class="down" aria-label="下方向">↓</button>
+        </div>
+        <div class="actions">
+          <button data-input="dash" class="minor">疾步</button
+          ><button data-input="ninja" class="minor">忍术</button
+          ><button data-input="attack" class="attack">斩</button
+          ><button data-input="jump" class="jump">跳</button>
+        </div>
+      </section>
           <section id="menu" class="screen">
             <div class="menu-copy">
               <p class="eyebrow">一人，一刀，穿越长夜。</p>
@@ -57,6 +76,9 @@
               <p class="intro">
                 踏雨越檐，刀锋截弹。<br />击碎封印补给，在长夜中找出自己的路。
               </p>
+              <button id="start-btn" class="primary" disabled>
+                准备角色中…
+              </button>
               <div class="chapters">
                 <span>壹 · 雨城</span><span>贰 · 雾谷</span
                 ><span>叁 · 无明寺</span>
@@ -82,9 +104,7 @@
                 <label><input type="checkbox" id="comfort" />减少动态效果</label>
               </div>
               <p id="chapter-record" class="keys"></p>
-              <button id="start-btn" class="primary" disabled>
-                准备角色中…
-              </button>
+
               <p class="keys" id="control-note">
                 A D 移动 · 空格 / K 跳跃 · J 刀击 · L 疾步 · I 忍术
               </p>
@@ -93,24 +113,6 @@
               >踏影无声<br />刀过留月</span
             >
           </section>
-        </div>
-      </div>
-      <footer>
-        <span id="status">壹 · 雨城屋脊</span><span>单人闯关 · 自动检查点</span>
-      </footer>
-      <section id="touch" hidden aria-label="触屏操作">
-        <div class="dpad">
-          <button data-input="left" aria-label="向左移动">◀</button
-          ><button data-input="right" aria-label="向右移动">▶</button
-          ><button data-input="down" class="down" aria-label="下方向">↓</button>
-        </div>
-        <div class="actions">
-          <button data-input="dash" class="minor">疾步</button
-          ><button data-input="ninja" class="minor">忍术</button
-          ><button data-input="attack" class="attack">斩</button
-          ><button data-input="jump" class="jump">跳</button>
-        </div>
-      </section>
       <section id="panel" class="screen panel-screen" role="dialog" aria-labelledby="panel-title" hidden>
         <div class="panel">
           <div class="panel-copy" tabindex="0">
@@ -155,6 +157,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r1"></script>
+    <script type="module" src="main.mjs?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r8"></script>
   </body>
 </html>

@@ -1,3 +1,4 @@
+import { bindGameplayFocus } from "../gameplay-focus.mjs?mobile=20261001-quality3-r8";
 import { Controls } from "./input.mjs?v=20260908-mochi-r1&mobile=20261001-quality3-r1";
 import { Audio } from "./audio.mjs?v=20260908-mochi-r1&mobile=20260930-quality-r2";
 export const $ = (id) => document.getElementById(id);
@@ -35,6 +36,7 @@ export class Shell {
     this.coarse = matchMedia("(pointer:coarse)");
     this.abort = new AbortController();
     const opt = { signal: this.abort.signal };
+    this.restoreFocus = bindGameplayFocus($("game"), () => this.mode === "playing" && !this.destroyed, opt);
     $("game").addEventListener(
       "webglcontextlost",
       (e) => {

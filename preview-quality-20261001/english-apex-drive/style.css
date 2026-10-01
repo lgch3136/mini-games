@@ -1160,3 +1160,10 @@ body:not([data-race-mode="items"]) .touch-right {
 @media (max-width: 699px) and (orientation: portrait) and (max-height: 650px) {
   #hud #sector-split, #hud #item-controls { display: none; }
 }
+/* Starting numbers own the coaching row until GO clears; no first-race message
+   competes with the countdown over the instruments. */
+@media (max-width: 699px) and (orientation: portrait) {
+  #hud > #countdown:empty { display: none; }
+  #hud > #countdown:not(:empty) { position: static; grid-column: 1 / -1; grid-row: 3; transform: none; margin: 0; font-size: 56px; line-height: 1; text-align: center; }
+  #hud:has(#countdown:not(:empty)) :is(#driver-contract, #item-dock, #input-strip, #notice, #incoming, #toast, #technique, #drift-gauge, #word-hud) { display: none; }
+}

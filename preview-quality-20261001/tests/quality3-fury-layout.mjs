@@ -1,4 +1,4 @@
-import { LESSONS } from '../english-word-fury/dojo.mjs';
+import { LESSONS, DojoCourse, formatDojoText } from '../english-word-fury/dojo.mjs?v=20261001-quality3-r3';
 const $ = id => document.getElementById(id), results = [];
 const tick = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 const assert = (ok, message) => { if (!ok) throw Error(message); };
@@ -7,7 +7,8 @@ const overlap = (a,b) => a.x < b.right-.5 && a.right > b.x+.5 && a.y < b.bottom-
 let frame;
 async function load(width, height, sample = 'arcade', coarse = false) {
   const url = new URL('../english-word-fury/index.html', location.href);
-  const source = await fetch(url).then(r => r.text()), page = new DOMParser().parseFromString(source, 'text/html');
+  url.searchParams.set('build',new URL(location.href).searchParams.get('build')||'20261001-quality3-r8');
+  const source = await fetch(url,{cache:'no-store'}).then(r => r.text()), page = new DOMParser().parseFromString(source, 'text/html');
   page.querySelectorAll('script').forEach(s => s.remove());
   const base = page.createElement('base'); base.href = url.href; page.head.prepend(base);
   frame?.remove(); frame = document.createElement('iframe'); frame.width = width; frame.height = height; frame.title = 'Fury production DOM/CSS sample, no renderer';
@@ -25,6 +26,7 @@ async function load(width, height, sample = 'arcade', coarse = false) {
   get('loading').hidden = true; get('menu').hidden = playing; get('hud').hidden = !playing;
   get('pause-btn').hidden = get('exit-btn').hidden = !playing;
   get('touch').hidden = !playing || !coarse; get('practice').hidden = !training;
+  get('dummy').value = sample === 'training' ? 'idle' : 'coach';
   get('dojo-coach').hidden = !['coach','coach-pause'].includes(sample); get('pause').hidden = !['pause','coach-pause'].includes(sample);
   get('start-btn').disabled = false; get('start-btn').textContent = '进入擂台 →';
   get('round-label').textContent = training ? 'PRACTICE' : 'ROUND 03'; get('timer').textContent = training ? '∞' : '15';
@@ -33,7 +35,9 @@ async function load(width, height, sample = 'arcade', coarse = false) {
   get('stocks-0').textContent = '2'; get('max-0').textContent = 'MAX 6.9s';
   get('meaning').textContent = '专注'; get('letters').innerHTML = '<span class="done">F</span><span class="done">O</span><span>C</span><span>U</span><span>S</span>';
   get('dojo-title').textContent = `${LESSONS[2].title} · ${LESSONS[2].goal} 0/1`;
-  get('dojo-tip').textContent = LESSONS[2].tip + '\n挡住了：对手还会收招 18f。防守硬直结束点 B 前蹴（6f 起手）';
+  const course = new DojoCourse(); course.lesson = 2;
+  course.observe({ type:'block', target:0, side:1, frame:100, recoveryFrames:36, blockstun:18, hitstop:6 });
+  get('dojo-tip').textContent = formatDojoText(LESSONS[2].tip + '\n' + course.feedback, coarse);
   get('frame-data').textContent = '前蹴 · 5f / 起手 6 · 有效 3 · 收招 13';
   get('status').textContent = '截风拳 · ' + (training ? '练习道场' : '第 2 场挑战');
   get('hint').textContent = coarse ? '横屏更舒适 · 左手移动，右手出招' : 'J K U I 拳脚 · 空格 气波 · P 暂停';
@@ -58,7 +62,15 @@ function check(ctx) {
   }
   const within = (r, label) => assert(r.x >= -.5 && r.right <= width+.5 && r.y >= -.5 && r.bottom <= height+.5, label + ' clipped by viewport');
   within(arena, 'Arena');
-  if (width <= 680 && height > width) assert(arena.y <= topbar.bottom + 65, 'Portrait arena must start below header/HUD without letterbox gap');
+  if (width <= 680 && height > width) {
+    assert(arena.y <= topbar.bottom + 65, 'Portrait arena must start below header/HUD without letterbox gap');
+    if (!get('dojo-coach').hidden) {
+      const coach = box('dojo-coach'); within(coach, 'Portrait coach');
+      assert(!overlap(arena, coach), 'Portrait coach must stay below the combat canvas, including short screens');
+      for (const id of ['statusbar','practice','touch'].filter(id => !get(id).hidden))
+        assert(!overlap(coach,box(id)), 'Portrait coach overlaps '+id);
+    }
+  }
   if (width <= 680 && height >= 700 && height > width) {
     const readouts = ['timer','word-line','dojo-coach','statusbar','practice','touch'].filter(id => !get(id).hidden);
     for (const id of readouts) { within(box(id), id); assert(!overlap(arena, box(id)), id + ' must be outside combat canvas'); }

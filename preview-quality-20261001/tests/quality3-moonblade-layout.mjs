@@ -13,7 +13,8 @@ const samples = {
 let frame, results = [];
 async function load() {
   const url = new URL('../english-moonblade/index.html', location.href);
-  const response = await fetch(url);
+  url.searchParams.set('build',new URL(location.href).searchParams.get('build')||'20261001-quality3-r8');
+  const response = await fetch(url,{cache:'no-store'});
   assert(response.ok, `Production page fetch failed: ${response.status}`);
   const page = new DOMParser().parseFromString(await response.text(), 'text/html');
   page.querySelectorAll('script').forEach(script => script.remove());
@@ -30,7 +31,7 @@ async function load() {
   for (const id of ['menu','loading']) d.getElementById(id).hidden = true;
   for (const id of ['hud','pause-btn','exit-btn']) d.getElementById(id).hidden = false;
   d.getElementById('touch').hidden = !frame.contentWindow.matchMedia('(pointer: coarse)').matches;
-  const text = {chapter:'壹 · 雨城屋脊',energy:'◆◆◆◆◆◆◆◆◆◆',score:'12345','moon-mastery':'截弹 12 · 反击 10 · 本章受伤 8','dash-state':'疾步就绪'};
+  const text = {chapter:'壹 · 雨城屋脊',energy:'◆◆◆◆◆◆◆◆◆◆',score:'12345','moon-mastery':'截弹 12 · 反击 10 · 本章受伤 8','dash-state':'疾步就绪',toast:'越过长夜，追寻失落的月印',hint:'截弹后趁月息反击 · 留意敌人起手，疾步穿过攻击'};
   for (const [id,value] of Object.entries(text)) d.getElementById(id).textContent = value;
   return d;
 }
@@ -40,8 +41,11 @@ async function resize(width, height) {
 }
 async function show(state) {
   const d = frame.contentDocument, panel = d.getElementById('panel');
-  panel.hidden = state === 'hud';
-  if (state !== 'hud') {
+  const menu = state === 'menu';
+  d.body.classList.toggle('playing', !menu);d.getElementById('menu').hidden=!menu;d.getElementById('hud').hidden=menu;
+  d.getElementById('start-btn').disabled=false;d.getElementById('start-btn').textContent='踏入月夜';
+  panel.hidden = state === 'hud' || menu;
+  if (state !== 'hud' && !menu) {
     ['panel-kicker','panel-title','panel-text','primary-action'].forEach((id,i) => { d.getElementById(id).textContent = samples[state][i]; });
     const medal = d.getElementById('chapter-medal');
     medal.hidden = state !== 'results'; medal.src = '../shared/mobile-art/medal-gold.webp';
@@ -59,12 +63,23 @@ function inspect(state) {
   const read = selector => record.boxes[selector] = box(d.querySelector(selector));
   assert(d.documentElement.scrollWidth <= w.innerWidth + 1, `${state}: page horizontal overflow`);
   assert(d.documentElement.scrollHeight <= w.innerHeight + 1, `${state}: page vertical overflow`);
-  if (state === 'hud') {
+  if(state === 'menu') {
+    assert(!d.getElementById('menu').closest('#arena'),'Menu must use the viewport, not the short portrait arena');
+    const action=d.getElementById('start-btn'),r=read('#start-btn');visibleWithin(r,viewport,'initial Start');
+    assert(r.height>=44&&action.textContent.trim(),'Initial Start must be labelled and44px');
+    assert(d.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('#start-btn')===action,'Initial Start is obscured');
+    record.menuScroll=d.getElementById('menu').scrollTop;assert(record.menuScroll===0,'Start must be visible before menu scrolling');
+  } else if (state === 'hud') {
     const energy = read('.energy'), mastery = read('#moon-mastery');
     assert(!overlaps(energy, mastery) && mastery.y >= energy.bottom, 'Combat metrics overlap the ninpo/resource row');
     for (const selector of ['.chapter','.hp','.energy','#moon-mastery']) visibleWithin(read(selector), read('#arena'), selector);
     for (const selector of ['.energy span:first-child','#energy']) visibleWithin(read(selector), energy, selector);
     assert(d.getElementById('moon-mastery').closest('.vitals'), 'Combat metrics must share resource layout ownership');
+    if(w.innerWidth<=700&&w.innerHeight>w.innerWidth) {
+      const toast=read('#toast'),arena=read('#arena');visibleWithin(toast,viewport,'story toast');
+      assert(!overlaps(toast,energy)&&toast.bottom<=arena.y,'Story/retry toast must remain above portrait resources');
+      assert(arena.y<=d.querySelector('.topbar').getBoundingClientRect().bottom+57,'Portrait stage must not be vertically letterboxed');
+    }
   } else {
     const panel = d.getElementById('panel'), copy = d.querySelector('.panel-copy');
     const panelBox = read('#panel'), copyBox = read('.panel-copy'), actionsBox = read('.panel-actions');
@@ -107,6 +122,8 @@ $('run').addEventListener('click', async () => {
       await show(state);
       for (const [width,height] of sizes) { await resize(width,height); inspect(state); }
     }
+    await show('menu');
+    for(const [width,height] of [[1280,720],[390,844],[320,568],[568,320],[844,390]]) {await resize(width,height);inspect('menu');}
     $('status').textContent = `PASS · ${results.length} production DOM/CSS states`;
   } catch (error) { $('status').textContent = 'FAIL · ' + error.message; }
   finally { $('run').disabled = $('preview').disabled = false; }

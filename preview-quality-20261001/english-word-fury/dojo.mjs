@@ -1,8 +1,20 @@
+import { P1_KEYS } from './input-map.mjs?v=20261001-quality3-r1&mobile=20261001-quality3-r8';
+// Re-export the map so the runtime and instruction formatter share one source.
+export { P1_KEYS };
+const touchLabels = Object.freeze({ A: 'A', B: 'B', C: 'C', D: 'D', guard: '「防」', wave: '「气波」' });
+export function formatDojoText(text, coarse = false) {
+  return text.replace(/\{(A|B|C|D|guard|wave)\}/g, (_, action) => {
+    if (coarse) return touchLabels[action];
+    const code = Object.keys(P1_KEYS).find(code => P1_KEYS[code] === action);
+    return code === 'Space' ? '空格' : code.startsWith('Shift') ? 'Shift' : code.replace(/^Key/, '');
+  });
+}
+
 export const LESSONS = Object.freeze([
-  { title: '01 / 控制距离', goal: '命中 3 次', target: 3, tip: '靠近后点 A 轻拳；打空就再向前一步', test: e => e.type === 'hit' && e.side === 0 },
-  { title: '02 / 读懂防守', goal: '格挡 2 次', target: 2, tip: '按住「防」或 Shift，等陪练的重拳落下', test: e => e.type === 'block' && e.target === 0 },
-  { title: '03 / 收招反击', goal: '抓住 1 次收招', target: 1, tip: '先挡住重拳，松防后点 B 前蹴（6f）；较远的踢击能追上后退距离', test: e => e.type === 'hit' && e.side === 0 && e.punish },
-  { title: '04 / 命中确认', goal: '连成 3 HIT', target: 1, tip: '轻拳命中后接重拳，再接气波；别在打空时连续乱按', test: e => e.type === 'hit' && e.side === 0 && e.combo >= 3 },
+  { title: '01 / 控制距离', goal: '命中 3 次', target: 3, tip: '靠近后点 {A} 轻拳；打空就再向前一步', test: e => e.type === 'hit' && e.side === 0 },
+  { title: '02 / 读懂防守', goal: '格挡 2 次', target: 2, tip: '按住 {guard}，等陪练的重拳落下', test: e => e.type === 'block' && e.target === 0 },
+  { title: '03 / 收招反击', goal: '抓住 1 次收招', target: 1, tip: '先挡住重拳，松防后点 {B} 前蹴（6f）；较远的踢击能追上后退距离', test: e => e.type === 'hit' && e.side === 0 && e.punish },
+  { title: '04 / 命中确认', goal: '连成 3 HIT', target: 1, tip: '轻拳 {A} 命中后接重拳 {C}，再按 {wave} 发气波；打空先停手', test: e => e.type === 'hit' && e.side === 0 && e.combo >= 3 },
 ]);
 export class DojoCourse {
   constructor() { this.lesson = 0; this.progress = 0; this.feedback = ""; this.window = null; }
@@ -11,11 +23,11 @@ export class DojoCourse {
       if (event.type === 'block' && event.target === 0 && event.side === 1) {
         const available = Math.max(0, event.recoveryFrames - event.blockstun);
         this.window = { opens: event.frame + event.hitstop + event.blockstun, closes: event.frame + event.hitstop + event.recoveryFrames };
-        this.feedback = `挡住了：对手还会收招 ${available}f。防守硬直结束点 B 前蹴（6f 起手）`;
+        this.feedback = `挡住了：对手还会收招 ${available}f。防守硬直结束点 {B} 前蹴（6f 起手）`;
       }
       if (event.type === 'attack' && event.side === 0 && this.window) {
         const spare = this.window.closes - event.frame - event.startup;
-        this.feedback = spare >= 0 ? `时机在窗口内 · 还剩 ${spare}f，注意距离` : `晚了 ${-spare}f · 下次在格挡结束前轻点 B 缓冲`;
+        this.feedback = spare >= 0 ? `时机在窗口内 · 还剩 ${spare}f，注意距离` : `晚了 ${-spare}f · 下次在格挡结束前轻点 {B} 缓冲`;
       }
       if (event.type === 'hit' && event.side === 0 && event.punish)
         this.feedback = `成功抓收招 · 命中时对手仍有 ${event.recoveryRemaining || 0}f 无法防御`;
@@ -38,7 +50,7 @@ export function combatReport(game) {
     { label: '完成反击或破招', done: s.punishes + s.counters >= 1 },
   ];
   const stars = won ? goals.filter(g => g.done).length : 0;
-  const tip = s.whiffs > s.hits ? '打空偏多：先靠近再出轻拳，确认命中再接重击' : s.blocks < 2 ? '先学防守：按住防，挡住后用轻拳抓收招' : p.best < 3 ? '下一步：轻拳 → 重拳 → 气波，练习确认后再取消' : '已掌握攻防节奏，试试跳入与投技的变化';
+  const tip = s.whiffs > s.hits ? '打空偏多：先靠近再出轻拳，确认命中再接重击' : s.blocks < 2 ? '先学防守：稳住防守，挡住后用前蹴抓收招' : p.best < 3 ? '下一步：轻拳 → 重拳 → 气波，练习确认后再取消' : '已掌握攻防节奏，试试跳入与投技的变化';
   return { stars, goals, tip };
 }
 export function rememberCombat(game, storage) {

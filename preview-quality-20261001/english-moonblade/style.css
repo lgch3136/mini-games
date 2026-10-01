@@ -915,3 +915,16 @@ dialog > p:last-child {
     padding-left: max(8px, env(safe-area-inset-left, 0px));
     padding-right: max(8px, env(safe-area-inset-right, 0px)); }
 }
+
+/* Menus use the available viewport, while the action scene keeps its 16:9 frame. */
+#menu { position: fixed; inset: 0; padding-top: max(64px, calc(env(safe-area-inset-top, 0px) + 52px)); padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+#menu #start-btn { margin-bottom: 14px; min-height: 44px; }
+@media (max-width: 700px) and (orientation: portrait) {
+  #menu { align-items: flex-start; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+  #menu .menu-copy { width: 100%; max-width: 500px; margin-inline: auto; }
+  #menu .vertical { display: none; }
+  body.playing .play-row { align-items: flex-start; padding-top: 56px; }
+  body.playing #arena { overflow: visible; }
+  body.playing #toast { top: auto; bottom: calc(100% + 8px); width: max-content; max-width: calc(100% - 24px); white-space: normal; text-align: center; font-size: 11px; line-height: 1.45; letter-spacing: 1px; padding: 6px 10px; }
+  body.playing #hint { top: calc(100% + 8px); bottom: auto; padding: 8px 16px; font-size: 12px; line-height: 1.5; }
+}

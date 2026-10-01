@@ -1194,6 +1194,11 @@ kbd {
    readable live information, rather than letterboxing above the fighters. */
 @media (max-width: 680px) and (orientation: portrait) {
   body.playing .stage-zone { align-items: flex-start; }
+  body.playing #dojo-coach {
+    position: static; transform: none; width: auto; margin: 6px 6px 0;
+    padding: 6px; text-align: left; font-size: 11px; line-height: 1.4;
+  }
+  body.playing #dojo-coach span { font-size: 10px; line-height: 1.4; }
 }
 @media (max-width: 680px) and (orientation: portrait) and (min-height: 700px) {
   body.playing { overflow-y: auto; }

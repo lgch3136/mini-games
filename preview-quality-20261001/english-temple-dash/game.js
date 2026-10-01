@@ -1,3 +1,4 @@
+import { bindGameplayFocus } from "../shared/gameplay-focus.mjs?mobile=20261001-quality3-r8";
 import { ActionSources } from "./input-sources.mjs?mobile=20261001-quality3-r1";
 import { difficultPhrase } from "./phrases.mjs?mobile=20261001-quality2-r1";
 import { showStartupFailure } from "./startup.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
@@ -938,6 +939,7 @@ window.templeDiagnostics = () => ({
     dropped,
   },
 });
+bindGameplayFocus(canvas, () => state === "playing");
 selectDifficulty();
 setupMode();
 audioButton();

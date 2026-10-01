@@ -1,7 +1,7 @@
 import {
   solvePose,
   interpolatePose,
-} from "../english-word-fury/motion.mjs?v=20260918-play-r1&mobile=20261001-quality3-r1";
+} from "../english-word-fury/motion.mjs?v=20260918-play-r1&mobile=20261001-quality3-r8";
 import { lerp, clamp } from "./world.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
 import { gait, strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";
 export { interpolatePose };

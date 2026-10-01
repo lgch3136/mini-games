@@ -6,7 +6,8 @@ const overlaps=(a,b)=>a.x<b.right-.5&&a.right>b.x+.5&&a.y<b.bottom-.5&&a.bottom>
 let frame;
 async function load(width,height,game="english-apex-drive"){
   const url=new URL('../'+game+'/index.html',location.href);
-  const source=await fetch(url).then(r=>r.text()),page=new DOMParser().parseFromString(source,'text/html');
+  url.searchParams.set('build',new URL(location.href).searchParams.get('build')||'20261001-quality3-r8');
+  const source=await fetch(url,{cache:'no-store'}).then(r=>r.text()),page=new DOMParser().parseFromString(source,'text/html');
   page.querySelectorAll('script').forEach(s=>s.remove());
   const base=page.createElement('base');base.href=url.href;page.head.prepend(base);
   frame?.remove();frame=document.createElement('iframe');frame.width=width;frame.height=height;frame.title='Apex production layout fixture';
@@ -51,6 +52,12 @@ $('run').addEventListener('click',async()=>{
         const expected={danger:'#incoming',technique:'#technique',toast:'#toast',route:'#notice'}[message];assert(alerts[0]===expected,'Incorrect message priority');
         record(ctx,'portrait '+mode+' / '+message+' / forced controls / bottom '+safeBottom,['.hud-top','.speedometer','#map','#driver-contract',...alerts,'#drift-gauge','#word-hud','.touch-left','.touch-right',...(mode==='items'?['#item-dock']:mode==='cruise'?['#input-strip']:[])]);
       }
+      for(const count of ['3','GO!']) {
+        d.getElementById('countdown').textContent=count;await tick();
+        assert(d.getElementById('driver-contract').getClientRects().length===0,'Countdown must temporarily own the coaching row');
+        record(ctx,'portrait starting '+count,['.hud-top','.speedometer','#map','#countdown','.touch-left','.touch-right']);
+      }
+      d.getElementById('countdown').textContent='';await tick();assert(d.getElementById('driver-contract').getClientRects().length>0,'Driving coaching must return after GO clears');
     }
     $('status').textContent='PASS · '+results.length+' production layout states';
   }catch(error){$('status').textContent='FAIL · '+error.message;}finally{$('run').disabled=false;}

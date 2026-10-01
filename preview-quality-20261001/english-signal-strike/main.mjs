@@ -1,12 +1,12 @@
 import { relayBearing, threatCue, rememberOperation, storedMedal } from "./tactics.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
 import { Strike, MAPS, WEAPONS } from "./world.mjs?v=20260918-play-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { StrikeView } from "./view.mjs?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r1";
+import { StrikeView } from "./view.mjs?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r8";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20261001-quality3-r1";
+} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20261001-quality3-r8";
 let hitUntil = 0;
 let app;
 try {

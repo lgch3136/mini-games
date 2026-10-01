@@ -1,14 +1,15 @@
-import { rememberCombat, storedMedal } from "./dojo.mjs?v=20260930-quality-r1&mobile=20261001-quality2-r1";
+import { bindGameplayFocus } from "../shared/gameplay-focus.mjs?mobile=20261001-quality3-r8";
+import { rememberCombat, storedMedal, formatDojoText, P1_KEYS } from "./dojo.mjs?v=20261001-quality3-r3&mobile=20261001-quality3-r8";
 import {
   Fight,
   ROSTER,
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20260918-play-r1&mobile=20261001-quality3-r1";
-import { ArenaView } from "./view.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r1";
+} from "./combat.mjs?v=20260918-play-r1&mobile=20261001-quality3-r8";
+import { ArenaView } from "./view.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r8";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
-import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r1";
+import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r8";
 const fighterSnapshots = new FighterSnapshots();
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
@@ -36,6 +37,7 @@ let joyPointer = null,
   guideResume = false,
   destroyed = false;
 const coarse = matchMedia("(pointer:coarse)");
+const restoreFocus = bindGameplayFocus($("game"), () => mode === "playing" && !destroyed);
 const bank = Object.values(window.PROJECT_VOCAB || {})
   .flat()
   .filter((w) => /^[a-z]{3,10}$/.test(w.en));
@@ -123,6 +125,7 @@ function startLoop() {
   last = performance.now();
   accumulator = 0;
   raf = requestAnimationFrame(tick);
+  restoreFocus();
   sound.start();
 }
 function event(e) {
@@ -239,7 +242,7 @@ function updateHud(force = false) {
   if (guided) {
     const lesson = game.course.current;
     setText("dojo-title", lesson ? `${lesson.title} · ${lesson.goal} ${game.course.progress}/${lesson.target}` : "✓ 四课完成 · 攻防基础已掌握");
-    setText("dojo-tip", (lesson?.tip || "可切换实战陪练，或回到街机挑战运用这些技巧") + (game.course.feedback ? "\n" + game.course.feedback : ""));
+    setText("dojo-tip", formatDojoText((lesson?.tip || "可切换实战陪练，或回到街机挑战运用这些技巧") + (game.course.feedback ? "\n" + game.course.feedback : ""), coarse.matches));
   }
   if (game.mode === "training")
     setText(
@@ -393,26 +396,7 @@ function finish() {
     `<div><b>${p.stats.hits}</b><small>有效命中</small></div><div><b>${p.best}</b><small>最高连击</small></div><div><b>${wordsDone}</b><small>接触词条</small></div>`;
   setText("next-btn", win && !versus ? "迎战下一位" : "再战一场");
 }
-const p1 = {
-  KeyA: "left",
-  KeyD: "right",
-  KeyW: "up",
-  KeyS: "down",
-  ShiftLeft: "guard",
-  ShiftRight: "guard",
-  KeyJ: "A",
-  KeyK: "B",
-  KeyU: "C",
-  KeyI: "D",
-  KeyL: "roll",
-  KeyO: "blow",
-  Space: "wave",
-  KeyE: "upper",
-  KeyQ: "rush",
-  KeyR: "super",
-  KeyF: "max",
-  KeyT: "grab",
-};
+const p1 = P1_KEYS;
 const p2 = {
   ArrowLeft: "left",
   ArrowRight: "right",
@@ -628,7 +612,10 @@ document.addEventListener("visibilitychange", () => {
 const observer = new ResizeObserver(() => preview());
 observer.observe($("arena"));
 coarse.addEventListener("change", () => {
-  if (mode === "playing") $("touch").hidden = !coarse.matches;
+  if (mode === "playing" || mode === "paused") {
+    $("touch").hidden = !coarse.matches;
+    updateHud(true);
+  }
 });
 window.addEventListener("pagehide", (e) => {
   if (e.persisted) {

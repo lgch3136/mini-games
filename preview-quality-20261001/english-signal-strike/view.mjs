@@ -1,3 +1,4 @@
+import { buildEnvironment } from "./environment.mjs?v=20261001-signal-places-r1&mobile=20261001-quality3-r8";
 import { bossVulnerable } from "./encounters.mjs?v=20261001-action-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
 import {
   SceneKit,
@@ -5,7 +6,7 @@ import {
   label,
   roadTexture,
 } from "../shared/first-person/scene.mjs?v=20260918-play-r1";
-import { lerp, mixAngle, damp, random, clamp } from "../shared/first-person/math.mjs";
+import { lerp, mixAngle, damp, clamp } from "../shared/first-person/math.mjs";
 import { LightPool, loadLightTexture } from '../shared/light/pool.mjs?v=20260928-light-r1';
 const dummy = new T.Object3D();
 export function weaponFrame(aspect, aim = 0) {
@@ -113,82 +114,9 @@ export class StrikeView extends SceneKit {
         o.hz * 2,
         o.kind === "crate" ? dark : wall,
       );
-      if (o.kind === "cover" || o.kind === "crate" || o.kind === "conduit") {
-        b.box(
-          o.x,
-          o.y + o.hy + 0.035,
-          o.z,
-          o.hx * 2 + 0.1,
-          0.07,
-          o.hz * 2 + 0.1,
-          trim,
-        );
-        for (const x of [-1, 1])
-          b.box(
-            o.x + x * (o.hx - 0.12),
-            o.y,
-            o.z + o.hz + 0.016,
-            0.1,
-            o.hy * 1.75,
-            0.027,
-            orange,
-          );
-        b.box(
-          o.x,
-          o.y + o.hy * 0.35,
-          o.z + o.hz + 0.02,
-          o.hx * 1.4,
-          0.1,
-          0.03,
-          orange,
-        );
-      }
-      if (o.kind === "building") {
-        for (let i = 0; i < 4; i++)
-          b.box(
-            o.x,
-            0.8 + i * 0.12,
-            o.z + o.hz + 0.07,
-            o.hx * 0.9,
-            0.06,
-            0.1,
-            dark,
-          );
-        for (let h = 1.6; h < o.hy * 2 - 0.5; h += 2.3) {
-          b.box(o.x, h, o.z + o.hz + 0.025, o.hx * 1.65, 1.3, 0.045, glass);
-          b.box(
-            o.x,
-            h + 0.73,
-            o.z + o.hz + 0.1,
-            o.hx * 2 + 0.3,
-            0.14,
-            0.24,
-            trim,
-          );
-        }
-        b.box(
-          o.x,
-          o.hy * 2 + 0.16,
-          o.z,
-          o.hx * 2 + 0.4,
-          0.3,
-          o.hz * 2 + 0.4,
-          trim,
-        );
-      }
     }
     for (let zone = 0; zone < 3; zone++) {
       const z = -52 * zone;
-      for (const side of [-1, 1]) {
-        b.box(side * 18, 0.15, z - 24, 2, 0.3, 49, trim);
-        for (let j = 0; j < 7; j++) {
-          const zz = z - j * 7;
-          b.box(side * 18.7, 3.2, zz, 0.25, 6.4, 0.25, trim);
-          b.box(side * 17.8, 6.2, zz, 2.1, 0.18, 0.15, trim);
-          b.box(side * 17.5, 6.06, zz, 1.2, 0.05, 0.11, teal);
-          b.box(side * 18.8, 3.2, zz + 2.5, 0.12, 0.1, 5, orange);
-        }
-      }
       // Ground navigation markings and coherent frame modules, no coplanar layers.
       for (let j = 1; j < 10; j++)
         b.box(0, 0.013, z - j * 4.7, 0.1, 0.014, 1.5, white);
@@ -221,14 +149,6 @@ export class StrikeView extends SceneKit {
         b.box(side * 6.25, 3.1, z - 48.7, 0.45, 6.2, 0.8, trim);
       b.box(0, 6.3, z - 48.7, 13, 0.5, 0.85, trim);
       b.box(0, 5.95, z - 48.18, 11.8, 0.055, 0.06, teal);
-      if (zone === 1 || palette.id === "hangar" || palette.id === "foundry") {
-        for (let j = 0; j < 6; j++) {
-          b.box(0, 9, z - j * 7.5, 40, 0.28, 0.3, trim);
-          b.box(-7, 8.8, z - j * 7.5, 0.14, 0.1, 7, teal);
-          b.box(7, 8.8, z - j * 7.5, 0.14, 0.1, 7, teal);
-        }
-        b.box(0, 9.1, z - 22, 12, 0.22, 46, wall);
-      }
       const r = w.props[zone],
         root = new T.Group();
       root.position.set(r.x, 0, r.z);
@@ -272,45 +192,7 @@ export class StrikeView extends SceneKit {
           b.box(-6 + j * 1.3, 0.04, z - 49, 0.38, 0.04, 0.5, orange);
       }
     }
-    const rng = random(277);
-    for (let i = 0; i < 32; i++) {
-      const x = (i % 2 ? 1 : -1) * (27 + rng() * 38),
-        z = 15 - rng() * 180,
-        h = 12 + rng() * 42;
-      b.box(x, h / 2, z, 7 + rng() * 6, h, 8 + rng() * 7, wall);
-      for (let y = 3; y < h; y += 4)
-        b.box(x, y, z + 4.8, 6.5, 1.8, 0.05, glass);
-      b.box(x, h + 0.2, z, 8, 0.4, 9, trim);
-    }
-    // Service pipes and stacked cooling canisters add plausible scale and silhouettes.
-    for (let i = 0; i < 14; i++) {
-      const side = i % 2 ? 1 : -1,
-        x = side * 11.4,
-        z = -8 - i * 10.2;
-      b.cylinder(x, 1.8, z, 0.48, 3.6, trim, 14);
-      b.cylinder(x, 3.6, z, 0.55, 0.12, orange, 14);
-      b.cylinder(x, 0.22, z, 0.68, 0.35, dark, 14);
-      for (let j = 0; j < 3; j++)
-        b.box(x, 0.8 + j * 0.75, z + 0.49, 0.16, 0.12, 0.035, teal);
-    }
-    // Recessed service grilles and small wall modules read at human eye scale.
-    for (let z = -6; z > -151; z -= 12) {
-      for (const side of [-1, 1]) {
-        b.box(side * 10.4, 0.018, z, 1.1, 0.026, 2.7, dark);
-        for (let j = 0; j < 8; j++)
-          b.box(
-            side * 10.4,
-            0.04,
-            z - 1.15 + j * 0.32,
-            0.98,
-            0.016,
-            0.036,
-            trim,
-          );
-        b.box(side * 18.7, 1.9, z, 0.1, 0.9, 0.75, dark);
-        b.box(side * 18.63, 2.12, z, 0.022, 0.12, 0.52, teal);
-      }
-    }
+    this.environmentMetrics = buildEnvironment(b, w, { wall, trim, dark, orange, glass, floor, white, teal, gold }, T);
     // Each operation object is a real readable cabinet, not just a HUD counter.
     for (const node of w.objectives) {
       b.box(node.x, .65, node.z, 1.15, 1.3, .65, dark);

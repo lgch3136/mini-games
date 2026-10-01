@@ -1,13 +1,13 @@
 import { SectorClock, readSectors, saveSectors } from "./race-craft.mjs?mobile=20261001-quality2-r1";
 import { drivingGoals, saveDrivingRecord, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import { Race, ITEMS } from "./world.mjs?v=20260918-play-r1&mobile=20261001-quality2-r1";
-import { RaceView } from "./view.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r1";
+import { RaceView } from "./view.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r8";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20261001-quality3-r1";
+} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20261001-quality3-r8";
 let app;
 try {
 app = new Shell({

@@ -1,3 +1,4 @@
+import { buildCircuitEnvironment, harborTerrainY } from './circuit-environment.mjs?mobile=20261001-quality3-r8';
 import { coastSection, coastalTerrainY, buildCoastalLandmark } from "./coast-landmark.mjs?mobile=20261001-quality3-r1";
 import { chassisAttitude } from "./race-craft.mjs?mobile=20261001-quality2-r1";
 import {
@@ -164,7 +165,7 @@ export class RaceView extends SceneKit {
     const tv = terrain.attributes.position;
     for (let i = 0; i < tv.count; i++) {
       const n = track.nearest(tv.getX(i), tv.getZ(i));
-      tv.setY(i, coastalTerrainY(track, n, n.y - 0.25 - Math.max(0, n.distance - 24) * 0.035));
+      tv.setY(i, harborTerrainY(track, n, coastalTerrainY(track, n, n.y - 0.25 - Math.max(0, n.distance - 24) * 0.035)));
     }
     terrain.computeVertexNormals();
     this.add(terrain, sand);
@@ -254,69 +255,72 @@ export class RaceView extends SceneKit {
       }
     }
     buildCoastalLandmark(this, b, track);
-    const coast = coastSection(track);
-    const rng = random(272 + track.id),
-      trunk = this.mat("trunk", 0xc99c7b),
-      leaf = this.mat("leaf", 0x78c9a3),
-      leaf2 = this.mat("leaf2", 0xffbed0),
-      rock = this.mat("rock", 0xbfc8dc);
-    for (let s = 10; s < track.length; s += 15) {
-      const side = rng() > 0.5 ? 1 : -1,
-        q = track.at(
-          s,
-          side * (Math.max(17, track.width * 0.5 + 10) + rng() * 26),
-        ),
-        h = 5 + rng() * 5;
-      if (coast && side < 0 && s > coast.start && s < coast.end) continue;
-      const base = Math.max(0.1, q.y - 0.3);
-      b.cylinder(q.x, base + h * 0.38, q.z, 0.2, h * 0.8, trunk, 7);
-      for (let j = 0; j < 3; j++) {
-        const a = j * 2.399,
-          spread = j === 0 ? 0 : 1.65,
-          tx = q.x + Math.cos(a) * spread,
-          tz = q.z + Math.sin(a) * spread,
-          ty = base + h * (0.65 + rng() * 0.24);
-        const crown = new T.SphereGeometry(1, 12, 8);
-        crown.scale(2.05 + rng() * 0.7, 2.05 + rng() * 0.8, 2.05 + rng() * 0.7);
-        b.geometry(crown, j % 3 ? leaf : leaf2, tx, ty, tz);
-        crown.dispose();
-        const branch = new T.CylinderGeometry(0.04, 0.1, 2.8, 5);
-        b.geometry(
-          branch,
-          trunk,
-          (q.x + tx) * 0.5,
-          ty - 1.3,
-          (q.z + tz) * 0.5,
-          Math.sin(a) * 0.6,
-          0,
-          -Math.cos(a) * 0.6,
-        );
-        branch.dispose();
+    this.environmentSummary = buildCircuitEnvironment(this, b, track);
+    if (track.id === 3) {
+      const coast = coastSection(track);
+      const rng = random(272 + track.id),
+        trunk = this.mat("trunk", 0xc99c7b),
+        leaf = this.mat("leaf", 0x78c9a3),
+        leaf2 = this.mat("leaf2", 0xffbed0),
+        rock = this.mat("rock", 0xbfc8dc);
+      for (let s = 10; s < track.length; s += 15) {
+        const side = rng() > 0.5 ? 1 : -1,
+          q = track.at(
+            s,
+            side * (Math.max(17, track.width * 0.5 + 10) + rng() * 26),
+          ),
+          h = 5 + rng() * 5;
+        if (coast && side < 0 && s > coast.start && s < coast.end) continue;
+        const base = Math.max(0.1, q.y - 0.3);
+        b.cylinder(q.x, base + h * 0.38, q.z, 0.2, h * 0.8, trunk, 7);
+        for (let j = 0; j < 3; j++) {
+          const a = j * 2.399,
+            spread = j === 0 ? 0 : 1.65,
+            tx = q.x + Math.cos(a) * spread,
+            tz = q.z + Math.sin(a) * spread,
+            ty = base + h * (0.65 + rng() * 0.24);
+          const crown = new T.SphereGeometry(1, 12, 8);
+          crown.scale(2.05 + rng() * 0.7, 2.05 + rng() * 0.8, 2.05 + rng() * 0.7);
+          b.geometry(crown, j % 3 ? leaf : leaf2, tx, ty, tz);
+          crown.dispose();
+          const branch = new T.CylinderGeometry(0.04, 0.1, 2.8, 5);
+          b.geometry(
+            branch,
+            trunk,
+            (q.x + tx) * 0.5,
+            ty - 1.3,
+            (q.z + tz) * 0.5,
+            Math.sin(a) * 0.6,
+            0,
+            -Math.cos(a) * 0.6,
+          );
+          branch.dispose();
+        }
+        if (s % 30 < 15) {
+          const rr = new T.SphereGeometry(1, 10, 6);
+          rr.scale(2 + rng() * 4, 1 + rng() * 2, 2 + rng() * 3);
+          b.geometry(rr, rock, q.x + 5, 1, q.z + 4);
+          rr.dispose();
+        }
       }
-      if (s % 30 < 15) {
-        const rr = new T.SphereGeometry(1, 10, 6);
-        rr.scale(2 + rng() * 4, 1 + rng() * 2, 2 + rng() * 3);
-        b.geometry(rr, rock, q.x + 5, 1, q.z + 4);
-        rr.dispose();
+      const concrete = this.mat("buildings", 0xfff0d9),
+        glass = this.mat("windows", 0x6aa8c2, 0.5, 0.03),
+        accent = this.mat("track-accent", 0xeea6ba);
+      for (let i = 0; i < 14; i++) {
+        const q = track.at(
+            (i * track.length) / 14,
+            Math.max(45, track.width * 0.5 + 15) + (i % 3) * 8,
+          ),
+          h = 5 + (i % 4) * 4;
+        const house = roundedBox(10, h, 8, 1.1, 3);
+        b.geometry(house, concrete, q.x, h / 2, q.z, 0, q.yaw);
+        house.dispose();
+        const roof = roundedBox(11, 1.3, 9, 0.6, 3);
+        b.geometry(roof, i % 2 ? accent : leaf, q.x, h, q.z, 0, q.yaw);
+        roof.dispose();
+        for (let j = 2; j < h; j += 2.5)
+          b.box(q.x, j, q.z + 4.03, 8, 0.9, 0.07, glass);
       }
-    }
-    const concrete = this.mat("buildings", 0xfff0d9),
-      glass = this.mat("windows", 0x6aa8c2, 0.5, 0.03),
-      accent = this.mat("track-accent", 0xeea6ba);
-    for (let i = 0; i < 14; i++) {
-      const q = track.at(
-          (i * track.length) / 14,
-          Math.max(45, track.width * 0.5 + 15) + (i % 3) * 8,
-        ),
-        h = 5 + (i % 4) * 4;
-      const house = roundedBox(10, h, 8, 1.1, 3);
-      b.geometry(house, concrete, q.x, h / 2, q.z, 0, q.yaw);
-      house.dispose();
-      const roof = roundedBox(11, 1.3, 9, 0.6, 3);
-      b.geometry(roof, i % 2 ? accent : leaf, q.x, h, q.z, 0, q.yaw);
-      roof.dispose();
-      for (let j = 2; j < h; j += 2.5)
-        b.box(q.x, j, q.z + 4.03, 8, 0.9, 0.07, glass);
     }
     // Softly lit marshmallow clouds, including their visible undersides.
     const cloudMat = this.mat("cloud-cream", 0xfffaf0);
@@ -331,15 +335,6 @@ export class RaceView extends SceneKit {
         cloud.dispose();
       }
     }
-    // A shaded promenade gives a distinct pacing landmark on each circuit.
-    for (let i = 0; i < 9; i++) {
-      const q = track.at(track.length * 0.48 + i * 10);
-      for (const side of [-1, 1]) {
-        const p = track.at(q.s, side * (track.width * 0.5 + 1.4));
-        b.box(p.x, p.y + 3.6, p.z, 0.3, 7.2, 0.3, concrete, q.yaw);
-      }
-      b.box(q.x, q.y + 7.2, q.z, track.width + 3, 0.28, 0.35, concrete, q.yaw);
-    }
     const q = track.at(1),
       startWidth = Math.min(track.width, 16);
     for (const side of [-1, 1]) {
@@ -351,7 +346,7 @@ export class RaceView extends SceneKit {
     let signMat = this.materials.get("startsign-" + track.id);
     if (!signMat) {
       const signTex = label(
-        world.freestyle ? "MOCHI  /  DRIFT PARK" : "MOCHI  /  SUNNY CIRCUIT",
+        world.freestyle ? "MOCHI  /  DRIFT PARK" : ["MOCHI  /  CREAM COAST", "MOCHI  /  PINE RIDGE", "MOCHI  /  PEACH HARBOR"][track.id],
         { color: "#fff8e5", bg: "#629aab", w: 1024, h: 128 },
       );
       this.textures.push(signTex);
