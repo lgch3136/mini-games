@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#17242c" />
     <title>单词斗魂 · 截风擂台</title>
-    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20261001-quality3-r1" />
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20261001-quality3-r7" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261001-quality3-r2">
 </head>
   <body>
@@ -24,6 +24,7 @@
         </nav>
       </header>
       <div class="stage-zone">
+        <div class="arena-frame">
         <div id="arena" class="arena" aria-label="截风擂台，键盘或触屏操作">
           <canvas id="game" aria-label="实时 3D 格斗画面"></canvas
           ><canvas id="fx" aria-hidden="true"></canvas>
@@ -59,9 +60,10 @@
               <span id="meaning"></span><strong id="letters"></strong>
             </div>
           </section>
-          <div id="dojo-coach" hidden><b id="dojo-title"></b><span id="dojo-tip"></span></div>
           <div id="announcement" class="announcement" hidden></div>
           <div id="loading">正在准备 Blender 角色模型…</div>
+        </div>
+        <div id="dojo-coach" hidden><b id="dojo-title"></b><span id="dojo-tip"></span></div>
         </div>
       </div>
       <footer id="statusbar">

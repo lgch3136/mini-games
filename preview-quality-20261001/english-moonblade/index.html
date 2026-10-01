@@ -8,7 +8,7 @@
     />
     <meta name="theme-color" content="#0b1724" />
     <title>月影忍途 · Moonblade</title>
-    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r1" />
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r7" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261001-quality3-r2">
 </head>
   <body>
@@ -34,9 +34,10 @@
               <div class="energy">
                 <span>忍力</span><b id="energy"></b><span id="score"></span>
               </div>
+              <div id="moon-mastery"></div>
             </div>
             <div id="combo"></div>
-            <div id="moon-mastery"></div><div id="dash-state"></div>
+            <div id="dash-state"></div>
             <div class="boss" id="boss" hidden>
               <span>无明 · 寺门守卫</span>
               <div><i id="boss-fill"></i></div>
@@ -92,15 +93,6 @@
               >踏影无声<br />刀过留月</span
             >
           </section>
-          <section id="panel" class="screen panel-screen" hidden>
-            <div class="panel">
-              <p id="panel-kicker" class="eyebrow"></p>
-              <h2 id="panel-title"></h2>
-              <img id="chapter-medal" class="mastery-medal" alt="章节勋章" hidden /><p id="panel-text"></p>
-              <button id="primary-action" class="primary"></button
-              ><button id="menu-action">返回出发点</button>
-            </div>
-          </section>
         </div>
       </div>
       <footer>
@@ -117,6 +109,20 @@
           ><button data-input="ninja" class="minor">忍术</button
           ><button data-input="attack" class="attack">斩</button
           ><button data-input="jump" class="jump">跳</button>
+        </div>
+      </section>
+      <section id="panel" class="screen panel-screen" role="dialog" aria-labelledby="panel-title" hidden>
+        <div class="panel">
+          <div class="panel-copy" tabindex="0">
+            <p id="panel-kicker" class="eyebrow"></p>
+            <h2 id="panel-title"></h2>
+            <img id="chapter-medal" class="mastery-medal" alt="章节勋章" hidden />
+            <p id="panel-text"></p>
+          </div>
+          <div class="panel-actions">
+            <button id="primary-action" class="primary"></button>
+            <button id="menu-action">返回出发点</button>
+          </div>
         </div>
       </section>
       <dialog id="help">

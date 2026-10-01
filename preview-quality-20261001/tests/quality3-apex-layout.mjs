@@ -32,14 +32,24 @@ $('run').addEventListener('click',async()=>{
       record(ctx,'Signal desktop menu',['.eyebrow','.intro','.controls-note','#map-brief','#service-record','#service-record + .quality-note','.controls-note + .quality-note','#start']);
     }
     for(const [width,height] of [[390,844],[320,568],[430,932]]){
-      const ctx=await load(width,height),d=ctx.doc;d.getElementById('menu').hidden=true;d.getElementById('hud').hidden=false;d.body.classList.add('playing');
+      const ctx=await load(width,height),d=ctx.doc;d.getElementById('menu').hidden=true;d.getElementById('hud').hidden=false;d.body.classList.add('playing');d.body.dataset.autoGas='true';
       d.getElementById('driver-goal').textContent='0/3 驾驶目标 · 达成 2 连喷 0/2';d.getElementById('driver-coach').textContent='同向轻点漂移接第二段，再点小喷';
       d.getElementById('sector-split').textContent='S4 25.46s +1.26s';d.getElementById('sector-split').hidden=false;
-      for(const mode of ['race','items','cruise']){
+      d.getElementById('touch').hidden=false; // Explicit forced-visible controls, not touch-device emulation.
+      d.getElementById('word-hud').hidden=false;d.getElementById('word-hud').textContent='STEADY / 平稳';
+      d.getElementById('drift-label').textContent='回正中 · 准备点按小喷';
+      for(const safeBottom of [0,34])for(const mode of ['race','items','cruise'])for(const message of ['danger','technique','toast','route']){
+        d.documentElement.style.setProperty('--safe-bottom',safeBottom+'px');
         d.body.dataset.raceMode=mode;d.getElementById('item-dock').hidden=mode!=='items';d.getElementById('input-strip').hidden=mode!=='cruise';
         d.getElementById('item-current').textContent='护盾';d.getElementById('item-next').textContent='下一格 · 光弹';d.getElementById('item-help').textContent='抵挡一次攻击';
-        d.getElementById('incoming').hidden=false;d.getElementById('incoming').textContent='光弹接近 · 准备护盾';d.getElementById('notice').innerHTML='<b>前方右弯 · 漂移</b>';d.getElementById('toast').textContent='小喷成功';
-        await tick();record(ctx,'portrait '+mode,['.hud-top','.speedometer','#map','#driver-contract','#notice','#incoming','#toast',...(mode==='items'?['#item-dock']:mode==='cruise'?['#input-strip']:[])]);
+        d.getElementById('incoming').hidden=message!=='danger';d.getElementById('incoming').textContent='光弹接近 · 准备护盾';
+        d.getElementById('technique').hidden=!['danger','technique'].includes(message);d.getElementById('technique').textContent='完美小喷';
+        d.getElementById('notice').innerHTML='<b>前方右弯 · 漂移</b>';d.getElementById('toast').textContent=message==='route'?'':'小喷成功';
+        await tick();
+        const alerts=['#notice','#incoming','#toast','#technique'].filter(s=>d.querySelector(s).getClientRects().length);
+        assert(alerts.length===1,'Exactly one message must own the portrait attention row');
+        const expected={danger:'#incoming',technique:'#technique',toast:'#toast',route:'#notice'}[message];assert(alerts[0]===expected,'Incorrect message priority');
+        record(ctx,'portrait '+mode+' / '+message+' / forced controls / bottom '+safeBottom,['.hud-top','.speedometer','#map','#driver-contract',...alerts,'#drift-gauge','#word-hud','.touch-left','.touch-right',...(mode==='items'?['#item-dock']:mode==='cruise'?['#input-strip']:[])]);
       }
     }
     $('status').textContent='PASS · '+results.length+' production layout states';

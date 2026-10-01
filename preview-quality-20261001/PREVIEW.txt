@@ -1,1 +1,1 @@
-Isolated public review build, 15 games. Source e5512d5eebd088d54fc81a7c25b208652b8ac248. Cache 20261001-quality3-r6. The formal root remains unchanged. Browser, GPU and physical mobile acceptance are tracked separately.
+Isolated public review build, 15 games. Source 486c29b726ad6eb9fceeda42ec6011ffa6c28503. Cache 20261001-quality3-r7. The formal root remains unchanged. Browser, GPU and physical mobile acceptance are tracked separately.

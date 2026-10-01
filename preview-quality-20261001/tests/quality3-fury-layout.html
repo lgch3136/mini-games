@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fury production DOM/CSS layout regression</title>
+<style>
+body{margin:0;background:#122b32;color:#e7f4e9;font:14px system-ui}header,#stage,pre{padding:12px}header{display:flex;flex-wrap:wrap;align-items:center;gap:10px}button,select{font:inherit;min-height:44px}iframe{display:block;border:0}#stage{overflow:auto}pre{white-space:pre-wrap}
+</style>
+<header>
+<button id="run">Run layout regression</button>
+<label>Viewport <select id="viewport"><option>390×844</option><option>430×932</option><option>320×568</option><option>844×390</option><option>1280×720</option></select></label>
+<label>Sample <select id="sample"><option value="arcade">Arcade</option><option value="coach">Guided practice</option><option value="training">Free practice</option><option value="pause">Pause</option><option value="coach-pause">Guided practice paused</option><option value="menu">Menu</option></select></label>
+<label><input id="coarse" type="checkbox">Coarse pointer CSS sample</label>
+<button id="preview">Show sample layout</button><strong id="status">Ready</strong>
+</header>
+<p style="padding:0 12px">Production HTML and CSS with renderer scripts omitted and explicit sample UI data. Coarse mode evaluates the production pointer media rules as a coarse-pointer sample. This checks layout only, not gameplay, GPU rendering, performance, actual touch input, or physical devices.</p>
+<div id="stage"></div><pre id="report">No checks run.</pre>
+<script type="module" src="quality3-fury-layout.mjs?build=20261001-quality3-r7"></script>
+</html>

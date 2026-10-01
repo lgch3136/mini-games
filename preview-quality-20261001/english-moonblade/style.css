@@ -50,6 +50,10 @@ select:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
+.panel-copy:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
 a {
   color: inherit;
   text-decoration: none;
@@ -172,6 +176,11 @@ footer {
   font-size: clamp(9px, 0.9vw, 12px);
   align-items: center;
   color: #c4d4df;
+}
+.energy span:first-child,
+.energy b {
+  flex: none;
+  white-space: nowrap;
 }
 .energy b {
   color: #a6e8ec;
@@ -394,14 +403,42 @@ input {
   color: #eee7d4c2;
   text-shadow: 0 1px 10px #082134;
 }
-.panel-screen {
+#panel.panel-screen {
+  /* The arena stays 16:9 during portrait play. Pauses and results need the
+     whole viewport, including after a desktop-to-portrait resize. */
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  padding: max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
   justify-content: center;
+  align-items: center;
+  overflow: hidden;
   background: #07121de0;
   backdrop-filter: blur(5px);
 }
 .panel {
-  width: min(390px, 90%);
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  max-height: 100%;
+  min-height: 0;
   text-align: center;
+}
+.panel-copy {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.panel-actions {
+  display: grid;
+  gap: 10px;
+  flex: none;
+  padding-top: 16px;
 }
 .panel h2 {
   font:
@@ -414,8 +451,11 @@ input {
   line-height: 1.9;
   color: #b2c6d1;
 }
-.panel button {
-  margin-top: 12px;
+.panel-actions button {
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 13px;
+  line-height: 1.4;
 }
 dialog {
   width: min(640px, 92vw);
@@ -687,13 +727,6 @@ dialog > p:last-child {
   .panel .eyebrow {
     display: none;
   }
-  .panel button {
-    padding: 8px;
-    margin-top: 6px;
-  }
-  .panel-screen {
-    padding: 2%;
-  }
 }
 @media (pointer: coarse) and (orientation: landscape) {
   .topbar {
@@ -819,10 +852,6 @@ dialog > p:last-child {
   .panel p:not(.eyebrow) {
     font-size: 11px;
   }
-  .panel button {
-    padding: 8px;
-    margin: 6px 0 0;
-  }
   .panel .eyebrow {
     display: none;
   }
@@ -832,7 +861,7 @@ dialog > p:last-child {
     transition: none !important;
     scroll-behavior: auto !important;
   }
-  .panel-screen {
+  #panel.panel-screen {
     backdrop-filter: none;
   }
 }
@@ -843,18 +872,41 @@ dialog > p:last-child {
 .hp { background: repeating-linear-gradient(90deg, #081824e6 0, #081824e6 calc(25% - 1px), #e4d2aa35 calc(25% - 1px), #e4d2aa35 25%); }
 #hp-fill[data-low="true"] { background: linear-gradient(#f3bd9e, #bf735d); }
 
-#moon-mastery { position: absolute; top: 70px; left: 20px; color: #c5d7da; font: 600 11px/1.4 system-ui; text-shadow: 0 2px 4px #001; }
+#moon-mastery { margin-top: 7px; color: #c5d7da; font: 600 11px/1.4 system-ui; text-shadow: 0 2px 4px #001; }
 #dash-state { position: absolute; bottom: 17px; right: 20px; font: 700 11px system-ui; color: #c5e9e1; }
 #hint[data-focus="true"] { color: #fff0b3; border: 1px solid #d4b875; background: #413626df; }
 #chapter-medal { float: right; width: 72px; height: 72px; object-fit: contain; }
 #panel-text { white-space: pre-line; }
-@media (max-height: 480px) { #moon-mastery { top: 54px; left: 12px; font-size: 10px; } #dash-state { bottom: 12px; right: 12px; } }
+@media (max-height: 480px) { #moon-mastery { margin-top: 5px; font-size: 10px; } #dash-state { bottom: 12px; right: 12px; } }
 @media (pointer: coarse) { #dash-state { bottom: 105px; } }
 
 #loading a { display: inline-block; padding: 12px; color: #e9cb94; text-decoration: underline; }
 
 #loading[role="alert"] { position: fixed; z-index: 100; inset: 0; width: auto; padding: max(24px, env(safe-area-inset-top)); display: grid; place-content: center; background: #10232af5; color: #f2dfb9; line-height: 1.7; }
-.panel-screen .panel { max-height: calc(100% - 18px); overflow-y: auto; overscroll-behavior: contain; }
+/* Short screens scroll the result copy, keeping both choices fully readable. */
+@media (max-height: 480px) {
+  .vitals { width: 40%; }
+  .energy { font-size: 8px; gap: 4px; }
+  .energy b { letter-spacing: 1px; }
+  .energy #score { display: none; }
+  .panel h2 { font-size: 27px; margin-bottom: 12px; }
+  .panel-copy .eyebrow { margin-bottom: 8px; }
+  .panel p:not(.eyebrow) { font-size: 12px; line-height: 1.6; margin: 8px 0; }
+  .panel-actions { padding-top: 10px; gap: 8px; }
+}
+
+/* Viewport resizing must remain usable even when the primary pointer is a mouse. */
+@media (max-width: 700px) {
+  .vitals { width: 40%; }
+  .energy #score { display: none; }
+}
+@media (max-width: 480px) {
+  .energy { font-size: 8px; gap: 4px; }
+  .energy b { letter-spacing: 1px; }
+  .energy #score { display: none; }
+  #moon-mastery { font-size: 9px; line-height: 1.5; }
+  .panel h2 { font-size: 30px; }
+}
 
 /* These landscape controls are viewport-positioned, outside the arena padding. */
 @media (pointer: coarse) and (orientation: landscape) {

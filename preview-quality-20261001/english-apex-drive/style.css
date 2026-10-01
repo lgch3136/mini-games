@@ -1138,3 +1138,25 @@ body:not([data-race-mode="items"]) .touch-right {
   #hud > #toast { grid-row: 7; }
   #hud .notice b { display: block; font-size: 12px; padding: 5px 9px; }
 }
+
+/* One message wins the portrait attention row. Danger takes precedence over
+   celebrations and route coaching, so concurrent messages do not bury the road. */
+@media (max-width: 699px) and (orientation: portrait) {
+  #hud > #notice, #hud > #incoming, #hud > #toast, #hud > #technique { grid-row: 5; }
+  #hud > #technique, #hud > #drift-gauge, #hud > #word-hud {
+    position: static; grid-column: 1 / -1; transform: none; width: 100%;
+    max-width: none; min-width: 0; margin: 0;
+  }
+  #hud > #technique { font-size: 18px; text-align: center; }
+  #hud:has(#incoming:not([hidden])) :is(#notice, #toast, #technique),
+  #hud:not(:has(#incoming:not([hidden]))):has(#technique:not([hidden])) :is(#notice, #toast),
+  #hud:has(#toast:not(:empty)) #notice { display: none; }
+  #hud > #drift-gauge { grid-row: 6; height: auto; background: none; }
+  #hud #drift-fill { height: 8px; }
+  #hud #drift-label { width: 100%; max-width: none; margin-top: 5px; padding: 3px 6px; line-height: 1.4; }
+  #hud > #word-hud { grid-row: 7; padding: 3px 6px; font-size: 11px; color: #3d536c; background: #fffaf0df; border-radius: 8px; text-shadow: none; }
+  #hud #word-hud strong { color: #356e68; font-weight: 700; }
+}
+@media (max-width: 699px) and (orientation: portrait) and (max-height: 650px) {
+  #hud #sector-split, #hud #item-controls { display: none; }
+}

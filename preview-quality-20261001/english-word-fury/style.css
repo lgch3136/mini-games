@@ -109,8 +109,13 @@ a {
   align-items: center;
   justify-content: center;
 }
-.arena {
+.arena-frame {
   width: min(100%, calc((100dvh - 84px) * 16 / 9));
+  position: relative;
+  isolation: isolate;
+}
+.arena {
+  width: 100%;
   aspect-ratio: 16/9;
   position: relative;
   overflow: hidden;
@@ -396,7 +401,7 @@ a {
   color: var(--gold);
   font-family: ui-monospace;
 }
-body.training .arena {
+body.training .arena-frame {
   width: min(100%, calc((100dvh - 127px) * 16 / 9));
 }
 .screen {
@@ -829,10 +834,10 @@ kbd {
   color: #0c2329;
 }
 @media (pointer: coarse) {
-  body.playing .arena {
+  body.playing .arena-frame {
     width: min(100%, calc((100dvh - 255px) * 16 / 9));
   }
-  body.playing.training .arena {
+  body.playing.training .arena-frame {
     width: min(100%, calc((100dvh - 295px) * 16 / 9));
   }
 }
@@ -914,7 +919,7 @@ kbd {
     max-width: 52%;
     text-align: right;
   }
-  .arena {
+  .arena-frame {
     width: 100%;
   }
   .guide-grid {
@@ -1113,8 +1118,8 @@ kbd {
     font-size: 9px;
     padding: 4px 7px;
   }
-  body.playing .arena,
-  body.playing.training .arena {
+  body.playing .arena-frame,
+  body.playing.training .arena-frame {
     width: min(100%, calc((100dvh - 58px) * 16 / 9));
   }
   #statusbar {
@@ -1138,8 +1143,8 @@ kbd {
   }
 }
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 550px) {
-  body.playing .arena,
-  body.playing.training .arena {
+  body.playing .arena-frame,
+  body.playing.training .arena-frame {
     width: min(calc(100% - 340px), calc((100dvh - 58px) * 16 / 9));
   }
   #touch {
@@ -1183,4 +1188,57 @@ kbd {
     bottom: max(18px, env(safe-area-inset-bottom, 0px));
     padding-left: max(24px, env(safe-area-inset-left, 0px));
     padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+}
+
+/* Portrait keeps the same 16:9 combat world. Spare vertical space belongs to
+   readable live information, rather than letterboxing above the fighters. */
+@media (max-width: 680px) and (orientation: portrait) {
+  body.playing .stage-zone { align-items: flex-start; }
+}
+@media (max-width: 680px) and (orientation: portrait) and (min-height: 700px) {
+  body.playing { overflow-y: auto; }
+  body.playing #shell { height: auto; min-height: 100dvh; }
+  body.playing .stage-zone { flex: 0 0 auto; }
+  body.playing .panel-screen { position: fixed; }
+  body.playing .arena-frame { width: 100%; padding-top: 64px; }
+  body.playing .arena { overflow: visible; margin-bottom: 58px; }
+  body.playing .fighter-hud { top: -53px; width: 37%; }
+  body.playing .name { font-size: 13px; margin-bottom: 5px; }
+  body.playing .name span { font-size: 10px; letter-spacing: 2px; }
+  body.playing .health { height: 12px; }
+  body.playing .guard { height: 4px; margin-top: 4px; }
+  body.playing .timer { top: -54px; }
+  body.playing .timer small { font-size: 8px; }
+  body.playing .timer b { font-size: 29px; }
+  body.playing .power-hud { bottom: -47px; }
+  body.playing .power-hud > b { font-size: 25px; }
+  body.playing .power-hud span { bottom: 13px; font-size: 8px; }
+  body.playing .power-hud > div { height: 10px; }
+  body.playing #word-line { bottom: -45px; }
+  body.playing #meaning { font-size: 11px; margin-bottom: 3px; }
+  body.playing #letters { font-size: 14px; letter-spacing: 1px; }
+  body.playing #dojo-coach {
+    position: static; transform: none; width: auto; margin: 0 12px 10px;
+    padding: 10px 12px; text-align: left; font-size: 13px; line-height: 1.5;
+  }
+  body.playing #dojo-coach span { font-size: 12px; line-height: 1.5; }
+  body.playing #statusbar {
+    height: auto; min-height: 44px; padding: 8px 14px; gap: 16px;
+    font-size: 11px; line-height: 1.5; align-items: flex-start;
+    border-top: 1px solid var(--line);
+  }
+  body.playing #practice { order: 1; padding: 10px 12px; }
+  body.playing #frame-data { font-size: 11px; line-height: 1.5; }
+  body.playing #touch { order: 2; margin-top: auto; padding-top: 16px; }
+}
+/* Preserve 44px touch targets on narrow phones without widening the page. */
+@media (max-width: 360px) and (orientation: portrait) {
+  #touch { padding: 8px 10px 22px; gap: 6px; }
+  #stick { width: 84px; height: 84px; }
+  #stick-knob { width: 44px; height: 44px; left: 19px; top: 19px; }
+  #stick b { left: 37px; }
+  .touch-actions { gap: 6px; }
+  .four-keys { gap: 7px; }
+  .four-keys button { width: 44px; height: 44px; }
+  .utility button { padding: 6px; }
 }
