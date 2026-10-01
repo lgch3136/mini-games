@@ -1071,3 +1071,70 @@ body:not([data-race-mode="items"]) .touch-right {
 #driver-contract[hidden], #sector-split[hidden] { display: none !important; }
 #driver-contract small { font-size: 11px; }
 #sector-split { font-variant-numeric: tabular-nums; letter-spacing: .035em; color: #fff3bd; }
+
+/* Each desktop note owns a row; new records never overprint the technique guide. */
+@media (min-width: 700px) and (max-height: 850px) {
+  #menu #license-record { grid-column: 2; grid-row: 7; }
+  #menu #license-record + .quality-note { grid-column: 2; grid-row: 8; margin-top: 6px; }
+  #menu .controls-note + .quality-note { grid-column: 1; grid-row: 7 / 9; }
+}
+
+/* Portrait instruments share normal-flow rows, including transient objectives.
+   This keeps variable-length coaching/splits out of the speed and map cards. */
+@media (max-width: 699px) and (orientation: portrait) {
+  #hud {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 90px;
+    align-content: start;
+    align-items: start;
+    gap: 8px;
+    padding: calc(max(8px, var(--safe-top)) + 52px) max(12px, var(--safe-right)) 0 max(12px, var(--safe-left));
+  }
+  #hud > .hud-top,
+  #hud > .speedometer,
+  #hud > #map,
+  #hud > #driver-contract,
+  #hud > #item-dock,
+  #hud > #input-strip {
+    position: static;
+    transform: none;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+  }
+  #hud > .hud-top { grid-column: 1 / -1; grid-row: 1; gap: 6px; }
+  #hud .stat { flex: 1; min-width: 0; }
+  #hud > .speedometer { grid-column: 1; grid-row: 2; width: 100%; min-height: 90px; }
+  #hud > #map { grid-column: 2; grid-row: 2; width: 90px; height: 90px; }
+  #hud > #driver-contract { grid-column: 1 / -1; grid-row: 3; width: 100%; padding: 6px 10px; text-align: left; }
+  #hud > #item-dock,
+  #hud > #input-strip { grid-column: 1 / -1; grid-row: 4; width: 100%; }
+  #hud > #item-dock { padding: 7px 10px; gap: 4px 10px; }
+  #hud > #item-dock b { font-size: 14px; }
+  #hud > #input-strip { flex-wrap: wrap; }
+}
+@media (max-width: 699px) and (orientation: portrait) and (max-height: 650px) {
+  #hud { grid-template-columns: minmax(0, 1fr) 76px; gap: 6px; }
+  #hud > #map { width: 76px; height: 76px; }
+  #hud > .speedometer { min-height: 76px; padding: 5px 7px; }
+  #hud .speedometer b { font-size: 28px; }
+  #hud .speedometer .boost-meter { margin-top: 5px; margin-bottom: 3px; }
+  #hud #driver-coach { display: none; }
+}
+@media (max-width: 699px) and (orientation: portrait) {
+  #hud > #notice,
+  #hud > #incoming,
+  #hud > #toast {
+    position: static;
+    grid-column: 1 / -1;
+    transform: none;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+  }
+  #hud > #notice { grid-row: 5; }
+  #hud > #incoming { grid-row: 6; }
+  #hud > #toast { grid-row: 7; }
+  #hud .notice b { display: block; font-size: 12px; padding: 5px 9px; }
+}
