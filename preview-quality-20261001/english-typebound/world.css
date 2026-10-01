@@ -143,6 +143,7 @@
   .word-meaning { min-height:20px; }
   .spell-charge { margin-bottom:3px; }
   .practice-ribbon { min-height:18px; }
+  .keyboard-caption { display:none; }
   #app[data-practice="false"] #battle .arena { min-height:185px; height:185px; flex:1 0 185px; }
   #app[data-practice="false"] #battle { gap:4px; }
   #app[data-practice="false"] .typing-heading { display:none; }

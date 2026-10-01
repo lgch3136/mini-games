@@ -1,8 +1,8 @@
 {
-  "commit": "094205b4213bd23b17a1aa75b3427a1d50829821",
+  "commit": "d765fba3a4cc73370bfd93e1538c68e1875773fd",
   "base": "3826bc9991c9d5dd01bd971a2a1a33ca42b0ca40",
   "games": 15,
-  "cache_revision": "20261001-quality3-r3",
+  "cache_revision": "20261001-quality3-r4",
   "files": {
     "AUDIO-LICENSES.md": "acc64bbdfa878e3c1d54c604f9894ec74597e331ab5f4b31c4b4792d7169bd18",
     "english-apex-drive/QUALITY2.md": "dd0e305773eaff84e9d858ad523f1a3d1c50e0f95c3e7a8d7213b733f21d38dc",
@@ -199,7 +199,7 @@
     "english-typebound/content.mjs": "48afd1077449bd7152c10287ec869eea7bce543146a7fcc7dfbeae3b754b4b13",
     "english-typebound/focus-render.mjs": "ba5e517d5d30c369c680ada73856a6873eaf48a36a07eb182a2cc5de25a6f159",
     "english-typebound/focus.css": "a05d878c91b9a048f7fd25b22482d669e59738704062bb4118de849b281a7c80",
-    "english-typebound/index.html": "6a824f6f168b750eb5d81b3a96d886e1d1fb142e0d637e79f490644390f71a39",
+    "english-typebound/index.html": "58402853bb9b722fec17b01c036b508da560f5b2dedd45a7887a8ab1b1f6bed5",
     "english-typebound/input.mjs": "61f3476dc12da9f52b9a35c46df46876c314685e7f5db3866135a02dfafa6549",
     "english-typebound/mobile-quality.css": "96dab13ccb6764f8461cb0127909525dffad9b4b5d1cb22ab99c7e8279d9ade4",
     "english-typebound/painted-rigs.mjs": "cd0cace465ef285e6121cbc5b276ccd56b5174dacc90ef2ddfda80233a3c6ff0",
@@ -209,7 +209,7 @@
     "english-typebound/sim.mjs": "7e4593ca61c58cf0ce8f22fdb5856e995d6b576de2eaf8d94ed514b561c7a511",
     "english-typebound/story.css": "d730cf75e53061338839994273be3c1548a8900491b0c82de45970de7c9e3708",
     "english-typebound/style.css": "9b464ea56d64f0096944c2970ecc108f07961cac775b40f7debe60ae234bd526",
-    "english-typebound/world.css": "63abf0a2c60a12b463759e470bc1db1a9e4f5b5304a32a90b98389a98a0bd1e7",
+    "english-typebound/world.css": "4f08604f53bb0f4d2ca0ee964a432868af3f257900ecb6c7eb9fb4e5b95a8f30",
     "english-word-beat/assets/cover-mobile.webp": "c7d70c38716056ebd83aef99d05fd6838c759810767f624f454017baf45e96dd",
     "english-word-beat/assets/cover.png": "ea7916b8b6f1f40a2d9c30885d088b5cd1b66daeb5270cc22a6c83508610a434",
     "english-word-beat/assets/showcase-cover-20260912.png": "9b2dddf54634008ff400e09b1e28f6a5cef55bd99363ce4e68439c78ad53324f",
@@ -336,9 +336,9 @@
     "english-word-snake/render.mjs": "85ada42e75dfea6cc9916fa6cad62ffe55044f8930a05167be4a666adf6fc448",
     "english-word-snake/routes.mjs": "457cbeed1c5ae68177507767160c1d93af7d47e366a4c9026b77183856af5062",
     "english-word-snake/style.css": "a67479e4642937194a59d5ddf3234dcda8024d94d6d5492747dd8cab64491a6c",
-    "index.html": "582c69c492e3e5219f7cd0d50d75f410036368e4483f1e8b7d02b0d984b67106",
+    "index.html": "5e4c7cf2b5629d4ff5120894310390c92078aa0c39ceb5110c5af7ec644341e1",
     "shared/arcade-catalog.mjs": "879840b31f3c9f60b4043821e3ce1e2ab962fe1c38692afb01bd91fd778c6005",
-    "shared/arcade-hub.mjs": "45d17f115e19d06fa344e907d195fb4c90a2c1d50f4a9d34a344c4c49fe1f68d",
+    "shared/arcade-hub.mjs": "ca0dd0316d61d1a6e57024ed18e37a05e9dc7c50e9d9b864ad7295e05ab9ed6e",
     "shared/audio.js": "048273e5ca80e1a6915cd432a2c19cba5faa8c92e7c04e381a9440ee09ff6f9e",
     "shared/audio/click.ogg": "ccfb7fa0cccdd9faec0eb16033c732b1e308d139d80f799161495d58f7adcdb9",
     "shared/audio/confirm.ogg": "063564703b6094d70718a3e787a55cc9141611e4ecd6b6637f8828f79b4a8c3a",
@@ -395,7 +395,7 @@
     "tests/mobile-quality-browser.html": "3cc93b69b2f7856d837cc5049f437301f53cce9e525d98f8680615802f708755",
     "tests/quality3-temple-startup-layout.html": "7ffab5d0109d52968fc05fad1ed0751643ced79c947252abeae655298deaa5e2",
     "tests/quality3-temple-startup-layout.mjs": "e44f42b2f83d3df8a1b072a186fcde7f6fc8f18dbf77e7702d91ddfdf8eecb63",
-    "tests/quality3-typebound-layout.html": "a082d7f662eb1a0d68c95b7d03a0c3fad3197fe744b4af3f41690a8f42bc8a04",
-    "tests/quality3-typebound-layout.mjs": "d8d8af416eb60e9c1ba2101de439556bbb5089426133aa7687d74462c3c4c655"
+    "tests/quality3-typebound-layout.html": "5659acec25998ca76ad04d0e994697f2ba717f64344c05868cae30954eee4cb9",
+    "tests/quality3-typebound-layout.mjs": "86d3b27dc480a3473caa70db1cdf41588627da2fc8d0cabdcc8199bc4353cd53"
   }
 }
