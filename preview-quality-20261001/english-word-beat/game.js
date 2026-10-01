@@ -1178,6 +1178,7 @@ function togglePause() {
     ensureAudioClock();
     $id('paused').classList.add('hidden');
     ensureLoop();
+    focusGameplay();
   }
 }
 function backToMenu() {
@@ -1983,3 +1984,15 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
     }, 1200);
   });
 }
+
+
+// Discrete toolbar actions return keyboard play to its focusable canvas. Native
+// menu/form activation still owns Space/Enter; pause does not steal that focus.
+function focusGameplay() {
+  if (['playing', 'ready', 'dying'].includes(Game.state)) canvas.focus?.({ preventScroll: true });
+}
+document.addEventListener('click', (event) => {
+  const control = event.target?.closest?.('button') || event.target;
+  if (control?.tagName === 'BUTTON') focusGameplay();
+});
+canvas.addEventListener('pointerdown', focusGameplay);

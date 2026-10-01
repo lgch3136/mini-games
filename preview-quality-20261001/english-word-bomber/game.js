@@ -3,7 +3,7 @@
 function usesNativeKeyboard(event) {
   const target = event.target;
   if (!event.isComposing && (event.code === 'Escape' || event.code === 'KeyP') && (/^(BUTTON|A)$/.test(target?.tagName || '') || target?.closest?.('button,a'))) return false;
-  return !!(target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(target.tagName || '') || target.closest?.('input,select,textarea,button,a,[contenteditable="true"]')));
+  return !!(target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A|SUMMARY)$/.test(target.tagName || '') || target.closest?.('input,select,textarea,button,a,summary,[contenteditable="true"]')));
 }
 
 
@@ -386,6 +386,7 @@ function togglePause() {
     $id('paused').classList.add('hidden');
     accumulator = 0;
     ensureLoop();
+    focusGameplay();
   }
 }
 function backToMenu() {
@@ -1462,3 +1463,15 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
 EnemyAtlas.addEventListener('load',render);
 
 Courtyard.addEventListener('load',()=>{gridSnapshot.fill(-1);render();});
+
+
+// Discrete toolbar actions return keyboard play to its focusable canvas. Native
+// menu/form activation still owns Space/Enter; pause does not steal that focus.
+function focusGameplay() {
+  if (['playing', 'ready', 'dying'].includes(Game.state)) canvas.focus?.({ preventScroll: true });
+}
+document.addEventListener('click', (event) => {
+  const control = event.target?.closest?.('button') || event.target;
+  if (control?.tagName === 'BUTTON') focusGameplay();
+});
+canvas.addEventListener('pointerdown', focusGameplay);
