@@ -1066,7 +1066,8 @@ function gameOver() {
   const tn = totalNotes();
   const acc = tn ? Math.round(((Game.counts.perfect + Game.counts.great * .7 + Game.counts.good * .35) / tn) * 100) : 0;
   $id('over-kicker').textContent = `第${Game.level}谱 · BPM ${Game.bpm} · 准确率 ${safe(acc, 0)}%`;
-  $id('over-title').textContent = Game.recovery ? (Game.word.complete ? '漏拍补齐，这个词接上了' : '再留一点时间给这几拍') : Game.completed ? '完整演出，落下最后一拍' : Game.score > 0 && Game.score === high ? '这次演奏，刷新了纪录' : '先稳住下一拍';
+  const landed = Game.counts.perfect + Game.counts.great + Game.counts.good;
+  $id('over-title').textContent = Game.recovery ? (Game.word.complete ? '漏拍补齐，这个词接上了' : '再留一点时间给这几拍') : Game.completed ? (landed ? '完整演出，落下最后一拍' : '全曲练习结束，下一次接上节拍') : Game.score > 0 && Game.score === high ? '这次演奏，刷新了纪录' : '先稳住下一拍';
   $id('over-stats').innerHTML =
     `<div><span>本局得分</span><b>${safe(Game.score, 0)}</b></div>` +
     `<div><span>最高连击</span><b>${safe(Game.maxCombo, 0)}</b></div>` +
@@ -1077,6 +1078,7 @@ function gameOver() {
   $id('mastery-medal').src = `../shared/mobile-art/medal-${['bronze','bronze','silver','gold'][recap.stars]}.webp`;
   $id('mastery-medal').alt = `${recap.stars} 星完成奖章`;
   $id('result-stars').textContent = '★'.repeat(recap.stars) + '☆'.repeat(3 - recap.stars);
+  $id('result-star-rule').textContent = recap.stars ? '全曲完成记录' : '';
   $id('result-advice').textContent = recap.advice;
   $id('result-timing').textContent = recap.samples >= 12 ? `最近 ${recap.samples} 次命中 · ${recap.bias > 0 ? '偏晚' : '偏早'}中位数 ${Math.abs(recap.bias)} ms` : '再多演奏几拍，就能看到稳定的时差分析';
   const missing = missingWordIndices();
@@ -1128,7 +1130,8 @@ window.addEventListener('keydown', (ev) => {
   }
   if (ev.repeat) return;
   if (ev.code === 'KeyM') toggleMute();
-  if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
+  if (ev.code === 'Enter' && Game.state === 'menu') startFromMenu();
+  else if (ev.code === 'Enter' && Game.state === 'over') startGame();
 });
 window.addEventListener('keyup', (ev) => {
   const li = LANE_KEYS().indexOf(ev.code);
@@ -1187,6 +1190,7 @@ function backToMenu() {
   $id('over').classList.add('hidden');
   $id('word-bar').classList.add('hidden');
   $id('menu').classList.remove('hidden');
+  syncPlaySettings();
   render();
 }
 
@@ -1626,15 +1630,43 @@ document.querySelectorAll('.seg-btn[data-keys]').forEach((b) => {
   if (Number(b.dataset.keys) === Game.keyMode) b.classList.add('selected'); else b.classList.remove('selected');
 });
 /* ---------------- 绑定 ---------------- */
+function syncPlaySettings() {
+  $id('session-select').value = Game.session;
+  $id('speed-select').value = String(Game.scrollMul);
+  $id('song-select').value = Game.songId;
+  for (const button of document.querySelectorAll('.difficulty')) {
+    if (button.dataset.difficulty === Game.difficulty) button.classList.add('selected');
+    else button.classList.remove('selected');
+  }
+  for (const button of document.querySelectorAll('.seg-btn[data-keys]')) {
+    if (Number(button.dataset.keys) === Game.keyMode) button.classList.add('selected');
+    else button.classList.remove('selected');
+  }
+}
+function startFromMenu() {
+  // Explicit configured play owns the visible form values. Quick practice
+  // must not leave a hidden session/difficulty/lanes choice behind it.
+  const difficulty = [...document.querySelectorAll('.difficulty')].find(button => button.classList.contains('selected'))?.dataset.difficulty;
+  const keys = Number([...document.querySelectorAll('.seg-btn[data-keys]')].find(button => button.classList.contains('selected'))?.dataset.keys);
+  if (Object.hasOwn(DIFFS, difficulty)) Game.difficulty = difficulty;
+  if ([4,5,7].includes(keys)) Game.keyMode = keys;
+  if (['song','practice','endless'].includes($id('session-select').value)) Game.session = $id('session-select').value;
+  const speed = Number($id('speed-select').value);
+  if (SCROLL_STEPS.includes(speed)) Game.scrollMul = speed;
+  if (SONGS.some(song => song.id === $id('song-select').value)) Game.songId = $id('song-select').value;
+  savePlayPrefs();
+  syncPlaySettings();
+  startGame();
+}
 function toggleMute() { Game.muted = !Game.muted; $id('mute-btn').textContent = Game.muted ? '已静音' : '声音'; }
 $id('mute-btn').addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
 $id('exit-btn').addEventListener('click', backToMenu);
-$id('start-btn').addEventListener('click', startGame);
+$id('start-btn').addEventListener('click', startFromMenu);
 $id('retry-btn').addEventListener('click', startGame);
 $id('retry-word').addEventListener('click', startWordRetry);
 $id('retry-audio').addEventListener('click', () => { ensureAudioClock(); loadPianoSamples(); });
-$id('quick-start').addEventListener('click', () => { Game.keyMode=4; Game.session='practice'; Game.difficulty='easy'; startGame(); });
+$id('quick-start').addEventListener('click', () => { Game.keyMode=4; Game.session='practice'; Game.difficulty='easy'; syncPlaySettings(); startGame(); });
 $id('menu-btn').addEventListener('click', backToMenu);
 $id('resume-btn').addEventListener('click', togglePause);
 $id('pause-menu-btn').addEventListener('click', backToMenu);
@@ -1656,7 +1688,7 @@ function updateSongMenu() {
   const song = currentSong();
   $id('song-detail').textContent = `${song.composer} · ${song.bpm} BPM · Lv ${song.chart.level} · 平均 ${song.chart.average.toFixed(1)} KPS · 峰值 ${song.chart.peak.toFixed(1)} KPS · ${formatDuration(song.duration)}`;
   const source = $id('score-source');
-  source.textContent = `${song.source}${song.sourceUrl ? ' ↗' : ''}`;
+  source.textContent = song.source;
   if (song.sourceUrl) source.href = song.sourceUrl;
   else source.removeAttribute('href');
 }

@@ -1,4 +1,7 @@
 /* The live word and its world share the stage. Statistics are supporting HUD. */
+.action-arrow { display:inline-block; position:relative; width:1em; height:1em; flex:0 0 1em; vertical-align:-.1em; }
+.action-arrow::before { content:""; position:absolute; left:8%; top:48%; width:90%; height:2px; background:currentColor; transform:rotate(-45deg); }
+.action-arrow::after { content:""; position:absolute; right:8%; top:8%; width:55%; height:55%; border-top:2px solid currentColor; border-right:2px solid currentColor; }
 #battle { gap:8px; padding-top:8px; }
 .practice-metrics { position:relative; inset:auto; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; background:#17343c; border:1px solid #b7dccc24; border-radius:12px; padding:8px 14px; }
 .practice-metrics > div { display:flex; flex-direction:row; align-items:baseline; justify-content:center; gap:8px; min-width:0; }
@@ -143,6 +146,9 @@
   #app[data-practice="false"] #battle .arena { min-height:185px; height:185px; flex:1 0 185px; }
   #app[data-practice="false"] #battle { gap:4px; }
   #app[data-practice="false"] .typing-heading { display:none; }
+  /* The coloured letters already show charge; recover its 10px strip so the
+     adventure Space/Enter row fits 320×568 without shrinking the 185px scene. */
+  #app[data-practice="false"] .spell-charge { display:none; }
   #app[data-practice="false"] .spell-picker #guard { min-height:36px; font-size:11px; }
 }
 @media (max-height:480px) and (orientation:landscape) {

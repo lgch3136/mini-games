@@ -180,30 +180,31 @@ button { min-height:44px; } .overlay { overflow-y:auto; overscroll-behavior:cont
 @media(max-width:600px) { #menu .keys {display:none;} #menu .panel {padding-block:16px;} #menu .menu-cover {max-height:19dvh;margin-bottom:10px;} #menu #start-btn {width:min(100%,300px);margin:14px auto 8px;min-height:52px;} }
 
 /* Short landscape keeps a proportional mine and moves all controls beside it. */
-@media (orientation:landscape) and (max-height:600px) {
+@media (min-width:601px), (orientation:landscape) {
  #game-wrap { width:100vw; height:100dvh; aspect-ratio:auto; border:0; border-radius:0;
-   --mine-field-width:calc(100vw - 154px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));
+   --mine-sidebar:clamp(140px,18vw,220px);
+   --mine-field-width:calc(100vw - var(--mine-sidebar) - 14px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));
    --mine-field-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
  }
  #game { inset:auto; top:calc(env(safe-area-inset-top,0px) + var(--mine-field-height) / 2); left:calc(env(safe-area-inset-left,0px) + (var(--mine-field-width) - min(var(--mine-field-width),calc(var(--mine-field-height) * 9 / 7))) / 2); transform:translateY(-50%); width:min(var(--mine-field-width),calc(var(--mine-field-height) * 9 / 7)); height:auto; aspect-ratio:9/7; }
- #stats { left:auto; right:max(6px,env(safe-area-inset-right,0px)); top:max(4px,env(safe-area-inset-top,0px)); width:140px; flex-direction:column; gap:4px; }
+ #stats { left:auto; right:max(6px,env(safe-area-inset-right,0px)); top:max(4px,env(safe-area-inset-top,0px)); width:var(--mine-sidebar); flex-direction:column; gap:4px; }
  #stats .chips:first-child { max-width:none; width:100%; display:grid; grid-template-columns:1fr 1fr; }
  #stats .chips { justify-content:space-between; } #stats .chip { font-size:10px; padding:3px; }
  #pause-btn,#mute-btn { min-width:62px; min-height:44px; }
- #contract-status { left:auto; right:6px; top:100px; width:140px; font-size:10px; line-height:1.4; }
- #word-bar { left:auto; right:6px; top:136px; bottom:auto; width:140px; max-width:none; transform:none; padding:4px; }
+ #contract-status { left:auto; right:6px; top:100px; width:var(--mine-sidebar); font-size:10px; line-height:1.4; }
+ #word-bar { left:auto; right:6px; top:136px; bottom:auto; width:var(--mine-sidebar); max-width:none; transform:none; padding:4px; }
  #wb-word { font-size:15px; letter-spacing:1px; } #wb-zh { font-size:11px; }
- #cast-btn,#dynamite-btn { left:auto; right:max(6px,env(safe-area-inset-right,0px)); width:140px; min-height:44px; height:44px; padding:5px; font-size:12px; }
+ #cast-btn,#dynamite-btn { left:auto; right:max(6px,env(safe-area-inset-right,0px)); width:var(--mine-sidebar); min-height:44px; height:44px; padding:5px; font-size:12px; }
  #dynamite-btn { bottom:max(8px,env(safe-area-inset-bottom,0px)); } #cast-btn { bottom:calc(60px + env(safe-area-inset-bottom,0px)); }
- #feedback { left:auto; right:6px; top:184px; bottom:auto; width:140px; max-width:none; transform:none; padding:2px; font-size:10px; max-height:24px; }
+ #feedback { left:auto; right:6px; top:184px; bottom:auto; width:var(--mine-sidebar); max-width:none; transform:none; padding:2px; font-size:10px; max-height:24px; }
  .menu-cover,.overlay .keys { display:none; }
  .overlay { align-items:flex-start; } .panel { margin:auto; }
 }
-@media (orientation:landscape) and (max-height:600px) {
+@media (min-width:601px), (orientation:landscape) {
   #contract-status { display:none; }
   #word-bar { top:calc(100px + env(safe-area-inset-top,0px)); }
   /* The mine's last 82 logical pixels contain no ore; use that quiet footer. */
-  #feedback { left:calc(8px + env(safe-area-inset-left,0px)); right:auto; top:auto; bottom:calc(8px + env(safe-area-inset-bottom,0px)); width:calc(100% - 170px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)); max-height:24px; line-height:1.15; }
+  #feedback { left:calc(8px + env(safe-area-inset-left,0px)); right:auto; top:auto; bottom:calc(8px + env(safe-area-inset-bottom,0px)); width:calc(100% - var(--mine-sidebar) - 30px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)); max-height:24px; line-height:1.15; }
 }
 
 /* The operator and targets remain unobscured: one quiet footer status slot. */
@@ -219,4 +220,17 @@ button { min-height:44px; } .overlay { overflow-y:auto; overscroll-behavior:cont
   }
   #feedback { z-index:2; }
   #hud:has(#feedback.show) #contract-status { visibility:hidden; }
+}
+
+/* Large screens keep the same separation instead of putting status on the operator. */
+@media (min-width:601px) and (min-height:601px) {
+  #stats .chip { font-size:12px; padding:4px; }
+  #stats .chips:last-child { gap:6px; }
+  #pause-btn,#mute-btn { flex:1; font-size:13px; }
+  #word-bar { top:calc(128px + env(safe-area-inset-top,0px)); padding:7px; }
+  #wb-word { font-size:19px; letter-spacing:2px; }
+  #contract-status { display:block; top:calc(206px + env(safe-area-inset-top,0px)); padding:8px; background:#132723ed; border:1px solid #7d6c405c; border-radius:8px; font-size:12px; }
+  #cast-btn,#dynamite-btn { font-size:14px; }
+  .menu-cover { display:block; margin-inline:auto; }
+  .overlay .keys { display:inline-flex; }
 }

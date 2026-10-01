@@ -417,11 +417,11 @@ function createKeyboard() {
       const b = el(
         "button",
         key === "Backspace"
-          ? "⌫"
+          ? "退格"
           : key === "Space"
             ? "SPACE · 施法"
             : key === "Enter"
-              ? "↵ 护盾"
+              ? "护盾"
               : key,
         "key",
       );
@@ -503,7 +503,9 @@ function renderMap() {
   for (const r of g.routes) {
     const b = el("button", null, "route-choice");
     b.dataset.route = r.id;
-    b.append(el("b", r.name), el("span", "↗"), el("small", r.desc));
+    const arrow = el("span", null, "action-arrow");
+    arrow.setAttribute("aria-hidden", "true");
+    b.append(el("b", r.name), arrow, el("small", r.desc));
     $("routes").append(b);
   }
 }

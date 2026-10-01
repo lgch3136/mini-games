@@ -434,9 +434,20 @@ function updateHook(dt) {
 }
 
 function deliverItem(it) {
+  let duplicateRelocated = false;
   if(it.kind==='letter' && it.index!==Game.word.progress && it.letter===Game.word.en[Game.word.progress]) {
     const original=Game.items.find(x=>x.kind==='letter' && x.index===Game.word.progress);
-    if(original) original.index=it.index;
+    if(original) {
+      // Keep the proven spatial order as well as fungible spelling. Leaving the
+      // earlier copy on its old ray can permanently block the next letter.
+      // The remaining copy inherits the collected later copy's vacant home;
+      // no treasure, time, word progress or other object is created/removed.
+      original.index=it.index;
+      original.x=original.homeX=it.homeX ?? it.x;
+      original.y=original.homeY=it.homeY ?? it.y;
+      duplicateRelocated=true;
+      floatText('字矿归位',original.x,original.y-24,'#cbe8d9');
+    }
     it.index=Game.word.progress;
   }
   const beforeScore = Game.score;
@@ -461,6 +472,7 @@ function deliverItem(it) {
       if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1 + w.progress * .07);
       updateHud();
       if (w.progress >= w.en.length) wordComplete();
+      else if (duplicateRelocated) showFeedback('同字母已接收 · 余下字矿归位，通路保持畅通');
     } else {
       // 错序: 放回原处附近(惩罚是浪费时间)
       it.grabbed = false; it.precise = false;

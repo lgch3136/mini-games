@@ -1,4 +1,13 @@
 /* A finite, readable learning loop while keeping the garden's tactile identity. */
+.action-arrow,.direction-arrow { display:inline-block; position:relative; width:18px; height:18px; flex:0 0 18px; vertical-align:-3px; }
+.action-arrow::before,.direction-arrow::before { content:""; position:absolute; left:2px; top:8px; width:15px; height:2px; background:currentColor; }
+.action-arrow::after,.direction-arrow::after { content:""; position:absolute; right:2px; top:4px; width:9px; height:9px; border-top:2px solid currentColor; border-right:2px solid currentColor; transform:rotate(45deg); }
+.action-arrow { transform:rotate(-45deg); }
+.boost svg { vertical-align:-3px; }
+.primary .button-label { font-size:inherit; line-height:inherit; }
+[data-dir="3"] .direction-arrow { transform:rotate(-90deg); }
+[data-dir="2"] .direction-arrow { transform:rotate(180deg); }
+[data-dir="1"] .direction-arrow { transform:rotate(90deg); }
 .session-choice { display:grid; gap:7px; margin:15px 0; color:#31524a; font-size:12px; font-weight:650 }
 .session-choice select { width:100%; min-height:46px; border:1px solid #a9baa1; background:#fffdf2; color:#244a3f; border-radius:13px; padding:10px 12px; font:inherit }
 .expedition-track { display:flex; align-items:center; gap:10px; position:relative; padding:5px 1px 10px; color:#476253; font-size:11px }
@@ -60,6 +69,11 @@ button:focus-visible, select:focus-visible { outline:3px solid #3d8968; outline-
 }
 #pause .play-icon,#pause[data-paused="true"] .pause-icon { display:none; }
 #pause[data-paused="true"] .play-icon { display:block; }
+@media(max-height:350px) and (orientation:landscape) {
+  #menu .eyebrow { display:none; }
+  #menu h1 { font-size:30px; line-height:1.1; margin:4px 0 6px; }
+  #menu .intro { margin-bottom:6px; }
+}
 /* Reserve a real board, rather than squeezing it between four horizontal HUD
    rows. The same sidebar remains in normal flow on portrait phones. */
 .play-sidebar { display:flex; flex-direction:column; gap:4px; flex-shrink:0; min-height:0; }

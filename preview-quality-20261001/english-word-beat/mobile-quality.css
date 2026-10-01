@@ -18,6 +18,9 @@ body { background:radial-gradient(ellipse at 30% 0,#263057,#10101e 60%,#070910);
 .song-progress i { height:3px; flex:1; background:#c3edff25; overflow:hidden; border-radius:5px; }
 .song-progress em { display:block; height:100%; background:linear-gradient(90deg,#78caff,#d3bdfe); transform-origin:left; }
 .result-stars { color:#f1d78c; font-size:38px; letter-spacing:.15em; margin:15px 0; }
+.result-achievement { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px 12px; margin:15px 0; }
+.result-achievement .result-stars { margin:0; }
+#result-star-rule { color:#b8aed0; font-size:11px; line-height:1.4; }
 .result-timing { color:#a5bad8; font-size:12px; margin-top:16px; }
 .result-advice { color:#d2d8ec; font-size:13px; line-height:1.8; text-align:left; padding:14px; margin:12px 0; border:1px solid #a9b9e133; background:#c4cdff08; border-radius:14px; }
 #pause-btn,#mute-btn,#exit-btn { min-height:44px; padding:7px 11px; border-radius:12px; }

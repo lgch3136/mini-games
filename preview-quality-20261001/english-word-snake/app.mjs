@@ -5,7 +5,7 @@ import {
   VERSION,
   wordsFor,
 } from "./engine.mjs?v=20260930-quality-r1&mobile=20261001-quality3-r2";
-import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r2";
+import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r3";
 import { GardenAudio } from "./audio.mjs?v=20260912-garden-r4&mobile=20260930-quality-r2";
 import { SnakeInput } from "./input.mjs?v=20260912-garden-r4&mobile=20261001-quality3-r2";
 
@@ -431,7 +431,7 @@ function finish() {
   $("expedition-stars").textContent = game.wordGoal ? "★".repeat(progress.stars) + "☆".repeat(3 - progress.stars) : "✿";
   $("expedition-stars").setAttribute("aria-label", `${progress.stars} 星，完成目标、无碰撞、不用提示各一星`);
   $("expedition-next").textContent = game.won ? `完成目标 ★ · 无碰撞 ${game.hits ? "☆" : "★"} · ${game.assistance === "recall" ? "独立作答" : "无额外提示"} ${game.mistakes || game.hints ? "☆" : "★"}。${progress.next}` : game.wordGoal ? `已走到 ${game.completed}/${game.wordGoal} 词。可以慢一档，再试一次。` : progress.next;
-  $("restart").textContent = game.won ? "再收一篮 ↗" : "再试同样目标 ↗";
+  $("restart").querySelector(".button-label").textContent = game.won ? "再收一篮" : "再试同样目标";
   $("final-score").textContent = game.score.toLocaleString();
   $("final-details").textContent =
     `完成 ${game.completed} 个${game.mode === "spell" ? "单词" : "答案"} · 独立无提示 ${game.recalledWords} · 引导/提示 ${game.guidedWords} · 最高 ${game.bestCombo} 连`;

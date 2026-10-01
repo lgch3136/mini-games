@@ -261,7 +261,8 @@ export class GardenRenderer {
       }
       c.save();
       c.translate(x, y + bob);
-      c.scale(1.12, 1.12);
+      const fruitScale = s < 22 ? 1.22 : 1.12;
+      c.scale(fruitScale, fruitScale);
       c.globalAlpha = active ? 1 : 0.88;
       c.fillStyle = active ? "#92683323" : "#75865a14";
       c.beginPath();
@@ -297,11 +298,17 @@ export class GardenRenderer {
       c.save();
       c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       c.fillStyle = active ? "#50331f" : "#30492c";
-      c.font = `800 ${Math.max(11, s * .58)}px ui-rounded, system-ui, sans-serif`;
+      let fontSize = Math.max(13, s * .58);
+      c.font = `800 ${fontSize}px ui-rounded, system-ui, sans-serif`;
       c.textAlign = "center";
       c.textBaseline = "alphabetic";
       const label = game.mode === "choose" ? String.fromCharCode(65 + t.id) : t.label.toUpperCase();
-      const metrics = c.measureText(label);
+      let metrics = c.measureText(label);
+      // Keep cold-start phone letters at 13 CSS px; unusual narrow rotation
+      // boards can scale down only when the measured ink would leave the fruit.
+      const fit = Math.min(1, s * .78 / metrics.width,
+        s * .68 / ((metrics.actualBoundingBoxAscent || fontSize * .8) + (metrics.actualBoundingBoxDescent || 0)));
+      if (fit < 1) { fontSize *= fit; c.font = `800 ${fontSize}px ui-rounded, system-ui, sans-serif`; metrics = c.measureText(label); }
       const ascent = metrics.actualBoundingBoxAscent ?? s * .42;
       const descent = metrics.actualBoundingBoxDescent ?? 0;
       c.fillText(label, this.ox + x * s, this.oy + (y + bob) * s + (ascent - descent) / 2);
