@@ -2,6 +2,7 @@
 
 function usesNativeKeyboard(event) {
   const target = event.target;
+  if (!event.isComposing && (event.code === 'Escape' || event.code === 'KeyP') && (/^(BUTTON|A)$/.test(target?.tagName || '') || target?.closest?.('button,a'))) return false;
   return !!(target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(target.tagName || '') || target.closest?.('input,select,textarea,button,a,[contenteditable="true"]')));
 }
 
@@ -1010,7 +1011,7 @@ document.addEventListener('keydown', (e) => {
     if (Game.state === 'over') return;
     flap();
   } else if (k === 'KeyP' || k === 'Escape') {
-    if (Game.state === 'playing' || Game.state === 'paused') { e.preventDefault(); togglePause(); }
+    if (Game.state === 'playing' || Game.state === 'ready' || Game.state === 'paused') { e.preventDefault(); togglePause(); }
   } else if (k === 'KeyM') {
     toggleMute();
   } else if (k === 'KeyG') {

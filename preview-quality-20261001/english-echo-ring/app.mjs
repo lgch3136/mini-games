@@ -1,7 +1,7 @@
 import { trialProgress, coachTip } from "./trial.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import { advanceAfterglow } from "./afterglow.mjs?v=20260930-polish-r1&mobile=20261001-quality2-r1";
 import { Game, STEP, TAU, clamp } from "./sim.mjs?v=20260930-quality-r1&mobile=20261001-quality2-r1";
-import { Controls } from "./input.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r1";
+import { Controls } from "./input.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r2";
 import { Renderer } from "./render.mjs?v=20260930-polish-r1&mobile=20261001-quality2-r1";
 import { EchoAudio } from "./audio.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 const VERSION = "20260930-quality-r1";

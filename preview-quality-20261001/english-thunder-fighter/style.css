@@ -232,3 +232,12 @@ button:focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }
 
 .auto-fire-choice {display:flex;align-items:center;gap:8px;min-height:44px;font-size:13px;color:#cae6e6;margin:10px 0;flex-wrap:wrap;justify-content:center;}
 .auto-fire-choice input{width:22px;height:22px;accent-color:#64dabb;} .auto-fire-choice small{font-size:11px;color:#95b4be;}
+
+@media (orientation:landscape) and (max-height:440px) {
+  #menu { gap:8px; }
+  #menu #logo-img { max-height:60px; width:auto; max-width:160px; object-fit:contain; margin:0; }
+  #menu h1 { font-size:26px; letter-spacing:3px; }
+  #menu h2 { font-size:14px; letter-spacing:5px; }
+  #menu .sub { font-size:11px; margin:0; }
+  #menu #start-btn { min-height:48px; padding:10px 28px; margin:0; }
+}

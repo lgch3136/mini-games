@@ -2,6 +2,7 @@
 
 function usesNativeKeyboard(event) {
   const target = event.target;
+  if (!event.isComposing && (event.code === 'Escape' || event.code === 'KeyP') && (/^(BUTTON|A)$/.test(target?.tagName || '') || target?.closest?.('button,a'))) return false;
   return !!(target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(target.tagName || '') || target.closest?.('input,select,textarea,button,a,[contenteditable="true"]')));
 }
 
@@ -1481,19 +1482,36 @@ function drawEnemies() {
     }
     if (e.meteor) {
       ctx.rotate(e.t * e.spin);
-      ctx.fillStyle = flash ? '#ffffff' : '#625d75';
-      ctx.strokeStyle = '#b8a9c8'; ctx.lineWidth = 2;
+      const rockLight = ctx.createLinearGradient(-e.r,-e.r,e.r*.7,e.r);
+      rockLight.addColorStop(0,'#abb8c9');rockLight.addColorStop(.38,'#6f7f94');rockLight.addColorStop(1,'#283849');
+      ctx.fillStyle = flash ? '#ffffff' : rockLight;
+      ctx.strokeStyle = '#b7c6d2a0'; ctx.lineWidth = 1.2;
+      const vertices=[];
       ctx.beginPath();
       for (let i = 0; i < 9; i++) {
         const a = i / 9 * Math.PI * 2;
         const r = e.r * (.78 + Math.sin(e.seed + i * 2.7) * .13);
         const x = Math.cos(a) * r, y = Math.sin(a) * r;
+        vertices.push({x,y,a});
         if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
       }
       ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(20,18,34,.45)';
-      ctx.beginPath(); ctx.arc(-e.r * .2, -e.r * .1, e.r * .2, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(e.r * .28, e.r * .2, e.r * .12, 0, Math.PI * 2); ctx.fill();
+      if(!flash) {
+        // Quiet mineral facets share the ships' cool upper-left light, without bloom.
+        for(let i=0;i<vertices.length;i++) {
+          const a=vertices[i],b=vertices[(i+1)%vertices.length];
+          const light=Math.cos(a.a+e.t*e.spin+Math.PI*.75);
+          ctx.fillStyle=light>0?`rgba(219,232,242,${light*.19})`:`rgba(8,18,30,${-light*.24})`;
+          ctx.beginPath();ctx.moveTo(-e.r*.12,-e.r*.06);ctx.lineTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.closePath();ctx.fill();
+        }
+        for(const [cx,cy,r] of [[-.2,-.12,.20],[.28,.19,.12],[.10,-.36,.075]]) {
+          const x=cx*e.r,y=cy*e.r,cr=r*e.r;
+          const crater=ctx.createRadialGradient(x-cr*.25,y-cr*.3,cr*.15,x,y,cr);
+          crater.addColorStop(0,'#1b293dcc');crater.addColorStop(.75,'#34435a99');crater.addColorStop(1,'#bacbd333');
+          ctx.fillStyle=crater;ctx.beginPath();ctx.arc(x,y,cr,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle='#bbcbd06b';ctx.lineWidth=.7;ctx.beginPath();ctx.arc(x,y,cr,-.1,Math.PI*.75);ctx.stroke();
+        }
+      }
     } else if (e.boss) {
       const aura = ctx.createRadialGradient(0, 0, e.r * .2, 0, 0, e.r * 2.4);
       aura.addColorStop(0, 'rgba(255,65,218,.34)');
@@ -1731,7 +1749,7 @@ function dashPlayer() {
 }
 function openRefit() {
   Game.state='refit';releaseTouchControls();Game.enemyBullets.length=0;Game.enemies.length=0;Game.bullets.length=0;Game.powerups.length=0;
-  $id('refit-summary').textContent=`航段 ${Game.sectors} 完成 · ${Game.stats.correct} 组数据 · 选择一个永久强化`;
+  $id('refit-summary').textContent=`航段 ${Game.sectors} 完成 · ${Game.stats.correct} 组数据 · 选择一个本局持续生效的强化`;
   $id('refit').classList.remove('hidden');
 }
 function chooseRefit(kind) {

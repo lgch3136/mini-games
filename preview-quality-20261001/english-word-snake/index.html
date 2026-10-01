@@ -13,8 +13,8 @@
       content="一条丝滑的小蛇，一座会开花的单词花园。转向、冲刺、串起字母，把英语吃进记忆。"
     />
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1" />
-    <link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20261001-quality2-r1" />
-  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+    <link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20261001-quality3-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261001-quality3-r2">
 </head>
   <body>
     <main id="app" data-phase="menu">
@@ -34,10 +34,11 @@
             ♪</button
           ><button id="exit" class="quiet" hidden>选单</button
           ><button id="pause" class="icon" aria-label="暂停游戏" hidden>
-            Ⅱ
+            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path class="pause-icon" d="M7 5v10M13 5v10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path class="play-icon" d="m6 4 10 6-10 6Z" fill="currentColor"/></svg>
           </button>
         </div>
       </header>
+      <div class="play-sidebar">
       <section class="game-hud" id="hud" hidden aria-label="游戏信息">
         <div class="stats">
           <span><small>收获</small><b id="score">0</b></span
@@ -65,6 +66,7 @@
         </div>
       </section>
       <div id="route-brief"><b id="route-name"></b><span id="route-rule"></span><button id="depart" hidden>出发 →</button></div>
+      </div>
       <section id="field" aria-label="贪吃蛇游戏区域">
         <canvas
           id="game"
@@ -84,6 +86,9 @@
             <p class="intro">
               转个弯，接上一个字母。<br />让一条小蛇，把学习变成一场小冒险。
             </p>
+            <button id="start" class="primary">
+              出发，去花园 <span>↗</span>
+            </button>
             <div class="mode-picker" role="group" aria-label="玩法">
               <button data-mode="spell" aria-pressed="true">
                 <b>串起单词</b><small>选引导或独立回想</small></button
@@ -118,9 +123,6 @@
                 step="1"
               /><output id="menu-speed-label">轻快</output></label
             >
-            <button id="start" class="primary">
-              出发，去花园 <span>↗</span>
-            </button>
             <div class="menu-notes">
               <span>方向键 / WASD 转向</span><span>长按空格冲刺</span
               ><span>手机滑动 / 方向盘</span>
@@ -193,6 +195,6 @@
         questions: GRAMMAR,
       };
     </script>
-    <script type="module" src="app.mjs?v=20260930-quality-r1&mobile=20261001-quality3-r1"></script>
+    <script type="module" src="app.mjs?v=20260930-quality-r1&mobile=20261001-quality3-r2"></script>
   </body>
 </html>

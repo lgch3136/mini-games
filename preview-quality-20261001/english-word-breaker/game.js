@@ -2,6 +2,7 @@
 
 function usesNativeKeyboard(event) {
   const target = event.target;
+  if (!event.isComposing && (event.code === 'Escape' || event.code === 'KeyP') && (/^(BUTTON|A)$/.test(target?.tagName || '') || target?.closest?.('button,a'))) return false;
   return !!(target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(target.tagName || '') || target.closest?.('input,select,textarea,button,a,[contenteditable="true"]')));
 }
 
@@ -64,10 +65,11 @@ const Game = {
   logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
-function portraitArena() { return W < 600 && H > W; }
+let compactLandscape = false;
+function portraitArena() { return !compactLandscape && W < 600 && H > W; }
 function basePaddleWidth() { return portraitArena() ? 90 : 110; }
-function playTop() { return portraitArena() ? 130 : 80; }
-function paddleY() { return H - (portraitArena() ? 98 : 70); }
+function playTop() { return compactLandscape ? 20 : portraitArena() ? 130 : 80; }
+function paddleY() { return H - (compactLandscape ? 38 : portraitArena() ? 98 : 70); }
 function brickStep() { return Math.min(portraitArena() ? 27 : 22, Math.max(14, (paddleY() - playTop() - 80) / 6)); }
 function newPaddle() {
   return { x: W / 2 - basePaddleWidth()/2, w: basePaddleWidth(), h: 14, y: paddleY(), targetX: null, widthBoosts: [] };
@@ -155,6 +157,20 @@ function buildLevel() {
   }
   const letters = [...Game.word.en];
   Game.letterLayout = slots.sort((a,b)=>b[0]-a[0]||a[1]-b[1]).slice(0, letters.length);
+  if (Game.assisted === false) {
+    // Keep the reachable front positions, but do not spell the hidden answer left-to-right.
+    for (let i = Game.letterLayout.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [Game.letterLayout[i], Game.letterLayout[j]] = [Game.letterLayout[j], Game.letterLayout[i]];
+    }
+    const readingOrder = Game.letterLayout.map((slot,index)=>({slot,index}))
+      .sort((a,b)=>b.slot[0]-a.slot[0]||a.slot[1]-b.slot[1])
+      .map(({index})=>letters[index]).join('');
+    const different = letters.findIndex(letter=>letter!==letters[0]);
+    if (readingOrder === Game.word.en && different > 0) {
+      [Game.letterLayout[0],Game.letterLayout[different]] = [Game.letterLayout[different],Game.letterLayout[0]];
+    }
+  }
   const letterAt = new Map(Game.letterLayout.map(([r, c], index) => [`${r}:${c}`, { letter: letters[index], index }]));
 
   Game.bricks = [];
@@ -780,15 +796,17 @@ function drawTargetLine() {
   ctx.beginPath();ctx.moveTo(ball.x,ball.y);ctx.lineTo(target.x+target.w/2,target.y+target.h/2);ctx.stroke();ctx.restore();
 }
 function resizeArena() {
-  const wrap=$id('game-wrap'),width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);
+  const wrap=$id('game-wrap'),rect=canvas.getBoundingClientRect();
+  const width=Math.max(1,rect.width),height=Math.max(1,rect.height);
+  const nextCompact=wrap.clientWidth>wrap.clientHeight && wrap.clientHeight<=440;
   // Use actual CSS pixels in every orientation: HUD and physics share one scale.
   const nw=width,nh=height;
   const dpr=Math.min(window.devicePixelRatio||1,2,Math.sqrt(1400000/(width*height)));
-  if(W===nw&&H===nh&&canvas.width===Math.round(width*dpr)&&canvas.height===Math.round(height*dpr))return;
+  if(W===nw&&H===nh&&compactLandscape===nextCompact&&canvas.width===Math.round(width*dpr)&&canvas.height===Math.round(height*dpr))return;
   const sx=nw/W,sy=nh/H,oldTop=playTop(),oldBottom=Game.paddle?.y || paddleY();
   const oldBricks=Game.bricks.map(k=>({y:k.y,h:k.h}));
   for(const item of [...Game.balls,...Game.powerups,...Game.particles,...Game.floaters]) { item.x*=sx;item.y*=sy; }
-  W=nw;H=nh;
+  W=nw;H=nh;compactLandscape=nextCompact;
   const bw=(W-80)/10,bh=brickStep(),playScale=(paddleY()-playTop())/Math.max(1,oldBottom-oldTop);
   // Reflow rows as complete boxes, rather than shrinking their positions alone.
   // HP, letter order and destroyed bricks survive rotation unchanged.

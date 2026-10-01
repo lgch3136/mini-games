@@ -471,7 +471,14 @@ const codes = new Set([
   "ShiftLeft",
   "ShiftRight",
 ]);
+function nativeControlOwnsKey(event) {
+  const target = event.target;
+  if (!target) return false;
+  if (!event.isComposing && (event.code === "Escape" || event.code === "KeyP") && (/^(BUTTON|A)$/.test(target.tagName || "") || target.closest?.("button,a"))) return false;
+  return !!(target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(target.tagName || "") || target.closest?.('input,select,textarea,button,a,[contenteditable="true"]'));
+}
 window.addEventListener("keydown", (e) => {
+  if (nativeControlOwnsKey(e)) return;
   if (e.code === "KeyM" && !e.repeat && screen !== "menu") {
     e.preventDefault();
     toggleSound();
@@ -674,6 +681,12 @@ for (const [id, action] of [
   const button = $(id),
     pointers = new Set();
   actionPointers.set(action, pointers);
+  button.addEventListener("click", (e) => {
+    if (e.detail !== 0 || screen !== "playing") return;
+    const previous = touch[action];
+    touch[action] = true; recordActionEdges();
+    touch[action] = previous; recordActionEdges();
+  });
   button.addEventListener("pointerdown", (e) => {
     if (screen !== "playing") return;
     e.preventDefault();
@@ -692,6 +705,12 @@ for (const [id, action] of [
     });
 }
 const fire = $("fire-touch");
+fire.addEventListener("click", (e) => {
+  if (e.detail !== 0 || screen !== "playing") return;
+  const previous = touch.fire;
+  touch.fire = true; recordActionEdges();
+  touch.fire = previous; recordActionEdges();
+});
 fire.addEventListener("pointerdown", (e) => {
   if (screen !== "playing" || fireId !== null) return;
   e.preventDefault();

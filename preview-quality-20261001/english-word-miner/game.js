@@ -2,6 +2,7 @@
 
 function usesNativeKeyboard(event) {
   const target = event.target;
+  if (!event.isComposing && (event.code === 'Escape' || event.code === 'KeyP') && (/^(BUTTON|A)$/.test(target?.tagName || '') || target?.closest?.('button,a'))) return false;
   return !!(target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A)$/.test(target.tagName || '') || target.closest?.('input,select,textarea,button,a,[contenteditable="true"]')));
 }
 
@@ -22,6 +23,8 @@ const ctx = canvas.getContext('2d');
 const wrap = $id('game-wrap');
 
 let W = 720, H = 560;
+// Portrait reserves a real ore-free footer for feedback, the word and thumb controls.
+let mobileFooterReserve = 210;
 const TAU = Math.PI * 2;
 const FIXED_STEP = 1 / 60;
 
@@ -115,7 +118,7 @@ function reachableFrom(hx, hy, target, items, ignoreIdx) {
   return true;
 }
 
-function mineFloor() { return H - (W < 600 ? 180 : 82); }
+function mineFloor() { return H - (W < 600 ? mobileFooterReserve : 82); }
 
 function spawnItems() {
   Game.items = [];
@@ -1112,10 +1115,14 @@ function resize() {
   const rect = canvas.getBoundingClientRect();
   const cssW = Math.max(1, rect.width), cssH = Math.max(1, rect.height);
   const dpr = canvasDpr(cssW, cssH);
-  if (cssW === lastW && cssH === lastH && dpr === lastDpr) return;
+  const oldFooter = mobileFooterReserve;
+  const castBottom = typeof window.getComputedStyle === 'function'
+    ? parseFloat(window.getComputedStyle($id('cast-btn')).bottom) || 18 : 18;
+  mobileFooterReserve = 210 + Math.max(0, castBottom - 18);
+  if (cssW === lastW && cssH === lastH && dpr === lastDpr && oldFooter === mobileFooterReserve) return;
   const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
   const nextW = portrait ? cssW : 720, nextH = portrait ? cssH : 560;
-  if (nextW !== W || nextH !== H) {
+  if (nextW !== W || nextH !== H || oldFooter !== mobileFooterReserve) {
     const sx = nextW / W, sy = nextH / H;
     for (const item of [...Game.items, ...Game.particles, ...Game.floaters]) { item.x *= sx; item.y *= sy; if(item.homeX!=null) { item.homeX*=sx; item.homeY*=sy; } }
     if (Game.hook) {

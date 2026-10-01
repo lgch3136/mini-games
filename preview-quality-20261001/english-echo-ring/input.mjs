@@ -35,19 +35,21 @@ export class Controls {
         passive: false,
       });
     listen(target, "keydown", (e) => {
+      const control = e.target?.closest?.('button,a,input,select,textarea,summary,[contenteditable="true"]') || e.target;
       if (
         e.metaKey ||
         e.ctrlKey ||
         e.altKey ||
-        e.isComposing || e.target?.isContentEditable ||
-        /^(INPUT|SELECT|TEXTAREA|BUTTON|A|SUMMARY)$/.test(e.target?.tagName || "") ||
-        e.target?.closest?.('button,a,input,select,textarea,summary,[contenteditable="true"]')
+        e.isComposing || control?.isContentEditable ||
+        /^(INPUT|SELECT|TEXTAREA)$/.test(control?.tagName || "")
       )
         return;
       if (e.code === "Escape" || e.code === "KeyP") {
+        e.preventDefault();
         if (!e.repeat) onPause();
         return;
       }
+      if (/^(BUTTON|A|SUMMARY)$/.test(control?.tagName || "")) return;
       if (!active()) return;
       if (
         !directions[e.code] &&

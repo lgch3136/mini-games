@@ -369,17 +369,9 @@ export class Journey {
     if (m && clean) m.clean = Math.min(2, m.clean + 1);
     this.damage(
       damage,
-      this.enemy.kind !== "boss" ||
-        this.passageIndex === this.passage.words.length - 1,
+      this.mode !== "review" && (this.enemy.kind !== "boss" ||
+        this.passageIndex === this.passage.words.length - 1),
     );
-    if (
-      this.mode === "review" &&
-      this.stats.words >= this.reviewTarget &&
-      this.phase === "combat"
-    ) {
-      this.enemy.hp = 0;
-      this.winRoom();
-    }
     if (this.enemy.kind === "boss") {
       this.passageIndex++;
       if (this.passageIndex === this.passage.words.length) {
@@ -388,9 +380,12 @@ export class Journey {
         this.event("sentence", { text: this.passage.en });
       }
     }
-    if (this.focusGoal && this.stats.words >= this.focusGoal) {
+    if ((this.focusGoal && this.stats.words >= this.focusGoal) ||
+        (this.mode === "review" && this.stats.words >= this.reviewTarget)) {
       this.phase = "complete";
-      this.event("practiceComplete", { words: this.stats.words });
+      this.offer = [];
+      this.rewardRemaining = 0;
+      this.event("practiceComplete", { words: this.stats.words, mode: this.mode });
     }
     if (this.phase === "combat") this.newWord();
   }
@@ -494,7 +489,7 @@ export class Journey {
     }
   }
   winRoom() {
-    if (this.phase !== "combat") return;
+    if (this.phase !== "combat" || this.mode === "review") return;
     this.phase = "victory";
     this.stats.rooms++;
     this.victoryAge = 0;

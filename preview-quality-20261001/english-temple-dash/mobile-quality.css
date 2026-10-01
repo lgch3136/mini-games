@@ -14,9 +14,22 @@ button:focus-visible, select:focus-visible { outline:2px solid #ffdfa2; outline-
   .result-dialog { margin-top:env(safe-area-inset-top); }
 }
 @media (prefers-reduced-motion:reduce) { #judge-group, #word-echo { animation:none!important; } }
-.startup-error { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left)); color:#dfecdd; background:#102d35; }
+/* Auto margins centre a fitting card, but collapse when it is taller than the
+   viewport. The whole overlay then scrolls from its accessible top edge. */
+.startup-error { --startup-gap:24px; position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; padding:max(var(--startup-gap),env(safe-area-inset-top,0px)) max(var(--startup-gap),env(safe-area-inset-right,0px)) max(var(--startup-gap),env(safe-area-inset-bottom,0px)) max(var(--startup-gap),env(safe-area-inset-left,0px)); color:#dfecdd; background:#102d35; }
 .startup-error[hidden] { display:none; }
-.startup-error > div { max-width:440px; padding:26px; background:#ffffff08; border:1px solid #9fccc844; border-radius:22px; }
+.startup-error > div { flex:0 0 auto; width:100%; max-width:440px; min-width:0; margin:auto; padding:clamp(16px,4vw,26px); overflow-wrap:anywhere; background:#ffffff08; border:1px solid #9fccc844; border-radius:22px; }
 .startup-error h2 { margin:10px 0 18px; font-size:26px; }
 .startup-error p { line-height:1.9; font-size:14px; }
-.startup-error button,.startup-error a { display:block; min-height:48px; border:1px solid #adc9ad66; padding:14px; border-radius:13px; text-align:center; margin-top:14px; color:#edf4d4; background:#b5d59412; text-decoration:none; font:inherit; }
+.startup-actions { display:grid; gap:12px; margin-top:16px; }
+.startup-error button,.startup-error a { display:flex; align-items:center; justify-content:center; min-width:0; min-height:48px; border:1px solid #adc9ad66; padding:10px 12px; border-radius:13px; text-align:center; margin:0; color:#edf4d4; background:#b5d59412; text-decoration:none; font:inherit; }
+@media (max-height:420px) {
+  .startup-error { --startup-gap:12px; }
+  .startup-error > div { padding:16px 20px; }
+  .startup-error h2 { margin:5px 0 10px; font-size:22px; }
+  .startup-error p { line-height:1.55; }
+  .startup-actions { margin-top:12px; gap:10px; }
+}
+@media (max-height:420px) and (min-width:480px) {
+  .startup-actions { grid-template-columns:1fr 1fr; }
+}

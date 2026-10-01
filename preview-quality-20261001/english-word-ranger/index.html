@@ -12,8 +12,8 @@
       content="单词突击队：曙光行动。独立瞄准、分层路线、掩体战斗与重装首领；收集词核，为下一次突围补充能量。"
     />
     <title>单词突击队 · 曙光行动</title>
-    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1" />
-  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261001-quality3-r2">
 </head>
   <body>
     <main id="app">
@@ -49,7 +49,7 @@
               aria-label="暂停游戏"
               title="暂停 (P)"
             >
-              Ⅱ
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path fill="currentColor" d="M2 1h3v12H2zM9 1h3v12H9z"/></svg>
             </button>
           </div>
         </header>
@@ -87,6 +87,15 @@
             <p class="menu-description">
               跑跳、寻找掩护、抓住反击空档。<br />收集沿途词核，为下一次突围补给。
             </p>
+            <div class="menu-bottom">
+              <button id="start-btn" class="primary">
+                开始行动 <span>↗</span></button
+              ><label class="endless-option"
+                ><input type="checkbox" id="endless" /> 连续远征<small
+                  >通关后挑战下一行动</small
+                ></label
+              >
+            </div>
             <div class="selection">
               <span>行动</span>
               <div id="operation-select" class="segments">
@@ -122,15 +131,6 @@
                 <button type="button" data-supply="HEAL">HEAL</button>
               </div>
               <small id="supply-feedback" aria-live="polite"></small>
-            </div>
-            <div class="menu-bottom">
-              <button id="start-btn" class="primary">
-                开始行动 <span>↗</span></button
-              ><label class="endless-option"
-                ><input type="checkbox" id="endless" /> 连续远征<small
-                  >通关后挑战下一行动</small
-                ></label
-              >
             </div>
             <p class="save-note" id="operation-record"></p>
             <p class="save-note">三项战术目标：避弹 / 踩击、4 连击、补给充能</p>
@@ -218,6 +218,6 @@
       </footer>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="game.js?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r1"></script>
+    <script type="module" src="game.js?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r2"></script>
   </body>
 </html>

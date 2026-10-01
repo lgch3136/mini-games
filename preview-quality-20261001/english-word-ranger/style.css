@@ -1187,13 +1187,13 @@ kbd {
     margin: auto;
   }
 }
-@media (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
+@media (orientation: landscape) and (max-height: 600px) {
   body {
     height: 100dvh;
     overflow: hidden;
   }
   #app {
-    height: 100dvh;
+    height: 100dvh; width: 100%; padding: 0;
   }
   #viewport,
   #app.playing #viewport {
@@ -1566,7 +1566,7 @@ kbd {
   .touch-jump { width: 52px; height: 52px; }
   .touch-fire { width: 66px; height: 66px; }
 }
-@media (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
+@media (orientation: landscape) and (max-height: 600px) {
   #touch-controls:not([hidden]) { padding: 0 max(20px, env(safe-area-inset-right, 0px)) max(10px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
   #hud { left: max(20px, env(safe-area-inset-left, 0px)); right: max(20px, env(safe-area-inset-right, 0px)); top: max(8px, env(safe-area-inset-top, 0px)); }
   #field-contract { left: max(20px, env(safe-area-inset-left, 0px)); }

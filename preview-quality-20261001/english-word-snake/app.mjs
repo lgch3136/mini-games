@@ -4,10 +4,10 @@ import {
   STEP,
   VERSION,
   wordsFor,
-} from "./engine.mjs?v=20260930-quality-r1&mobile=20261001-quality2-r1";
-import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r1";
+} from "./engine.mjs?v=20260930-quality-r1&mobile=20261001-quality3-r2";
+import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r2";
 import { GardenAudio } from "./audio.mjs?v=20260912-garden-r4&mobile=20260930-quality-r2";
-import { SnakeInput } from "./input.mjs?v=20260912-garden-r4&mobile=20261001-quality3-r1";
+import { SnakeInput } from "./input.mjs?v=20260912-garden-r4&mobile=20261001-quality3-r2";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game"),
@@ -159,7 +159,7 @@ function screen() {
   $("pause").hidden = menu || phase === "over";
   $("pause-screen").hidden = phase !== "paused";
   $("over-screen").hidden = phase !== "over";
-  $("pause").textContent = phase === "paused" ? "▶" : "Ⅱ";
+  $("pause").dataset.paused = String(phase === "paused");
   $("pause").setAttribute(
     "aria-label",
     phase === "paused" ? "继续游戏" : "暂停游戏",
@@ -255,7 +255,7 @@ function hud(force = false) {
   $("expedition-fill").style.transform = `scaleX(${progress.fraction})`;
   $("depart").hidden = !game.reading;
   $("route-name").textContent = game.route?.name || "自由花园";
-  $("route-rule").textContent = game.reading ? "安心读题，不计时 · 方向键或点出发" : game.route?.rule || "边界相通";
+  $("route-rule").textContent = game.reading ? "安心读题，不计时 · 方向键或点出发" : game.route?.rule || (game.arena === "classic" ? "护栏会扣生命，边界不能穿越" : "边界相通");
   wordHud(force);
 }
 function events() {
@@ -343,21 +343,9 @@ function start() {
   $("hud").hidden = false;
   $("controls").hidden = false;
   $("app").dataset.mode = mode;
+  $("app").dataset.phase = "playing";
   const box = canvas.getBoundingClientRect(),
-    portrait = window.innerWidth < 650;
-  const cols = portrait
-    ? 14
-    : Math.max(20, Math.min(32, Math.floor((box.width - 46) / 34)));
-  const rows = Math.max(
-    !portrait && box.height < 300 ? 8 : 12,
-    Math.min(
-      portrait ? 24 : 22,
-      Math.round(
-        (cols * (box.height - (portrait ? 20 : 46))) /
-          (box.width - (portrait ? 20 : 46)),
-      ),
-    ),
-  );
+    {cols, rows, portrait} = boardSize(box, window.innerWidth, window.innerHeight);
   game = new SnakeGame({
     cols,
     rows,
@@ -395,6 +383,16 @@ function start() {
   canvas.focus({ preventScroll: true });
   audio.start();
   raf = requestAnimationFrame(loop);
+}
+function boardSize(box, viewportWidth, viewportHeight) {
+  const portrait = viewportWidth < 650 && viewportHeight >= viewportWidth;
+  const compactLandscape = viewportHeight <= 480 && !portrait;
+  const padding = portrait ? 20 : 46;
+  const cols = portrait ? 14 : Math.max(compactLandscape ? 14 : 20,
+    Math.min(compactLandscape ? 24 : 32, Math.floor((box.width-padding)/(compactLandscape ? 22 : 34))));
+  const rows = Math.max(portrait ? 12 : 8, Math.min(portrait ? 24 : 22,
+    Math.round(cols * Math.max(1,box.height-padding) / Math.max(1,box.width-padding))));
+  return {cols,rows,portrait};
 }
 function pause(reason = "歇一会儿，进度会留在这里。") {
   if (menu || !game || game.phase !== "playing") return;
@@ -462,7 +460,7 @@ function toMenu() {
 function resize() {
   const box = canvas.getBoundingClientRect();
   renderer.resize(box.width, box.height);
-  const portrait = window.innerWidth < 650;
+  const portrait = window.innerWidth < 650 && window.innerHeight >= window.innerWidth;
   const majorResize =
     lastBox &&
     (Math.abs(box.width - lastBox.width) / lastBox.width > 0.23 ||

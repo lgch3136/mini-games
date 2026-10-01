@@ -14,6 +14,12 @@ export function typingCoach(g) {
   return '';
 }
 export function practiceAdvice(g) {
+  if (g.mode === 'review' && g.phase === 'complete') {
+    const unresolved = [...g.mistakes.values()].filter(w => (w.clean || 0) < 2);
+    return unresolved.length
+      ? `这一轮回练已完成。${unresolved.slice(0,3).map(w=>w.en).join('、')} 还需要连续两次无错；可继续回练。`
+      : '这一轮回练已完成，准确写出的单词已记入记录。休息一下，或回到冒险检验记忆。';
+  }
   const errors = [...g.mistakes.values()].sort((a, b) => (b.misses || 0) - (a.misses || 0));
   if (errors.length) return `下一步：回练 ${errors.slice(0, 3).map((w) => w.en).join('、')}。连续两次无错完成，就能从错词本毕业。`;
   if (g.stats.words >= 8 && g.accuracy >= 95) return '这一页写得很稳。下一次可挑战更长词库，或进入带有法术与首领的冒险旅程。';

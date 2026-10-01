@@ -25,6 +25,9 @@ let W = 560, H = 640;
 const TAU = Math.PI * 2;
 const HIT_Y = 520;
 const NOTE_SPEED_BASE = 300;
+const REFERENCE_TRACK_TOP = 46, MAX_NOTE_HEIGHT = 34;
+let trackTop = REFERENCE_TRACK_TOP, comboRailY = 23, comboFontSize = 13;
+let highwayLayoutDirty = true;
 const COUNT_IN_BEATS = 4;
 
 // 判定只由难度决定；视觉滚速不能偷偷改变判定宽度。
@@ -899,7 +902,7 @@ function firstPendingIndex() {
 }
 function firstPendingNote() { return Game.notes[firstPendingIndex()]; }
 function* visibleNotes(time, speed) {
-  const earliest = time - .2, latest = time + (HIT_Y - 15) / speed;
+  const earliest = time - .2, latest = time + (HIT_Y - trackTop) / speed;
   // A held tail may start before the visible time window, but must stay on screen.
   for (const note of Game.activeHolds)
     if (note?.holding && note.hitAt < earliest) yield note;
@@ -1107,9 +1110,15 @@ function totalNotes() { return Game.counts.perfect + Game.counts.great + Game.co
 /* ---------------- 输入 ---------------- */
 const keyboardLanes = new Set();
 window.addEventListener('keydown', (ev) => {
+  const control = ev.target?.closest?.('button,a,input,select,textarea,summary,[contenteditable="true"]') || ev.target;
   if (ev.isComposing || ev.ctrlKey || ev.metaKey || ev.altKey ||
-      /^(INPUT|SELECT|TEXTAREA|BUTTON|A|SUMMARY)$/.test(ev.target?.tagName || "") || ev.target?.isContentEditable ||
-      ev.target?.closest?.('button,a,input,select,textarea,summary,[contenteditable="true"]')) return;
+      /^(INPUT|SELECT|TEXTAREA)$/.test(control?.tagName || "") || control?.isContentEditable) return;
+  if (ev.code === 'KeyP' || ev.code === 'Escape') {
+    ev.preventDefault();
+    if (!ev.repeat) togglePause();
+    return;
+  }
+  if (/^(BUTTON|A|SUMMARY)$/.test(control?.tagName || "")) return;
   const li = LANE_KEYS().indexOf(ev.code);
   if (li >= 0) {
     if (Game.state !== 'playing') return;
@@ -1118,7 +1127,6 @@ window.addEventListener('keydown', (ev) => {
     return;
   }
   if (ev.repeat) return;
-  if (ev.code === 'KeyP' || ev.code === 'Escape') togglePause();
   if (ev.code === 'KeyM') toggleMute();
   if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
 });
@@ -1217,7 +1225,7 @@ function hudText(id, value) {
   const text = String(safe(value));
   if (hudCache.get(id) === text) return;
   const element = $id(id);
-  if (element) { element.textContent = text; hudCache.set(id, text); }
+  if (element) { element.textContent = text; hudCache.set(id, text); highwayLayoutDirty = true; }
 }
 function updateHud() {
   const song = currentSong();
@@ -1243,6 +1251,7 @@ function updateHud() {
         return letter;
       }));
       hudCache.set('word', key);
+      highwayLayoutDirty = true;
     }
     hudText('wb-zh', w.zh);
   }
@@ -1251,17 +1260,41 @@ function updateHud() {
 /* ---------------- 渲染 ---------------- */
 const laneW = () => (W - 40) / LANES;
 const laneX = (l) => 20 + l * laneW();
-function scrollSpeed() { return NOTE_SPEED_BASE * (Game.scrollMul || 1); }
+function measureHighway() {
+  highwayLayoutDirty = false;
+  const rect = canvas.getBoundingClientRect();
+  if (!(rect.height > 0)) return;
+  let bottom = 0;
+  // #hud spans the entire canvas. Measure only the actual top HUD content,
+  // including wrapped text, font metrics and safe-area offsets.
+  for (const element of document.querySelectorAll('#hud .top, #word-bar, #hud .song-progress')) {
+    const r = element.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0 && Number.isFinite(r.bottom)) bottom = Math.max(bottom, r.bottom - rect.top);
+  }
+  if (!bottom) { trackTop = REFERENCE_TRACK_TOP; comboRailY = 23; comboFontSize = 13; return; }
+  const scale = H / rect.height;
+  comboFontSize = Math.max(13, 12 * scale);
+  comboRailY = (bottom + 14) * scale;
+  trackTop = Math.max(REFERENCE_TRACK_TOP, Math.min(HIT_Y - 90, (bottom + 29) * scale));
+}
+function scrollSpeed() {
+  // Preserve full-letter pre-read seconds across HUD sizes. Moving only the
+  // clipping edge would silently make phones harder at the same scroll setting.
+  const distance = HIT_Y - trackTop - MAX_NOTE_HEIGHT;
+  const reference = HIT_Y - REFERENCE_TRACK_TOP - MAX_NOTE_HEIGHT;
+  return NOTE_SPEED_BASE * (Game.scrollMul || 1) * distance / reference;
+}
 
 function shouldShowReady(chartTime, firstPending) {
   if (!firstPending || chartTime < Game.phraseStartAt) return false;
   if (Game.activeHolds.some((note) => note?.holding)) return false;
-  const entryAt = firstPending.hitAt - (HIT_Y - 44) / scrollSpeed();
+  const entryAt = firstPending.hitAt - (HIT_Y - trackTop) / scrollSpeed();
   // A brief distance between note heads is not a rest, especially during a tail.
   return entryAt - chartTime >= .65;
 }
 function render() {
   Game.renderCount++;
+  if (highwayLayoutDirty) measureHighway();
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   if (Game.state === 'menu' && StageBackground.complete && StageBackground.naturalWidth) {
     const sw = StageBackground.naturalHeight * W / H;
@@ -1288,14 +1321,14 @@ function render() {
   for (let l = 0; l < LANES; l++) {
     const x = laneX(l);
     ctx.fillStyle = hexA(LANE_COLORS()[l], .045);
-    ctx.fillRect(x + 2, 44, laneW() - 4, H - 44);
+    ctx.fillRect(x + 2, trackTop, laneW() - 4, H - trackTop);
     // 纵向流光: 轨道中央微弱光带(下落方向感)
-    const streamG = ctx.createLinearGradient(0, 44, 0, H);
+    const streamG = ctx.createLinearGradient(0, trackTop, 0, H);
     streamG.addColorStop(0, 'rgba(168,85,247,.02)');
     streamG.addColorStop(.5, `rgba(168,85,247,${.05 + .03 * Math.sin(Game.time * 1.8 + l)})`);
     streamG.addColorStop(1, 'rgba(168,85,247,.09)');
     ctx.fillStyle = streamG;
-    ctx.fillRect(x + laneW() * .3, 44, laneW() * .4, H - 44);
+    ctx.fillRect(x + laneW() * .3, trackTop, laneW() * .4, H - trackTop);
   }
   // 侧边流光: 判定线亮光向上升起
   for (let l = 0; l < LANES; l++) {
@@ -1309,30 +1342,30 @@ function render() {
   }
   // playfield两侧收边(切掉死黑留白)
   ctx.fillStyle = 'rgba(5,3,12,.55)';
-  ctx.fillRect(0, 44, 20, H - 44); ctx.fillRect(W - 20, 44, 20, H - 44);
+  ctx.fillRect(0, trackTop, 20, H - trackTop); ctx.fillRect(W - 20, trackTop, 20, H - trackTop);
   // 分隔线
   for (let l = 0; l <= LANES; l++) {
     ctx.strokeStyle = 'rgba(255,255,255,.09)';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(laneX(l), 44); ctx.lineTo(laneX(l), H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(laneX(l), trackTop); ctx.lineTo(laneX(l), H); ctx.stroke();
   }
 
   // 乐句进度固定在谱面顶沿，玩家能预估当前段落而不遮挡音符。
   const phraseProgress = clamp((now() - Game.phraseStartAt) / Math.max(.001, Game.songEndAt - Game.phraseStartAt), 0, 1);
-  ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(20, 42, W - 40, 3);
+  ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(20, trackTop - 4, W - 40, 3);
   const progressGradient = ctx.createLinearGradient(20, 0, W - 20, 0);
   progressGradient.addColorStop(0, O2_BLUE); progressGradient.addColorStop(.5, O2_GOLD); progressGradient.addColorStop(1, O2_BLUE);
-  ctx.fillStyle = progressGradient; ctx.fillRect(20, 42, (W - 40) * phraseProgress, 3);
+  ctx.fillStyle = progressGradient; ctx.fillRect(20, trackTop - 4, (W - 40) * phraseProgress, 3);
 
   // 小节线
   {
     const beat = 60 / Game.bpm;
     const pxPerSec = scrollSpeed();
     const t = now();
-    const firstBeat = Math.ceil((t - 44 / pxPerSec) / beat) * beat;
-    for (let bt = firstBeat; bt < t + (H - 44) / pxPerSec; bt += beat) {
+    const firstBeat = Math.ceil(t / beat) * beat;
+    for (let bt = firstBeat; bt < t + (HIT_Y - trackTop) / pxPerSec; bt += beat) {
       const y = HIT_Y - (bt - t) * pxPerSec;
-      if (y < 44 || y > HIT_Y) continue;
+      if (y < trackTop || y > HIT_Y) continue;
       const isBar = Math.round(bt / beat) % 4 === 0;
       ctx.strokeStyle = isBar ? 'rgba(168,85,247,.32)' : 'rgba(168,85,247,.13)';
       ctx.lineWidth = isBar ? 1.6 : 1;
@@ -1409,10 +1442,10 @@ function render() {
   // Combo belongs in the clear top rail, never over approaching notes.
   if (Game.combo >= 2) {
     ctx.save();
-    ctx.font = '700 13px ui-monospace, monospace';
+    ctx.font = `700 ${comboFontSize}px ui-monospace, monospace`;
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#c8d7e6';
-    ctx.fillText(`${Game.combo} COMBO`, W - 25, 23);
+    ctx.fillText(`${Game.combo} COMBO`, W - 25, comboRailY);
     ctx.restore();
   }
 
@@ -1437,18 +1470,18 @@ function render() {
   const chartTime = now();
   if (chartTime >= 0 && chartTime < Game.phraseStartAt && Game.phraseStartAt <= COUNT_IN_BEATS * 60 / Game.bpm + .01) {
     const count = Math.max(1, COUNT_IN_BEATS - Math.floor(chartTime / (60/Game.bpm)));
-    ctx.font='800 38px ui-monospace, monospace'; ctx.fillStyle='#dceeff'; ctx.textAlign='center'; ctx.fillText(String(count),W/2,H*.43);
+    ctx.font='800 38px ui-monospace, monospace'; ctx.fillStyle='#dceeff'; ctx.textAlign='center'; ctx.fillText(String(count),W/2,(trackTop+HIT_Y)/2);
   }
   const firstPending = firstPendingNote();
   if (shouldShowReady(chartTime, firstPending)) {
       ctx.globalAlpha = .55 + Math.sin(Game.time * 5) * .2;
       ctx.fillStyle = '#f5d0fe'; ctx.font = '900 18px system-ui'; ctx.textAlign = 'center';
-      ctx.fillText('READY · 跟住强拍', W / 2, H * .43);
+      ctx.fillText('READY · 跟住强拍', W / 2, (trackTop + HIT_Y) / 2);
       ctx.globalAlpha = 1;
   }
 
   // The top rail stays clear even as new notes enter.
-  ctx.save(); ctx.beginPath(); ctx.rect(20, 46, W - 40, HIT_Y - 44); ctx.clip();
+  ctx.save(); ctx.beginPath(); ctx.rect(20, trackTop, W - 40, HIT_Y - trackTop + 2); ctx.clip();
   // 音符
   const t = chartTime;
   for (const n of visibleNotes(t, scrollSpeed())) {
@@ -1456,7 +1489,7 @@ function render() {
     const dt = n.hitAt - t;
     if (dt < -.2 && !n.holding) continue;
     const y = n.holding ? HIT_Y : Math.min(HIT_Y, HIT_Y - dt * scrollSpeed());
-    if (y < 15 || y > H + 30) continue;
+    if (y < trackTop || y > H + 30) continue;
     const x = laneX(n.lane);
     const isNextLetter = n.isLetter && !(Game.word.collected?.[n.index]);
     const color = LANE_COLORS()[n.lane];
@@ -1466,7 +1499,7 @@ function render() {
 
     if (n.endAt && !n.missed && !n.holdBroken) {
       const tailY = HIT_Y - (n.endAt - t) * scrollSpeed();
-      const bodyTop = Math.max(44, Math.min(tailY, y - 12));
+      const bodyTop = Math.max(trackTop, Math.min(tailY, y - 12));
       const bodyBottom = Math.min(HIT_Y, y - 8);
       if (bodyBottom > bodyTop) {
         const hg = ctx.createLinearGradient(nx, 0, nx + nw, 0);
@@ -1653,6 +1686,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function resize() {
+  highwayLayoutDirty = true;
   const width = wrap.clientWidth || 560;
   const height = wrap.clientHeight || 640;
   W = H * width / height;
@@ -1666,6 +1700,11 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 160));
+if (typeof ResizeObserver !== 'undefined') {
+  const highwayObserver = new ResizeObserver(() => { highwayLayoutDirty = true; if (Game.state !== 'playing') render(); });
+  for (const element of [wrap, ...document.querySelectorAll('#hud .top, #word-bar, #hud .song-progress')]) highwayObserver.observe(element);
+  window.addEventListener('pagehide', event => { if (!event.persisted) highwayObserver.disconnect(); });
+}
 resize();
 StageBackground.onload = () => { if (Game.state !== 'playing') render(); };
 

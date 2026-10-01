@@ -1,5 +1,5 @@
-import { practiceProgress, typingCoach, practiceAdvice } from "./practice.mjs?v=20261001-world-r2&mobile=20261001-quality2-r1";
-import { Journey, STEP } from "./sim.mjs?v=20261001-world-r2&mobile=20261001-quality2-r1";
+import { practiceProgress, typingCoach, practiceAdvice } from "./practice.mjs?v=20261001-world-r2&mobile=20261001-quality3-r2";
+import { Journey, STEP } from "./sim.mjs?v=20261001-world-r2&mobile=20261001-quality3-r2";
 import {
   makeLexicon,
   safeReview,
@@ -719,13 +719,11 @@ function renderVictory() {
   );
   set(
     "victory-eyebrow",
-    g.mode === "review" ? "EVERY WORD FINDS ITS WAY HOME" : g.chapter.en,
+    g.chapter.en,
   );
   set(
     "relic-intro",
-    g.mode === "review"
-      ? "这一轮回练完成。选一份纪念，看看你的练习记录。"
-      : g.rewardRemaining > 1
+    g.rewardRemaining > 1
         ? "险径奖励 · 可以带走两份遗物，先选第一份。"
         : "选一份遗物，带向下一段旅程。",
   );

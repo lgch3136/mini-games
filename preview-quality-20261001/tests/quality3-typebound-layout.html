@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Typebound responsive input regression</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#122b32;color:#e7f4e9;font:14px system-ui}header{padding:12px;display:flex;gap:12px;align-items:center}button{font:inherit;padding:10px 14px;min-height:44px}#stage{padding:12px;overflow:auto}iframe{display:block;border:0;background:#122b32}pre{white-space:pre-wrap;padding:12px}
+</style>
+<header><button id="run">Run viewport regression</button><strong id="status">Ready</strong></header>
+<div id="stage"></div><pre id="report">Real iframe layout and production button input. No simulated game-state mutation. This is not a hardware keyboard, Safari or iPhone test.</pre>
+<script type="module" src="quality3-typebound-layout.mjs"></script>
+</html>

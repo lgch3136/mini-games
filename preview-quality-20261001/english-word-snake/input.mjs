@@ -20,19 +20,18 @@ export class SnakeInput {
     this.boostPointers = new Set();
     this.space = false;
     const sync = () => boost(this.space || this.boostPointers.size > 0);
-    const editable = (e) =>
-      /^(INPUT|SELECT|TEXTAREA|BUTTON|A|SUMMARY)$/.test(e.target?.tagName || "") ||
-      e.target?.isContentEditable || e.target?.closest?.('button,a,input,select,textarea,summary,[contenteditable="true"]');
     doc.addEventListener(
       "keydown",
       (e) => {
-        if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey || editable(e))
+        const control = e.target?.closest?.('button,a,input,select,textarea,summary,[contenteditable="true"]') || e.target;
+        if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey || control?.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(control?.tagName || ""))
           return;
         if (e.key === "Escape" || e.key.toLowerCase() === "p") {
           if (!e.repeat) pause();
           e.preventDefault();
           return;
         }
+        if (/^(BUTTON|A|SUMMARY)$/.test(control?.tagName || "")) return;
         if (!playing()) return;
         if (e.key in KEY_DIR) {
           e.preventDefault();

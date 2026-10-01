@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#05070f">
 <title>雷霆战机 · 英语风暴</title>
-<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20261001-quality2-r1">
-<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20261001-quality3-r2">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261001-quality3-r2">
 </head>
 <body>
 <div id="game-wrap">
@@ -49,7 +49,7 @@
     <img id="logo-img" class="menu-cover" src="assets/cover-mobile.webp" alt="雷霆战机">
     <h1>雷霆战机</h1>
     <h2>英语风暴</h2>
-    <p class="sub">锁定预警 · 冲刺穿弹 · 首领后永久改装</p>
+    <p class="sub">锁定预警 · 冲刺穿弹 · 首领后选择本局改装</p>
       <button class="btn" id="start-btn">🚀 开始战斗</button>
     <div id="diff-select">
       <button class="diff-btn selected" data-diff="easy">🟢 初级<br><small>小学词汇 · 基础语法</small></button>
@@ -59,6 +59,7 @@
     <label class="auto-fire-choice"><input id="auto-fire" type="checkbox" checked> 单指自动开火 <small>关闭后可双手手动射击</small></label>
     <div id="howto" class="quick-start"><p><b>单指拖动，自动开火</b> · 手指不用挡住飞机</p><p><b>接住正确答案芯片</b> · 芯片周围的圆环会挡住子弹</p><p><b>橙线是锁定预警</b> · 冲刺穿弹，首领后选强化</p><details><summary>更多规则与键盘操作</summary><p>WASD / 方向键移动 · 空格 / J 开火 · Shift 冲刺（7 秒）· B 爆弹 · P 暂停</p><p>同色晶体叠加武器等级；S 补给舰提供暴走。错误芯片中断连击，结算可回看答案。</p></details></div>
     <div id="highscore">🏆 最高分 <span id="hs-value">0</span></div>
+    <a class="arcade-menu-home" href="../index.html">← 返回游戏合集</a>
   </div>
 
   <!-- 游戏结束 -->
@@ -73,7 +74,7 @@
   </div>
 
   <div id="refit" class="overlay hidden"><h1>星港整备</h1><p id="refit-summary" class="sub"></p><div class="refit-options">
-    <button id="refit-reactor"><b>高频反应堆</b><span>永久提升射速 · 最多 3 级</span></button>
+    <button id="refit-reactor"><b>高频反应堆</b><span>本局持续提升射速 · 最多 3 级</span></button>
     <button id="refit-repair"><b>装甲维护</b><span>恢复全部生命并补充护盾</span></button>
     <button id="refit-weapon"><b>武器扩容</b><span>当前武器升级 · 爆弹 +1</span></button>
   </div></div>
@@ -93,6 +94,6 @@
 <script src="data.js?v=20260814c"></script>
 <script src="../shared/vocabulary.js?v=20260820a"></script>
 <script src="../shared/fx-layer.js?v=20260930-mobile-r2"></script>
-<script src="game.js?v=20260930-mobile-r2&mobile=20261001-quality3-r1"></script>
+<script src="game.js?v=20260930-mobile-r2&mobile=20261001-quality3-r2"></script>
 </body>
 </html>

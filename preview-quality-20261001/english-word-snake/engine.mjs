@@ -224,7 +224,14 @@ export class SnakeGame {
   nextWord() {
     this.word = this.pick();
     this.route = this.authoredRoutes ? orchardRoute(this.completed, this.cols, this.rows) : null;
-    if (this.route?.kind === "gates" && this.arena === "classic") { this.route.kind="walled"; this.route.name="03 / 护栏果园"; this.route.rule="沿护栏走外圈，或穿中央门连接两侧"; }
+    if (this.route && this.arena === "classic") {
+      this.route.rule = [
+        "沿护栏内侧接近果实，边界不能穿越",
+        "穿中央三格门或绕开篱笆；边界有护栏",
+        "沿护栏内侧走外圈，穿中央门连接两侧",
+      ][this.route.id];
+      if (this.route.kind === "gates") { this.route.kind="walled"; this.route.name="03 / 护栏果园"; }
+    }
     const head = this.cell(this.head);
     this.obstacles = (this.route?.obstacles || []).filter((o) =>
       !this.trail.slice(0, this.length + 2).some((p) => this.same(p,o)) && Math.abs(o.x-head.x)+Math.abs(o.y-head.y)>3);
