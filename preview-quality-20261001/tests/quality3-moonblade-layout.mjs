@@ -13,7 +13,7 @@ const samples = {
 let frame, results = [];
 async function load() {
   const url = new URL('../english-moonblade/index.html', location.href);
-  url.searchParams.set('build',new URL(location.href).searchParams.get('build')||'20261001-quality3-r8');
+  url.searchParams.set('build',new URL(location.href).searchParams.get('build')||'20261001-quality3-r9');
   const response = await fetch(url,{cache:'no-store'});
   assert(response.ok, `Production page fetch failed: ${response.status}`);
   const page = new DOMParser().parseFromString(await response.text(), 'text/html');
@@ -69,6 +69,11 @@ function inspect(state) {
     assert(r.height>=44&&action.textContent.trim(),'Initial Start must be labelled and44px');
     assert(d.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('#start-btn')===action,'Initial Start is obscured');
     record.menuScroll=d.getElementById('menu').scrollTop;assert(record.menuScroll===0,'Start must be visible before menu scrolling');
+    const topbar=read('.topbar');
+    for(const selector of ['#menu .eyebrow','#menu h1']) {
+      const heading=read(selector);visibleWithin(heading,viewport,'initial menu '+selector);
+      assert(heading.y>=topbar.bottom,'Menu introduction must not be hidden behind the toolbar');
+    }
   } else if (state === 'hud') {
     const energy = read('.energy'), mastery = read('#moon-mastery');
     assert(!overlaps(energy, mastery) && mastery.y >= energy.bottom, 'Combat metrics overlap the ninpo/resource row');

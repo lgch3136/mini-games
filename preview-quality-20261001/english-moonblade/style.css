@@ -917,7 +917,10 @@ dialog > p:last-child {
 }
 
 /* Menus use the available viewport, while the action scene keeps its 16:9 frame. */
-#menu { position: fixed; inset: 0; padding-top: max(64px, calc(env(safe-area-inset-top, 0px) + 52px)); padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+#menu { position: fixed; inset: 0; align-items: flex-start; padding-top: max(64px, calc(env(safe-area-inset-top, 0px) + 52px)); padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); }
+/* Auto margins center short copy, but collapse instead of clipping its first
+   lines when the menu is taller than the available landscape viewport. */
+#menu .menu-copy { margin-block: auto; }
 #menu #start-btn { margin-bottom: 14px; min-height: 44px; }
 @media (max-width: 700px) and (orientation: portrait) {
   #menu { align-items: flex-start; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
