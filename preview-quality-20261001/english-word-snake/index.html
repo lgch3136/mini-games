@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#eef2df" />
+    <title>字母花园 · 贪吃蛇背单词</title>
+    <meta
+      name="description"
+      content="一条丝滑的小蛇，一座会开花的单词花园。转向、冲刺、串起字母，把英语吃进记忆。"
+    />
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1" />
+    <link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20261001-quality2-r1" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
+  <body>
+    <main id="app" data-phase="menu">
+      <header class="topbar">
+        <a href="../" class="back" aria-label="返回游戏大厅">←</a>
+        <div class="brand">
+          <span class="brand-mark">s</span>
+          <div><b>字母花园</b><small>WORD SNAKE</small></div>
+        </div>
+        <div class="top-actions">
+<button
+            id="sound"
+            class="icon"
+            aria-label="切换声音"
+            aria-pressed="false"
+          >
+            ♪</button
+          ><button id="exit" class="quiet" hidden>选单</button
+          ><button id="pause" class="icon" aria-label="暂停游戏" hidden>
+            Ⅱ
+          </button>
+        </div>
+      </header>
+      <section class="game-hud" id="hud" hidden aria-label="游戏信息">
+        <div class="stats">
+          <span><small>收获</small><b id="score">0</b></span
+          ><span id="combo" class="combo">x1</span
+          ><span id="progress">0 个单词</span
+          ><span id="hearts" aria-label="3 点生命">♥ ♥ ♥</span
+          ><span id="shield" hidden title="完成三个无碰撞单词，获得护盾"
+            >◈</span
+          >
+        </div>
+        <div class="expedition-track" aria-label="本次远征目标"><span id="expedition-title">五词小花园</span><b id="expedition-progress">0 / 5 词</b><i><em id="expedition-fill"></em></i></div>
+        <div class="word-panel">
+          <div class="word-caption">
+            <span id="meaning"></span
+            ><button
+              id="hint"
+              class="text-button"
+              title="提示正确答案，消耗 15 分"
+            >
+              提示 <kbd>H</kbd>
+            </button>
+          </div>
+          <div id="word" aria-label="当前单词"></div>
+          <div id="answers" hidden></div>
+        </div>
+      </section>
+      <div id="route-brief"><b id="route-name"></b><span id="route-rule"></span><button id="depart" hidden>出发 →</button></div>
+      <section id="field" aria-label="贪吃蛇游戏区域">
+        <canvas
+          id="game"
+          tabindex="0"
+          aria-label="贪吃蛇：方向键或 WASD 转向，空格冲刺；触屏可连续滑动或使用方向按钮"
+        ></canvas>
+        <div id="toast" role="status" aria-live="polite">
+          <b></b><span></span>
+        </div>
+        <div id="harvest" hidden>
+          <span>✦ 丰收时间</span><b>12.0</b><small>收齐金果，恢复一颗心</small>
+        </div>
+        <div id="menu" class="screen">
+          <div class="menu-card">
+            <span class="eyebrow">A LITTLE GARDEN, A LONG ADVENTURE</span>
+            <h1>把单词，<br />一口口吃掉<span>。</span></h1>
+            <p class="intro">
+              转个弯，接上一个字母。<br />让一条小蛇，把学习变成一场小冒险。
+            </p>
+            <div class="mode-picker" role="group" aria-label="玩法">
+              <button data-mode="spell" aria-pressed="true">
+                <b>串起单词</b><small>选引导或独立回想</small></button
+              ><button data-mode="choose" aria-pressed="false">
+                <b>答案猎手</b><small>游向正确的语法答案</small>
+              </button>
+            </div>
+            <label class="session-choice">今天想走多远？<select id="expedition"><option value="basket">五词小花园 · 完成一篮</option><option value="orchard">十词果园 · 长一点的挑战</option><option value="endless">自由漫游 · 没有终点</option></select></label>
+            <label class="session-choice">拼词方式<select id="assistance"><option value="guided">引导练习 · 显示拼写与目标</option><option value="recall">独立回想 · 看中文，随时提示</option></select></label><div class="settings">
+              <label
+                >词库<select id="difficulty">
+                  <option value="easy">初级 · 日常词汇</option>
+                  <option value="medium">中级 · 拓展词汇</option>
+                  <option value="hard">高级 · 进阶词汇</option>
+                </select></label
+              >
+              <label
+                >场地<select id="arena">
+                  <option value="garden">漫游花园 · 穿越边界</option>
+                  <option value="classic">经典挑战 · 留心护栏</option>
+                </select></label
+              >
+            </div>
+            <label class="speed-setting"
+              >移动速度
+              <input
+                id="menu-speed"
+                type="range"
+                min="0"
+                max="4"
+                value="2"
+                step="1"
+              /><output id="menu-speed-label">轻快</output></label
+            >
+            <button id="start" class="primary">
+              出发，去花园 <span>↗</span>
+            </button>
+            <div class="menu-notes">
+              <span>方向键 / WASD 转向</span><span>长按空格冲刺</span
+              ><span>手机滑动 / 方向盘</span>
+            </div>
+            <p class="record" id="record"></p>
+          </div>
+          <div class="garden-note">
+            <span>01 / FIND YOUR FLOW</span
+            ><b>慢慢读。<br />想好了，再出发。</b>
+            <p>
+              草地、篱笆、虫洞带来不同路线。<br />每完成 3
+              个单词，就有一场金果丰收。
+            </p>
+          </div>
+        </div>
+        <div id="pause-screen" class="screen veil" hidden>
+          <div class="small-card">
+            <span class="eyebrow">TAKE A BREATH</span>
+            <h2>花园等你回来</h2>
+            <button id="effects" class="quiet" aria-pressed="true">切换轻动效</button><p id="pause-reason">歇一会儿，进度会留在这里。</p>
+            <button id="resume" class="primary">继续采集 ↗</button
+            ><button id="pause-menu" class="quiet">返回选单</button>
+          </div>
+        </div>
+        <div id="over-screen" class="screen veil" hidden>
+          <div class="small-card">
+            <span class="eyebrow">A GOOD LITTLE ADVENTURE</span>
+            <h2 id="result-title">这一篮，收获满满</h2>
+            <img id="mastery-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="完成奖章" hidden>
+          <div id="expedition-stars" class="expedition-stars" aria-label="远征星级"></div>
+            <b id="final-score" class="final-score">0</b>
+            <p id="final-details"></p>
+            <div id="word-review"></div>
+            <p id="expedition-next" class="expedition-next"></p>
+            <button id="restart" class="primary">再去一次 ↗</button
+            ><button id="over-menu" class="quiet">返回选单</button>
+          </div>
+        </div>
+      </section>
+      <footer id="controls" hidden>
+        <div class="dpad" aria-label="触屏方向盘">
+          <button data-dir="3" aria-label="向上">↑</button
+          ><button data-dir="2" aria-label="向左">←</button
+          ><button data-dir="1" aria-label="向下">↓</button
+          ><button data-dir="0" aria-label="向右">→</button>
+        </div>
+        <div class="control-note">
+          <b id="mode-note">边界相通 · 未亮字母可以穿过</b
+          ><small>方向键转向 · 空格冲刺 · Esc 暂停</small>
+        </div>
+        <label class="live-speed" title="速度不影响词库难度"
+          >速度<select id="live-speed" aria-label="游戏速度">
+            <option value="0">散步</option>
+            <option value="1">悠闲</option>
+            <option value="2" selected>轻快</option>
+            <option value="3">疾行</option>
+            <option value="4">极速</option>
+          </select></label
+        >
+        <button id="boost" aria-label="长按冲刺" class="boost">
+          <span>↗ 冲刺</span><small>长按 · 采集双倍分</small><i id="energy"></i>
+        </button>
+      </footer>
+    </main>
+    <script src="../shared/vocabulary.js"></script>
+    <script src="data.js"></script>
+    <script>
+      window.SNAKE_BANKS = {
+        words: window.PROJECT_VOCAB || VOCAB,
+        questions: GRAMMAR,
+      };
+    </script>
+    <script type="module" src="app.mjs?v=20260930-quality-r1&mobile=20261001-quality3-r1"></script>
+  </body>
+</html>

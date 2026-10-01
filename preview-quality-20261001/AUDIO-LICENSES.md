@@ -1,0 +1,31 @@
+# Audio sources and licenses
+
+All bundled audio below may be used and redistributed with the games.
+
+| Local file | Source | License |
+| --- | --- | --- |
+| `shared/audio/platformer-theme.ogg` | “Overworld Theme” by Louswan, [OpenGameArt](https://opengameart.org/content/overworld-theme-0) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `shared/audio/click.ogg`, `shared/audio/confirm.ogg` | [Kenney Interface Sounds](https://kenney.nl/assets/interface-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `shared/audio/jump.ogg`, `shared/audio/laser.ogg` | [Kenney Digital Audio](https://kenney.nl/assets/digital-audio) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+
+Attribution is not required by CC0, but the creators are credited here with thanks.
+
+## Typebound (2026-09-06)
+
+`english-typebound/audio.mjs` provides an original 86 BPM forest-library arrangement and pentatonic keystrokes, spell releases, enemy warnings, shields and victory phrases, synthesized locally with Web Audio. The bounded voice/lifecycle infrastructure is reused from Word Ranger, not its musical phrases. No reference-game audio, external samples or commercial recordings are copied. Pausing, hiding or leaving the page stops scheduling and active voices.
+
+## Echo Ring (2026-09-06)
+
+`english-echo-ring/audio.mjs` contains an original 104 BPM, 16-bar instrumental loop and pentatonic impact notes, plus shot, rebound, graze, dash, damage and resonance sounds. All audio is synthesized locally with Web Audio. It reuses Word Ranger's bounded voice and lifecycle code, not its melodies. No dead_center / INKFALL audio, commercial recordings or external samples are used. Pausing, hiding or leaving the page stops music scheduling and active voices.
+
+## Moonblade (2026-09-06)
+
+`english-moonblade/audio.mjs` contains a new project-authored 32-bar, 138 BPM exploration score with a 150 BPM boss arrangement, plus blade, impact, jump, dash, shuriken, pickup and checkpoint sounds. All sound is synthesized through Web Audio; the bounded voice/scheduling infrastructure is reused from Word Ranger, not its musical phrases. No Ninja Gaiden music, commercial recordings, samples or ROM audio are used. There is no additional third-party recording license for these original synthesized sounds. Pausing, hiding or leaving the game stops its scheduler and active voices.
+
+## Word Ranger: Dawn Operations (2026-09-05 rebuild)
+
+`english-word-ranger/sound.js` synthesizes a new, project-authored 32-bar instrumental loop, boss variation, and action sounds with Web Audio. It does not load the shared recordings above, sample commercial game music, or extract ROM audio. The score uses a 126 BPM exploration arrangement and a 144 BPM boss arrangement. Oscillators and a reusable generated noise buffer supply the instruments and effects; no separate third-party recording license is required for these newly authored sounds.
+
+## Temple Dash: Windward Expedition (2026-09-05 rebuild)
+
+`english-temple-dash/sound.js` supplies a newly authored 112 BPM, 32-bar modal score with separate plucked arpeggios, melody, light percussion, environment voicing, and movement/reward/damage sounds. It reuses the bounded Web Audio voice implementation from Word Ranger, not its musical phrases. The runner no longer loads the old shared recording or chip-music loops simultaneously. No commercial music, samples or ROM audio are used; no additional third-party recording license is needed for this original synthesized score.

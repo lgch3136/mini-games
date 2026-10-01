@@ -1,0 +1,220 @@
+/* The live word and its world share the stage. Statistics are supporting HUD. */
+#battle { gap:8px; padding-top:8px; }
+.practice-metrics { position:relative; inset:auto; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; background:#17343c; border:1px solid #b7dccc24; border-radius:12px; padding:8px 14px; }
+.practice-metrics > div { display:flex; flex-direction:row; align-items:baseline; justify-content:center; gap:8px; min-width:0; }
+.practice-metrics > div + div { border-left:1px solid #b7dccc24; }
+.practice-metrics small { color:#b8cfc8; font-size:11px; letter-spacing:0; }
+.practice-metrics strong,.practice-metrics .primary-metric strong { color:#edf7de; font:600 19px/1.25 ui-monospace,monospace; letter-spacing:-.03em; }
+.practice-metrics em,.pulse-caption { display:none; }
+#battle .arena { min-height:190px; border-color:#b5d3b953; background:#234c4f; }
+.arena .health { display:block; top:12px; bottom:auto; width:35%; padding:8px 10px; border:1px solid #e5edbc45; border-radius:10px; background:#153b42ed; filter:none; }
+.arena .hero-health { left:12px; }
+.arena .enemy-health { right:12px; }
+.arena .health > span { font-size:11px; margin:0; }
+.arena .health b,.arena .health em { display:inline; font-size:11px; }
+.arena .hp-track { height:6px; margin-top:6px; }
+.arena .enemy-intent { display:block; top:auto; bottom:10px; left:50%; transform:translateX(-50%); width:max-content; max-width:90%; padding:6px 12px; border:1px solid #ebdeb04a; border-radius:12px; background:#183741e8; }
+.arena .enemy-intent > span { font-size:11px; }
+.arena .enemy-intent > div { height:3px; margin-top:4px; }
+.arena .flow-badge,#arena-note { display:none; }
+#app[data-practice="true"] .spell-picker,#app[data-practice="true"] #guard,#app[data-practice="true"] [data-key="Enter"],#app[data-practice="true"] .health,#app[data-practice="true"] .enemy-intent { display:none; }
+#app[data-practice="true"] .battle-top { display:none; }
+.typing-dock { margin:0; position:relative; min-height:0; width:100%; max-width:none; padding:13px 16px; border:1px solid #c5dcc159; background:linear-gradient(145deg,#1b3f46,#102c35); box-shadow:0 8px 28px #0002; }
+.typing-heading > span { font-size:12px; }
+.typing-heading { height:28px; }
+.word-line { height:70px; }
+#word { font-weight:650; color:#91a9b0; letter-spacing:.015em; }
+#word > .typed { color:#abf2d0; }
+#word > .active { color:#ffe2a1; }
+#word > .wrong { color:#ffaf98; background:#8b3c305c; border-radius:4px; }
+#word > .active:after { height:3px; background:#ffdc91; }
+.word-meaning { min-height:27px; gap:8px; }
+#meaning { font-size:14px; }
+#word-feedback { font-size:12px; }
+#typing-coach { background:#e6f2e7; color:#183c35; font-size:12px; line-height:1.4; padding:7px 9px; margin:0 0 7px; }
+.spell-picker { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.spell-picker button { min-height:44px; }
+.spell-picker #guard { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px; border-radius:10px; min-width:0; }
+.spell-picker #guard span { white-space:nowrap; }
+.spell-picker #guard kbd { display:inline; border:0; padding:0; }
+.spell-picker #charges { font-size:11px; }
+.spell-picker small { font-size:11px; letter-spacing:0; }
+#guard { min-height:36px; font-size:11px; }
+#input-help { font-size:11px; margin:8px 0 0; }
+.practice-ribbon { font-size:12px; min-height:20px; padding:0 2px; }
+.battle-top { height:28px; padding:0 2px; }
+#battle .run-metrics { font-size:11px; }
+.menu-scene { background:linear-gradient(0deg,#153942 0%,transparent 70%),url('assets/letterwood-story.webp') 42% center/cover; }
+.menu-scene > p { margin-top:290px; }
+.practice-choice { display:none; }
+.menu-copy:has([value="focus"]:checked) .practice-choice { display:flex; }
+@media (min-width:760px) and (min-height:481px) and (hover:hover) and (pointer:fine) {
+  #battle { width:min(1360px,100%); display:grid; grid-template-columns:minmax(0,1.22fr) minmax(0,1fr); grid-template-rows:26px 46px minmax(260px,1fr); gap:12px; padding:14px 28px 28px; }
+  #battle > .practice-ribbon { grid-column:1; grid-row:1; }
+  #battle > .battle-top { grid-column:2; grid-row:1; }
+  #battle > .practice-metrics { grid-column:1 / -1; grid-row:2; }
+  #battle > .arena { grid-column:1; grid-row:3; min-height:260px; height:100%; max-height:none; }
+  #battle > .typing-dock { grid-column:2; grid-row:3; display:flex; flex-direction:column; justify-content:center; gap:7px; margin:0; padding:22px; align-self:stretch; }
+  .spell-picker { margin-bottom:18px; }
+  .spell-picker button { grid-template-columns:20px 1fr; padding:9px 6px; }
+  .spell-picker small { grid-column:1 / -1; }
+  .word-line { height:88px; }
+  #typing-coach { margin-bottom:12px; }
+  .keyboard-wrap,#native-keyboard { display:none; }
+  .upcoming { margin-top:20px; }
+}
+@media (max-width:580px) {
+  .menu { padding:18px 18px 24px; }
+  .menu .eyebrow { font-size:10px; letter-spacing:.06em; }
+  .menu h1 { font-size:42px; margin:12px 0 9px; }
+  .menu h1 span { font-size:10px; }
+  .menu .headline { font-size:21px; line-height:1.35; }
+  .menu .lead { display:none; }
+  .warmup-card { margin:14px 0; padding:10px; gap:8px; }
+  .warmup-card strong { font-size:12px; }
+  .warmup-card span { font-size:11px; line-height:1.5; }
+  .warmup-card button { padding:8px; }
+  .setup { margin:10px 0; gap:10px; }
+  .setup label { font-size:12px; }
+  .setup select { min-height:44px; font-size:14px; padding:8px 5px; }
+  .setup small { display:none; }
+  .modes { margin:10px 0; }
+  .modes span { padding:10px; font-size:13px; }
+  .modes small { font-size:11px; margin-top:4px; }
+  .menu .primary { min-height:48px; padding:12px 16px; font-size:15px; }
+  .menu-foot { margin-top:12px; }
+  #battle { gap:5px; padding:5px 8px max(5px,env(safe-area-inset-bottom)); }
+  .practice-metrics { padding:7px 6px; border-radius:8px; }
+  .practice-metrics > div { flex-direction:column; align-items:center; gap:3px; }
+  .practice-metrics small { font-size:11px; }
+  .practice-metrics strong,.practice-metrics .primary-metric strong { font-size:17px; }
+  #battle .arena { min-height:150px; flex:1 0 150px; height:auto; max-height:280px; border-radius:12px; }
+  #app[data-practice-target="true"] #battle .arena { min-height:150px; height:auto; flex:1 0 150px; }
+  .typing-dock { padding:9px 10px 6px; border-radius:12px; }
+  .word-line { height:55px; }
+  .typing-heading { height:22px; }
+  .typing-heading > span { font-size:11px; }
+  #typing-coach { padding:5px 7px; font-size:12px; margin:0 0 4px; }
+  .word-meaning { min-height:22px; }
+  #meaning { font-size:13px; }
+  #word-feedback { font-size:11px; }
+  #input-help,.upcoming { display:none; }
+  .spell-picker { gap:4px; margin-bottom:4px; }
+  .spell-picker button { grid-template-columns:15px 1fr; min-height:36px; padding:5px; }
+  .spell-picker small { display:none; }
+  .spell-picker b { font-size:12px; }
+  .spell-picker kbd { font-size:10px; }
+  .arena .health { top:8px; padding:6px 8px; width:40%; }
+  .arena .hero-health { left:8px; }
+  .arena .enemy-health { right:8px; }
+  .arena .health > span,.arena .health b,.arena .health em { font-size:10px; }
+  .arena .enemy-intent { bottom:7px; padding:5px 9px; }
+  .arena .enemy-intent > span { font-size:11px; }
+  .keyboard-wrap { margin:0; }
+  #keyboard { gap:4px; padding-bottom:0; }
+  .key-row { gap:4px; }
+  .key { height:44px; min-height:44px; font-size:14px; }
+  .keyboard-caption { margin-top:4px; }
+  #app[data-practice="true"] .keyboard-caption { display:none; }
+  .practice-ribbon { font-size:11px; }
+}
+@media (max-width:580px) and (max-height:650px) {
+  .topbar { min-height:44px; height:44px; }
+  .topbar button,.topbar .back { min-height:40px; }
+  .menu { padding-top:10px; }
+  .menu .eyebrow { display:none; }
+  .menu h1 { font-size:35px; margin:5px 0 8px; }
+  .menu .headline { font-size:19px; }
+  .warmup-card { margin:10px 0; }
+  #app:is([data-view="combat"],[data-view="victory"],[data-view="paused"],[data-view="result"]) { min-height:0; }
+  #battle > .practice-metrics,#battle > .battle-top { display:none; }
+  #app[data-practice="false"] #typing-coach { display:none; }
+  #app[data-practice="true"] #battle .arena { min-height:105px; height:105px; flex:1 0 105px; }
+  #app[data-practice="true"] .typing-heading { display:none; }
+  .typing-dock { padding:6px 8px; }
+  .word-line { height:46px; }
+  #typing-coach { padding:4px 6px; font-size:11px; line-height:1.4; }
+  .key { min-height:40px; height:40px; font-size:13px; }
+  #keyboard { gap:3px; }
+  .key-row { gap:3px; }
+  .word-meaning { min-height:20px; }
+  .spell-charge { margin-bottom:3px; }
+  .practice-ribbon { min-height:18px; }
+  #app[data-practice="false"] #battle .arena { min-height:185px; height:185px; flex:1 0 185px; }
+  #app[data-practice="false"] #battle { gap:4px; }
+  #app[data-practice="false"] .typing-heading { display:none; }
+  #app[data-practice="false"] .spell-picker #guard { min-height:36px; font-size:11px; }
+}
+@media (max-height:480px) and (min-width:581px) {
+  #battle { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); grid-template-rows:22px minmax(min-content,1fr) auto; gap:5px 10px; padding:5px 10px; }
+  #battle > .practice-ribbon { grid-column:1; grid-row:1; font-size:11px; }
+  #battle > .practice-metrics,#battle > .battle-top { display:none; }
+  #battle > .arena { grid-column:1; grid-row:2 / 4; height:100%; min-height:180px; }
+  #battle > .typing-dock { grid-column:2; grid-row:1 / 3; padding:7px 9px; align-self:start; min-height:0; }
+  #battle > .keyboard-wrap { grid-column:2; grid-row:3; display:block; }
+  .typing-heading { height:20px; }
+  #app[data-practice="true"] .typing-heading { display:none; }
+  #typing-coach { font-size:11px; padding:4px 6px; margin-bottom:3px; }
+  .word-line { height:43px; }
+  .word-meaning { min-height:20px; }
+  .spell-picker { margin:0; }
+  .spell-picker button { min-height:28px; }
+  .spell-picker small { display:none; }
+  #input-help,.upcoming { display:none; }
+  .key { min-height:30px; height:30px; font-size:12px; }
+  #keyboard,.key-row { gap:3px; }
+  .arena .health { width:43%; left:7px; padding:5px; }
+  .arena .enemy-health { left:auto; right:7px; }
+  .arena .health > span,.arena .health b,.arena .health em { font-size:10px; }
+  .arena .enemy-intent { display:block; }
+}
+@media (prefers-reduced-motion:reduce) { .hp-track i,#word > .active:after { animation:none; transition:none; } }
+
+/* Input switching lives outside .keyboard-wrap so it also survives opening the
+   system keyboard, short screens, and practice's hidden decorative caption. */
+@media (max-width:580px) {
+  #app:not([data-view="menu"]) .topbar { grid-template-columns:36px minmax(12px,1fr) auto; gap:3px; padding-left:max(6px,env(safe-area-inset-left)); padding-right:max(6px,env(safe-area-inset-right)); }
+  #app:not([data-view="menu"]) .topbar .back { min-width:36px; }
+  #app:not([data-view="menu"]) #brand { font-size:12px; }
+  #app:not([data-view="menu"]) #brand > span { display:none; }
+  #app:not([data-view="menu"]) .topbar button { padding-inline:7px; }
+  #native-keyboard { font-size:11px; white-space:nowrap; }
+  .key.space { min-width:0; max-width:100%; flex:1 1 0; }
+  .key-row { min-width:0; }
+}
+
+/* A system keyboard changes VisualViewport, not necessarily CSS media queries.
+   Prioritize the focal word, input and keyboard switch over decorative scenery. */
+#app.native-input {
+  position:fixed;
+  top:var(--native-top,0px);
+  left:var(--native-left,0px);
+  width:var(--native-width,100%);
+  height:var(--native-height,100dvh);
+  min-height:0 !important;
+}
+#app.native-input #battle { display:flex; flex-direction:column; gap:5px; min-height:0; overflow-y:auto; padding-top:5px; }
+#app.native-input #battle > .arena { min-height:0; height:100px; max-height:100px; flex:0 0 100px; }
+#app.native-input #battle > .practice-metrics,
+#app.native-input #battle > .battle-top,
+#app.native-input .keyboard-wrap { display:none; }
+#app.native-input .typing-dock { min-height:0; margin:0; padding:8px 10px; width:100%; flex:none; }
+#app.native-input #typing-input { min-height:40px; font-size:16px; }
+#app.native-input[data-native-compact="true"] #battle > .arena,
+#app.native-input[data-native-compact="true"] #typing-coach,
+#app.native-input[data-native-compact="true"] .typing-heading,
+#app.native-input[data-native-compact="true"] .upcoming,
+#app.native-input[data-native-compact="true"] #input-help { display:none; }
+#app.native-input[data-native-compact="true"] .word-line { height:40px; }
+#app.native-input[data-native-compact="true"] .spell-picker { margin-bottom:4px; }
+#app .topbar button,#app .topbar .back { min-height:44px; }
+@media(max-width:580px) {
+  #app:not([data-view="menu"]) .topbar { grid-template-columns:44px minmax(12px,1fr) auto; }
+  #app:not([data-view="menu"]) .topbar .back { min-width:44px; }
+}
+/* viewport-fit=cover also needs a top inset; VisualViewport offset positions
+   the panel, while this padding reserves the notch inside it exactly once. */
+#app { --typebound-safe-top:env(safe-area-inset-top,0px); --typebound-toolbar:66px; }
+#app .topbar { height:calc(var(--typebound-toolbar) + var(--typebound-safe-top)); min-height:calc(var(--typebound-toolbar) + var(--typebound-safe-top)); padding-top:var(--typebound-safe-top); flex-shrink:0; }
+@media(max-width:580px) { #app { --typebound-toolbar:54px; } }
+@media(max-width:580px) and (max-height:650px), (max-height:480px) and (min-width:581px) { #app { --typebound-toolbar:44px; } }

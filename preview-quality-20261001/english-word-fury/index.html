@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#17242c" />
+    <title>单词斗魂 · 截风擂台</title>
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20261001-quality3-r1" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
+  <body>
+    <main id="shell">
+      <header class="topbar">
+        <a href="../" aria-label="返回游戏合集">← 游戏合集</a>
+        <div class="brand">单词斗魂 <span>CROSSWIND</span></div>
+        <nav>
+          <button id="guide-btn">出招表</button
+          ><button id="sound-btn" aria-label="切换声音">声音 开</button
+          ><button id="pause-btn" hidden>暂停</button
+          ><button id="exit-btn" hidden>退出</button>
+        </nav>
+      </header>
+      <div class="stage-zone">
+        <div id="arena" class="arena" aria-label="截风擂台，键盘或触屏操作">
+          <canvas id="game" aria-label="实时 3D 格斗画面"></canvas
+          ><canvas id="fx" aria-hidden="true"></canvas>
+          <section id="hud" hidden>
+            <div class="fighter-hud p1">
+              <div class="name">
+                <b id="name-0">凌风</b><span id="wins-0">○ ○</span>
+              </div>
+              <div class="health"><i id="hp-0"></i></div>
+              <div class="guard"><i id="guard-0"></i></div>
+            </div>
+            <div class="timer">
+              <small id="round-label">ROUND 01</small><b id="timer">75</b>
+            </div>
+            <div class="fighter-hud p2">
+              <div class="name">
+                <span id="wins-1">○ ○</span><b id="name-1">赤绫</b>
+              </div>
+              <div class="health"><i id="hp-1"></i></div>
+              <div class="guard"><i id="guard-1"></i></div>
+            </div>
+            <div class="power-hud power-left">
+              <b id="stocks-0">0</b>
+              <div><span id="max-0">POWER</span><i id="meter-0"></i></div>
+            </div>
+            <div class="power-hud power-right">
+              <div><span id="max-1">POWER</span><i id="meter-1"></i></div>
+              <b id="stocks-1">0</b>
+            </div>
+            <div id="combo" class="combo"></div>
+            <div id="callout" class="callout"></div>
+            <div id="word-line">
+              <span id="meaning"></span><strong id="letters"></strong>
+            </div>
+          </section>
+          <div id="dojo-coach" hidden><b id="dojo-title"></b><span id="dojo-tip"></span></div>
+          <div id="announcement" class="announcement" hidden></div>
+          <div id="loading">正在准备 Blender 角色模型…</div>
+        </div>
+      </div>
+      <footer id="statusbar">
+        <span id="status">港城会馆 · 暮色擂台</span
+        ><span id="hint">固定战场 · 四键格斗 · 本地运行</span>
+      </footer>
+      <section id="touch" hidden aria-label="触屏操作区">
+        <div id="stick" aria-label="八方向摇杆">
+          <span>移动 / 蹲防</span><i id="stick-knob"></i><b>↑</b
+          ><small>轻推上方短跳</small>
+        </div>
+        <div class="touch-actions">
+          <div class="utility">
+            <button data-key="guard" data-hold="1">防</button
+            ><button data-key="roll">回避</button
+            ><button data-key="wave">气波</button
+            ><button data-key="super">奥义</button>
+            <button data-key="max">爆气</button
+            ><button data-key="grab">必杀投</button>
+          </div>
+          <div class="four-keys">
+            <button data-key="A" class="key-a">A<small>轻拳</small></button
+            ><button data-key="B" class="key-b">B<small>轻脚</small></button
+            ><button data-key="C" class="key-c">C<small>重拳</small></button
+            ><button data-key="D" class="key-d">D<small>重脚</small></button>
+          </div>
+        </div>
+      </section>
+      <section id="practice" hidden>
+        <label
+          >陪练
+          <select id="dummy">
+            <option value="coach">四课引导 · 攻防基础</option>
+            <option value="idle">站立</option>
+            <option value="guard">站防</option>
+            <option value="crouch">蹲防</option>
+            <option value="spar">实战</option>
+          </select></label
+        ><button id="reset-btn">重置站位</button
+        ><label><input id="boxes" type="checkbox" />判定框</label
+        ><output id="frame-data">轻拳 → 重拳 → 气波</output>
+      </section>
+      <section id="menu" class="screen menu-screen">
+        <div class="menu-content">
+          <p class="eyebrow">港城会馆 / ORIGINAL ARCADE FIGHTING</p>
+          <h1>截风<span>擂台</span></h1>
+          <p class="subtitle">单词斗魂 · CROSSWIND</p>
+          <p class="intro">
+            看准距离，打出你的节奏。<br />拳脚、步法与每一次恰到好处的反击。
+          </p>
+          <fieldset class="roster">
+            <legend>选择格斗家</legend>
+            <div>
+              <button class="selected" data-hero="0">
+                <b>凌风</b><span>均衡 · 截风拳</span></button
+              ><button data-hero="1">
+                <b>赤绫</b><span>迅击 · 燕返腿</span></button
+              ><button data-hero="2">
+                <b>铁岳</b><span>重击 · 山岳流</span>
+              </button>
+            </div>
+          </fieldset>
+          <p id="hero-description">
+            稳住距离，以轻拳确认命中，再接重拳与截风波。
+          </p>
+          <div class="settings">
+            <label
+              >模式<select id="mode">
+                <option value="arcade">街机挑战 · 三局两胜</option>
+                <option value="training">练习道场 · 无限体力</option>
+                <option value="versus">本地双人 · 同屏对战</option>
+              </select></label
+            ><label
+              >对手强度<select id="difficulty">
+                <option value="easy">入门</option>
+                <option value="normal" selected>标准</option>
+                <option value="hard">高手</option>
+              </select></label
+            >
+          </div>
+          <div class="minor-settings">
+            <label
+              ><input id="learning" type="checkbox" checked />词条伴读（接触不等于记住）</label
+            ><label
+              ><input id="ambient" type="checkbox" checked />氛围光效</label
+            ><span>键盘 / 触屏 / 手柄</span>
+          </div>
+          <button id="start-btn" class="primary" disabled>准备角色中…</button>
+          <p id="dojo-record" class="key-hint"></p>
+          <p class="key-hint">初次游玩可选「练习道场」体验四课攻防引导</p>
+          <p class="key-hint">
+            WASD 移动 / J K U I 轻重拳脚 / 空格 气波 / L 回避
+          </p>
+        </div>
+        <div class="menu-insignia" aria-hidden="true">
+          <span>01</span><b>风起<br />此刻</b
+          ><small>READ. REACT. STRIKE.</small>
+        </div>
+      </section>
+      <section id="pause" class="screen panel-screen" hidden>
+        <div class="panel">
+          <p class="eyebrow">TAKE A BREATH</p>
+          <h2>稍作休息</h2>
+          <p>比赛计时、声音和渲染均已暂停。</p>
+          <button id="resume-btn" class="primary">继续对战</button
+          ><button id="pause-exit" class="secondary">返回选人</button>
+        </div>
+      </section>
+      <section id="result" class="screen panel-screen" hidden>
+        <div class="panel">
+          <p class="eyebrow" id="result-eyebrow">MATCH COMPLETE</p>
+          <h2 id="result-title">胜负已分</h2>
+          <img id="fight-medal" class="mastery-medal" alt="对战勋章" hidden /><div id="result-stats"></div><p id="fight-recap"></p>
+          <button id="next-btn" class="primary">迎战下一位</button
+          ><button id="result-exit" class="secondary">返回选人</button>
+        </div>
+      </section>
+      <dialog id="guide">
+        <div class="guide-head">
+          <div>
+            <p class="eyebrow">THE DOJO NOTEBOOK</p>
+            <h2>出招与攻防</h2>
+          </div>
+          <button id="close-guide" aria-label="关闭出招表">×</button>
+        </div>
+        <div class="guide-grid">
+          <section>
+            <h3>先学这四招</h3>
+            <p><kbd>J</kbd> 轻拳：出手快，近距离确认命中。</p>
+            <p><kbd>K</kbd> 轻脚：伸得更远；蹲下变成下段。</p>
+            <p><kbd>U</kbd> 重拳：命中后可接气波，空挥留破绽。</p>
+            <p><kbd>I</kbd> 重脚：牵制；下 + I 扫腿；前 + I 劈挂。</p>
+            <h3>移动与防守</h3>
+            <p>
+              WASD /
+              方向键移动。轻点上短跳，按住上大跳。连点前奔跑，连点后后撤。
+            </p>
+            <p>
+              按后防上中段，按后下防下段；跳跃攻击和劈挂破蹲防。Shift
+              为防守辅助键。
+            </p>
+            <p>
+              L 回避；近身前 + U / I 抓投；被抓时迅速按重键拆投。防守中 L / O
+              消耗一格能量取消。
+            </p>
+          </section>
+          <section>
+            <h3>指令与连招</h3>
+            <p>
+              <kbd>F</kbd> 爆气：消耗一格，7 秒内攻击增强；命中突进技可用 R
+              衔接奥义（再耗一格）。
+            </p>
+            <p>
+              <kbd>T</kbd>
+              近身必杀投；远处空抓有明显收招。铁岳的山岳崩更强；赤绫的 Q
+              是两段连脚。
+            </p>
+            <p>
+              后 + L 向后回避；被击飞即将落地时点 L
+              受身。盯住对手的收招反击，会显示 PUNISH。
+            </p>
+            <p>↓ ↘ → + 拳：截风波 <kbd>空格</kbd></p>
+            <p>→ ↓ ↘ + 拳：升龙破 <kbd>E</kbd></p>
+            <p>↓ ↙ ← + 脚：疾风连脚 <kbd>Q</kbd></p>
+            <p>↓ ↘ → × 2 + 拳：奥义 · 穿云 <kbd>R</kbd> 消耗一格</p>
+            <p>
+              练习：靠近 → J 命中 → U →
+              空格。仅命中或被防住后可取消，乱按不会无条件跳过收招。
+            </p>
+            <h3>双人 / 手柄</h3>
+            <p>
+              2P 方向键移动，数字 1 / 2 / 3 / 4 对应四键，5 回避、6 气波、7
+              对空、8 奥义。
+            </p>
+            <p>
+              手柄方向 / 左摇杆移动；下方 / 右侧 / 左侧 / 上方四键对应 A / B / C
+              / D；肩键回避 / 气波；Start 暂停。
+            </p>
+          </section>
+        </div>
+        <p class="guide-note">
+          参考经典格斗的规则思想，角色、画面、音轨及帧数据均为本作原创。手机横屏视野更舒适。
+        </p>
+      </dialog>
+    </main>
+    <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
+    <script type="module" src="main.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r1"></script>
+  </body>
+</html>

@@ -1,0 +1,388 @@
+{
+  "test": "输入与资源验收",
+  "startedAt": "2026-09-06T08:15:04.650Z",
+  "checks": [
+    {
+      "name": "菜单无动画与音频空转",
+      "pass": true,
+      "details": {
+        "particles": 0,
+        "tokens": 0,
+        "rays": 0,
+        "rings": 0,
+        "voices": 0,
+        "audioState": "uncreated",
+        "musicTimer": false,
+        "inputTimers": 0
+      }
+    },
+    {
+      "name": "进入战斗，尚未输入不开始计时",
+      "pass": true
+    },
+    {
+      "name": "错键留在原位置且不扣生命",
+      "pass": true
+    },
+    {
+      "name": "正确大写输入当场前进一格",
+      "pass": true
+    },
+    {
+      "name": "退格重打不刷伤害",
+      "pass": true
+    },
+    {
+      "name": "按住重复与系统快捷键不污染输入",
+      "pass": true
+    },
+    {
+      "name": "中文输入法组词不计错",
+      "pass": true
+    },
+    {
+      "name": "粘贴不能完成单词",
+      "pass": true
+    },
+    {
+      "name": "原生 beforeinput 单字只处理一次",
+      "pass": true
+    },
+    {
+      "name": "拼完等空格，不提前跳词",
+      "pass": true
+    },
+    {
+      "name": "空格施法后无等待进入下一词",
+      "pass": true
+    },
+    {
+      "name": "触屏按键走同一输入规则",
+      "pass": true
+    },
+    {
+      "name": "三个整词蓄满护盾",
+      "pass": true
+    },
+    {
+      "name": "Enter 消耗能量并提供护盾",
+      "pass": true
+    },
+    {
+      "name": "暂停计时精确冻结",
+      "pass": true
+    },
+    {
+      "name": "暂停释放动画、计时器与声部",
+      "pass": true,
+      "details": {
+        "particles": 30,
+        "tokens": 32,
+        "rays": 19,
+        "rings": 4,
+        "voices": 0,
+        "audioState": "suspended",
+        "musicTimer": false,
+        "inputTimers": 0
+      }
+    },
+    {
+      "name": "暂停时字母不能造成伤害或错键",
+      "pass": true
+    },
+    {
+      "name": "恢复后继续正常计时",
+      "pass": true
+    },
+    {
+      "name": "失焦自动暂停并释放",
+      "pass": true
+    },
+    {
+      "name": "输入、护盾、退出和键盘全部在视口内",
+      "pass": true,
+      "details": {
+        "viewport": {
+          "width": 844,
+          "height": 348
+        },
+        "boxes": [
+          {
+            "selector": "#word",
+            "x": 567.7734375,
+            "y": 116.5,
+            "width": 79.453125,
+            "height": 28,
+            "right": 647.2265625,
+            "bottom": 144.5
+          },
+          {
+            "selector": "#guard",
+            "x": 700.40625,
+            "y": 80.75,
+            "width": 120.59375,
+            "height": 30.5,
+            "right": 821,
+            "bottom": 111.25
+          },
+          {
+            "selector": "#pause",
+            "x": 707.6875,
+            "y": 3.25,
+            "width": 52,
+            "height": 34.5,
+            "right": 759.6875,
+            "bottom": 37.75
+          },
+          {
+            "selector": "#exit",
+            "x": 766.6875,
+            "y": 3.25,
+            "width": 52,
+            "height": 34.5,
+            "right": 818.6875,
+            "bottom": 37.75
+          },
+          {
+            "selector": ".typing-dock",
+            "x": 429,
+            "y": 77,
+            "width": 398,
+            "height": 173,
+            "right": 827,
+            "bottom": 250
+          },
+          {
+            "selector": "#keyboard",
+            "x": 429,
+            "y": 250,
+            "width": 398,
+            "height": 93,
+            "right": 827,
+            "bottom": 343
+          }
+        ]
+      }
+    },
+    {
+      "name": "没有横向溢出",
+      "pass": true
+    },
+    {
+      "name": "主动结束能查看单词记录",
+      "pass": true
+    },
+    {
+      "name": "结束页不空转",
+      "pass": true
+    },
+    {
+      "name": "错词已保存并能回练",
+      "pass": true
+    },
+    {
+      "name": "错词回练达到标明数量后完成",
+      "pass": true
+    },
+    {
+      "name": "回练结算完成",
+      "pass": true
+    },
+    {
+      "name": "最终回到静止菜单",
+      "pass": true
+    }
+  ],
+  "version": "20260906-type-r4",
+  "viewport": {
+    "width": 844,
+    "height": 348
+  },
+  "final": {
+    "version": "20260906-type-r4",
+    "ready": true,
+    "mode": "menu",
+    "raf": false,
+    "game": {
+      "phase": "complete",
+      "depth": 0,
+      "chapter": {
+        "name": "雾林来信",
+        "en": "THE LETTERWOOD",
+        "color": "#a9dac6",
+        "story": "旧书页在雾中醒来。用完整的单词，点亮通往遗迹的路。"
+      },
+      "mode": "review",
+      "level": "easy",
+      "pace": "swift",
+      "hp": 100,
+      "maxHp": 100,
+      "shield": 0,
+      "energy": 3,
+      "time": 0.43333333333333385,
+      "visualTime": 1.8666666666666625,
+      "roomStarted": true,
+      "roomId": 1,
+      "wordId": 6,
+      "word": {
+        "en": "banana",
+        "zh": "香蕉"
+      },
+      "upcoming": [
+        "banana",
+        "banana",
+        "banana"
+      ],
+      "cursor": 6,
+      "expected": " ",
+      "cleanWord": true,
+      "combo": 6,
+      "score": 785,
+      "stats": {
+        "attempts": 42,
+        "correct": 42,
+        "errors": 0,
+        "committed": 42,
+        "words": 6,
+        "perfect": 6,
+        "bestCombo": 6,
+        "damage": 195.12000000011176,
+        "guards": 0,
+        "rooms": 1
+      },
+      "wpm": 1163,
+      "accuracy": 100,
+      "enemy": {
+        "name": "迷途书灵",
+        "en": "LOST WISP",
+        "detail": "打完整词，释放书页法术。",
+        "hp": 0,
+        "damage": 12,
+        "color": "#c9b5ef",
+        "kind": "wisp",
+        "maxHp": 100000,
+        "charge": 0,
+        "stagger": 0.28,
+        "hit": 0.25,
+        "attack": 0,
+        "enraged": false,
+        "dead": 1.4333333333333307,
+        "period": 7.8
+      },
+      "routes": [
+        {
+          "id": "review",
+          "name": "拾回遗落的字",
+          "kind": "wisp",
+          "desc": "错词回练 · 无伤害",
+          "elite": false
+        }
+      ],
+      "offer": [
+        {
+          "id": "ward",
+          "icon": "◇",
+          "name": "守护墨",
+          "desc": "进入战斗时获得 15 点护盾",
+          "max": 3
+        },
+        {
+          "id": "echo",
+          "icon": "∞",
+          "name": "回声页",
+          "desc": "每 3 个无错连词额外造成 12 点伤害",
+          "max": 3
+        },
+        {
+          "id": "dew",
+          "icon": "❋",
+          "name": "晨露",
+          "desc": "每个无错单词回复 2 点生命",
+          "max": 3
+        }
+      ],
+      "relics": {
+        "ward": 1
+      },
+      "passage": null,
+      "passageIndex": 0,
+      "history": [
+        {
+          "en": "banana",
+          "zh": "香蕉",
+          "clean": true,
+          "errors": 0
+        },
+        {
+          "en": "banana",
+          "zh": "香蕉",
+          "clean": true,
+          "errors": 0
+        },
+        {
+          "en": "banana",
+          "zh": "香蕉",
+          "clean": true,
+          "errors": 0
+        },
+        {
+          "en": "banana",
+          "zh": "香蕉",
+          "clean": true,
+          "errors": 0
+        },
+        {
+          "en": "banana",
+          "zh": "香蕉",
+          "clean": true,
+          "errors": 0
+        },
+        {
+          "en": "banana",
+          "zh": "香蕉",
+          "clean": true,
+          "errors": 0
+        }
+      ],
+      "mistakes": [],
+      "samples": [
+        {
+          "t": 0,
+          "wpm": 0
+        }
+      ],
+      "victoryAge": 1.4333333333333307,
+      "rewardRemaining": 0,
+      "reviewTarget": 6
+    },
+    "reviewCount": 0,
+    "wordCounts": {
+      "easy": 597,
+      "medium": 790,
+      "hard": 942
+    },
+    "resources": {
+      "particles": 0,
+      "tokens": 0,
+      "rays": 0,
+      "rings": 0,
+      "voices": 0,
+      "audioState": "suspended",
+      "musicTimer": false,
+      "inputTimers": 0
+    },
+    "performance": {
+      "frames": 114,
+      "medianFrameMs": 16.7,
+      "p95FrameMs": 18.5,
+      "p95WorkMs": 0.9,
+      "slowFrames": 0
+    },
+    "canvas": {
+      "width": 398,
+      "height": 266
+    }
+  },
+  "pass": true,
+  "finishedAt": "2026-09-06T08:15:07.538Z"
+}

@@ -1,0 +1,1073 @@
+.speedometer {
+  position: absolute;
+  bottom: 11%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  min-width: 170px;
+  text-shadow: 0 2px 15px #051522aa;
+  background: linear-gradient(135deg, #102b3880, #12293620);
+  padding: 9px 12px;
+  border-radius: 13px;
+}
+.speedometer b {
+  font-size: 58px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.speedometer > small {
+  display: inline-block;
+  padding: 3px 5px;
+  margin-right: 8px;
+  color: var(--accent);
+  border: 1px solid #c5d1ce55;
+  border-radius: 3px;
+  font-size: 15px;
+}
+.speedometer > span {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  margin-left: 7px;
+}
+.boost-meter {
+  height: 3px;
+  background: #d9e3db2a;
+  margin: 10px auto 6px;
+  width: 140px;
+  overflow: hidden;
+}
+.boost-meter i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transition: none;
+}
+.speedometer em {
+  font-size: 9px;
+  letter-spacing: 0.17em;
+  color: #f5ce96;
+  font-style: normal;
+}
+#map {
+  position: absolute;
+  right: 24px;
+  top: 67px;
+  width: 130px;
+  height: 130px;
+  filter: drop-shadow(0 2px 4px #11202aaa);
+}
+#word-hud {
+  bottom: 5%;
+}
+.touch-right button[data-action="gas"] {
+  height: 85px !important;
+  border-radius: 18px !important;
+  border-color: #f9c47766 !important;
+}
+.touch-right button[data-action="brake"] {
+  border-radius: 15px !important;
+}
+.touch-right button[data-action="boost"] {
+  color: var(--accent) !important;
+}
+@media (max-height: 520px) {
+  .speedometer {
+    bottom: 8%;
+  }
+  .speedometer b {
+    font-size: 36px;
+  }
+  .speedometer > span {
+    font-size: 8px;
+  }
+  .boost-meter {
+    margin-top: 7px;
+    width: 100px;
+  }
+  #map {
+    top: 48px;
+    width: 95px;
+    height: 95px;
+    right: 18px;
+  }
+  #word-hud {
+    bottom: 3%;
+    max-width: 34%;
+  }
+  .touch-right button[data-action="gas"] {
+    height: 72px !important;
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .speedometer {
+    bottom: 25%;
+  }
+  .speedometer b {
+    font-size: 48px;
+  }
+  #map {
+    top: 113px;
+    width: 100px;
+    height: 100px;
+  }
+  .touch-right {
+    gap: 5px;
+  }
+  .touch-left {
+    gap: 5px;
+  }
+  #touch button {
+    width: 48px;
+    height: 54px;
+  }
+  .touch-right button[data-action="gas"] {
+    height: 75px !important;
+  }
+  #word-hud {
+    bottom: 16%;
+  }
+  .hud-top {
+    gap: 18px;
+  }
+}
+.reset-car {
+  display: none;
+}
+#menu .config {
+  background: #112b379c;
+  border: 1px solid #c2e2df21;
+  border-radius: 12px;
+  padding: 14px;
+}
+@media (max-height: 520px) {
+  #menu .config {
+    padding: 8px;
+  }
+}
+.playing .reset-car {
+  display: inline-block;
+}
+#drift-gauge {
+  position: absolute;
+  bottom: 6%;
+  left: 50%;
+  width: 240px;
+  transform: translateX(-50%);
+  height: 4px;
+  background: #edfafa25;
+  border-radius: 5px;
+  opacity: 0.75;
+}
+#drift-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: #6ad9ff;
+  box-shadow: 0 0 12px #61d6ff88;
+}
+#drift-gauge[data-tier="2"] #drift-fill {
+  background: #ffc86a;
+  box-shadow: 0 0 15px #ffbe6788;
+}
+#drift-gauge[data-tier="3"] #drift-fill {
+  background: #e7a2ff;
+  box-shadow: 0 0 15px #db97ff88;
+}
+#drift-gauge small {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #dbe9e9;
+}
+#drift-gauge.active {
+  opacity: 1;
+}
+#incoming {
+  position: absolute;
+  left: 50%;
+  top: 21%;
+  transform: translateX(-50%);
+  border: 1px solid #ffb58b99;
+  border-radius: 50px;
+  padding: 9px 18px;
+  background: #6b3026da;
+  color: #ffe1cb;
+  font-size: 13px;
+  white-space: nowrap;
+}
+#item-dock {
+  position: absolute;
+  left: 24px;
+  top: 150px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 15px;
+  max-width: 300px;
+  padding: 14px 18px;
+  background: #112c38c9;
+  border: 1px solid #99e0d970;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px #06162340;
+}
+#item-dock b {
+  font-size: 17px;
+  color: #d9f9ee;
+}
+#item-next {
+  font-size: 12px;
+  color: #d9e9df88;
+}
+#item-dock small,
+#item-dock em {
+  grid-column: 1/-1;
+  font-size: 10px;
+  font-style: normal;
+  color: #c5d7d4;
+}
+#item-dock em {
+  color: #ffdaa2;
+}
+.boost-meter {
+  height: 6px;
+  border-radius: 5px;
+  position: relative;
+}
+.boost-meter:after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  height: 100%;
+  top: 0;
+  width: 2px;
+  background: #193342;
+}
+.touch-right {
+  display: grid !important;
+  grid-template-columns: repeat(3, 58px);
+  gap: 7px !important;
+  align-items: end !important;
+}
+#touch .touch-right button {
+  width: 58px !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+}
+#touch .touch-right .drift-key {
+  grid-row: span 2;
+  height: 103px !important;
+  color: #cdf6ff;
+  background: #285265c9;
+  border-color: #8ae6ff99;
+}
+#touch .touch-right button[data-action="gas"] {
+  height: 48px !important;
+}
+.speedometer {
+  bottom: 6%;
+  left: auto;
+  right: 28px;
+  transform: none;
+}
+@media (pointer: coarse) {
+  .speedometer {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: 5%;
+  }
+  .speedometer b {
+    font-size: 34px;
+  }
+  #drift-gauge {
+    bottom: 23%;
+    width: 180px;
+  }
+  #drift-gauge small {
+    font-size: 9px;
+  }
+}
+@media (max-height: 520px) {
+  #drift-gauge {
+    bottom: 24%;
+    width: 195px;
+  }
+  #drift-gauge small {
+    font-size: 8px;
+  }
+  .speedometer {
+    bottom: 3%;
+  }
+  .speedometer b {
+    font-size: 30px;
+  }
+  #item-dock {
+    top: 96px;
+    left: 18px;
+    padding: 9px 12px;
+    max-width: 220px;
+  }
+  #item-dock b {
+    font-size: 13px;
+  }
+  #item-dock small {
+    max-width: 195px;
+    font-size: 9px;
+  }
+  #incoming {
+    top: 30%;
+    font-size: 11px;
+  }
+  .topbar .brand {
+    display: none;
+  }
+  .notice {
+    top: 22%;
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .speedometer {
+    bottom: 24%;
+  }
+  #drift-gauge {
+    bottom: 19%;
+    width: 210px;
+  }
+  #item-dock {
+    top: 182px;
+    left: 16px;
+    max-width: 205px;
+  }
+  #incoming {
+    top: 39%;
+    font-size: 11px;
+  }
+  .topbar .brand {
+    display: none;
+  }
+  .topbar {
+    gap: 5px !important;
+    padding: max(8px, env(safe-area-inset-top, 0px)) max(10px, env(safe-area-inset-right, 0px)) 0 max(10px, env(safe-area-inset-left, 0px)) !important;
+  }
+  .topbar nav {
+    gap: 4px;
+  }
+  .topbar button {
+    padding: 6px 7px;
+    font-size: 10px;
+  }
+  .touch-right {
+    grid-template-columns: repeat(3, 48px);
+  }
+  #touch .touch-right button {
+    width: 48px !important;
+  }
+  .touch-left {
+    gap: 4px !important;
+  }
+  #touch .touch-left button {
+    width: 45px !important;
+  }
+}
+[data-auto-gas="true"] #touch [data-action="gas"] {
+  display: block;
+}
+/* Mochi art direction: the HUD, vehicles and environment share one palette. */
+:root {
+  color-scheme: light;
+  --ink: #3b4966;
+  --muted: #66798c;
+  --accent: #7bd6c5;
+  --panel: #fff8eefa;
+  font-family:
+    "Nunito", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+body {
+  background: #c4e9e3;
+}
+.topbar {
+  background: linear-gradient(#f4fff0c9, #f4fff000);
+}
+.topbar .brand {
+  color: #496b77;
+  font-weight: 800;
+}
+.topbar button {
+  color: #415670;
+  background: #fffaf0e6;
+  border-color: #ffffffc9;
+  border-radius: 16px;
+}
+button {
+  border-radius: 16px;
+  border-color: #7193a145;
+  background: #ffffffa6;
+}
+button:hover {
+  background: #f2ffe9;
+}
+button.primary {
+  background: #73d4bd;
+  color: #234d4a;
+  border-radius: 22px;
+  box-shadow: 0 5px 0 #45ab956b;
+}
+.screen {
+  background: linear-gradient(100deg, #fff9eee8, #fff9eeae 43%, #fff9ee15 80%);
+}
+.screen h1 {
+  color: #374b66;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+  text-shadow: 0 4px 0 #ffffffa8;
+}
+#panel {
+  background: #e7f2eade;
+  backdrop-filter: blur(6px);
+}
+#panel h1 {
+  text-shadow: none;
+}
+#result {
+  color: #4f657b;
+}
+.title-dot {
+  color: #ef95ad;
+}
+.eyebrow {
+  color: #56837d;
+  font-weight: 800;
+}
+.roman {
+  color: #698991 !important;
+}
+.intro {
+  color: #4f657b !important;
+}
+.controls-note,
+.quality-note {
+  color: #5a7186 !important;
+}
+.features {
+  color: #518676;
+}
+.features span {
+  padding: 6px 9px;
+  background: #fcfff0b8;
+  border-radius: 20px;
+}
+#menu .config {
+  background: #fffcf0e6;
+  border: 2px solid #fff;
+  border-radius: 24px;
+  box-shadow: 0 10px 30px #779dae23;
+}
+.config > label {
+  color: #6b8190;
+}
+.config select {
+  background: #e6f3ed;
+  color: #354c60;
+  border: 1px solid #aacbc16b;
+  border-radius: 12px;
+}
+.checks {
+  color: #536e7c;
+}
+.checks input {
+  accent-color: #4dbca1;
+}
+.menu-tag {
+  color: #43877a;
+}
+.hud-top {
+  gap: 10px;
+}
+.stat {
+  border-radius: 17px;
+  padding: 7px 13px;
+  background: #fffbefd6;
+  box-shadow: 0 4px 0 #7193b029;
+  text-shadow: none;
+}
+.stat small {
+  color: #6e8292;
+  font-size: 8px;
+  font-weight: 800;
+}
+.stat b {
+  color: #3d536c;
+  font-weight: 850;
+}
+.stat em {
+  color: #6b8190;
+}
+#map {
+  background: #fff9eaba;
+  border-radius: 27px;
+  filter: none;
+  border: 2px solid #ffffff60;
+}
+.speedometer {
+  background: #fffaf0db;
+  border: 2px solid #ffffff90;
+  border-radius: 22px;
+  box-shadow: 0 5px 0 #4f6d9020;
+  text-shadow: none;
+}
+.speedometer b {
+  font-weight: 850;
+  color: #41576e;
+}
+.speedometer > small {
+  color: #528780;
+  border-color: #a2c8b9;
+  border-radius: 7px;
+}
+.speedometer em {
+  color: #51798c;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+.boost-meter {
+  background: #d9e3de;
+  height: 8px;
+}
+.boost-meter i {
+  background: linear-gradient(90deg, #7bcfb3, #70beda);
+}
+.boost-meter:after {
+  background: #fffbed;
+  width: 3px;
+}
+#drift-gauge {
+  bottom: 7%;
+  background: #fffaf0bf;
+  height: 8px;
+  width: 260px;
+  border-radius: 20px;
+  box-shadow: 0 2px 0 #66819b28;
+}
+#drift-gauge small {
+  color: #3b6371;
+  background: #fff9e6c9;
+  width: max-content;
+  max-width: 310px;
+  margin: 6px auto 0;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+#drift-fill {
+  border-radius: 20px;
+  box-shadow: none !important;
+}
+#drift-gauge[data-ready="true"] #drift-fill {
+  background: #ffc660;
+}
+#technique {
+  position: absolute;
+  bottom: 13%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #3f747a;
+  font-size: 23px;
+  font-weight: 950;
+  text-shadow:
+    0 2px 0 #fff9e7,
+    0 -2px 0 #fff9e7,
+    2px 0 #fff9e7,
+    -2px 0 #fff9e7;
+  pointer-events: none;
+}
+#technique.pop {
+  animation: mochi-pop 0.22s cubic-bezier(0.15, 0.7, 0.3, 1.25);
+}
+@keyframes mochi-pop {
+  from {
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+#input-strip {
+  position: absolute;
+  left: 24px;
+  bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#input-strip kbd {
+  padding: 7px;
+  border: 2px solid #fffdf4;
+  border-radius: 9px;
+  background: #fff7e5c9;
+  color: #799098;
+  font-size: 11px;
+  min-width: 26px;
+  text-align: center;
+}
+#input-strip kbd.on {
+  background: #76d3c1;
+  color: #204d4b;
+}
+#input-strip span {
+  color: #64848b;
+  font-size: 10px;
+}
+#item-dock {
+  background: #fff9e6e6;
+  border: 2px solid #ffffffb3;
+  border-radius: 21px;
+  box-shadow: 0 5px 0 #57749421;
+}
+#item-dock b {
+  color: #487587;
+}
+#item-next {
+  color: #947f9c;
+}
+#item-dock small {
+  color: #657c8a;
+}
+#item-dock em {
+  color: #be8550;
+}
+#incoming {
+  background: #fff1d9ed;
+  color: #a7664a;
+  border-color: #ecb09e;
+  box-shadow: 0 4px 0 #af766b20;
+}
+.notice b {
+  color: #527484;
+  background: #fff9e8d4;
+  padding: 7px 13px;
+  border-radius: 20px;
+  font-size: 15px;
+  text-shadow: none;
+}
+#toast {
+  color: #527783;
+  background: #fff9e6d4;
+  border-radius: 18px;
+  padding: 6px 14px;
+  font-weight: 700;
+  text-shadow: none;
+}
+#toast:empty {
+  display: none;
+}
+#countdown {
+  color: #fff8db;
+  text-shadow:
+    0 5px 0 #6aa7a2,
+    0 8px 18px #68969050;
+  font-weight: 950;
+}
+#loading {
+  background: #edf5de;
+  color: #547d78;
+}
+#touch button {
+  color: #46687c;
+  border: 2px solid #fff7e9;
+  background: #fff7e6d9;
+  box-shadow: 0 4px 0 #506e9229;
+}
+#touch .touch-right button,
+#touch .touch-right .drift-key,
+#touch .touch-right button[data-action="gas"] {
+  height: 55px !important;
+  border-radius: 17px !important;
+  grid-row: auto;
+  font-weight: 800;
+}
+#touch .touch-right .drift-key {
+  color: #396e74;
+  background: #b4ece2ed;
+  border-color: #e1fff4;
+}
+#touch .touch-right button[data-action="gas"] {
+  color: #947747;
+  background: #fff3c5e0;
+}
+#touch .touch-right button[data-action="boost"] {
+  color: #598098 !important;
+  background: #c9e9f2e3;
+}
+#touch .touch-right button.ready {
+  background: #ffd276;
+  border-color: #fff9dc;
+  color: #7c5835;
+  box-shadow:
+    0 0 0 3px #ffd27566,
+    0 4px 0 #bd944946;
+}
+#touch button.held {
+  transform: translateY(2px);
+  background: #86d7c4;
+  box-shadow: none;
+}
+@media (pointer: coarse) {
+  #drift-gauge {
+    bottom: 23%;
+    width: 205px;
+  }
+  #technique {
+    bottom: 31%;
+    font-size: 19px;
+  }
+  #input-strip {
+    bottom: 37%;
+    left: 15px;
+  }
+  #input-strip span {
+    display: none;
+  }
+}
+@media (max-height: 520px) {
+  .stat {
+    padding: 4px 8px;
+    border-radius: 12px;
+  }
+  #drift-gauge {
+    bottom: 22%;
+    width: 190px;
+  }
+  #drift-gauge small {
+    font-size: 8px;
+  }
+  #technique {
+    bottom: 32%;
+    font-size: 18px;
+  }
+  #input-strip {
+    bottom: 37%;
+  }
+  #input-strip kbd {
+    padding: 4px;
+    font-size: 9px;
+  }
+  #toast {
+    top: 39%;
+    font-size: 10px;
+  }
+}
+@media (max-width: 699px) and (orientation: portrait) {
+  #drift-gauge {
+    bottom: 18%;
+    width: 230px;
+  }
+  #technique {
+    bottom: 24%;
+    font-size: 21px;
+  }
+  #input-strip {
+    bottom: auto;
+    top: 205px;
+  }
+  .stat {
+    padding: 5px 8px;
+  }
+  #touch .touch-right button,
+  #touch .touch-right .drift-key {
+    height: 51px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #technique.pop {
+    animation: none;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .speedometer {
+    left: auto;
+    right: 130px;
+    top: 48px;
+    bottom: auto;
+    transform: none;
+    width: 135px;
+    min-width: 0;
+    padding: 5px 7px;
+    border-radius: 15px;
+  }
+  .speedometer b {
+    font-size: 27px;
+  }
+  .speedometer em {
+    font-size: 7px;
+    letter-spacing: 0;
+  }
+  .speedometer .boost-meter {
+    width: 110px;
+    margin: 5px auto 3px;
+    height: 5px;
+  }
+  #drift-gauge {
+    bottom: 36px;
+    width: 180px;
+  }
+  #technique {
+    bottom: 85px;
+    font-size: 17px;
+  }
+  #word-hud {
+    bottom: 78px;
+  }
+}
+[data-auto-gas="false"] #touch .drift-key {
+  grid-row: auto;
+  height: 48px !important;
+}
+body:not([data-race-mode="items"]) #touch [data-action="item"],
+body:not([data-race-mode="items"]) #touch [data-action="swap"] {
+  display: none;
+}
+body:not([data-race-mode="items"]) .touch-right {
+  grid-template-columns: repeat(2, 58px);
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  body:not([data-race-mode="items"]) .touch-right {
+    grid-template-columns: repeat(2, 48px);
+  }
+}
+/* Four setup fields must not push the title under the app bar at 100% zoom. */
+@media (min-width: 700px) and (max-height: 850px) {
+  #menu {
+    padding: 76px 6vw 26px;
+  }
+  #menu .copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr);
+    column-gap: 6vw;
+    width: 100%;
+    max-width: 930px;
+    align-items: start;
+  }
+  #menu .eyebrow {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0 0 12px;
+  }
+  #menu h1 {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: clamp(38px, 4.8vw, 64px);
+  }
+  #menu .roman {
+    grid-column: 1;
+    grid-row: 3;
+    margin: 0 0 18px;
+  }
+  #menu .intro {
+    grid-column: 1;
+    grid-row: 4;
+    margin: 0 0 12px;
+  }
+  #menu .features {
+    grid-column: 1;
+    grid-row: 5;
+    margin: 0 0 14px;
+    gap: 12px;
+    font-size: 10px;
+  }
+  #menu .config {
+    grid-column: 2;
+    grid-row: 1/6;
+    width: 100%;
+    max-width: none;
+    margin: 0 0 16px;
+    align-self: center;
+  }
+  #menu #start {
+    grid-column: 2;
+    grid-row: 6;
+    min-width: 0;
+    width: 100%;
+    align-self: start;
+  }
+  #menu .controls-note {
+    grid-column: 1;
+    grid-row: 6;
+    margin: 0;
+    font-size: 10px;
+  }
+  #menu .quality-note {
+    grid-column: 1/3;
+    grid-row: 7;
+    margin: 18px 0 0;
+    font-size: 9px;
+  }
+  #menu .menu-tag {
+    display: none;
+  }
+}
+@media (min-width: 700px) and (max-height: 520px) {
+  #menu {
+    padding: 50px 5vw 12px;
+  }
+  #menu .copy {
+    column-gap: 5vw;
+  }
+  #menu .config {
+    gap: 7px;
+    margin-bottom: 9px;
+  }
+  #menu .config select {
+    padding: 5px 7px;
+  }
+  #menu .checks {
+    gap: 6px 10px;
+  }
+  #menu .intro {
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  #menu .eyebrow {
+    margin-bottom: 6px;
+    font-size: 9px;
+  }
+  #menu .roman {
+    margin-bottom: 10px;
+    font-size: 9px;
+  }
+  #menu .features,
+  #menu .quality-note {
+    display: none;
+  }
+  #menu .controls-note {
+    font-size: 8.5px;
+    line-height: 1.5;
+  }
+  #menu #start {
+    padding: 10px 15px;
+  }
+  #menu h1 {
+    font-size: 38px;
+  }
+}
+@media (max-width: 699px) and (orientation: portrait) {
+  .speedometer {
+    left: 16px;
+    right: auto;
+    top: 106px;
+    bottom: auto;
+    transform: none;
+    min-width: 0;
+    width: 158px;
+    padding: 7px;
+    text-align: left;
+  }
+  .speedometer b {
+    font-size: 34px;
+  }
+  .speedometer em {
+    font-size: 8px;
+    letter-spacing: 0.04em;
+  }
+  .speedometer .boost-meter {
+    width: 138px;
+    margin-left: 0;
+  }
+  #item-dock {
+    top: 196px;
+  }
+  #incoming {
+    top: 305px;
+    white-space: normal;
+    max-width: 90%;
+    width: max-content;
+    text-align: center;
+  }
+  .notice {
+    top: 306px;
+    width: 90%;
+  }
+  .notice b {
+    font-size: 13px;
+  }
+  #toast {
+    top: 346px;
+    font-size: 11px;
+    max-width: 90%;
+  }
+  #menu {
+    align-items: flex-start;
+    padding: 65px 22px 18px;
+  }
+  #menu .eyebrow {
+    font-size: 9px;
+    margin-bottom: 9px;
+  }
+  #menu h1 {
+    font-size: 42px;
+  }
+  #menu .roman {
+    font-size: 10px;
+    margin-bottom: 14px;
+  }
+  #menu .intro {
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+  #menu .features,
+  #menu .quality-note,
+  #menu .menu-tag {
+    display: none;
+  }
+  #menu .config {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  #menu .config select {
+    padding: 7px 8px;
+  }
+  #menu .checks {
+    gap: 8px 11px;
+    font-size: 10px;
+  }
+  #menu .controls-note {
+    font-size: 9px;
+    margin-top: 12px;
+  }
+  #menu #start {
+    width: 100%;
+    padding: 13px 20px;
+  }
+}
+
+/* Stable instrument spacing and a crisp, readable mini-turbo-ready state. */
+#rank, #lap, #timer, #input-slip, #drift-label {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+#timer { display: inline-block; min-width: 8ch; }
+#drift-gauge[data-ready="true"] { outline: 2px solid #a85f2b; outline-offset: 3px; }
+#drift-gauge[data-ready="true"] small { color: #71471e; background: #fff3d4; }
+#mini-key.ready { border-color: #a85f2b; }
+
+#driver-contract { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); width: max-content; max-width: 70%; text-align: center; border-radius: 9px; background: #153431d9; color: #fff4d2; padding: 7px 14px; font: 700 12px/1.4 system-ui; }
+#driver-contract small { display: block; font-size: 10px; color: #d2eae0; margin-top: 2px; }
+#license-recap { font-size: 13px; white-space: pre-line; line-height: 1.7; }
+#license-medal { width: 76px; height: 76px; object-fit: contain; float: right; }
+@media (max-height: 480px) { #driver-contract { top: 48px; padding: 4px 9px; font-size: 10px; max-width: 58%; } #driver-contract small { display: none; } }
+@media (max-width: 520px) and (min-height: 481px) { #driver-contract { top: 126px; max-width: 92%; font-size: 11px; } }
+
+#fatal a { display: inline-block; padding: 12px 16px; margin-top: 12px; border: 1px solid currentColor; border-radius: 8px; color: #bdebdc; }
+
+/* Transient driving information leaves the road clear between decisions. */
+#driver-contract[hidden], #sector-split[hidden] { display: none !important; }
+#driver-contract small { font-size: 11px; }
+#sector-split { font-variant-numeric: tabular-nums; letter-spacing: .035em; color: #fff3bd; }

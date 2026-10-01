@@ -1,0 +1,60 @@
+/* A finite, readable learning loop while keeping the garden's tactile identity. */
+.session-choice { display:grid; gap:7px; margin:15px 0; color:#31524a; font-size:12px; font-weight:650 }
+.session-choice select { width:100%; min-height:46px; border:1px solid #a9baa1; background:#fffdf2; color:#244a3f; border-radius:13px; padding:10px 12px; font:inherit }
+.expedition-track { display:flex; align-items:center; gap:10px; position:relative; padding:5px 1px 10px; color:#476253; font-size:11px }
+.expedition-track b { margin-left:auto; font-variant-numeric:tabular-nums }
+.expedition-track > i { position:absolute; height:3px; bottom:3px; left:0; right:0; border-radius:8px; overflow:hidden; background:#385c3d15 }
+.expedition-track em { display:block; height:100%; transform-origin:left; background:linear-gradient(90deg,#539b65,#cfb959); transition:transform .4s ease }
+.expedition-stars { font-size:36px; letter-spacing:.15em; color:#a97925; margin:10px 0 }
+.expedition-next { color:#49694f; line-height:1.8; font-size:12px; background:#e5ecd4; padding:12px; border-radius:13px }
+#word-review { max-height:100px; overflow-y:auto }
+#word-review span { font-size:12px; line-height:1.6 }
+button, select, input { touch-action:manipulation }
+button:focus-visible, select:focus-visible { outline:3px solid #3d8968; outline-offset:3px }
+@media (max-width:650px) {
+  .session-choice { margin:10px 0; }
+  .session-choice select { font-size:16px; }
+  .expedition-track { font-size:11px; }
+  #controls { padding-bottom:max(10px,env(safe-area-inset-bottom)); }
+  #controls .dpad button { min-width:44px; min-height:44px; }
+  .small-card { max-height:calc(100dvh - 90px); overflow-y:auto; overscroll-behavior:contain; }
+}
+@media (prefers-reduced-motion:reduce) { .expedition-track em { transition:none; } }
+/* Keep the short-landscape controls in the flex flow, below the board. */
+@media (max-height:480px) and (orientation:landscape) {
+  #controls { min-height:44px; height:auto; }
+  #controls .dpad button { flex:0 0 44px; width:44px; height:44px; min-width:44px; min-height:44px; }
+  #controls .boost, #controls .live-speed select { min-height:44px; }
+}
+/* Interaction bounds stay independent of the small glyph inside them, including 320px and landscape. */
+#app .topbar { height:auto; min-height:44px; flex-shrink:0; }
+#app .icon,#app .back,#app .top-actions .quiet,#app #hint,#app #resume,#app #pause-menu,#app #over-menu,#app #depart,#app #effects { min-width:44px; min-height:44px; height:auto; }
+#app .icon,#app .back { width:44px; height:44px; flex:0 0 44px; }
+#app .live-speed select { min-width:54px; min-height:44px; height:44px; }
+#app #menu-speed { min-height:44px; }
+#app .top-actions { gap:5px; }
+#route-brief { display:flex; gap:8px; align-items:center; flex-shrink:0; min-height:36px; color:#35553c; font-size:11px; }
+#route-brief b { flex:0 0 auto; font-size:11px; }
+#route-rule { line-height:1.45; }
+#depart { margin-left:auto; padding:4px 12px; border:1px solid #5b8057; border-radius:12px; background:#e4efc7; color:#294a32; font:inherit; white-space:nowrap; }
+#app[data-phase="menu"] #route-brief { display:none; }
+@media (max-width:650px) {
+  #app { padding-left:max(8px,env(safe-area-inset-left)); padding-right:max(8px,env(safe-area-inset-right)); padding-top:max(6px,env(safe-area-inset-top)); gap:5px; }
+  #app .word-panel { padding-top:2px; padding-bottom:5px; min-height:79px; }
+  #app .word-caption { min-height:44px; }
+  #app .word-caption > span { font-size:13px; }
+  #app .brand-mark { display:none; }
+  #app .brand { min-width:0; flex:1; }
+  #app .brand b { font-size:12px; letter-spacing:0; white-space:nowrap; }
+  #app .topbar { gap:6px; }
+  #route-brief { flex-wrap:wrap; gap:2px 8px; }
+  #route-brief b { flex-basis:100%; }
+  #route-rule { flex:1; }
+}
+@media (max-height:480px) and (orientation:landscape) {
+  #app { padding: max(4px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); gap:3px; }
+  #app .game-hud { height:80px; }
+  #app .word-panel,#app[data-mode="choose"] .word-panel { height:80px; min-height:80px; }
+  #route-brief { min-height:24px; }
+  #controls { min-height:44px; }
+}

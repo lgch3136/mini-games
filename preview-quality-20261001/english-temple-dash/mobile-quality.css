@@ -1,0 +1,22 @@
+.session-goals { margin:8px 0 13px; color:#a8c4bf; font-size:11px; line-height:1.8 }
+#session-select { width:100%; min-height:44px }
+.result-stars { color:#ebc875; font-size:34px; letter-spacing:.2em; margin:10px 0 }
+.practice-advice { background:#eef5df0c; color:#cfe2d6; border-left:3px solid #a6ceb5; padding:12px 15px; line-height:1.8; font-size:12px; text-align:left }
+.dialog { max-height:calc(100dvh - 48px); overflow-y:auto; overscroll-behavior:contain }
+button, select, input { touch-action:manipulation }
+button:focus-visible, select:focus-visible { outline:2px solid #ffdfa2; outline-offset:3px }
+@media (max-width:720px) and (orientation:portrait) {
+  #touch-controls { padding-bottom:max(14px,env(safe-area-inset-bottom)); }
+  #touch-controls button { min-height:62px; min-width:62px; }
+  #session-select { font-size:16px; }
+  #menu .setup-panel { padding-bottom:max(18px,env(safe-area-inset-bottom)); }
+  .session-goals { margin-bottom:8px; }
+  .result-dialog { margin-top:env(safe-area-inset-top); }
+}
+@media (prefers-reduced-motion:reduce) { #judge-group, #word-echo { animation:none!important; } }
+.startup-error { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left)); color:#dfecdd; background:#102d35; }
+.startup-error[hidden] { display:none; }
+.startup-error > div { max-width:440px; padding:26px; background:#ffffff08; border:1px solid #9fccc844; border-radius:22px; }
+.startup-error h2 { margin:10px 0 18px; font-size:26px; }
+.startup-error p { line-height:1.9; font-size:14px; }
+.startup-error button,.startup-error a { display:block; min-height:48px; border:1px solid #adc9ad66; padding:14px; border-radius:13px; text-align:center; margin-top:14px; color:#edf4d4; background:#b5d59412; text-decoration:none; font:inherit; }

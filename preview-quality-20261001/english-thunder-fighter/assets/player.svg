@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2fbff"/>
+      <stop offset="0.4" stop-color="#5cb3ff"/>
+      <stop offset="1" stop-color="#1440c8"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a8e0ff"/>
+      <stop offset="0.5" stop-color="#3f8cf0"/>
+      <stop offset="1" stop-color="#16308f"/>
+    </linearGradient>
+    <linearGradient id="cockpit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#6fd0ff"/>
+    </linearGradient>
+    <linearGradient id="nozzle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7a86a8"/>
+      <stop offset="1" stop-color="#2c3350"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.5"/></filter>
+  </defs>
+  <path d="M128,64 L140,100 L182,146 L170,180 L140,176 L128,188 L116,176 L86,180 L74,146 L116,100 Z"
+        fill="none" stroke="#4fd1ff" stroke-width="10" stroke-linejoin="round" opacity="0.55" filter="url(#glow)"/>
+  <path d="M128,108 L190,168 L166,196 L128,178 L90,196 L66,168 Z"
+        fill="url(#wing)" stroke="#7cc4ff" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M128,64 L140,100 L182,146 L170,180 L140,176 L128,188 L116,176 L86,180 L74,146 L116,100 Z"
+        fill="url(#body)" stroke="#bfe9ff" stroke-width="2.5" stroke-linejoin="round"/>
+  <ellipse cx="128" cy="122" rx="13" ry="28" fill="url(#cockpit)" stroke="#3d8fe0" stroke-width="1.5"/>
+  <rect x="106" y="176" width="17" height="16" rx="3" fill="url(#nozzle)"/>
+  <rect x="133" y="176" width="17" height="16" rx="3" fill="url(#nozzle)"/>
+  <circle cx="70" cy="176" r="4" fill="#ff5d8f" filter="url(#soft)"/>
+  <circle cx="186" cy="176" r="4" fill="#7dffa8" filter="url(#soft)"/>
+  <path d="M128,72 L128,170" stroke="#ffffff" stroke-width="3" opacity="0.5" stroke-linecap="round" filter="url(#soft)"/>
+</svg>

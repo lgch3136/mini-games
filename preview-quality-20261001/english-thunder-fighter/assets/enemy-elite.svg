@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="disc" cx="0.5" cy="0.42" r="0.65">
+      <stop offset="0" stop-color="#ecd9ff"/>
+      <stop offset="0.55" stop-color="#a04df0"/>
+      <stop offset="1" stop-color="#43148f"/>
+    </radialGradient>
+    <linearGradient id="dome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7ecff"/>
+      <stop offset="1" stop-color="#c58bff"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+  <ellipse cx="128" cy="146" rx="96" ry="26" fill="#a04df0" opacity="0.4" filter="url(#glow)"/>
+  <path d="M44,150 L20,140 L48,136 Z" fill="#7a2fc4"/>
+  <path d="M50,116 L26,120 L54,104 Z" fill="#7a2fc4"/>
+  <path d="M212,150 L236,140 L208,136 Z" fill="#7a2fc4"/>
+  <path d="M206,116 L230,120 L202,104 Z" fill="#7a2fc4"/>
+  <ellipse cx="128" cy="136" rx="88" ry="34" fill="url(#disc)" stroke="#ecd9ff" stroke-width="2"/>
+  <path d="M52,130 Q128,160 204,130" fill="none" stroke="#6a1fb0" stroke-width="2.5" opacity="0.7"/>
+  <ellipse cx="128" cy="108" rx="44" ry="26" fill="url(#dome)" stroke="#ecd9ff" stroke-width="2"/>
+  <ellipse cx="128" cy="112" rx="26" ry="12" fill="#ffffff" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="88" cy="142" r="5" fill="#6ff5ff" filter="url(#soft)"/>
+  <circle cx="128" cy="150" r="5" fill="#6ff5ff" filter="url(#soft)"/>
+  <circle cx="168" cy="142" r="5" fill="#6ff5ff" filter="url(#soft)"/>
+  <line x1="128" y1="82" x2="128" y2="62" stroke="#d8e4f8" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="128" cy="58" r="4.5" fill="#ff6fd8" filter="url(#soft)"/>
+</svg>
