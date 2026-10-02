@@ -1,4 +1,4 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260905-dawn&mobile=20260930-quality-r2";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260905-dawn&mobile=20261002-quality4-r1";
 const hz = (n) => 440 * 2 ** ((n - 69) / 12);
 // Original quiet downtempo score. Impacts share its D-minor pentatonic palette.
 export class EchoAudio extends Soundtrack {
@@ -57,6 +57,7 @@ export class EchoAudio extends Soundtrack {
       const note = [62, 65, 67, 69, 72, 74, 77, 79][(e.combo - 1) % 8];
       tone(hz(note), 0.24, 0.1);
       tone(hz(note + 12), 0.12, 0.025);
+      if(e.returning)tone(hz(note+7),.3,.045,null,.045);
       this.hiss(t, 0.06, 0.032, 2600);
     }
     if (e.type === "graze") {

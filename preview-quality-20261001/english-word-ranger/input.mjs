@@ -1,6 +1,6 @@
-import { weaponPose } from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
+import { weaponPose } from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&teaching=20261001-r1";
 
-const ACTIONS = ["jump", "fire", "grenade", "roll"];
+const ACTIONS = ["jump", "fire", "grenade", "roll", "swap"];
 
 // DOM events can both arrive before the next fixed simulation step. Keep their
 // rising edges separate from held state, and consume them only on that step.
@@ -14,7 +14,7 @@ export class ActionLatch {
     for (const action of ACTIONS) {
       const held = !!input[action];
       if (held && !this.held[action])
-        this.pending.set(action, { down: input.y > 0.5, aim: input.aim });
+        this.pending.set(action, { down: input.y > 0.5, aim: input.aim, swapTarget: input.swapTarget });
       if (action === "fire" && held && this.pending.has(action))
         this.pending.get(action).aim = input.aim;
       this.held[action] = held;
@@ -24,6 +24,7 @@ export class ActionLatch {
   consume(input) {
     this.update(input);
     const snapshot = { ...input };
+    snapshot.swapTarget = this.pending.get("swap")?.swapTarget ?? input.swapTarget;
     snapshot.dropPressed = !!this.pending.get("jump")?.down;
     const fireAim = this.pending.get("fire")?.aim;
     if (!input.fire && Number.isFinite(fireAim)) snapshot.aim = fireAim;

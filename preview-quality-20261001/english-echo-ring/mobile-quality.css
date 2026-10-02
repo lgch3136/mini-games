@@ -105,3 +105,38 @@ button:focus-visible, select:focus-visible { outline:2px solid #d6f7be; outline-
   .result-panel #reason { margin-bottom:10px; }
   .result-panel .eyebrow { margin-bottom:10px; }
 }
+
+.lesson-choice { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:9px 0; color:#aacdc4; font-size:11px; }
+.lesson-choice input { accent-color:#a6d4b8; width:18px; height:18px; }
+.lesson-choice small { font-size:10px; color:#769d99; }
+#app[data-mode="lesson-review"] #hint { opacity:1; }
+/* A reserved coaching row above the visible ring. Move the unchanged-height
+   landscape field down 25px and keep resonance below it, away from the lesson. */
+@media(max-height:480px) and (orientation:landscape) {
+  #hint,#notice { top:calc(53px + var(--echo-safe-top)); bottom:auto; left:max(140px,var(--echo-safe-left)); right:max(140px,var(--echo-safe-right)); width:auto; max-width:none; transform:none; padding:0; border:0; background:none; backdrop-filter:none; font-size:12px; line-height:1.4; letter-spacing:0; white-space:normal; text-align:center; }
+  #play-space { top:calc(80px + var(--echo-safe-top)); bottom:calc(10px + var(--echo-safe-bottom)); }
+  .resonance-status { bottom:calc(2px + var(--echo-safe-bottom)); line-height:1.2; }
+  .resonance-status > span { margin-top:4px; }
+}
+/* Short portrait screens reserve one compact coaching row and keep the actual
+   field above the controls. The trial ribbon already carries the elapsed time. */
+@media(max-width:600px) and (max-height:680px) and (orientation:portrait) {
+  #app { --echo-header:48px; }
+  .hud-top { top:calc(54px + var(--echo-safe-top)); width:calc(100% - 24px); }
+  .score-stat strong { font-size:18px; margin-top:2px; }
+  .health-stat div { font-size:16px; margin-top:2px; }
+  .phase-stat small { display:none; }
+  .trial-ribbon { top:calc(90px + var(--echo-safe-top)); padding:3px 0 5px; line-height:1.2; }
+  #hint,#notice { top:calc(116px + var(--echo-safe-top)); font-size:10px; line-height:1.2; }
+  #play-space { top:calc(144px + var(--echo-safe-top)); bottom:calc(128px + var(--echo-safe-bottom)); }
+  #touch { height:calc(116px + var(--echo-safe-bottom)); padding:0 max(16px,var(--echo-safe-right)) max(12px,var(--echo-safe-bottom)) max(16px,var(--echo-safe-left)); }
+  #stick { width:88px; height:88px; }
+  #stick i { left:23px; top:23px; }
+  .stick-wrap > small { font-size:8px; margin-top:3px; }
+  .touch-actions { gap:10px; padding-bottom:4px; }
+  #fire-touch { width:70px; height:70px; }
+  #dash-touch { width:49px; height:49px; }
+  .resonance-status { bottom:calc(117px + var(--echo-safe-bottom)); }
+  .resonance-status > span { margin-top:4px; }
+  .bottom-strip { display:none; }
+}

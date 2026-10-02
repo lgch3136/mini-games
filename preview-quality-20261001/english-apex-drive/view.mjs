@@ -1,21 +1,22 @@
-import { buildCircuitEnvironment, harborTerrainY } from './circuit-environment.mjs?mobile=20261001-quality3-r8';
-import { coastSection, coastalTerrainY, buildCoastalLandmark } from "./coast-landmark.mjs?mobile=20261001-quality3-r1";
-import { chassisAttitude } from "./race-craft.mjs?mobile=20261001-quality2-r1";
+import {routeTerrainY,buildRouteLandforms,buildRouteTerrain} from './route-landforms.mjs?v=20261001-quality4-r1&mobile=20261002-quality4-r1';
+import { buildCircuitEnvironment, harborTerrainY } from './circuit-environment.mjs?mobile=20261002-quality4-r1';
+import { coastSection, coastalTerrainY, buildCoastalLandmark } from "./coast-landmark.mjs?mobile=20261002-quality4-r1";
+import { chassisAttitude } from "./race-craft.mjs?mobile=20261002-quality4-r1";
 import {
   SceneKit,
   T,
   label,
-} from "../shared/first-person/scene.mjs?v=20260918-play-r1";
-import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs";
-import { SectorBatch } from "./sector-batch.mjs?v=20260918-play-r1";
-import { GUARDRAIL } from "./world.mjs?v=20260918-play-r1&mobile=20261001-quality2-r1";
-import { TRAIL_LIFE } from "./tyre-trails.mjs";
-import { LightPool, loadLightTexture } from '../shared/light/pool.mjs?v=20260928-light-r1';
+} from "../shared/first-person/scene.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { lerp, mixAngle, damp, random } from "../shared/first-person/math.mjs?mobile=20261002-quality4-r1";
+import { SectorBatch } from "./sector-batch.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { GUARDRAIL } from "./world.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { TRAIL_LIFE } from "./tyre-trails.mjs?mobile=20261002-quality4-r1";
+import { LightPool, loadLightTexture } from '../shared/light/pool.mjs?v=20260928-light-r1&mobile=20261002-quality4-r1';
 import {
   makeMochiKart,
   animateMochiKart,
   roundedBox,
-} from "./mochi-kart.mjs?v=20260918-play-r1&mobile=20261001-quality2-r1";
+} from "./mochi-kart.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
 const MAP_COLORS = [0xeeb84b, 0x6592d7, 0xdf6f9c, 0x9e84cd, 0x75ad72].map(c => "#" + c.toString(16));
 export class RaceView extends SceneKit {
   constructor(canvas) {
@@ -159,16 +160,7 @@ export class RaceView extends SceneKit {
     const sea = this.mat("sea", 0x69cddd, 0.65, 0);
     this.add(new T.PlaneGeometry(5000, 5000), sea, 150, -5, 0).rotation.x =
       -Math.PI / 2;
-    const terrain = new T.PlaneGeometry(1250, 1100, 90, 80);
-    terrain.rotateX(-Math.PI / 2);
-    terrain.translate(150, 0, -20);
-    const tv = terrain.attributes.position;
-    for (let i = 0; i < tv.count; i++) {
-      const n = track.nearest(tv.getX(i), tv.getZ(i));
-      tv.setY(i, harborTerrainY(track, n, coastalTerrainY(track, n, n.y - 0.25 - Math.max(0, n.distance - 24) * 0.035)));
-    }
-    terrain.computeVertexNormals();
-    this.add(terrain, sand);
+    this.terrainSummary=buildRouteTerrain(this,track);
     const ribbon = (left, right, offset, material) => {
       const v = [],
         uv = [],
@@ -224,7 +216,7 @@ export class RaceView extends SceneKit {
       for (const side of [-1, 1]) {
         const q = track.at(s, side * (track.width / 2 + GUARDRAIL.offset));
         b.cylinder(q.x, q.y + 0.42, q.z, 0.2, 0.95, post, 10);
-        const bumper = roundedBox(GUARDRAIL.halfWidth * 2, 0.6, 11.9, 0.22, 3);
+        const bumper = roundedBox(GUARDRAIL.halfWidth * 2, 0.6, 11.9, 0.22, 2);
         b.geometry(
           bumper,
           Math.floor(s / 12) % 3 === 0 ? red : rail,
@@ -240,9 +232,25 @@ export class RaceView extends SceneKit {
     // Low, road-attached geometry: striped bollards share the exact collision gates.
     if (world.challenge) {
       const line = world.challenge, fast = this.mat('challenge-line', line.color), hazard = this.mat('challenge-bollard', 0xc45d46);
-      for (let s = line.start - 26; s < line.end; s += 4) {
+      for (let s = line.start - 70; s < line.end; s += 4) {
         const q = track.at(s, line.offset);
         b.box(q.x, q.y + .028, q.z, 1.0, .03, 2.4, fast, q.yaw);
+      }
+      // A three-gate / double-chevron route sign states the reward before entry.
+      // Its face uses existing materials and no texture or new shader.
+      const sign=track.at(line.start-42,line.side*13.8),turn=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),sign.yaw);
+      const roadSign=(x,y,z,w,h,d,material,rz=0)=>{const p=new T.Vector3(x,y,z).applyQuaternion(turn),g=new T.BoxGeometry(w,h,d);b.geometry(g,material,sign.x+p.x,sign.y+p.y,sign.z+p.z,0,sign.yaw,rz);g.dispose();};
+      roadSign(0,1.4,0,.15,2.8,.15,post);roadSign(0,2.85,0,3.8,1.75,.14,white);
+      roadSign(0,2.85,-.08,4.0,1.95,.08,fast);
+      for(const x of [-1.27,-.55,.17]){for(const side of [-1,1])roadSign(x+side*.22,2.84,.086,.075,.85,.03,hazard);roadSign(x,3.23,.086,.51,.075,.03,hazard);}
+      for(const x of [1.02,1.49]){roadSign(x,3.0,.09,.44,.10,.025,fast,-Math.PI/4);roadSign(x,2.7,.09,.44,.10,.025,fast,Math.PI/4);}
+      // Both choices are marked before the first bollard commits the driver.
+      for (const ahead of [65,45,25]) for (const offset of [line.offset,-line.side*2.8]) {
+        const q=track.at(line.start-ahead,offset),shape=new T.Shape();
+        shape.moveTo(-.9,-.6);shape.lineTo(0,1.1);shape.lineTo(.9,-.6);
+        shape.lineTo(.4,-.6);shape.lineTo(0,.15);shape.lineTo(-.4,-.6);shape.closePath();
+        const arrow=new T.ShapeGeometry(shape);arrow.rotateX(-Math.PI/2);
+        b.geometry(arrow,white,q.x,q.y+.051,q.z,0,q.yaw);arrow.dispose();
       }
       for (const gate of line.gates) {
         for (const side of [-1,1]) {
@@ -256,6 +264,7 @@ export class RaceView extends SceneKit {
     }
     buildCoastalLandmark(this, b, track);
     this.environmentSummary = buildCircuitEnvironment(this, b, track);
+    this.landformSummary = buildRouteLandforms(this, b, track);
     if (track.id === 3) {
       const coast = coastSection(track);
       const rng = random(272 + track.id),

@@ -22,6 +22,6 @@
     }
   };
   atlas.onload = () => { runtime.ready = true; window.dispatchEvent(new Event('gameplay-art-ready')); };
-  atlas.src = '../shared/gameplay-art/atlas.webp?v=20261001';
+  atlas.src = '../shared/gameplay-art/atlas.webp?v=20261001&mobile=20261002-quality4-r1';
   window.GameplayArt = runtime;
 })();

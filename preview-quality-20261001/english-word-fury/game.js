@@ -25,18 +25,18 @@ const travelAt = (spec, time) => {
 const floorY = () => W < 560 ? H - 148 : H - 48;
 
 const ASSET_SOURCES = {
-  hero: 'assets/hero-motion-v1.webp',
-  rival: 'assets/rival-atlas-v3.webp',
-  bruiser: 'assets/bruiser-atlas-v3.webp',
-  heroAttacks: 'assets/hero-attacks-v4.webp',
-  heroGround: 'assets/hero-ground-v1.webp?v=20260918-play-r1',
-  heroAir: 'assets/hero-air-v1.webp?v=20260918-play-r1',
-  heroMotion: 'assets/hero-motion-v1.webp',
-  heroSpecials: 'assets/hero-specials-v1.webp',
-  heroCombat: 'assets/hero-combat-v1.webp',
-  rivalMotion: 'assets/rival-motion-v1.webp?v=20260918-play-r1',
-  vfx: 'assets/vfx-atlas-v1.webp?v=20260918-play-r1',
-  arenas: 'assets/arena-atlas-v1.webp',
+  hero: 'assets/hero-motion-v1.webp?mobile=20261002-quality4-r1',
+  rival: 'assets/rival-atlas-v3.webp?mobile=20261002-quality4-r1',
+  bruiser: 'assets/bruiser-atlas-v3.webp?mobile=20261002-quality4-r1',
+  heroAttacks: 'assets/hero-attacks-v4.webp?mobile=20261002-quality4-r1',
+  heroGround: 'assets/hero-ground-v1.webp?v=20260918-play-r1&mobile=20261002-quality4-r1',
+  heroAir: 'assets/hero-air-v1.webp?v=20260918-play-r1&mobile=20261002-quality4-r1',
+  heroMotion: 'assets/hero-motion-v1.webp?mobile=20261002-quality4-r1',
+  heroSpecials: 'assets/hero-specials-v1.webp?mobile=20261002-quality4-r1',
+  heroCombat: 'assets/hero-combat-v1.webp?mobile=20261002-quality4-r1',
+  rivalMotion: 'assets/rival-motion-v1.webp?v=20260918-play-r1&mobile=20261002-quality4-r1',
+  vfx: 'assets/vfx-atlas-v1.webp?v=20260918-play-r1&mobile=20261002-quality4-r1',
+  arenas: 'assets/arena-atlas-v1.webp?mobile=20261002-quality4-r1',
 };
 const ASSETS = {};
 const stageCanvas = document.createElement('canvas');

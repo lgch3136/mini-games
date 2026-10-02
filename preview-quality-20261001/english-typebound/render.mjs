@@ -2,11 +2,12 @@ import {
   StoryMotion,
   CHAPTER_ART,
   FLIGHT,
+  WORD_WINDUP,
   clamp,
   ease,
   flightPoint,
   rigAnchors,
-} from "./presentation.mjs?v=20261001-world-r2&mobile=20261001-quality2-r1";
+} from "./presentation.mjs?v=20261001-world-r2&mobile=20261002-quality4-r1&quality4=20261002-story-r1";
 const TAU = Math.PI * 2;
 import {
   paintBackdrop,
@@ -14,23 +15,25 @@ import {
   enemy as drawEnemy,
   companion as drawCompanion,
   practiceBook,
-} from "./aether-art.mjs?v=20261001-world-r2&mobile=20261001-quality2-r1";
-import { SPRITE_ART, paintedAnchors, paintedHero, paintedEnemy, paintedBook } from "./painted-rigs.mjs?v=20261001-painted-r3&mobile=20261001-quality2-r1";
+} from "./aether-art.mjs?v=20261001-world-r2&mobile=20261002-quality4-r1";
+import { SPRITE_ART, paintedAnchors, paintedHero, paintedEnemy, paintedBook, advanceHeroRig } from "./painted-rigs.mjs?v=20261001-painted-r3&mobile=20261002-quality4-r1&quality4=20261002-story-r1";
 const mix = (a, b, t) => a + (b - a) * t;
 export class Stage {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d", { alpha: false });
     this.w = this.h = 0;
+    this.viewportH=0;this.cameraY=0;
     this.now = 0;
     this.sequence = 7;
     this.reduced = false;
     this.particles = [];
     this.tokens = [];
+    this.pageGlyphs=[];this.inkMotes=[];this.remains=[];
     this.rings = [];
     this.rays = [];
     this.labels = [];
-    this.motion = new StoryMotion();
+    this.motion = new StoryMotion();this.heroRig=null;
     this.paths = new Map();
     this.glows = new Map();
     this.images = new Map();
@@ -55,26 +58,23 @@ export class Stage {
       c.fillRect(0, 0, 96, 96);
       this.glows.set(color, s);
     }
-    this.ready = Promise.all([...CHAPTER_ART, ...SPRITE_ART].map((art) => new Promise((resolve) => {
-      const img = new Image();
-      this.images.set(art.id, img);
-      this.assetStatus[art.id] = "loading";
-      img.onload = () => {
-        this.assetStatus[art.id] = "ready";
-        this.backdropKey = "";
-        if (!this.destroyed && this.lastGame) this.draw(this.lastGame);
-        resolve();
-      };
-      img.onerror = () => { this.assetStatus[art.id] = "fallback"; resolve(); };
-      img.src = new URL(`assets/${art.file}`, import.meta.url).href;
+    const byFile=new Map();
+    for(const art of [...CHAPTER_ART,...SPRITE_ART]){if(!byFile.has(art.file))byFile.set(art.file,[]);byFile.get(art.file).push(art);}
+    this.ready=Promise.all([...byFile].map(([file,arts])=>new Promise(resolve=>{
+      const img=new Image();for(const art of arts){this.images.set(art.id,img);this.assetStatus[art.id]='loading';}
+      img.onload=()=>{for(const art of arts)this.assetStatus[art.id]='ready';this.backdropKey='';if(!this.destroyed&&this.lastGame)this.draw(this.lastGame);resolve();};
+      img.onerror=()=>{for(const art of arts)this.assetStatus[art.id]='fallback';resolve();};
+      img.src=new URL(`assets/${file}?mobile=20261002-quality4-r1`,import.meta.url).href;
     })));
   }
+
   resize(dpr = 1.75) {
     const r = this.canvas.getBoundingClientRect();
     this.visible = r.width >= 1 && r.height >= 1;
     if (!this.visible) return;
     this.w = r.width;
     this.h = r.height;
+    this.viewportH=r.height;
     this.ratio = Math.min(dpr, window.devicePixelRatio || 1);
     const w = Math.round(this.w * this.ratio),
       h = Math.round(this.h * this.ratio);
@@ -86,8 +86,13 @@ export class Stage {
     this.fit(this.lastGame);
   }
   fit(g) {
-    const margin = g?.mode && g.mode !== "journey" ? 34 : 62;
+    const margin = g?.isQuiet || (g?.mode && g.mode !== "journey") ? 34 : 62;
+    const minimum=margin===34?105:185;
+    this.h=Math.max(this.viewportH||this.h,this.w<=580?minimum:0);
     this.scale = Math.max(.15, Math.min(1.55, this.w / 470, (this.h - margin) / 150));
+    // Short safe-area viewports crop into the existing book/face exchange;
+    // they do not shrink the traveller into a miniature full-body portrait.
+    this.cameraY=this.viewportH<this.h?Math.max(0,this.h*.84-95*this.scale-this.viewportH/2):0;
   }
   poster(canvas) {
     if (!canvas) return;
@@ -212,25 +217,33 @@ export class Stage {
     const s = this.scale,
       a = this.anchors(),
       hostile = kind === "hostile",
-      from = hostile ? a.enemy : a.book,
+      from = hostile ? a.attack||a.enemy : a.book,
       to = hostile ? a.hero : a.enemy;
     this.tokens.push({
       kind,
-      age: 0,
-      life: FLIGHT[kind],
+      age: kind==='word'?-WORD_WINDUP:0,
+      launched:kind!=='word',
+      life: kind==='word'?FLIGHT.word-WORD_WINDUP:FLIGHT[kind],
       x0: from.x,
       y0: from.y,
       x1: to.x,
       y1: to.y,
-      bend: (kind === "word" ? -48 : -24) * s,
+      bend: (kind === "word" ? (this.viewportH<90?-16:-48) : -24) * s,
       ...extra,
     });
     if (this.tokens.length > 80) this.tokens.splice(0, this.tokens.length - 80);
   }
   event(e, g) {
+    if(e.type==='lectern') {this.clear();this.motion.entry=1;}
+    if(e.type==='study-prompt'&&e.kind==='recall'){
+      this.labels.length=0;this.pageGlyphs=[];this.inkMotes=[];
+      // Existing paper flights contain no readable word; keep their causal
+      // movement while removing all answer-bearing labels and page ink.
+    }
     this.lastGame = g;
     this.fit(g);
     this.motion.event({ ...e, targetHp: g.enemy?.hp, heroHp: g.hp });
+    advanceHeroRig(this,g,0);
     const s = this.scale,
       h = this.point("hero"),
       n = this.point("enemy"),
@@ -240,11 +253,18 @@ export class Stage {
       this.displayHeroHP = g.hp;
       this.burst(h.x, h.y - 8 * s, 14, "#ffdc91", 0.55);
     }
-    if (e.type === "letter" && e.fresh) {
-      this.projectile("letter", { char: e.char });
-      this.burst(book.x, book.y, 3, "#a8fff0", 0.3);
+    if (e.type === "letter") {
+      this.pageGlyphs[e.cursor-1]=e.char;this.pageGlyphs.length=Math.min(20,this.pageGlyphs.length);
+      if(e.fresh)this.inkMotes.push({age:0,life:.24,side:e.cursor%2?1:-1});
+      if(this.inkMotes.length>4)this.inkMotes.shift();
+    }
+    if(e.type==='erase')this.pageGlyphs.length=Math.min(this.pageGlyphs.length,g.cursor);
+    if(e.type==='studyComplete'){
+      this.pageGlyphs=[];this.motion.event({type:'word',clean:true,combo:0,targetHp:g.enemy?.hp,quiet:true});
+      this.projectile('word',{spell:'bloom',quiet:true});
     }
     if (e.type === "word") {
+      this.pageGlyphs=[];
       // The completed word gathers its remaining letter motes into one release.
       this.tokens = this.tokens.filter((token) => token.kind !== "letter");
       this.projectile("word", {
@@ -254,24 +274,8 @@ export class Stage {
         spell: g.mode === "journey" ? e.spell : "bloom",
         burst: e.burst,
       });
-      this.rings.push({
-        x: book.x,
-        y: book.y,
-        size: 35 * s,
-        age: 0,
-        life: 0.38,
-        color: "#ffdc91",
-      });
-      this.labels.push({
-        word: e.en,
-        meaning: e.zh,
-        clean: e.clean,
-        combo: e.combo,
-        damage: Math.round(e.damage),
-        burst: e.burst,
-        age: -FLIGHT.word,
-        life: 1.5,
-      });
+
+
     }
     if (e.type === "wrong") this.burst(book.x, book.y, 3, "#ff9d8c", 0.3);
     if (e.type === "guard" || e.type === "parry") {
@@ -288,7 +292,7 @@ export class Stage {
       this.burst(h.x, h.y - 58 * s, 20, "#b8fff2", 1);
     }
     if (e.type === "hurt")
-      this.projectile("hostile", { absorbed: e.damage === 0 });
+      this.projectile("hostile", { absorbed: e.damage === 0, enemyKind:g.enemy?.kind });
     if (e.type === "sentence")
       this.rings.push({
         x: n.x,
@@ -332,6 +336,7 @@ export class Stage {
     dt = Math.min(.05, dt);
     this.now += dt;
     this.motion.advance(dt, game);
+    advanceHeroRig(this,game,dt);
     const s = this.scale,
       anchors = this.anchors();
     for (const hit of this.motion.drain()) {
@@ -354,7 +359,10 @@ export class Stage {
             : "#8cebdc",
         hit.kind === "word" ? 1.1 : 0.45,
       );
-      if (hit.kind !== "letter")
+      if(hit.kind==='word'){
+        this.remains.push({x:p.x,y:this.h*.84-3*s,spell:hit.detail.spell||'bloom',age:0,life:6});if(this.remains.length>6)this.remains.shift();
+      }
+      if (hit.kind === "hurt")
         this.rings.push({
           x: p.x,
           y,
@@ -365,6 +373,7 @@ export class Stage {
         });
     }
     if (this.rings.length > 16) this.rings.splice(0, this.rings.length - 16);
+    for(const p of this.tokens)if(!p.launched&&p.age+dt>=0){const origin=this.anchors().book;p.x0=origin.x;p.y0=origin.y;p.launched=true;}
     for (const p of this.particles) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
@@ -376,7 +385,7 @@ export class Stage {
       this.tokens,
       this.rings,
       this.rays,
-      this.labels,
+      this.labels,this.inkMotes,this.remains,
     ])
       this.agePool(pool, dt);
   }
@@ -387,7 +396,7 @@ export class Stage {
     if (key !== this.backdropKey) {
       this.backdropKey = key;
       this.backdrop.width = this.canvas.width;
-      this.backdrop.height = this.canvas.height;
+      this.backdrop.height = Math.round(this.h*this.ratio);
       const ctx = this.backdrop.getContext("2d");
       ctx.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
       paintBackdrop(ctx, this.w, this.h, chapter);
@@ -418,7 +427,7 @@ export class Stage {
     this.lastGame = g;
     this.fit(g);
     const c = this.ctx;
-    c.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
+    c.setTransform(this.ratio, 0, 0, this.ratio, 0, -this.cameraY*this.ratio);
     c.globalAlpha = 1;
     this.environment(g);
     const h = this.point("hero"),
@@ -444,13 +453,15 @@ export class Stage {
         0.15 + this.motion.flow * 0.05,
       );
     this.hero(h.x, h.y, s, g, pose);
-    if (g.mode === "journey" && g.enemy) this.enemy(n.x, n.y, s, g, pose);
+    this.pageInk(g);
+    if (g.mode === "journey" && !g.isQuiet && g.enemy) this.enemy(n.x, n.y, s, g, pose);
     else { if (!paintedBook.call(this, n.x, n.y, s, g, pose) && this.assetStatus.book === "fallback") practiceBook.call(this, n.x, n.y, s, g, pose); this.spellingPath(g); }
-    if (g.mode === "journey" && g.enemy?.chill > 0) {
+    if (g.mode === "journey" && !g.isQuiet && g.enemy?.chill > 0) {
       const p = this.anchors().enemy;
       this.oval(p.x, p.y, 52 * s, 63 * s, "#98edff20", "#b4efffb0", 1.5);
     }
     this.spells(g);
+    for(const r of this.remains){c.save();c.globalAlpha=Math.min(.6,(r.life-r.age)*.35);c.translate(r.x,r.y);c.rotate(-.35);c.fillStyle='#d8ceaa';c.beginPath();c.moveTo(-7*s,0);c.lineTo(5*s,-4*s);c.lineTo(9*s,1*s);c.lineTo(-3*s,3*s);c.closePath();c.fill();c.restore();}
     for (const p of this.particles) {
       const a = 1 - p.age / p.life;
       c.save();
@@ -513,6 +524,7 @@ export class Stage {
     }
   }
   spellingPath(g) {
+    if(g.isRecall)return;
     const c = this.ctx, chars = [...(g.word?.en || "")];
     const gap = Math.min(26, this.w * .68 / Math.max(1, chars.length));
     const size = Math.min(22, gap - 3), x0 = this.w / 2 - gap * (chars.length - 1) / 2;
@@ -530,9 +542,26 @@ export class Stage {
       c.lineWidth = active ? 2 : 1;
       c.beginPath(); c.roundRect(x - size / 2, y - size / 2 - lift, size, size, 4); c.fill(); c.stroke();
       c.fillStyle = typed ? "#294844" : "#eef4db";
-      c.fillText(chars[i], x, y - lift + .5);
+      if(typed)c.fillText(chars[i], x, y - lift + .5);
     }
     c.restore();
+  }
+  pageInk(g){
+    if(g.isRecall||g.cursor===g.word.en.length||this.motion.castAge<.7)return;
+    if(this.heroRig&&(this.heroRig.target!=='traveller'||this.heroRig.moving))return;
+    const c=this.ctx,a=this.anchors().book,s=this.scale,flip=Math.max(0,1-this.motion.letterAge/.16);
+    c.save();c.translate(a.x,a.y);c.rotate(-.28);
+    // Small ink marks sit on the existing paper edge, never a second word card.
+    c.fillStyle='#f0e5c3';c.strokeStyle='#a59b77';c.lineWidth=.55;
+    c.beginPath();c.moveTo(-9*s,1*s);c.lineTo(-6*s,(-8-flip*2)*s);c.lineTo(7*s,-5*s);c.lineTo(6*s,4*s);c.closePath();c.fill();c.stroke();
+    c.strokeStyle='#c5b890';c.lineWidth=.6*s;c.beginPath();c.moveTo(-1*s,-6*s);c.lineTo(-2*s,2*s);c.stroke();
+    c.strokeStyle='#203e35';c.lineWidth=Math.max(.9,1.5*s);c.lineCap='round';
+    for(let i=0;i<Math.min(3,this.pageGlyphs.length);i++){c.beginPath();c.moveTo((-5+i*3.5)*s,(-4+i%2)*s);c.lineTo((-5.5+i*3.5)*s,(i%2)*s);c.stroke();}
+    c.restore();
+    for(const mote of this.inkMotes){
+      const u=Math.min(1,mote.age/mote.life),trail=Math.min(1,u+.17),point=t=>({x:a.x+Math.sin((1-t)*Math.PI*.7)*11*s*mote.side,y:a.y+(1-t)*18*s});
+      const p=point(u),q=point(trail);c.save();c.globalAlpha=Math.sin(u*Math.PI)*.9;c.strokeStyle='#f4e6c4';c.lineWidth=3*s;c.lineCap='round';c.beginPath();c.moveTo(p.x,p.y);c.lineTo(q.x,q.y);c.stroke();c.strokeStyle='#23453b';c.lineWidth=1.7*s;c.stroke();c.restore();
+    }
   }
   hero(...args) {
     if (!paintedHero.call(this, ...args) && this.assetStatus.traveller === "fallback") drawHero.call(this, ...args);
@@ -548,6 +577,7 @@ export class Stage {
       s = this.scale,
       anchors = this.anchors();
     for (const p of this.tokens) {
+      if(p.age<0)continue;
       const target = p.kind === "hostile" ? anchors.hero : anchors.enemy;
       p.x1 = target.x;
       p.y1 = target.y;
@@ -562,63 +592,21 @@ export class Stage {
             "#ffdc91"
           : "#8cebdc";
       c.save();
-      if (!this.reduced) {
-        c.strokeStyle = color;
-        c.lineCap = "round";
-        c.lineWidth = (word ? (p.burst ? 12 : 7) : 2) * s;
-        c.globalAlpha = word ? 0.7 : 0.6;
-        c.beginPath();
-        for (let j = 0; j <= 6; j++) {
-          const a = flightPoint(p, Math.max(0, p.age - j * 0.013));
-          j ? c.lineTo(a.x, a.y) : c.moveTo(a.x, a.y);
-        }
-        c.stroke();
-      }
-      c.globalAlpha = 1;
-      this.glow(pos.x, pos.y, (word ? 30 : 12) * s, color, 0.9);
-      if (word) {
-        c.save();
-        c.translate(pos.x, pos.y);
-        c.rotate(u * 5);
-        const r = (p.burst ? 21 : 14) * s;
-        if (p.spell === "frost") {
-          c.strokeStyle = "#e1fbff";
-          c.lineWidth = 2 * s;
-          for (let i = 0; i < 6; i++) {
-            c.rotate(TAU / 6);
-            c.beginPath();
-            c.moveTo(0, 0);
-            c.lineTo(r, 0);
-            c.moveTo(r * 0.5, -r * 0.3);
-            c.lineTo(r * 0.7, 0);
-            c.lineTo(r * 0.5, r * 0.3);
-            c.stroke();
-          }
-        } else if (p.spell === "bloom") {
-          for (let i = 0; i < 4; i++) {
-            c.rotate(TAU / 4);
-            this.oval(r * 0.5, 0, r * 0.6, r * 0.26, "#b7f1b7");
-          }
-        } else {
-          this.star(0, 0, r, "#fff2ce", 0);
-          this.star(0, 0, r * 0.55, "#ffbd76", 0.4);
-        }
-        c.restore();
-        if (p.word) {
-          c.font = `600 ${Math.max(11, Math.min(18, 14 * s))}px ui-monospace,monospace`;
-          c.textAlign = "center"; c.textBaseline = "middle";
-          c.strokeStyle = "#173b41"; c.lineWidth = 3; c.strokeText(p.word, pos.x, pos.y + 21 * s);
-          c.fillStyle = "#fff4ce"; c.fillText(p.word, pos.x, pos.y + 21 * s);
-        }
-        if ((p.combo || 0) >= 3)
-          for (let i = 0; i < 3; i++)
-            this.star(
-              pos.x - Math.cos(u * 8 + i * 2) * 22 * s,
-              pos.y + Math.sin(u * 8 + i * 2) * 17 * s,
-              4 * s,
-              "#fff2c2",
-              u * 5,
-            );
+      if(word){
+        const angle=Math.atan2(p.y1-p.y0,p.x1-p.x0);
+        c.translate(pos.x,pos.y);c.rotate(angle);
+        const r=(p.burst?1.2:1)*s;
+        c.scale(r,r);c.lineWidth=this.viewportH<90?1.8:.9;
+        const edge=(this.viewportH<90?{ember:'#705438',frost:'#416c75',bloom:'#426348'}:{ember:'#af6949',frost:'#76999f',bloom:'#648b6d'})[p.spell]||'#9c8155';
+        c.fillStyle='#f4e6bc';c.strokeStyle=edge;
+        c.beginPath();c.moveTo(19,0);c.lineTo(-12,-10);c.lineTo(-6,0);c.lineTo(-12,10);c.closePath();c.fill();c.stroke();
+        c.fillStyle='#b7aa80';c.beginPath();c.moveTo(19,0);c.lineTo(-6,0);c.lineTo(-12,10);c.lineTo(2,3);c.closePath();c.fill();
+        c.strokeStyle='#8b805e';c.lineWidth=.7;c.beginPath();c.moveTo(-12,-10);c.lineTo(2,-3);c.lineTo(19,0);c.stroke();
+        if(p.spell==='frost'){c.fillStyle='#c7e0d8';for(const side of[-1,1]){c.beginPath();c.moveTo(2,side*2);c.lineTo(-2,side*13);c.lineTo(-7,side*6);c.closePath();c.fill();}}
+        if(p.spell==='bloom'){c.fillStyle='#abc3a0';c.beginPath();c.ellipse(-3,0,7,4,0,0,TAU);c.fill();c.strokeStyle='#637e60';c.beginPath();c.moveTo(-10,0);c.lineTo(4,0);c.stroke();}
+      } else if (hostile&&p.enemyKind==='boss') {
+        c.translate(pos.x,pos.y);c.rotate(Math.atan2(p.y1-p.y0,p.x1-p.x0));
+        for(const side of[-1,0,1]){c.save();c.rotate(side*.18);c.translate(-Math.abs(side)*5*s,side*4*s);c.fillStyle=side?'#c5a26f':'#f3ddb0';c.strokeStyle='#786149';c.lineWidth=.8*s;c.beginPath();c.moveTo(10*s,0);c.quadraticCurveTo(-2*s,-5*s,-13*s,0);c.quadraticCurveTo(-2*s,5*s,10*s,0);c.fill();c.stroke();c.beginPath();c.moveTo(-13*s,0);c.lineTo(10*s,0);c.stroke();c.restore();}
       } else if (hostile) this.star(pos.x, pos.y, 8 * s, "#ffb1a2", u * 4);
       else {
         c.font = "700 " + 15 * s + "px ui-monospace,monospace";
@@ -670,10 +658,10 @@ export class Stage {
       this.tokens,
       this.rays,
       this.rings,
-      this.labels,
+      this.labels,this.inkMotes,this.remains,
     ])
       a.length = 0;
-    this.motion.reset();
+    this.motion.reset();this.pageGlyphs=[];this.heroRig=null;
     this.lastGame = null;
     this.displayEnemyHP = this.displayHeroHP = undefined;
   }

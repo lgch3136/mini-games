@@ -1,4 +1,4 @@
-import { operationNodes, navigationPath, bossVulnerable } from "./encounters.mjs?v=20261001-action-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
+import { operationNodes, navigationPath, bossVulnerable, blocksActor } from "./encounters.mjs?v=20261001-action-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
 import {
   clamp,
   damp,
@@ -7,13 +7,15 @@ import {
   moveCircle,
   hypot,
   random,
-} from "../shared/first-person/math.mjs";
+} from "../shared/first-person/math.mjs?mobile=20261002-quality4-r1";
 import {
   MAPS,
   mapById,
   coverPlan,
   enemyPlan,
-} from "./maps.mjs?v=20260918-play-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
+  gatePlan,
+  supplyPlan,
+} from "./maps.mjs?v=20260918-play-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
 export { MAPS };
 export const VERSION = "20260918-play-r1",
   DT = 1 / 120;
@@ -74,29 +76,42 @@ export function level(map = "harbor") {
   box(0, 5, -163, 20, 5, 1);
   for (let i = 0; i < 3; i++) {
     const z = -i * 52;
-    for (const side of [-1, 1]) {
-      box(side * 15, 3.6, z - 18, 3.2, 3.6, 7.5, "building");
-      box(side * 16, 5, z - 40, 2.4, 5, 5, "building");
+    if(map==='harbor'){
+      box(-15.5,3.6,z-13,3.5,3.6,9,'building');
+      box(-11.5,3.6,z-18.75,.5,3.6,3.25,'portal-pier');
+      box(-11.5,3.6,z-6.25,.5,3.6,2.25,'portal-pier');
+      box(-11.5,6,z-12,.5,1.2,3.5,'portal-lintel');
+      box(13,4.5,z-32,6,4.5,10,'building');
+    }else if(map==='foundry'){
+      box(-16,4.5,z-23,3,4.5,10,'building');
+      box(15,3.1,z-14,3,3.1,7,'building');
+    }else if(map==='hangar'){
+      for(const side of [-1,1])for(const dz of [-8,-26,-44])box(side*16,7,z+dz,.7,7,.7,'support');
+    }else{
+      for(const side of [-1,1]){
+        box(side*15,3.6,z-18,3.2,3.6,7.5,'building');
+        box(side*16,5,z-40,2.4,5,5,'building');
+      }
     }
-    if (map === "harbor") {
-      box(-5, 1, z - 17, 3.2, 1, 1.8, "cover");
-      box(6, 1.55, z - 28, 2.5, 1.55, 2, "crate");
-      box(-8, 1.15, z - 37, 2.3, 1.15, 1.7, "crate");
-    } else
-      for (const [x, localZ, hx, hz, h, kind] of coverPlan(map, i))
-        box(x, h / 2, z + localZ, hx, h / 2, hz, kind);
+    for(const[x,localZ,hx,hz,h,kind]of coverPlan(map,i))box(x,h/2,z+localZ,hx,h/2,hz,kind);
+    if(map==='canal'){
+      const mirror=i%2?-1:1;
+      box(-5*mirror,4.1,z-15,.9,.9,4,'feed-overhead');
+      box(-2.5*mirror,4.1,z-19,2.5,.9,.9,'feed-overhead');
+    }
     props.push({
       kind: "relay",
-      x: (i === 1 ? -1 : 1) * (map === "hangar" ? 5 : 8),
+      x: map === "harbor" ? (i%2?8:-8) : (i === 1 ? -1 : 1) * (map === "hangar" ? 5 : 8),
       y: 1,
       z: z - 44,
     });
     if (i < 2) {
-      box(-13, 3, z - 49, 6.5, 3, 0.75, "gatewall");
-      box(13, 3, z - 49, 6.5, 3, 0.75, "gatewall");
+      const gate=gatePlan(map,i),left=gate.x-gate.half,right=gate.x+gate.half;
+      box((-20+left)/2,3,z-49,(left+20)/2,3,.75,'gatewall');
+      box((right+20)/2,3,z-49,(20-right)/2,3,.75,'gatewall');
     }
   }
-  return { boxes, props };
+  return { boxes,props,gatePlans:[0,1,2].map(zone=>gatePlan(map,zone)),supplyPlans:[0,1,2].map(zone=>supplyPlan(map,zone)) };
 }
 export class Strike {
   constructor({ easy = false, checkpoint = 0, map = "harbor" } = {}) {
@@ -110,6 +125,7 @@ export class Strike {
     this.random = random(418);
     Object.assign(this, level(this.map.id));
     this.events = [];
+    this.collisionScratch=[];
     this.time = 0;
     this.finished = false;
     this.dead = false;
@@ -126,9 +142,9 @@ export class Strike {
     this.lastDamage = 0;
     this.shieldRecovering = false;
     this.p = {
-      x: 0,
+      x: checkpoint ? this.gatePlans[checkpoint-1].x : 0,
       y: 0,
-      z: -checkpoint * 52 + 3,
+      z: -checkpoint * 52 + (checkpoint ? 1 : 3),
       yaw: 0,
       pitch: 0,
       vx: 0,
@@ -162,7 +178,7 @@ export class Strike {
     for (let zone = 0; zone < 3; zone++) {
       const z = -zone * 52;
       const spots = enemyPlan(this.map.id, zone);
-      for (const [x, ez, kind] of spots) {
+      for (const [x, ez, kind, height] of spots) {
         const hp =
           kind === "boss"
             ? 850
@@ -177,7 +193,7 @@ export class Strike {
           zone,
           x,
           z: ez,
-          y: kind === "drone" ? 2.8 : kind === "boss" ? 1.9 : 0.65,
+          y: height ?? (kind === "drone" ? 2.8 : kind === "boss" ? 1.9 : 0.65),
           baseX: x,
           baseZ: ez,
           hp,
@@ -190,6 +206,9 @@ export class Strike {
           dead: zone < checkpoint,
           phase: id * 1.7,
           shot: 0,
+          role: kind==='sentry' && this.map.id==='harbor' ? 'suppressor' : kind==='sentry' && this.map.id==='hangar' ? 'maintenance-core' : null,
+          corePhase: this.map.id==='hangar' && kind==='sentry',
+          coreSide: zone%2 ? -1 : 1,
         });
       }
     }
@@ -206,15 +225,21 @@ export class Strike {
     for (let i = 0; i < 2; i++)
       if (!this.relays[i])
         gates.push({
-          x: 0,
+          x: this.gatePlans[i].x,
           y: 2.4,
           z: -i * 52 - 49,
-          hx: 6.5,
+          hx: this.gatePlans[i].half,
           hy: 2.4,
           hz: 0.45,
           kind: "gate",
         });
+    for(const node of this.objectives||[])if(node.kind==='drain'&&!node.done)gates.push({x:0,y:1.3,z:-node.zone*52-26.5,hx:2.05,hy:1.3,hz:3.3,kind:'sluice',operation:node.id});
+    for(const node of this.objectives||[])if(node.kind!=='core')gates.push({x:node.x,y:.72,z:node.z,hx:.62,hy:.72,hz:.425,kind:'cabinet',operation:node.id,shootable:!!node.shootable&&!node.done});
+    for(const supply of this.supplyPlans)gates.push({...supply,hx:1,hy:.3,hz:.6,kind:'supply'});
     return this.boxes.concat(gates);
+  }
+  bodyBoxes(boxes,actor){
+    const result=this.collisionScratch;result.length=0;for(const b of boxes)if(blocksActor(b,actor))result.push(b);return result;
   }
   eye() {
     return { x: this.p.x, y: this.p.y + 1.67, z: this.p.z };
@@ -243,10 +268,10 @@ export class Strike {
         );
       let near = w.range,
         hit = null;
-      for (const b of this.blockers()) near = Math.min(near, rayBox(o, d, b));
+      for (const b of this.blockers()) if(!b.shootable)near = Math.min(near, rayBox(o, d, b));
       for (const e of this.enemies) {
-        if (e.dead) continue;
-        const r =
+        if (e.dead || e.disabled) continue;
+        const bodyRadius =
           e.kind === "boss"
             ? 1.65
             : e.kind === "drone"
@@ -254,12 +279,16 @@ export class Strike {
               : e.kind === "sentry"
                 ? 0.72
                 : 0.7;
+        const r=this.protected(e)||(e.corePhase&&!bossVulnerable(e,p))?Math.max(bodyRadius,e.kind==='boss'?1.9:1.05):bodyRadius;
         const dist = raySphere(o, d, e, r);
         if (dist < near) {
           near = dist;
           hit = e;
         }
       }
+      let cabinet=null;
+      for(const node of this.objectives)if(node.shootable&&!node.done){const distance=rayBox(o,d,{x:node.x,y:.72,z:node.z,hx:.62,hy:.72,hz:.425});if(distance<near){near=distance;cabinet=node;hit=null;}}
+      if(cabinet){cabinet.hp=Math.max(0,cabinet.hp-w.damage);any=true;if(cabinet.hp<=0)this.activateOperation(cabinet,'shot');}
       const point = {
         x: o.x + d.x * near,
         y: o.y + d.y * near,
@@ -267,7 +296,7 @@ export class Strike {
       };
       impacts.push(point);
       if (hit) {
-        if (hit.kind === "boss" && !bossVulnerable(hit, p)) {
+        if (this.protected(hit) || (hit.corePhase && !bossVulnerable(hit, p))) {
           this.events.push({ type: "armor", x: hit.x, y: hit.y, z: hit.z });
           continue;
         }
@@ -299,9 +328,30 @@ export class Strike {
       hit: any,
     });
   }
+  protected(enemy){
+    return this.map.id==='foundry'&&enemy.kind==='sentry'&&this.objectives.some(n=>n.zone===enemy.zone&&n.side===Math.sign(enemy.baseX||enemy.x)&&!n.done);
+  }
+  activateOperation(node,cause){
+    if(node.done)return;node.done=true;node.charge=1.2;
+    let effect='';
+    if(node.kind==='power'){
+      for(const e of this.enemies)if(e.zone===node.zone&&e.role==='suppressor'){e.disabled=true;e.wind=0;e.lock=null;e.state='powered-down';}
+      effect='压制炮停机，交叉火线撤除';
+    }else if(node.kind==='isolator'){
+      for(const e of this.enemies)if(e.zone===node.zone&&!e.dead&&Math.sign(e.baseX||e.x)===node.side){e.stun=2.2;e.wind=0;e.lock=null;}
+      effect=(node.side<0?'西':'东')+'侧护盾关闭';
+      this.events.push({type:'isolated',label:node.label});
+    }else if(node.kind==='drain'){
+      for(const e of this.enemies)if(e.zone===node.zone)e.flankPath=null;
+      effect='排水完成，中央横越闸板降下';
+    }else effect='维护核心停机';
+    this.events.push({type:'operation',id:node.id,kind:node.kind,label:node.label,effect,cause,x:node.x,y:node.y,z:node.z});
+  }
   kill(e) {
     if (e.dead) return;
     e.dead = true;
+    if(e.role==='suppressor'){const node=this.objectives.find(n=>n.kind==='power'&&n.zone===e.zone);if(node)this.activateOperation(node,'suppressor-destroyed');}
+    if(e.role==='maintenance-core'){const node=this.objectives.find(n=>n.kind==='core'&&n.zone===e.zone);if(node)this.activateOperation(node,'core-hit');}
     this.kills++;
     this.comboClock = 4;
     this.combo++;
@@ -414,7 +464,7 @@ export class Strike {
       tz = (-Math.sin(p.yaw) * mx - Math.cos(p.yaw) * my) * speed;
     p.vx = damp(p.vx, tx, 26, dt);
     p.vz = damp(p.vz, tz, 26, dt);
-    moveCircle(p, p.vx * dt, p.vz * dt, blocked, 0.34);
+    moveCircle(p, p.vx * dt, p.vz * dt, this.bodyBoxes(blocked,p), 0.34);
     if (input.jumpTap && p.grounded) {
       p.vy = 6.8;
       p.grounded = false;
@@ -440,7 +490,7 @@ export class Strike {
     if (hypot(p.x - this.camp.x, p.z - this.camp.z) > 2.2) this.camp = { x: p.x, z: p.z, time: 0 };
     else this.camp.time += dt;
     for (const e of this.enemies) {
-      if (e.dead) continue;
+      if (e.dead || e.disabled) continue;
       e.previous = { x: e.x, y: e.y, z: e.z };
       e.shot = Math.max(0, e.shot - dt);
       e.stun = Math.max(0, e.stun - dt);
@@ -479,7 +529,7 @@ export class Strike {
           if (e.flankTell <= 0) {
             const target = e.flankPath[0], length = hypot(target.x - e.x, target.z - e.z);
             if (length < .3) e.flankPath.shift();
-            else moveCircle(e, (target.x - e.x) / length * 4.4 * dt, (target.z - e.z) / length * 4.4 * dt, blocked, .6);
+            else moveCircle(e, (target.x - e.x) / length * 4.4 * dt, (target.z - e.z) / length * 4.4 * dt, this.bodyBoxes(blocked,e), .6);
             if (!e.flankPath.length) { e.timer = .25; this.events.push({ type: "flankReady", x: e.x, z: e.z }); }
           }
           continue; // Relocation never shoots. A fresh .65s shot tell follows it.
@@ -499,7 +549,7 @@ export class Strike {
             e,
             Math.sin(a) * 3.6 * dt,
             Math.cos(a) * 3.6 * dt,
-            blocked,
+            this.bodyBoxes(blocked,e),
             0.55,
           );
         } else {
@@ -519,7 +569,7 @@ export class Strike {
             (Math.cos(a) * forward - Math.sin(a) * Math.sin(e.phase * 0.7)) *
               2.5 *
               dt,
-            blocked,
+            this.bodyBoxes(blocked,e),
             0.6,
           );
         }
@@ -594,28 +644,25 @@ export class Strike {
         this.events.push({ type: "pickup", kind: drop.kind });
       }
     const nodes = this.objectives.filter(n => n.zone === this.zone);
-    const activeNode = nodes.find(n => !n.done && hypot(n.x - p.x, n.z - p.z) < 2.3);
+    const activeNode = nodes.find(n => !n.done && n.kind!=="core" && hypot(n.x - p.x, n.z - p.z) < 2.3);
     for (const node of nodes) {
       if (node === activeNode && input.use) {
         node.charge = Math.min(1.2, node.charge + dt);
         if (node.charge >= 1.2) {
-          node.done = true;
-          for (const enemy of this.enemies) if (!enemy.dead && enemy.zone === this.zone) { enemy.stun = 2.2; enemy.wind = 0; }
-          this.events.push({ type: "isolated", label: node.label });
+          this.activateOperation(node,'use');
         }
       } else if (!node.done) node.charge = Math.max(0, node.charge - dt * 2);
     }
     const pending = nodes.filter(n => !n.done);
     const relay = this.props[this.zone],
       near = hypot(relay.x - p.x, relay.z - p.z) < 3.3,
-      enemies = this.enemies.filter((e) => e.zone === this.zone && !e.dead);
+      enemies = this.enemies.filter((e) => e.zone === this.zone && !e.dead && !e.disabled);
     this.remaining = enemies.length;
-    this.hint = pending.length ? `双廊断电 ${nodes.length - pending.length}/2 · ${activeNode ? "按住 E 切断，压制敌人 2 秒" : "任选一侧绕过炉体，寻找琥珀断路器"}` : enemies.length
-      ? `清除 ${enemies.length} 个防御单位`
-      : "靠近金色中继台，按住 E 接入";
+    const descriptions={harbor:'掩体绕近接入电源，或射击电源箱：永久关闭压制炮',foundry:`双廊断电 ${nodes.length-pending.length}/2：先切哪侧，就先撤掉那侧哨兵的护盾`,canal:'绕主管接入泵站：排水后打开中央横越低路',hangar:'绕至核心标示侧，等蓄力结束再射击开放处'};
+    this.hint = pending.length ? (activeNode && activeNode.kind!=='core' ? '按住 E 接入 · '+activeNode.label : descriptions[this.map.id]) : enemies.length ? `清除 ${enemies.length} 个防御单位` : '靠近金色中继台，按住 E 接入';
     if (near && !this.relays[this.zone]) {
       if (enemies.length || pending.length) {
-        this.hint = pending.length ? "先切断东西两廊断路器" : "中继受干扰 · 先清除本区防御";
+        this.hint = pending.length ? descriptions[this.map.id] : "中继受干扰 · 先清除本区防御";
         this.charge = 0;
       } else {
         this.hint = "按住 E / 接入键，恢复中继";
@@ -642,9 +689,9 @@ export class Strike {
     // Refillable emergency cell at every zone entry: ammunition cannot end an
     // otherwise live operation. It requires a deliberate retreat and interaction.
     const empty = p.ammo.every(n => n <= 0) && p.reserve.every(n => n <= 0);
-    const nearSupply = hypot(p.x, p.z - (-this.zone * 52 - 4)) < 3;
+    const supply=this.supplyPlans[this.zone],nearSupply=hypot(p.x-supply.x,p.z-supply.z)<3;
     if (empty) {
-      this.hint = nearSupply ? "按住 E / 接入键 · 取应急弹匣" : "弹药耗尽 · 返回本区入口白色补给柱";
+      this.hint = nearSupply ? "按住 E / 接入键 · 取应急弹匣" : "弹药耗尽 · 返回本区入口白色补给箱";
       this.supplyCharge = nearSupply && input.use ? this.supplyCharge + dt : 0;
       if (this.supplyCharge >= 1.2) { p.reserve[0] = 28; this.supplyCharge = 0; this.reload(); this.events.push({ type: "pickup", kind: "ammo" }); }
       this.charge = this.supplyCharge;
@@ -672,10 +719,11 @@ export class Strike {
       remaining: this.remaining,
       charge: this.charge,
       p: { ...this.p, ammo: [...this.p.ammo], reserve: [...this.p.reserve] },
-      enemies: this.enemies.map((e) => ({ ...e })),
+      enemies: this.enemies.map((e) => ({ ...e, protected: this.protected(e) })),
       bullets: this.bullets.length,
       boxes: this.blockers().map((b) => ({ ...b })),
       relaysPosition: this.props.map((p) => ({ ...p })),
+      supplies: this.supplyPlans.map(p=>({...p})),
     };
   }
 }

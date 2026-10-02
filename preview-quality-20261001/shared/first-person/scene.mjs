@@ -68,13 +68,13 @@ export class SceneKit {
     await Promise.all(
       models.map(async (n) => {
         const gltf = await loader.loadAsync(
-          new URL("./assets/" + n + ".glb", import.meta.url).href,
+          new URL("./assets/" + n + ".glb?mobile=20261002-quality4-r1", import.meta.url).href,
         );
         this.assets[n] = gltf.scene;
       }),
     );
     const sky = await tex.loadAsync(
-      new URL("./assets/coast-sky.webp", import.meta.url).href,
+      new URL("./assets/coast-sky.webp?mobile=20261002-quality4-r1", import.meta.url).href,
     );
     sky.colorSpace = T.SRGBColorSpace;
     sky.mapping = T.EquirectangularReflectionMapping;
@@ -83,7 +83,7 @@ export class SceneKit {
     this.scene.environmentIntensity = 0.3;
     this.textures.push(sky);
     const concrete = await tex.loadAsync(
-      new URL("./assets/concrete.webp", import.meta.url).href,
+      new URL("./assets/concrete.webp?mobile=20261002-quality4-r1", import.meta.url).href,
     );
     concrete.colorSpace = T.SRGBColorSpace;
     concrete.wrapS = concrete.wrapT = T.RepeatWrapping;

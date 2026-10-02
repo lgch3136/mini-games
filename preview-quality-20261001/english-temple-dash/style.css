@@ -1429,3 +1429,10 @@ select {
 @media (prefers-reduced-motion:no-preference) {
   #touch-controls button { transition:background .08s, transform .08s; }
 }
+
+/* The preparatory count occupies the reserved combo slot. Incoming score cards
+   remain visible through the full count-in, including the fast short lesson. */
+.rhythm-mode #count-in{left:50%;top:max(24px,env(safe-area-inset-top));transform:translateX(-50%);width:96px;padding:5px 6px 7px;text-align:center;font:750 30px/1.05 system-ui;background:#234b52e8;border:1px solid #e4e6c344;border-radius:10px;}
+.rhythm-mode #count-in::before{content:"预备拍";display:block;font:600 9px/1.5 system-ui;letter-spacing:2px;color:#eadfbd;}
+@media(max-width:720px) and (orientation:portrait){.rhythm-mode #count-in{left:43%;top:max(20px,env(safe-area-inset-top));width:74px;}}
+@media(max-height:540px) and (orientation:landscape){.rhythm-mode #count-in{top:max(14px,env(safe-area-inset-top));}}

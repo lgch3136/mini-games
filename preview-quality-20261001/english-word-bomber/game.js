@@ -36,30 +36,20 @@ const DIFFS = {
   hard:   { enemySpeed: 92, enemyCount: 4, fuse: 1.5, label: '高级' },
 };
 
-const GameplayAtlas = new Image();
-GameplayAtlas.src = 'assets/gameplay-atlas-v3.webp';
-
-const Courtyard = new Image();
-Courtyard.src='assets/courtyard-quality2.webp';
-const EnemyAtlas = new Image();
-EnemyAtlas.src='assets/enemies-quality2.webp';
-const ENEMY_RECTS=[[78, 82, 253, 272], [440, 88, 286, 254], [814, 57, 272, 299], [71, 425, 279, 272], [442, 439, 282, 256], [807, 413, 277, 284]];
+const CourtyardCast=new Image();
+CourtyardCast.src='assets/quality4/courtyard-cast.webp?mobile=20261002-quality4-r1';
+const COURTYARD_SPRITES={"gardener-down-0":[0,0,112,168,56,151.42861462788275],"gardener-down-1":[192,0,112,181,56,151.42861462788275],"gardener-down-2":[384,0,112,168,56,151.42861462788275],"gardener-down-3":[576,0,112,181,56,151.42861462788275],"gardener-down-lay":[768,0,112,152,56,135.42861462788275],"gardener-right-0":[960,0,109,173,63,154.42861462788275],"gardener-right-1":[1152,0,121,173,63,154.42861462788275],"gardener-right-2":[1344,0,109,173,63,154.42861462788275],"gardener-right-3":[0,192,122,173,63,154.42861462788275],"gardener-right-lay":[192,192,119,158,63,139.42861462788275],"gardener-up-0":[384,192,112,161,56,154.42861462788275],"gardener-up-1":[576,192,112,173,56,154.42861462788275],"gardener-up-2":[768,192,112,161,56,154.42861462788275],"gardener-up-3":[960,192,113,173,56,154.42861462788275],"gardener-up-lay":[1152,192,112,146,56,139.42861462788275],"gardener-left-0":[1344,192,109,173,46,154.42861462788275],"gardener-left-1":[0,384,121,173,58,154.42861462788275],"gardener-left-2":[192,384,109,173,46,154.42861462788275],"gardener-left-3":[384,384,121,173,58,154.42861462788275],"gardener-left-lay":[576,384,120,158,57,139.42861462788275],"blob-0":[768,384,97,121,49,109.42861462788275],"blob-1":[960,384,97,125,49,113.42861462788275],"runner-0":[1152,384,84,112,42,106.42861462788275],"runner-1":[1344,384,84,121,42,106.42861462788275],"ghost-0":[0,576,72,107,36,107.42861462788275],"ghost-1":[192,576,72,108,36,112.42861462788275],"wall0":[384,576,99,88,49,63.42861462788275],"wall1":[576,576,98,88,49,63.42861462788275],"wall2":[768,576,98,87,49,63.42861462788275],"wall3":[960,576,99,88,49,63.42861462788275],"crate":[1152,576,90,108,45,86.42861462788275],"bomb":[1344,576,70,83,34,75.42861462788275]};
+function drawCourtyardSprite(c,name,x,y,worldScale=48){
+  if(!CourtyardCast.complete||!CourtyardCast.naturalWidth)return false;
+  const r=COURTYARD_SPRITES[name];if(!r)return false;
+  const k=worldScale/(256/2.25);c.drawImage(CourtyardCast,r[0],r[1],r[2],r[3],x-r[4]*k,y-r[5]*k,r[2]*k,r[3]*k);return true;
+}
 /* ---------------- 工具 ---------------- */
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
+// Cosmetic particle choices must not consume the simulation's random stream.
+function effectRand(a,b){Game.fxSeed=(Math.imul(Game.fxSeed||73129,1664525)+1013904223)>>>0;return a+Game.fxSeed/4294967296*(b-a);}
 const shuffle = (arr) => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
-
-function drawAtlasCell(row, column, x, y, width, height, flipX = false) {
-  if (!GameplayAtlas.complete || !GameplayAtlas.naturalWidth) return false;
-  const sw = GameplayAtlas.naturalWidth / 4;
-  const sh = GameplayAtlas.naturalHeight / 4;
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(flipX ? -1 : 1, 1);
-  ctx.drawImage(GameplayAtlas, column * sw, row * sh, sw, sh, -width / 2, -height / 2, width, height);
-  ctx.restore();
-  return true;
-}
 
 function wordBank() {
   const diff = Game.difficulty === 'hard' ? 'hard' : Game.difficulty === 'medium' ? 'medium' : 'easy';
@@ -81,10 +71,17 @@ const Game = {
   player: null,
   exitTimer: 0,
   build: { speed: 168, bombPower: 2, bombMax: 3 }, roundStarted: 0, roundHits: 0, medals: 0,
-  roundNames: ['初晴庭院', '回声回廊', '追猎工坊', '星门守卫'],
+  roundNames: ['花园初课', '双门长廊', '追影庭院', '星门远征'],
+  lesson: null, debris: [], roundChains:0, totalChains:0, lessonCompleted:false, fxSeed:73129,
   feedback: '', feedbackUntil: 0,
   logicFrame: 0, rafCount: 0, renderCount: 0,
 };
+
+try { Game.lessonCompleted=localStorage.getItem('word-bomber-courtyard-complete')==='1'; } catch(e) {}
+function updateJourneyMenu(){
+  $id('start-btn').textContent=Game.lessonCompleted?'继续远征':'开始游戏';
+  $id('replay-courtyard').classList.toggle('hidden',!Game.lessonCompleted);
+}
 
 function newPlayer() {
   return {
@@ -93,7 +90,7 @@ function newPlayer() {
     speed: Game.build.speed,
     bombPower: Game.build.bombPower, bombMax: Game.build.bombMax,
     kicking: false,
-    moving: false, facing: 'down', pendingDir: null, turnLock: 0,
+    moving: false, facing: 'down', pendingDir: null, turnLock: 0, walkPhase: 0, layTimer: 0,
     inv: 2,                 // 出生无敌
     dieTimer: 0,
   };
@@ -164,15 +161,16 @@ function buildStage() {
       if (Math.random() < chance) Game.grid[r][c] = 2;
     }
   }
-  // Authored opening sequence precedes random expeditions: an escape corner,
-  // a two-door chain corridor, then a ghost route through destructible cover.
-  if(Game.stage===1 && Game.round<=3) {
-    for(let r=1;r<ROWS-1;r++)for(let c=1;c<COLS-1;c++)if(Game.grid[r][c]!==1) {
-      const door = Game.round===1 ? (c>=4&&r%2===1&&c%3===1)||(r>=4&&c%2===1&&r%3===1)
-        : Game.round===2 ? c===5||c===9||(r===5&&c>3&&c<11)
-        : (r===3||r===7)&&(c%4!==1)||(c===7&&r>3&&r<7);
-      Game.grid[r][c]=door?2:0;
-    }
+  // Three rooms are deliberately different spaces, not a random density tint.
+  if (Game.stage === 1 && Game.round <= 3) {
+    for (let r=1;r<ROWS-1;r++) for(let c=1;c<COLS-1;c++)
+      if(Game.grid[r][c]!==1) Game.grid[r][c]=0;
+    const layouts = [
+      [[4,1],[7,1],[9,3],[5,5],[9,5],[3,7],[7,7],[11,7],[11,3],[5,9],[11,9]],
+      [[5,1],[5,3],[5,5],[5,7],[5,9],[9,1],[9,3],[9,5],[9,7],[9,9],[11,7]],
+      [[3,3],[4,3],[5,3],[7,3],[8,3],[9,3],[11,3],[3,7],[4,7],[5,7],[7,7],[8,7],[9,7],[11,7],[7,5]],
+    ];
+    for(const [c,r] of layouts[Game.round-1]) Game.grid[r][c]=2;
   }
   // 连通性保障: 出生点周围3x3必为空地
   // An L-shaped escape route is longer than the first blast, with a safe corner.
@@ -185,6 +183,7 @@ function placeLettersAndPortal() {
   let item;
   do { item = bank[Math.floor(Math.random() * bank.length)]; }
   while (item.en === Game.lastWord && bank.length > 1);
+  if(Game.stage===1 && Game.round<=3) item=[{en:'cat',zh:'猫'},{en:'map',zh:'地图'},{en:'sun',zh:'太阳'}][Game.round-1];
   Game.lastWord = item.en;
   Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   Game.letters = [];
@@ -201,7 +200,13 @@ function placeLettersAndPortal() {
     for (let c = COLS - 2; c > 2 && bricks.length < n + 1; c--)
       if (Game.grid[r][c] === 0) { Game.grid[r][c] = 2; bricks.push({ c, r }); }
   shuffle(bricks);
-  if(Game.stage===1 && Game.round===1) bricks.sort((a,b)=>(b.c+b.r)-(a.c+a.r));
+  if(Game.stage===1 && Game.round<=3) {
+    const planned=[[[4,1],[7,1],[9,3]],[[5,1],[9,1],[9,7]],[[3,3],[7,3],[11,7]]][Game.round-1];
+    for(let i=planned.length-1;i>=0;i--) {
+      const [c,r]=planned[i],at=bricks.findIndex(b=>b.c===c&&b.r===r);
+      if(at>=0)bricks.push(...bricks.splice(at,1));
+    }
+  }
   for (let i = 0; i < n && bricks.length; i++) {
     const b = bricks.pop();
     Game.grid[b.r][b.c] = 2;   // 确保是砖
@@ -217,12 +222,14 @@ function placeLettersAndPortal() {
         if (Game.grid[r][c] === 0 && !(c === 1 && r === 1))
           Game.portal = { col: c, row: r, open: false, hidden: false };
   }
+  // The three teaching rooms show their destination from the outset.
+  if(Game.stage===1 && Game.round<=3) Game.portal={col:13,row:9,open:false,hidden:false};
 }
 
 function spawnEnemies() {
   Game.enemies = [];
   const conf = DIFFS[Game.difficulty];
-  const count = Math.min(10, conf.enemyCount + Math.floor((Game.stage - 1) * 1.2) + Math.floor(Game.round / 3));
+  const count = Game.stage===1 && Game.round<=3 ? (Game.round===3?2:1) : Math.min(10, conf.enemyCount + Math.floor((Game.stage - 1) * 1.2) + Math.floor(Game.round / 3));
   const kinds = ['blob', 'ghost', 'runner'];
   for (let i = 0; i < count; i++) {
     // 出生在远离玩家的空地
@@ -233,13 +240,15 @@ function spawnEnemies() {
       tries++;
     } while (tries < 80 && (Game.grid[r][c] !== 0 || (c < 5 && r < 5)));
     if (Game.grid[r][c] !== 0) continue;
+    if(Game.stage===1 && Game.round<=3) [c,r]=Game.round===1?[11,5]:Game.round===2?[11,3]:i===0?[11,1]:[11,5];
     const unlockedKinds = Math.min(kinds.length, 1 + (Game.stage > 1 ? 1 : 0) + (Game.round > 2 ? 1 : 0));
-    const kind = Game.stage===1 && Game.round<=3 ? ['blob','runner','ghost'][Game.round-1] : kinds[Math.floor(Math.random() * unlockedKinds)];
+    const kind = Game.stage===1 && Game.round<=3 ? (Game.round===3 ? (i===0?'ghost':'runner') : 'blob') : kinds[Math.floor(Math.random() * unlockedKinds)];
     Game.enemies.push({
       col: c, row: r, kind,
+      lessonPatrol:Game.stage===1&&Game.round===1,
       px: OX + c * CELL + CELL / 2,
       py: OY + r * CELL + CELL / 2,
-      speed: conf.enemySpeed * (kind === 'runner' ? 1.35 : kind === 'ghost' ? .8 : 1) * (1 + Math.min(.5, (Game.stage - 1) * .06) + Game.round * .012),
+      speed: (Game.stage===1&&Game.round===1?42:conf.enemySpeed) * (kind === 'runner' ? 1.35 : kind === 'ghost' ? .8 : 1) * (1 + Math.min(.5, (Game.stage - 1) * .06) + Game.round * .012),
       dir: null, moveT: 0, phase: Math.random() * TAU,
       dead: false,
     });
@@ -255,17 +264,18 @@ function startRound() {
   Game.player.px = OX + 1 * CELL + CELL / 2;
   Game.player.py = OY + 1 * CELL + CELL / 2;
   Game.bombs = []; Game.flames = []; Game.pickups = []; Game.particles = []; Game.floaters = [];
-  Game.exitTimer = 0; Game.roundStarted = Game.time; Game.roundHits = 0;
+  Game.exitTimer = 0; Game.roundStarted = Game.time; Game.roundHits = 0; Game.debris=[]; Game.roundChains=0;
+  Game.lesson=Game.stage===1 && Game.round===1 ? {phase:'walk',cPicked:false,bombPlaced:false,pressureAt:Infinity} : null;
   updateHud();
-  showFeedback(['先放一枚炸弹，再转过拐角','利用相邻炸弹连锁，打开长廊','幽灵可穿过木箱，保持距离','清除守卫，带着词核进星门'][(Game.round-1)%4]);
+  showFeedback(['先向右走两格，站到脚印处','双门长廊：逐箱拆开，或两枚炸弹连锁','尖耳跑者追人；披叶幽灵穿箱不穿石墙','清除守卫，带着词核进星门'][(Game.round-1)%4]);
 }
 
-function startGame() {
+function startGame(forceLesson=false) {
   resetInput();
   Game.assisted=$id('letter-assist').checked !== false;
-  Game.score = 0; Game.lives = 3; Game.stage = 1; Game.round = 1;
+  Game.score = 0; Game.lives = 3; Game.stage = 1; Game.round = Game.lessonCompleted&&forceLesson!==true?4:1;
   Game.time = 0; Game.shake = 0; Game.flash = 0;
-  Game.build = { speed: 168, bombPower: 2, bombMax: 3 }; Game.medals = 0;
+  Game.build = { speed: 168, bombPower: 2, bombMax: 3 }; Game.medals = 0; Game.totalChains=0; Game.fxSeed=73129;
   $id('supply').classList.add('hidden');
   Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
   Game.state = 'playing';
@@ -284,6 +294,8 @@ function startGame() {
 
 function roundClear() {
   if (Game.state === 'supply') return;
+  const lessonsComplete=Game.stage===1 && Game.round===3;
+  if(lessonsComplete){Game.lessonCompleted=true;try{localStorage.setItem('word-bomber-courtyard-complete','1');}catch(e){}updateJourneyMenu();}
   const seconds = Math.round(Game.time - Game.roundStarted);
   const stars = 1 + (Game.roundHits === 0 ? 1 : 0) + (seconds <= 90 ? 1 : 0);
   Game.medals += stars;
@@ -295,8 +307,10 @@ function roundClear() {
   Game.player.inv = 1.5;
   startRound();
   resetInput(); Game.state = 'supply';
-  $id('supply-medal').src='../shared/mobile-art/medal-'+['bronze','silver','gold'][stars-1]+'.webp';
-  $id('supply-summary').textContent = recap;
+  $id('supply-medal').src='../shared/mobile-art/medal-'+['bronze','silver','gold'][stars-1]+'.webp?mobile=20261002-quality4-r1';
+  $id('supply-title').textContent=lessonsComplete?'庭院试炼完成':'下一程怎么走？';
+  $id('supply-kicker').textContent=lessonsComplete?'三间庭院 · 继续远征':'远征补给 · 每轮选一项';
+  $id('supply-summary').textContent = lessonsComplete ? '完成三间庭院。'+(Game.totalChains?'触发连锁 '+Game.totalChains+' 次。':'')+'选择补给，继续自由远征。 '+recap : recap;
   $id('supply').classList.remove('hidden');
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .3, 1.2);
 }
@@ -315,7 +329,7 @@ function loseLife() {
 function gameOver() {
   const medalPoints=Game.medals;
   $id('run-medal').hidden = medalPoints <= 0;
-  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp?mobile=20261002-quality4-r1';
   Game.state = 'over';
   if (window.ChipMusic) ChipMusic.stop();
   $id('word-bar').classList.add('hidden');
@@ -368,7 +382,8 @@ window.addEventListener('keydown', (ev) => {
   if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
   if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
   if (ev.code === 'Enter') {
-    if (Game.state === 'menu' || Game.state === 'over') startGame();
+    if (Game.state === 'menu') startGame();
+    else if(Game.state==='over')startGame(Game.lessonCompleted&&Game.round<=3);
     else if (Game.state === 'paused') togglePause();
   }
 });
@@ -398,6 +413,7 @@ function backToMenu() {
   $id('over').classList.add('hidden');
   $id('word-bar').classList.add('hidden');
   $id('menu').classList.remove('hidden');
+  updateJourneyMenu();
 }
 
 /* ---------------- 炸弹与火焰 ---------------- */
@@ -408,7 +424,15 @@ function dropBomb() {
   if (c < 1 || r < 1 || c >= COLS - 1 || r >= ROWS - 1) return;
   if (Game.bombs.some((b) => b.col === c && b.row === r)) return;
   if (Game.bombs.length >= p.bombMax) return;
-  Game.bombs.push({ col: c, row: r, fuse: DIFFS[Game.difficulty].fuse, power: p.bombPower, ownerPass: 1.2 });
+  const fuse=Game.lesson && !Game.lesson.cPicked ? Math.max(2.4,DIFFS[Game.difficulty].fuse) : Game.stage===1&&Game.round===2?Math.max(2.1,DIFFS[Game.difficulty].fuse):DIFFS[Game.difficulty].fuse;
+  Game.bombs.push({ col: c, row: r, fuse, fullFuse:fuse, power: p.bombPower, ownerPass: 1.2 });
+  p.layTimer=.3;
+  if(Game.lesson && !Game.lesson.cPicked) {
+    if(Game.grid[1][4]!==2)showFeedback('字母已经露出，等火焰退去再拾取');
+    else if(c===3&&r===1) {Game.lesson.phase='retreat';Game.lesson.bombPlaced=true;Game.lesson.directedRetreat=true;showFeedback('放好了！向左两格，再向下躲进拐角');}
+    else if(blastPreview(Game.bombs[Game.bombs.length-1]).some(cell=>cell.col===4&&cell.row===1)){Game.lesson.phase='retreat';Game.lesson.bombPlaced=true;Game.lesson.directedRetreat=false;showFeedback('能炸开首个木箱；离开橙色预警，躲进拐角');}
+    else showFeedback('这里炸不到首个木箱；退到拐角，等安全后去脚印处');
+  }
   if (window.ArcadeAudio) ArcadeAudio.play('click', .18, .8);
 }
 
@@ -427,7 +451,10 @@ function explodeBomb(bomb) {
       if (g === 2) { breakBrick(c, r); break; }   // 砖挡火但被摧毁
       // 连锁引爆
       const other = Game.bombs.find((b) => b.col === c && b.row === r && b !== bomb);
-      if (other) other.fuse = Math.min(other.fuse, .06);
+      if (other) {
+        if(!other.chainLit && other.fuse>.06){other.chainLit=true;Game.roundChains++;Game.totalChains++;}
+        other.fuse = Math.min(other.fuse, .06);
+      }
     }
   }
   for (const cell of cells) {
@@ -460,17 +487,19 @@ function explodeBomb(bomb) {
 
 function breakBrick(c, r) {
   Game.grid[r][c] = 0;
+  Game.debris.push({col:c,row:r,life:1.15});
+  if(Game.lesson && c===4 && r===1 && !Game.lesson.cPicked) {Game.lesson.phase='collect';showFeedback('木箱碎了！等火焰退去，再拾起 C');}
   Game.score += 10;
   const x = OX + c * CELL + CELL / 2, y = OY + r * CELL + CELL / 2;
   for (let i = 0; i < 8; i++) {
     Game.particles.push({
-      x, y, vx: rand(-130, 130), vy: rand(-170, 30),
-      life: rand(.3, .6), color: Math.random() < .5 ? '#b98a4a' : '#8a6435', size: rand(3, 6),
+      x, y, vx: effectRand(-130, 130), vy: effectRand(-170, 30),
+      life: effectRand(.3, .6), color: effectRand(0,1) < .5 ? '#b98a4a' : '#8a6435', size: effectRand(3, 6),
     });
   }
   capParticles();
   // 道具掉落(12%概率)
-  if (Math.random() < .14) {
+  if (Math.random() < .14 && !Game.letters.some(L=>L.col===c&&L.row===r) && !(Game.portal?.col===c&&Game.portal?.row===r)) {
     const kinds = ['bomb+', 'fire+', 'speed'];
     const pool = Game.player.bombMax >= 6 ? kinds.slice(1) : kinds;
     Game.pickups.push({ col: c, row: r, kind: pool[Math.floor(Math.random() * pool.length)], phase: Math.random() * TAU });
@@ -484,10 +513,10 @@ function killEnemy(e) {
   hitStopTimer = .06;   // 命中停顿60ms: 打击感核心
   const x = OX + e.col * CELL + CELL / 2, y = OY + e.row * CELL + CELL / 2;
   for (let i = 0; i < 12; i++) {
-    Game.particles.push({ x, y, vx: rand(-150, 150), vy: rand(-180, 40), life: rand(.3, .55), color: '#9be7ff', size: rand(2.5, 5) });
+    Game.particles.push({ x, y, vx: effectRand(-150, 150), vy: effectRand(-180, 40), life: effectRand(.3, .55), color: '#b6c18f', size: effectRand(2.5, 5) });
   }
   capParticles();
-  floatText('+100', x, y, '#9be7ff');
+  floatText('+100', x, y, '#e7ddb6');
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .16, 1.35);
   if (!maybeOpenPortal() && Game.enemies.every((enemy) => enemy.dead)) {
     const lettersLeft = Game.word.en.length - Game.word.progress;
@@ -526,6 +555,8 @@ function moveEntity(e, dc, dr, dist, isGhost) {
 function updatePlayer(dt) {
   const p = Game.player;
   p.inv = Math.max(0, p.inv - dt);
+  p.layTimer=Math.max(0,(p.layTimer||0)-dt);
+  const oldX=p.px,oldY=p.py;
 
   // 自由移动: 方向即时生效, 不再等"走到格中心"
   let vx = 0, vy = 0;
@@ -583,9 +614,13 @@ function updatePlayer(dt) {
       if (!blocked) p.py = ny;
     }
   }
+  p.walkPhase=(p.walkPhase||0)+Math.hypot(p.px-oldX,p.py-oldY)/CELL*TAU;
+  p.moving=Math.hypot(p.px-oldX,p.py-oldY)>.02;
   // 同步逻辑格(炸弹放置/拾取判定用)
   p.col = clamp(Math.floor((p.px - OX) / CELL), 0, COLS - 1);
   p.row = clamp(Math.floor((p.py - OY) / CELL), 0, ROWS - 1);
+
+  if(Game.lesson && Game.lesson.phase==='walk' && p.col===3 && p.row===1) {Game.lesson.phase='place';showFeedback('就在这里放炸弹：空格 / J 或炸弹按钮');}
 
   // 走到传送门
   if (Game.portal && Game.portal.open && p.col === Game.portal.col && p.row === Game.portal.row) {
@@ -632,13 +667,19 @@ function updatePlayer(dt) {
 }
 
 function updateEnemies(dt) {
+  if(Game.lesson && Game.time < Game.lesson.pressureAt) return;
   for (const e of Game.enemies) {
     if (e.dead) continue;
     e.phase += dt;
     const cx = OX + e.col * CELL + CELL / 2;
     const cy = OY + e.row * CELL + CELL / 2;
     const atCenter = Math.abs(e.px - cx) < 2.5 && Math.abs(e.py - cy) < 2.5;
-    if (atCenter) {
+    if (atCenter && e.lessonPatrol) {
+      const direction=e.dir?.[0]||1;
+      let next=e.col>=13?-1:e.col<=10?1:direction;
+      if(cellBlocked(e.col+next,e.row))next=-next;
+      e.dir=cellBlocked(e.col+next,e.row)?null:[next,0];
+    } else if (atCenter) {
       // 选方向: blob=原版Balloom式"直行到底撞墙才转向"(可预判);
       // ghost/runner=偏向玩家追踪
       let dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dc, dr]) => !cellBlocked(e.col + dc, e.row + dr, e.kind === 'ghost'));
@@ -735,10 +776,14 @@ function updateLetters(dt) {
       }
       L.taken = true;
       w.progress++;
+      if(Game.lesson && !Game.lesson.cPicked && w.progress===1) {
+        Game.lesson.cPicked=true;Game.lesson.phase='done';Game.lesson.pressureAt=Game.time+1.2;
+        showFeedback('C 收到了！花芽守卫醒来，继续寻找 A 和 T');
+      }
       Game.score += 60;
       const x = OX + L.col * CELL + CELL / 2, y = OY + L.row * CELL + CELL / 2;
-      floatText('✓ ' + L.letter, x, y, '#86efac');
-      burst(x, y, '#86efac', 10);
+      floatText('✓ ' + L.letter, x, y, '#f2e4be');
+      burst(x, y, '#d6d6a9', 7);
       if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1 + w.progress * .06);
       updateHud();
       if (w.progress >= w.en.length) {
@@ -754,21 +799,19 @@ function updateLetters(dt) {
 
 function maybeOpenPortal() {
   if (!Game.portal || Game.portal.open || Game.portal.hidden || Game.word.progress < Game.word.en.length || Game.enemies.some((enemy) => !enemy.dead)) return false;
-  Game.portal.open = true;
+  Game.portal.open = true;Game.portal.openedAt=Game.time;
   Game.score += 200 + Game.word.en.length * 30;
-  showFeedback('🎉 三项目标完成 · 传送门开启！');
-  Game.flash = .35;
+  showFeedback('石门打开了，沿箭头离开庭院');
   const px = OX + Game.portal.col * CELL + CELL / 2, py = OY + Game.portal.row * CELL + CELL / 2;
-  burst(px, py, '#fbbf24', 30);
-  burst(px, py, '#6ee7b7', 20);
-  floatText('⬅ PORTAL OPEN ➡', 440, OY + ROWS * CELL / 2 - 40, '#fbbf24');
+  burst(px, py, '#cbcba1', 8);
+  floatText('出口', px, py-20, '#efe5bf');
   if (window.ArcadeAudio) ArcadeAudio.play('confirm', .3, 1.3);
   return true;
 }
 
 function burst(x, y, color, n) {
   for (let i = 0; i < n; i++) {
-    Game.particles.push({ x, y, vx: rand(-160, 160), vy: rand(-180, 60), life: rand(.25, .5), color, size: rand(2.5, 5) });
+    Game.particles.push({ x, y, vx: effectRand(-160, 160), vy: effectRand(-180, 60), life: effectRand(.25, .5), color, size: effectRand(2.5, 5) });
   }
   capParticles();
 }
@@ -824,6 +867,8 @@ function update(rawDt) {
 }
 
 function updateParticles(dt) {
+  for(const d of Game.debris||[])d.life-=dt;
+  Game.debris=(Game.debris||[]).filter(d=>d.life>0);
   for (let i = Game.particles.length - 1; i >= 0; i--) {
     const p = Game.particles[i];
     p.life -= dt;
@@ -846,8 +891,8 @@ const gridContext = gridLayer.getContext('2d');
 const gridSnapshot = new Int8Array(COLS * ROWS).fill(-1);
 let gridArtReady = false;
 function drawGrid() {
-  let dirty = gridArtReady !== !!window.GameplayArt?.ready;
-  gridArtReady = !!window.GameplayArt?.ready;
+  let dirty = gridArtReady !== !!CourtyardCast.naturalWidth;
+  gridArtReady = !!CourtyardCast.naturalWidth;
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const index = r * COLS + c;
     if (gridSnapshot[index] !== Game.grid[r][c]) {
@@ -861,172 +906,226 @@ function drawGrid() {
   ctx.drawImage(gridLayer, 0, 0);
 }
 
-function paintGrid(ctx) {
-  // 场地底色
-  ctx.fillStyle = '#111827';
-  ctx.fillRect(OX, OY, COLS * CELL, ROWS * CELL);
-  if(Courtyard.complete && Courtyard.naturalWidth) ctx.drawImage(Courtyard,OX,OY,COLS*CELL,ROWS*CELL);
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const x = OX + c * CELL, y = OY + r * CELL;
-      const g = Game.grid[r][c];
-      if (window.GameplayArt?.ready) {
-        // The garden remains quiet walkable ground; only obstacles have height.
-        if(g) {
-          ctx.fillStyle='#10251d44';ctx.beginPath();ctx.roundRect(x+4,y+7,CELL-5,CELL-5,5);ctx.fill();
-          GameplayArt.draw(ctx,g===1?'wall':'crate',x+CELL/2,y+CELL/2-2,CELL-5,CELL-5);
-        }
-        continue;
-      }
-      if (g === 1) {
-        // 硬墙: 深蓝黑石柱(FC经典不可摧毁柱), 与砖块形成色相差异
-        ctx.fillStyle = '#111827';
-        ctx.fillRect(x, y, CELL, CELL);
-        ctx.fillStyle = '#2b3748';
-        ctx.fillRect(x + 4, y + 4, CELL - 8, CELL - 8);
-        ctx.fillStyle = 'rgba(255,255,255,.14)';
-        ctx.fillRect(x + 4, y + 4, CELL - 8, 5);
-        ctx.fillStyle = 'rgba(0,0,0,.4)';
-        ctx.fillRect(x + 4, y + CELL - 11, CELL - 8, 7);
-      } else if (g === 2) {
-        // 可炸砖: 三面立体感(顶亮/前面中/底暗), 对齐封面渲染质感
-        const bx = x + 2, by = y + 4, bw = CELL - 4, bh = CELL - 10;
-        // 投影
-        ctx.fillStyle = 'rgba(0,0,0,.22)';
-        ctx.fillRect(bx + 3, by + bh - 2, bw, 7);
-        // 正面(主色渐变)
-        const fg = ctx.createLinearGradient(bx, by, bx, by + bh);
-        fg.addColorStop(0, '#f97316'); fg.addColorStop(.55, '#c2410c'); fg.addColorStop(1, '#9a3412');
-        ctx.fillStyle = fg;
-        ctx.fillRect(bx, by, bw, bh);
-        // 顶面斜切高光
-        ctx.fillStyle = '#fb923c';
-        ctx.beginPath();
-        ctx.moveTo(bx, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw - 5, by + 7); ctx.lineTo(bx + 5, by + 7);
-        ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(255,230,180,.5)';
-        ctx.fillRect(bx + 5, by + 8, bw - 10, 2.5);
-        // 砖缝十字纹
-        ctx.strokeStyle = 'rgba(70,20,0,.5)'; ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.moveTo(bx, by + (bh) / 2 + 4); ctx.lineTo(bx + bw, by + bh / 2 + 4);
-        ctx.moveTo(bx + bw / 2, by + 9); ctx.lineTo(bx + bw / 2, by + bh / 2 + 4);
-        ctx.moveTo(bx + bw / 4, by + bh / 2 + 4); ctx.lineTo(bx + bw / 4, by + bh);
-        ctx.moveTo(bx + bw * .75, by + bh / 2 + 4); ctx.lineTo(bx + bw * .75, by + bh);
-        ctx.stroke();
-        // 边缘暗线
-        ctx.strokeStyle = 'rgba(50,12,0,.65)'; ctx.lineWidth = 1.5;
-        ctx.strokeRect(bx + .5, by + .5, bw - 1, bh - 1);
-      } else {
-        // 空地压暗成石板，让角色、火焰和青绿字母成为视觉焦点。
-        ctx.fillStyle = (r + c) % 2 === 0 ? '#374457' : '#303b4d';
-        ctx.fillRect(x, y, CELL, CELL);
-        ctx.fillStyle = 'rgba(255,255,255,.025)';
-        ctx.fillRect(x + 3, y + 3, CELL - 6, 2);
-      }
+
+// The courtyard is authored in the same matte, cut-paper material language as
+// its gardener and creatures. No sprite-sheet keycaps or scenic wallpaper.
+function gardenPoly(c,points,fill,stroke=null,width=1){c.beginPath();for(let i=0;i<points.length;i++)c[i?'lineTo':'moveTo'](...points[i]);c.closePath();c.fillStyle=fill;c.fill();if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
+function gardenOval(c,x,y,rx,ry,color){c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,TAU);c.fill();}
+function gardenLine(c,points,color,width=1){c.beginPath();points.forEach((p,i)=>c[i?'lineTo':'moveTo'](...p));c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.lineJoin='round';c.stroke();}
+function gardenLeaf(c,x,y,angle,size,color){c.save();c.translate(x,y);c.rotate(angle);c.beginPath();c.moveTo(0,0);c.quadraticCurveTo(-size*.65,-size*.6,0,-size);c.quadraticCurveTo(size*.65,-size*.6,0,0);c.fillStyle=color;c.fill();c.restore();}
+function paintGrid(c) {
+  const theme=(Game.round-1)%3;
+  c.save();c.beginPath();c.rect(OX,OY,COLS*CELL,ROWS*CELL);c.clip();
+  c.fillStyle=['#889168','#828d78','#7a8677'][theme];c.fillRect(OX,OY,COLS*CELL,ROWS*CELL);
+  // The central clay paths form the negative space; no checkerboard underlay.
+  c.fillStyle=['#647666','#61756e','#606f6c'][theme];
+  c.beginPath();c.roundRect(OX+31,OY+31,COLS*CELL-62,ROWS*CELL-62,22);c.fill();
+  // The garden foundation is laid in long courses. Broad traffic strips and
+  // staggered paving joints create place; no evenly scattered noise dots.
+  c.fillStyle=['#71806b','#6d7f72','#6c7b72'][theme];
+  for(const row of [1,5,9]){c.beginPath();c.roundRect(OX+38,OY+row*CELL+5,COLS*CELL-76,38,13);c.fill();}
+  for(const col of [1,7,13]){c.beginPath();c.roundRect(OX+col*CELL+5,OY+38,38,ROWS*CELL-76,13);c.fill();}
+  for(let r=1;r<ROWS-1;r++)for(let col=1;col<COLS-1;col++){
+    const x=OX+col*CELL,y=OY+r*CELL;
+    if(!Game.grid[r][col] && (r%4===1||col%6===1)){
+      const shift=(col+r)%2===0?2:-2;
+      gardenPoly(c,[[x+5,y+7],[x+39,y+5+shift],[x+43,y+32],[x+37,y+40],[x+7,y+39],[x+4,y+27]],'#7e8b73');
+      gardenLine(c,[[x+7,y+8],[x+37,y+7+shift]],'#8d997f',1.1);
+      gardenLine(c,[[x+7,y+40],[x+37,y+41],[x+43,y+34]],'#5e725f',1.1);
     }
+  }
+  // Grounding shadows are displaced down-right by the same light as actors.
+  for(let r=0;r<ROWS;r++)for(let col=0;col<COLS;col++)if(Game.grid[r][col]){
+    const x=OX+col*CELL,y=OY+r*CELL;
+    c.fillStyle='#4b51362d';c.beginPath();c.roundRect(x+8,y+17,40,32,8);c.fill();
+  }
+  for(let r=0;r<ROWS;r++)for(let col=0;col<COLS;col++){
+    const x=OX+col*CELL,y=OY+r*CELL,g=Game.grid[r][col],seed=(col*13+r*7)%11;
+    if(g===1) {
+      const edge=r===0||col===0||r===ROWS-1||col===COLS-1;
+      const left=col>0&&Game.grid[r][col-1]===1,right=col<COLS-1&&Game.grid[r][col+1]===1;
+      const xa=x+(left?0:4),xb=x+CELL-(right?0:4),top=y+(edge?3:7),foot=y+43;
+      // Two uneven courses, with a shallow visible cap: stone, not a bevelled key.
+      gardenPoly(c,[[xa,top+12],[xb,top+10],[xb,foot-4],[xb-5,foot],[xa+4,foot],[xa,foot-5]],'#71846b','#4d654f',1);
+      gardenPoly(c,[[xa+1,top+9],[xa+6,top+2],[xb-6,top],[xb,top+7],[xb-1,top+15],[xa+1,top+17]],'#c0cbae','#839775',1);
+      gardenLine(c,[[xa+5,top+4],[xb-7,top+2]],'#d9dfc5',2);
+      gardenLine(c,[[xa+1,top+28],[xa+16,top+26],[xa+27,top+28],[xb,top+26]],'#59654f',1.6);
+      gardenLine(c,[[xa+18+(seed%4),top+15],[xa+17+(seed%4),top+27]],'#58644f',1.3);
+      gardenLine(c,[[xa+10,top+29],[xa+9,foot-1]],'#5b6752',1.2);
+      gardenLine(c,[[xa+27,top+28],[xa+28,foot-1]],'#59634f',1.1);
+      if(!edge){gardenPoly(c,[[xa+6,top+10],[xa+12,top+6],[xa+17,top+8],[xa+14,top+11]],'#a0ac85');}
+      if(edge&&(col+r)%3===0 || !edge&&seed<3){
+        const lx=xa+7+seed,ly=top+14;
+        gardenLeaf(c,lx,ly,-.9,10,'#637d4d');gardenLeaf(c,lx+5,ly+1,.4,9,'#839555');
+        gardenLeaf(c,lx+8,ly+8,1.1,7,'#708d4f');
+      }
+    } else if(g===2) {
+      if(drawCourtyardSprite(c,'crate',x+24,y+24,49))continue;
+      const l=x+6,rr=x+42,t=y+6,b=y+42;
+      gardenPoly(c,[[l,t+8],[rr,t+6],[rr,b-2],[rr-4,b],[l,b-2]],'#976744','#694b34',1.6);
+      gardenPoly(c,[[l,t+8],[l+6,t],[rr-4,t-1],[rr,t+6]],'#cfaa70','#87613f',1.2);
+      // Real upright boards with varied grain and battens around their ends.
+      for(let j=0;j<3;j++){
+        const bx=l+2+j*11;
+        gardenPoly(c,[[bx,t+9],[bx+10,t+8],[bx+10,b-2],[bx,b-2]],['#bd905c','#b38454','#c29861'][(j+seed)%3]);
+        gardenLine(c,[[bx+3,t+13],[bx+4,t+21],[bx+3,b-6]],'#9b7048',.7);
+      }
+      gardenPoly(c,[[l-1,t+10],[rr+1,t+8],[rr+1,t+14],[l-1,t+16]],'#d0a36b','#835d3e',.8);
+      gardenPoly(c,[[l-1,b-10],[rr+1,b-11],[rr+1,b-5],[l-1,b-3]],'#c89962','#815b3d',.8);
+      for(const yy of [t+12,b-7])for(const xx of [l+3,rr-3])gardenOval(c,xx,yy,1.1,1.1,'#645245');
+      gardenOval(c,l+18,t+24,2,3,'#9a714b');gardenLine(c,[[l+18,t+23],[l+18,t+25]],'#75563d',1);
+    }
+  }
+  // Moss grows only on the non-walkable perimeter; the action lanes stay quiet.
+  for(let i=0;i<27;i++){
+    const px=OX+12+(i*73)%(COLS*CELL-24),py=i%2?OY+8:OY+ROWS*CELL-5;
+    gardenLeaf(c,px,py,-.5,6,'#667b4d');gardenLeaf(c,px+4,py,.6,7,'#89985e');
+  }
+  c.restore();
+}
+function drawGardenDebris(){
+  for(const d of Game.debris||[]){
+    const x=OX+(d.col+.5)*CELL,y=OY+(d.row+.5)*CELL,a=Math.min(1,d.life*2);
+    ctx.save();ctx.globalAlpha=a;gardenOval(ctx,x,y+8,16,5,'#66563d33');
+    for(let i=0;i<4;i++){ctx.save();ctx.translate(x+Math.cos(i*2.4)*15,y+Math.sin(i*2.4)*11+6);ctx.rotate(i*1.9);ctx.fillStyle=i%2?'#ad8050':'#c89a63';ctx.fillRect(-5,-1.4,10,2.8);ctx.restore();}ctx.restore();
+  }
+}
+function drawPlayer(){
+  const p=Game.player;if(!p)return;
+  if(CourtyardCast.complete&&CourtyardCast.naturalWidth){
+    const pose=p.layTimer>0?'lay':p.moving&&!reducedMotion.matches?Math.floor((p.walkPhase||0)/TAU*4)%4:0;
+    ctx.save();if(p.inv>0&&Game.state==='playing')ctx.globalAlpha=.9;
+    gardenOval(ctx,p.px+2,p.py+10,15,5,'#263a2a55');
+    drawCourtyardSprite(ctx,'gardener-'+p.facing+'-'+pose,p.px,p.py+5,38);ctx.restore();return;
+  }
+  const step=reducedMotion.matches?0:Math.sin(p.walkPhase||0),walk=p.moving?step:0;
+  const lay=Math.sin(Math.PI*clamp((p.layTimer||0)/.3,0,1)),side=p.facing==='left'||p.facing==='right';
+  ctx.save();ctx.translate(p.px,p.py);if(p.inv>0&&Game.state==='playing')ctx.globalAlpha=.85;
+  gardenOval(ctx,1,16,15,5,'#384a3d42');
+  if(p.facing==='left')ctx.scale(-1,1);
+  const bob=p.moving?Math.abs(walk)*1.7:0;
+  ctx.translate(0,-bob+lay*4);
+  // Weight alternates over planted boots rather than a global-time bob.
+  const rear=side?-5:-7,front=side?6:7;
+  gardenLine(ctx,[[rear,6],[rear-walk*2,13+walk*2]],'#384a45',6);
+  gardenLine(ctx,[[front,6],[front+walk*2,13-walk*2]],'#384a45',6);
+  gardenOval(ctx,rear-walk*2+1,15+walk*2,5.5,3.5,'#6f5039');
+  gardenOval(ctx,front+walk*2+1,15-walk*2,5.5,3.5,'#77553d');
+  // Rounded linen smock, leather satchel, terracotta scarf.
+  gardenPoly(ctx,[[-10,-6],[8,-6],[11,8],[6,12],[-8,11],[-11,4]],'#d4d4ac','#777e64',1.2);
+  gardenPoly(ctx,[[-7,1],[7,1],[7,10],[-7,10]],'#58746a');
+  gardenLine(ctx,[[-7,-5],[6,8]],'#987047',3);
+  if(p.facing==='up')gardenPoly(ctx,[[-7,-4],[7,-4],[8,7],[-7,7]],'#b08550','#74583c',1.1);
+  const arm=side?4:0;
+  gardenLine(ctx,[[-10,-3],[-13+walk*2,5+lay*6]],'#b9c2a0',5);
+  gardenOval(ctx,-13+walk*2,6+lay*7,3.2,3.6,'#c69a6d');
+  gardenLine(ctx,[[9,-3],[12+arm+lay*3,4-walk*2+lay*5]],'#d7d6b0',5);
+  gardenOval(ctx,12+arm+lay*3,5-walk*2+lay*5,3.3,3.7,'#d3aa7b');
+  gardenPoly(ctx,[[-10,-7],[7,-9],[10,-4],[-5,-2]],'#bc684c');
+  gardenPoly(ctx,[[6,-6],[15+walk*1.5,-5],[11,-1],[5,-3]],'#9e503d');
+  // Soft explorer hood and a face opening share the stone's top-left light.
+  gardenOval(ctx,0,-15,13,12.5,'#d5d5b4');
+  gardenOval(ctx,-3,-19,9,7,'#e6e2c5');
+  if(p.facing!=='up'){
+    gardenOval(ctx,side?6:1,-12,side?7:9,7,'#c79c6e');
+    gardenPoly(ctx,side?[[3,-17],[12,-17],[13,-9],[3,-10]]:[[-8,-17],[9,-17],[9,-9],[-8,-9]],'#365652');
+    if(side){gardenLine(ctx,[[7,-14],[10,-14]],'#eee7c8',2);gardenOval(ctx,13,-10,2,2.5,'#d6b084');}
+    else{gardenLine(ctx,[[-5,-14],[-3,-14]],'#f1e7c8',2);gardenLine(ctx,[[4,-14],[6,-14]],'#f1e7c8',2);}
+  } else {gardenLine(ctx,[[-4,-23],[0,-18],[0,-8]],'#b5bea0',1.4);}
+  gardenLine(ctx,[[-11,-8],[-5,-5],[7,-6]],'#b4bb99',2);
+  ctx.restore();
+}
+function drawEnemies(){
+  for(const e of Game.enemies){
+    if(e.dead)continue;const brick=Game.grid[e.row]?.[e.col]===2;
+    const asleep=!!Game.lesson&&Game.time<Game.lesson.pressureAt,phase=asleep?0:Math.sin(e.phase*8),dx=e.dir?.[0]||0;
+    if(CourtyardCast.complete&&CourtyardCast.naturalWidth){
+      ctx.save();if(brick)ctx.globalAlpha=.55;gardenOval(ctx,e.px+1,e.py+10,14,5,'#263a2a44');
+      drawCourtyardSprite(ctx,e.kind+'-'+(asleep||reducedMotion.matches?0:Math.floor(e.phase*5)%2),e.px,e.py+7,e.kind==='ghost'?43:44);
+      if(asleep){gardenLine(ctx,[[e.px-7,e.py-6],[e.px-3,e.py-6]],'#4f6543',2);gardenLine(ctx,[[e.px+3,e.py-6],[e.px+7,e.py-6]],'#4f6543',2);}
+      ctx.restore();continue;
+    }
+    ctx.save();ctx.translate(e.px,e.py);if(brick)ctx.globalAlpha=.55;
+    gardenOval(ctx,1,15,e.kind==='ghost'?10:15,5,'#41513b36');
+    if(e.kind==='blob'){
+      const lift=asleep?0:Math.abs(phase)*2;
+      gardenOval(ctx,-7,12,6,4,'#657842');gardenOval(ctx,8,12,6,4,'#657842');
+      gardenOval(ctx,0,1-lift,16,14+phase,'#879b55');gardenOval(ctx,-3,-3-lift,12,11,'#b3bd71');
+      gardenLeaf(ctx,0,-10-lift,-.8,12,'#526f41');gardenLeaf(ctx,1,-10-lift,.7,10,'#789348');
+      if(asleep){gardenLine(ctx,[[-8,0],[-4,1]],'#445b3c',1.8);gardenLine(ctx,[[4,1],[8,0]],'#445b3c',1.8);}
+      else{gardenOval(ctx,-5+dx*2,0-lift,2,2.8,'#344c39');gardenOval(ctx,6+dx*2,0-lift,2,2.8,'#344c39');}
+      gardenLine(ctx,[[-2,6-lift],[1,7-lift],[4,5-lift]],'#6b7a46',1.2);
+    } else if(e.kind==='runner'){
+      if(dx<0)ctx.scale(-1,1);
+      gardenLine(ctx,[[-6,4],[-10-phase*3,13]],'#875947',5);gardenLine(ctx,[[6,4],[9+phase*3,13]],'#875947',5);
+      gardenPoly(ctx,[[-13,-6],[-12,-20],[-3,-12],[8,-16],[14,-6],[10,10],[-8,11]],'#c47e59','#855542',1.2);
+      gardenPoly(ctx,[[-9,-8],[-9,-16],[-4,-11]],'#e5ad77');gardenPoly(ctx,[[7,-10],[9,-15],[12,-7]],'#e5ad77');
+      gardenOval(ctx,1,0,11,9,'#dfb080');gardenOval(ctx,-3+dx,-2,2.2,2.7,'#513f36');gardenOval(ctx,7+dx,-2,2.2,2.7,'#513f36');
+      gardenOval(ctx,3,4,2.5,2,'#815441');
+    } else {
+      const lift=reducedMotion.matches?0:phase*2;
+      gardenPoly(ctx,[[-15,10-lift],[-13,-11-lift],[-5,-19-lift],[5,-18-lift],[14,-7-lift],[15,11-lift],[7,7-lift],[0,13-lift],[-6,8-lift]],'#aabbb0','#738f86',1.2);
+      gardenPoly(ctx,[[-6,-12-lift],[6,-12-lift],[9,2-lift],[-8,2-lift]],'#4a6966');
+      gardenOval(ctx,-3,-5-lift,2,3,'#f0dca9');gardenOval(ctx,5,-5-lift,2,3,'#f0dca9');
+      gardenLine(ctx,[[-10,2-lift],[-7,7-lift]],'#d9dfc5',2);
+    }
+    ctx.restore();
+  }
+}
+function drawBombs(){
+  for(const b of Game.bombs){
+    const x=OX+(b.col+.5)*CELL,y=OY+(b.row+.5)*CELL;
+    if(drawCourtyardSprite(ctx,'bomb',x,y+3,47)){
+      ctx.strokeStyle=b.fuse<.65?'#d18350':'#e2c983';ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(x,y,19,-Math.PI/2,-Math.PI/2+TAU*clamp(b.fuse/(b.fullFuse||DIFFS[Game.difficulty].fuse),0,1));ctx.stroke();continue;
+    }
+    ctx.save();ctx.translate(x,y);gardenOval(ctx,2,12,14,5,'#35463844');
+    gardenOval(ctx,0,0,13.5,13,'#41534b');gardenOval(ctx,-4,-5,9,8,'#697b63');
+    gardenLine(ctx,[[-10,4],[-7,9],[5,11]],'#2f443e',2);
+    gardenPoly(ctx,[[5,-10],[9,-13],[12,-10],[9,-7]],'#967b4b');
+    gardenLine(ctx,[[9,-12],[11,-19],[16,-20]],'#a57b49',2.4);
+    const tip=b.fuse<.65?4:2.8;gardenOval(ctx,16,-20,tip,tip,'#eabf5b');
+    gardenLine(ctx,[[13,-24],[11,-26]],'#e3aa50',1.5);gardenLine(ctx,[[19,-23],[21,-24]],'#e3aa50',1.4);
+    ctx.strokeStyle=b.fuse<.65?'#b95836':'#e2c983';ctx.lineWidth=2.4;ctx.beginPath();ctx.arc(0,0,18,-Math.PI/2,-Math.PI/2+TAU*clamp(b.fuse/(b.fullFuse||DIFFS[Game.difficulty].fuse),0,1));ctx.stroke();
+    ctx.restore();
   }
 }
 
 function drawPortal() {
-  const P = Game.portal;
-  if (!P || P.hidden) return;
-  const x = OX + P.col * CELL + CELL / 2, y = OY + P.row * CELL + CELL / 2;
-  ctx.save();
-  ctx.translate(x, y);
-  if (P.open) {
-    const t = Game.time * 2.2;
-    for (let i = 3; i >= 0; i--) {
-      ctx.globalAlpha = .85 - i * .17;
-      ctx.fillStyle = i % 2 === 0 ? '#fbbf24' : '#f97316';
-      ctx.beginPath();
-      const rr = 10 + i * 4 + Math.sin(t + i) * 2.5;
-      ctx.arc(0, 0, rr, 0, TAU); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#fff7cf';
-    ctx.font = '800 10px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText('GO!', 0, -24);
-  } else {
-    // 未开启的门框(灰)
-    ctx.strokeStyle = 'rgba(250,204,120,.4)'; ctx.lineWidth = 3;
-    ctx.strokeRect(-13, -13, 26, 26);
-    ctx.fillStyle = 'rgba(250,204,120,.25)';
-    ctx.font = '800 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('?', 0, 1);
-  }
-  ctx.restore();
+  const p=Game.portal;if(!p||p.hidden)return;
+  const x=OX+(p.col+.5)*CELL,y=OY+(p.row+.5)*CELL;
+  gardenOval(ctx,x,y+12,20,7,'#30463955');
+  gardenPoly(ctx,[[x-19,y-9],[x-13,y-17],[x+14,y-17],[x+20,y-9],[x+18,y+15],[x-18,y+15]],'#728365','#435e4b',1.4);
+  gardenPoly(ctx,[[x-17,y-9],[x-11,y-14],[x+12,y-14],[x+17,y-9],[x+15,y+7],[x-15,y+7]],p.open?'#274c3f':'#a5ae90');
+  if(p.open){
+    const opening=reducedMotion.matches?1:clamp((Game.time-(p.openedAt||0))/.45,0,1);
+    for(const side of [-1,1]){const xx=x+side*(4+opening*11),wide=8-opening*5;gardenPoly(ctx,[[xx-wide,y-9],[xx+wide,y-9],[xx+wide,y+9],[xx-wide,y+9]],'#98a881','#5f795d',1);}
+    gardenLine(ctx,[[x,y+6],[x,y-7]],'#ecdfb4',3);gardenLine(ctx,[[x-5,y-2],[x,y-7],[x+5,y-2]],'#ecdfb4',3);
+    gardenLeaf(ctx,x-15,y+10,-.9,9,'#b4ba78');gardenLeaf(ctx,x+15,y+10,.9,9,'#b4ba78');
+  }else{gardenLine(ctx,[[x-9,y-6],[x+9,y+6]],'#667754',3);gardenLine(ctx,[[x+9,y-6],[x-9,y+6]],'#667754',3);}
 }
-
-function drawLetters() {
-  for (const L of Game.letters) {
-    if (L.taken || L.hidden) continue;
-    const x = OX + L.col * CELL + CELL / 2, y = OY + L.row * CELL + CELL / 2;
-    const isNext = Game.assisted !== false && L.letter === Game.word.en[Game.word.progress];
-    const bob = Math.sin(Game.time * 3.4 + L.index * 1.2) * 3;
-    ctx.save();
-    ctx.translate(x, y + bob);
-    if (isNext) {
-      ctx.strokeStyle = 'rgba(110,231,183,.95)';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([7, 5]);
-      ctx.beginPath(); ctx.arc(0, 0, 21 + Math.sin(Game.time * 4) * 2, 0, TAU); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    // 冷色青绿系: 与橙红砖块形成色彩语义分离(收集物≠地形)
-    const grad = ctx.createRadialGradient(-4, -6, 2, 0, 0, 17);
-    if (isNext) { grad.addColorStop(0, '#ffffff'); grad.addColorStop(.5, '#6ee7b7'); grad.addColorStop(1, '#059669'); }
-    else { grad.addColorStop(0, '#d1fae5'); grad.addColorStop(.55, '#34d399'); grad.addColorStop(1, '#065f46'); }
-    ctx.shadowColor = isNext ? 'rgba(110,231,183,.98)' : 'rgba(52,211,153,.5)';
-    ctx.shadowBlur = isNext ? 16 : 7;
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#ecfdf5'; ctx.lineWidth = 1.6; ctx.stroke();
-    ctx.fillStyle = '#053b2c';
-    ctx.font = '900 19px ui-monospace, monospace';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(L.letter, 0, 1);
-    ctx.restore();
+function drawLetters(){
+  for(const L of Game.letters){
+    if(L.taken||L.hidden)continue;
+    const x=OX+(L.col+.5)*CELL,y=OY+(L.row+.5)*CELL;
+    const next=Game.assisted!==false&&L.letter===Game.word.en[Game.word.progress];
+    gardenOval(ctx,x+2,y+15,17,5,'#3c4a3450');
+    gardenPoly(ctx,[[x-15,y-14],[x+13,y-16],[x+17,y+13],[x+12,y+17],[x-13,y+17],[x-17,y+12]],'#a18c5a','#655e3d',1);
+    gardenPoly(ctx,[[x-14,y-15],[x+12,y-17],[x+16,y+9],[x+12,y+13],[x-13,y+13],[x-16,y+8]],next?'#f1e7c3':'#ddd5b1','#aba47c',1);
+    gardenLine(ctx,[[x-11,y-12],[x+9,y-14]],'#fff2cf',1.5);
+    ctx.font='900 25px ui-monospace,monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#2e5348';ctx.fillText(L.letter,x,y-1);
+    if(next){gardenLeaf(ctx,x-18,y+2,-.6,8,'#c9d3a0');gardenLeaf(ctx,x+18,y+2,.6,8,'#c9d3a0');}
   }
 }
-
-function drawPickups() {
-  const icons = { 'bomb+': '💣', 'fire+': '🔥', 'speed': '👟' };
-  const columns = { 'bomb+': 0, 'fire+': 2, 'speed': 3 };
-  for (const k of Game.pickups) {
-    const x = OX + k.col * CELL + CELL / 2, y = OY + k.row * CELL + CELL / 2 + Math.sin(Game.time * 3 + k.phase) * 3;
-    if (drawAtlasCell(3, columns[k.kind], x, y, 38, 38)) continue;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = 'rgba(30,22,8,.9)';
-    ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(-15, -15, 30, 30, 8); ctx.fill(); ctx.stroke();
-    ctx.font = '16px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(icons[k.kind], 0, 1);
-    ctx.restore();
-  }
-}
-
-function drawBombs() {
-  for (const b of Game.bombs) {
-    const x = OX + b.col * CELL + CELL / 2, y = OY + b.row * CELL + CELL / 2;
-    const pulse = 1 + Math.sin(Game.time * (b.fuse < .8 ? 22 : 9)) * .08;
-    ctx.save();
-    ctx.translate(x, y - 4);
-    ctx.scale(pulse, 1 / pulse);
-    if (window.GameplayArt?.draw(ctx,'bomb',0,0,34,39)) {
-      ctx.strokeStyle=b.fuse<.7?'#ff8269':'#ffd88e';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,1,21,-Math.PI/2,-Math.PI/2+TAU*clamp(b.fuse/DIFFS[Game.difficulty].fuse,0,1));ctx.stroke();ctx.restore();continue;
-    }
-    if (drawAtlasCell(3, 0, 0, 0, 44, 44)) { ctx.restore(); continue; }
-    ctx.fillStyle = '#1c1917';
-    ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#3f3f46'; ctx.lineWidth = 2; ctx.stroke();
-    // 引线火花
-    const spark = b.fuse < .8 ? '#fff' : '#fbbf24';
-    ctx.fillStyle = spark;
-    ctx.beginPath(); ctx.arc(9, -14, b.fuse < .8 ? 4.5 : 3, 0, TAU); ctx.fill();
-    ctx.restore();
+function drawPickups(){
+  for(const k of Game.pickups){
+    const x=OX+(k.col+.5)*CELL,y=OY+(k.row+.5)*CELL;
+    gardenOval(ctx,x+1,y+13,15,4,'#344c3c40');
+    gardenPoly(ctx,[[x-10,y-13],[x+10,y-13],[x+16,y+10],[x+9,y+15],[x-11,y+14],[x-16,y+8]],'#c5b18a','#8b7853',1.3);
+    gardenLine(ctx,[[x-9,y-10],[x+9,y-10]],'#536954',3);
+    ctx.fillStyle='#4d604b';
+    if(k.kind==='bomb+'){gardenOval(ctx,x-2,y+3,6,6,'#41584a');gardenLine(ctx,[[x+2,y-2],[x+5,y-6]],'#41584a',2);gardenLine(ctx,[[x+7,y+4],[x+13,y+4]],'#41584a',1.6);gardenLine(ctx,[[x+10,y+1],[x+10,y+7]],'#41584a',1.6);}
+    else if(k.kind==='fire+')gardenPoly(ctx,[[x,y-5],[x+7,y+6],[x+3,y+10],[x-5,y+10],[x-7,y+5]],'#a85d3f');
+    else gardenPoly(ctx,[[x-4,y-4],[x+4,y-4],[x+3,y+4],[x+10,y+8],[x+8,y+11],[x-7,y+10]],'#73553e');
   }
 }
 
@@ -1071,106 +1170,6 @@ function drawFlames() {
   }
 }
 
-function drawEnemies() {
-  for (const e of Game.enemies) {
-    const inBrick = Game.grid[e.row] && Game.grid[e.row][e.col] === 2;
-    if (inBrick && e.kind !== 'ghost') continue;
-    const x = e.px, y = e.py;
-    ctx.save();
-    ctx.translate(x, y);
-    if (inBrick) ctx.globalAlpha = .45;
-    const wob = Math.sin(e.phase * 6) * 3;
-    const atlasColumn = { blob: 0, ghost: 1, runner: 2 }[e.kind];
-    if(EnemyAtlas.complete && EnemyAtlas.naturalWidth && atlasColumn!=null) {
-      const frame=reducedMotion.matches?0:Math.floor(e.phase*3)%2;
-      const [sx,sy,sw,sh]=ENEMY_RECTS[frame*3+atlasColumn];
-      const dh=e.kind==='ghost'?43:39,dw=dh*sw/sh;
-      ctx.fillStyle='#0003';ctx.beginPath();ctx.ellipse(0,14,15,6,0,0,TAU);ctx.fill();
-      ctx.drawImage(EnemyAtlas,sx,sy,sw,sh,-dw/2,-dh/2-2+wob*.25,dw,dh);
-      ctx.restore();continue;
-    }
-    if (atlasColumn != null && drawAtlasCell(2, atlasColumn, 0, wob * .35, 56, 56)) {
-      ctx.restore();
-      continue;
-    }
-    if (e.kind === 'blob') {
-      // 史莱姆: 圆润水滴
-      ctx.fillStyle = '#7dd3fc';
-      ctx.beginPath(); ctx.ellipse(0, 3 + wob * .3, 16, 13 - wob * .5, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = '#0c4a6e';
-      ctx.beginPath(); ctx.arc(-5, -1, 2.6, 0, TAU); ctx.arc(5, -1, 2.6, 0, TAU); ctx.fill();
-    } else if (e.kind === 'ghost') {
-      // 幽灵: 半透明飘浮
-      ctx.globalAlpha *= .75;
-      ctx.fillStyle = '#c4b5fd';
-      ctx.beginPath();
-      ctx.arc(0, -2, 14, Math.PI, 0);
-      ctx.lineTo(14, 10 + wob);
-      for (let i = 0; i < 3; i++) ctx.arc(14 - (i + .5) * 9.3, 10 + wob, 4.6, 0, Math.PI, i % 2 === 0);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#4c1d95';
-      ctx.beginPath(); ctx.arc(-5, -4, 2.8, 0, TAU); ctx.arc(5, -4, 2.8, 0, TAU); ctx.fill();
-    } else {
-      // 疾跑者: 尖耳三角
-      ctx.fillStyle = '#fca5a5';
-      ctx.beginPath();
-      ctx.moveTo(0, -15 + wob * .4);
-      ctx.lineTo(13, 11); ctx.lineTo(-13, 11);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#7f1d1d';
-      ctx.beginPath(); ctx.arc(-4, 0, 2.4, 0, TAU); ctx.arc(4, 0, 2.4, 0, TAU); ctx.fill();
-    }
-    ctx.restore();
-  }
-}
-
-function drawPlayer() {
-  const p = Game.player;
-  if (!p) return;
-  ctx.save();
-  if (p.inv > 0 && Math.floor(Game.time * 12) % 2 === 0 && Game.state === 'playing') ctx.globalAlpha = .78;
-  ctx.translate(p.px, p.py - 4);
-  const frame = p.moving ? Math.floor(Game.time * 9) % 4 : 0;
-  if (window.GameplayArt?.ready) {
-    const bob = p.moving && !reducedMotion.matches ? GameplayArt.motion('step_bob',(Game.time*2.25)%1)*2 : 0;
-    ctx.fillStyle='#0004';ctx.beginPath();ctx.ellipse(0,16,15,6,0,0,TAU);ctx.fill();
-    const facing=p.facing==='up'?'back-':(p.facing==='left'||p.facing==='right')?'side-':'';
-    if(p.facing==='right')ctx.scale(-1,1);
-    GameplayArt.draw(ctx,'courier-'+facing+frame,0,-5-bob,39,51);ctx.restore();return;
-  }
-  const side = p.facing === 'left' || p.facing === 'right';
-  if (drawAtlasCell(side ? 1 : 0, frame, 0, -4, 64, 64, p.facing === 'right')) {
-    ctx.restore();
-    return;
-  }
-  // 白色轮廓光
-  ctx.shadowColor = 'rgba(255,220,140,.8)';
-  ctx.shadowBlur = 10;
-  // 身体
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 2.5; ctx.stroke();
-  // 原版配色: 白色主体占绝对主导, 头盔仅一圈粉边
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.arc(0, -1, 15, Math.PI, 0); ctx.fill();
-  ctx.strokeStyle = '#f9a8d4'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(0, -1, 14.2, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-  // 粉色天线球(原版White Bomber标志)
-  ctx.strokeStyle = '#ec4899'; ctx.lineWidth = 2.2;
-  ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(0, -23); ctx.stroke();
-  ctx.fillStyle = '#f472b6';
-  ctx.shadowColor = 'rgba(244,114,182,.9)'; ctx.shadowBlur = 7;
-  ctx.beginPath(); ctx.arc(0, -26, 4.2, 0, TAU); ctx.fill();
-  ctx.shadowBlur = 0;
-  // 眼睛朝向
-  const off = { up: [0, -3], down: [0, 3], left: [-3, 0], right: [3, 0] }[p.facing];
-  ctx.fillStyle = '#1c1917';
-  const [ox, oy] = off;
-  const perp = p.facing === 'left' || p.facing === 'right' ? [0, 5] : [5, 0];
-  ctx.beginPath(); ctx.arc(ox - perp[0], oy - perp[1] - 1, 2.4, 0, TAU); ctx.arc(ox + perp[0], oy + perp[1] - 1, 2.4, 0, TAU); ctx.fill();
-  ctx.restore();
-}
 
 function drawParticles() {
   for (const p of Game.particles) {
@@ -1196,14 +1195,16 @@ function render() {
   ctx.setTransform(1, 0, 0, 1, crop ? -OX : 0, crop ? -OY : 0);
   // The phone surface is exactly the board, with no embedded desktop HUD margins.
   // 背景
-  ctx.fillStyle = '#0b1220';
+  ctx.fillStyle = '#243d34';
   ctx.fillRect(0, 0, 880, 704);
-  const sx = !reducedMotion.matches && Game.shake > 0 ? rand(-4, 4) * Game.shake : 0;
-  const sy = !reducedMotion.matches && Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;
+  const sx = !reducedMotion.matches && Game.shake > 0 ? Math.sin(Game.time*111.3+Game.logicFrame*.83)*4*Game.shake : 0;
+  const sy = !reducedMotion.matches && Game.shake > 0 ? Math.cos(Game.time*127.7+Game.logicFrame*.51)*3*Game.shake : 0;
   ctx.save();
   ctx.translate(sx, sy);
   if (Game.state !== 'menu') {
     drawGrid();
+    drawGardenDebris();
+    drawLessonPath();
     drawTacticalReadout();
     drawPortal();
     drawLetters();
@@ -1229,7 +1230,7 @@ function updateHud() {
   $id('round').textContent = Game.round;
   const w = Game.word;
   if (w) {
-    $id('mission').textContent = `${Game.roundNames[(Game.round - 1) % 4]} · 找字母 → 清敌 → 进星门`;
+    $id('mission').textContent = Game.lesson && !Game.lesson.cPicked ? ({walk:'先向右走两格，到脚印处',place:'放一枚炸弹，再向左退进拐角',retreat:Game.lesson.directedRetreat===false?'离开橙色预警，躲进拐角':'向左两格，再向下躲进拐角',collect:'等火焰退去，拾起木箱中的 C'}[Game.lesson.phase]) : `${Game.roundNames[(Game.round - 1) % 4]} · 找字母 → 清敌 → 进星门`;
     $id('build-status').textContent = `火力 ${Game.build.bombPower} · 容量 ${Game.build.bombMax} · 徽章 ${Game.medals}★`;
     const html = [...w.en].map((ch, i) => {
       if (i < w.progress) return `<span class="got">${ch}</span>`;
@@ -1245,6 +1246,7 @@ function showFeedback(text) {
   const el = $id('feedback');
   el.textContent = text;
   el.classList.add('show');
+  if(Game.word)updateHud();
 }
 
 
@@ -1260,7 +1262,7 @@ function blastPreview(bomb) {
   return cells;
 }
 function chooseSupply(kind) {
-  if (Game.state !== 'supply') return false;
+  if (Game.state !== 'supply' || document.hidden) return false;
   if (!['fire', 'speed', 'heart'].includes(kind)) return false;
   if (kind === 'fire') {
     if (Game.build.bombPower < 6) Game.build.bombPower++;
@@ -1272,7 +1274,22 @@ function chooseSupply(kind) {
   Game.state = 'playing'; Game.player.inv = 2;
   $id('supply').classList.add('hidden'); updateHud();
   showFeedback(`${Game.roundNames[(Game.round - 1) % 4]} · 升级会在整次远征保留`);
-  accumulator = 0; ensureLoop(); return true;
+  accumulator = 0; if(window.ChipMusic)ChipMusic.resume(); ensureLoop(); return true;
+}
+function drawLessonPath() {
+  const lesson=Game.lesson;if(!lesson||lesson.cPicked)return;
+  const retreat=lesson.phase==='retreat';
+  if(retreat&&lesson.directedRetreat===false)return;
+  const path=retreat?[[3,1],[2,1],[1,1],[1,2]]:[[1,1],[2,1],[3,1]];
+  ctx.save();ctx.strokeStyle=retreat?'#f4e5b6':'#f5eac5';ctx.lineWidth=3;ctx.setLineDash([3,6]);
+  ctx.beginPath();path.forEach(([c,r],i)=>ctx[i?'lineTo':'moveTo'](OX+(c+.5)*CELL,OY+(r+.5)*CELL));ctx.stroke();ctx.setLineDash([]);
+  const [c,r]=retreat?[1,2]:lesson.phase==='collect'?[4,1]:[3,1];
+  const x=OX+(c+.5)*CELL,y=OY+(r+.5)*CELL;
+  ctx.strokeStyle=retreat?'#385c45':'#705c31';ctx.lineWidth=2.4;ctx.beginPath();ctx.roundRect(x-19,y-19,38,38,7);ctx.stroke();
+  if(lesson.phase!=='collect'){
+    gardenOval(ctx,x-5,y+2,3,6,retreat?'#386544':'#776344');gardenOval(ctx,x+5,y-2,3,6,retreat?'#386544':'#776344');
+  }
+  ctx.restore();
 }
 function drawTacticalReadout() {
   for (const bomb of Game.bombs) {
@@ -1303,7 +1320,9 @@ $id('supply-heart').addEventListener('click', () => chooseSupply('heart'));
 $id('mute-btn').addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
 $id('start-btn').addEventListener('click', () => { if (window.ChipMusic) ChipMusic.unlock(); startGame(); });
-$id('retry-btn').addEventListener('click', startGame);
+$id('retry-btn').addEventListener('click',()=>startGame(Game.lessonCompleted&&Game.round<=3));
+$id('replay-courtyard').addEventListener('click',()=>startGame(true));
+updateJourneyMenu();
 $id('menu-btn').addEventListener('click', backToMenu);
 $id('resume-btn').addEventListener('click', togglePause);
 $id('pause-menu-btn').addEventListener('click', backToMenu);
@@ -1460,9 +1479,7 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
   });
 }
 
-EnemyAtlas.addEventListener('load',render);
 
-Courtyard.addEventListener('load',()=>{gridSnapshot.fill(-1);render();});
 
 
 // Discrete toolbar actions return keyboard play to its focusable canvas. Native
@@ -1475,3 +1492,5 @@ document.addEventListener('click', (event) => {
   if (control?.tagName === 'BUTTON') focusGameplay();
 });
 canvas.addEventListener('pointerdown', focusGameplay);
+
+CourtyardCast.addEventListener('load',()=>{gridSnapshot.fill(-1);render();});

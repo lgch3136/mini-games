@@ -1,15 +1,17 @@
 import * as T from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { MotionTrack } from "./motion.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261001-quality3-r8";
-import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1&quality2=20261001-action-r1";
-import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2&quality2=20261001-action-r1";
-import { bevelBox, dressStage, syncCaches } from "./dressing.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";
-import { platformLayers } from "./terrain.mjs?v=20260929-reaction-r1&quality2=20261001-action-r1";
-import { prepareRigidSkin, createRigidSkin } from "./rig.mjs?v=20260918-play-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r1";
-import { clamp, lerp } from "./world.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { spatialBatches } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";
-import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";
-import { GpuClock } from "./gpu-clock.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";
+import { MotionTrack } from "./motion.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { FollowCamera } from "./camera.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20261002-quality4-r1&quality2=20261001-action-r1";
+import { bevelBox, dressStage, syncCaches } from "./dressing.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { prepareRigidSkin, createRigidSkin } from "./rig.mjs?v=20260918-play-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { clamp, lerp } from "./world.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { spatialBatches } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { GpuClock } from "./gpu-clock.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { buildCityRoofs, buildRaisedPaths } from "./roof-architecture.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { BLADE_TIP } from "./slash-pose.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { buildTerrainBases } from "./terrain-bases.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
 const Y = new T.Vector3(0, 1, 0),
   vec = new T.Vector3(),
   quat = new T.Quaternion(),
@@ -33,8 +35,8 @@ export class View {
     this.renderer.toneMapping = T.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
     this.scene = new T.Scene();
-    this.viewHeight = 11.3;
-    this.camera = new T.OrthographicCamera(-10.04, 10.04, 5.65, -5.65, 0.1, 100);
+    this.viewHeight = 10.4;
+    this.camera = new T.OrthographicCamera(-10.04, 10.04, 5.2, -5.2, 0.1, 100);
     this.camera.position.set(0, 0, 30);
     this.camera.lookAt(0, 0, 0);
     this.cx = 10;
@@ -104,7 +106,7 @@ export class View {
     await Promise.all(
       ["shinobi", "warden", "abbot"].map(async (n) => {
         const r = await loader.loadAsync(
-          new URL(`./assets/${n}.glb`, import.meta.url).href,
+          new URL(`./assets/quality4/${n}.glb?mobile=20261002-quality4-r1`, import.meta.url).href,
         );
         this.cache.set(n, r.scene);
         const rig = prepareRigidSkin(r.scene);
@@ -115,17 +117,19 @@ export class View {
     this.backgrounds = await Promise.all(
       ["moon-city", "mist-temple"].map(async (n) => {
         const t = await tex.loadAsync(
-          new URL(`./assets/${n}.webp`, import.meta.url).href,
+          new URL(`./assets/${n}.webp?mobile=20261002-quality4-r1`, import.meta.url).href,
         );
         t.colorSpace = T.SRGBColorSpace;
         return t;
       }),
     );
     this.stone = await tex.loadAsync(
-      new URL("./assets/castle-stone.webp", import.meta.url).href,
+      new URL("./assets/castle-stone.webp?mobile=20261002-quality4-r1", import.meta.url).href,
     );
     this.stone.colorSpace = T.SRGBColorSpace;
     this.stone.wrapS = this.stone.wrapT = T.RepeatWrapping;
+    this.cliff = await tex.loadAsync(new URL('./assets/quality4/cliff-albedo.webp?mobile=20261002-quality4-r1',import.meta.url).href);
+    this.cliff.colorSpace=T.SRGBColorSpace;
     this.bg = new T.Mesh(
       new T.PlaneGeometry(30, 16.875),
       new T.MeshBasicMaterial({
@@ -157,6 +161,9 @@ export class View {
     this.camera.right = halfWidth;
     this.camera.updateProjectionMatrix();
     this.follow.halfWidth = halfWidth;
+    // The short landscape field extends behind the corner controls. A little
+    // existing roof before x=0 keeps the starting player clear of the left pad.
+    this.follow.leftMargin = matchMedia('(pointer: coarse)').matches && r.width>r.height*1.25 && r.height<400 ? 5 : 0;
     this.dpr = Math.min(devicePixelRatio || 1, 1.5);
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setSize(r.width, r.height, false);
@@ -209,83 +216,36 @@ export class View {
     this.actors.clear();
     this.stageGroup = new T.Group();
     this.scene.add(this.stageGroup);
-    const city = world.stage === 0,
-      blocks = [],
-      caps = [],
-      seams = [],
-      tiles = [],
-      posts = [],
-      rails = [],
-      lamps = [],
-      lanterns = [];
+    const city = world.stage === 0, rails = [], lamps = [], lanterns = [];
     for (const p of world.level.platforms) {
-      const depth = p.oneWay ? 0.7 : 2.6,
-        layers = platformLayers(p, city);
-      blocks.push({
-        p: [p.x + p.w / 2, layers.wall.center, -0.3],
-        s: [p.w, layers.wall.height, depth],
-        c: city ? 0x657876 : 0x72837b,
+      if(p.oneWay || p.w <= 7)continue;
+      const x = p.x + Math.min(6, p.w * 0.25);
+      lamps.push({
+        p: [x, p.y + 1.25, -1.5],
+        s: [0.1, 2.5, 0.1],
+        c: 0x302b2c,
       });
-      caps.push({
-        p: [p.x + p.w / 2, layers.cap.center, 0.0],
-        s: [p.w + 0.12, layers.cap.height, depth + 0.12],
-        c: city ? 0x384c4e : 0x52635a,
+      lanterns.push({
+        p: [x + 0.3, p.y + 2.15, -1.3],
+        s: [0.21, 0.32, 0.21],
+        c: 0xffbd6e,
       });
-      if (!p.oneWay) {
-        for (let x = p.x + 0.3; x < p.x + p.w; x += 0.62)
-          for (let z = -1.02; z < 1.1; z += 0.54)
-            tiles.push({
-              p: [Math.min(x, p.x + p.w - 0.28), p.y - 0.04, z],
-              s: [0.6, 0.08, 0.52],
-              c: new T.Color(city ? 0x57716e : 0x7a8980).multiplyScalar(0.96 + Math.sin(x * 31 + z * 13) * 0.04),
-            });
-        for (let y = p.y - 0.48; y > p.y - 0.6; y -= 0.8)
-          seams.push({
-            p: [p.x + p.w / 2, y, 1.02],
-            s: [p.w, 0.018, 0.035],
-            c: 0x121f2b,
-          });
-        if (p.w > 7) {
-          const x = p.x + Math.min(6, p.w * 0.25);
-          lamps.push({
-            p: [x, p.y + 1.25, -1.5],
-            s: [0.1, 2.5, 0.1],
-            c: 0x302b2c,
-          });
-          lanterns.push({
-            p: [x + 0.3, p.y + 2.15, -1.3],
-            s: [0.21, 0.32, 0.21],
-            c: 0xffbd6e,
-          });
-          rails.push({
-            p: [x + 0.15, p.y + 2.48, -1.4],
-            s: [0.55, 0.055, 0.08],
-            c: 0x74604b,
-          });
-          for (const yy of [-0.28, -0.13, 0.13, 0.28])
-            rails.push({
-              p: [x + 0.3, p.y + 2.15 + yy, -1.07],
-              s: [Math.abs(yy) > 0.2 ? 0.28 : 0.4, 0.025, 0.08],
-              c: 0x714c32,
-            });
-          rails.push({
-            p: [x + 0.3, p.y + 1.72, -1.3],
-            s: [0.035, 0.26, 0.035],
-            c: 0xbc7454,
-          });
-        }
-      } else {
-        const support = world.level.platforms
-          .filter((t) => !t.oneWay && p.x >= t.x && p.x + p.w <= t.x + t.w)
-          .at(-1);
-        if (support)
-          for (const x of [p.x + 0.2, p.x + p.w - 0.2])
-            posts.push({
-              p: [x, (p.y + support.y) / 2, -0.25],
-              s: [0.1, p.y - support.y, 0.14],
-              c: 0x4c4b47,
-            });
-      }
+      rails.push({
+        p: [x + 0.15, p.y + 2.48, -1.4],
+        s: [0.55, 0.055, 0.08],
+        c: 0x74604b,
+      });
+      for (const yy of [-0.28, -0.13, 0.13, 0.28])
+        rails.push({
+          p: [x + 0.3, p.y + 2.15 + yy, -1.07],
+          s: [Math.abs(yy) > 0.2 ? 0.28 : 0.4, 0.025, 0.08],
+          c: 0x714c32,
+        });
+      rails.push({
+        p: [x + 0.3, p.y + 1.72, -1.3],
+        s: [0.035, 0.26, 0.035],
+        c: 0xbc7454,
+      });
     }
     const cube = new T.BoxGeometry(1, 1, 1),
       material = (c) =>
@@ -294,34 +254,8 @@ export class View {
           roughness: 0.85,
           metalness: 0.06,
         });
-    // Broad, rough masonry needs diffuse light, not a per-fragment metal BRDF.
-    // Keep PBR on characters, blades and roof tiles where highlights matter.
-    const stoneMat = new T.MeshLambertMaterial({ color: 0xffffff });
-    stoneMat.map = this.stone;
-    stoneMat.onBeforeCompile = (shader) => {
-      shader.vertexShader = "varying vec2 vStoneWorld;\n" + shader.vertexShader;
-      shader.vertexShader = shader.vertexShader.replace(
-        "#include <begin_vertex>",
-        `#include <begin_vertex>
-vec4 stoneP=vec4(transformed,1.0);
-#ifdef USE_INSTANCING
-stoneP=instanceMatrix*stoneP;
-#endif
-vStoneWorld=(modelMatrix*stoneP).xy;`,
-      );
-      shader.fragmentShader =
-        "varying vec2 vStoneWorld;\n" + shader.fragmentShader;
-      shader.fragmentShader = shader.fragmentShader.replace(
-        "#include <map_fragment>",
-        "diffuseColor *= texture2D(map, vStoneWorld / 3.6);",
-      );
-    };
-    this.instanced(blocks, cube.clone(), stoneMat, this.stageGroup);
-    for (const list of [caps, seams, posts, rails, lamps])
+    for (const list of [rails, lamps])
       this.instanced(list, cube.clone(), material(0xffffff), this.stageGroup);
-    const tileMaterial = material(0xffffff);
-    tileMaterial.roughness = city ? 0.42 : 0.72;
-    this.instanced(tiles, bevelBox(0.035), tileMaterial, this.stageGroup, true);
     this.instanced(
       lanterns,
       new T.SphereGeometry(1, 10, 6),
@@ -426,6 +360,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.lootSlots = [];
     this.stageGroup.add(this.lootMesh);
     this.lootColors = [new T.Color(0xfb7892), new T.Color(0x81e5e9), new T.Color(0xffdc8e)];
+    if(city)buildCityRoofs(this,world);else{buildTerrainBases(this,world);buildRaisedPaths(this,world);}
     dressStage(this, world);
     this.bg.material.map = this.backgrounds[city ? 0 : 1];
     this.makeActor("hero", "shinobi");
@@ -507,8 +442,10 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     a.pose = p;
     a.scale = s;
     this.segment(r, "torso", p.hip, p.chest);
+    r.torso.rotateY(p.chestTwist||0);
     r.pelvis.position.set(...p.hip);
     r.pelvis.quaternion.copy(r.torso.quaternion);
+    r.pelvis.rotateY((p.hipTwist||0)-(p.chestTwist||0));
     r.head.position.set(...p.head);
     r.head.rotation.set(0, 0, r.torso.rotation.z * 0.35);
     for (const side of ["F", "B"]) {
@@ -548,7 +485,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     {
       r.sword.updateWorldMatrix(true, false);
       a.bladeBase.set(0, 0.12, 0).applyMatrix4(r.sword.matrixWorld);
-      a.bladeTip.set(0.22, 1.28, 0).applyMatrix4(r.sword.matrixWorld);
+      a.bladeTip.fromArray(BLADE_TIP).applyMatrix4(r.sword.matrixWorld);
     }
     if (dt > 0) {
       const attack = b.attack,
@@ -564,7 +501,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     // Never blink the entire hero out of existence. Damage is a short local
     // material response, and reduced-motion makes it substantially gentler.
     for (const m of a.materials) {
-      const flash = isHero ? (b.stun > 0 ? 0.2 : b.inv > 0 ? 0.055 : 0) : (b.flash || 0) * 2.8;
+      const flash = isHero ? (b.stun > 0 ? 0.065 : b.inv > 0 ? 0.018 : 0) : (b.flash || 0) * .55;
       m.emissive.setHex(isHero ? 0xefa387 : 0xffca8b);
       m.emissiveIntensity = this.reduced ? flash * 0.35 : flash;
       m.opacity = 1;
@@ -702,7 +639,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
       (e) => e.type === "hit" && e.age < 0.12,
     );
     this.light.intensity =
-      this.detail && flash ? 4 * (1 - flash.age / 0.12) : 0;
+      this.detail && flash ? 1.1 * (1 - flash.age / 0.12) : 0;
     this.light.position.set(flash?.x || px, flash?.y || py + 1, 1.7);
     this.gpuClock.begin();
     this.renderer.render(this.scene, this.camera);
@@ -952,6 +889,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     });
     this.backgrounds?.forEach((t) => t.dispose());
     this.stone?.dispose();
+    this.cliff?.dispose();
     this.shadowMap.dispose();
     this.glowMap.dispose();
     this.paperMap.dispose();

@@ -1,0 +1,42 @@
+{
+  "size": 256,
+  "pixelsPerUnit": 113.77777777777777,
+  "anchor": [
+    128,
+    188.42861462788275
+  ],
+  "files": [
+    "gardener-down-0",
+    "gardener-down-1",
+    "gardener-down-2",
+    "gardener-down-3",
+    "gardener-down-lay",
+    "gardener-right-0",
+    "gardener-right-1",
+    "gardener-right-2",
+    "gardener-right-3",
+    "gardener-right-lay",
+    "gardener-up-0",
+    "gardener-up-1",
+    "gardener-up-2",
+    "gardener-up-3",
+    "gardener-up-lay",
+    "gardener-left-0",
+    "gardener-left-1",
+    "gardener-left-2",
+    "gardener-left-3",
+    "gardener-left-lay",
+    "blob-0",
+    "blob-1",
+    "runner-0",
+    "runner-1",
+    "ghost-0",
+    "ghost-1",
+    "wall0",
+    "wall1",
+    "wall2",
+    "wall3",
+    "crate",
+    "bomb"
+  ]
+}

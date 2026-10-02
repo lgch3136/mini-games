@@ -47,7 +47,7 @@ export class Stage {
   constructor(canvas) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d', {alpha:false});
     this.light = new KeyLight(); this.reduced = false; this.now = 0;
-    this.halo = new Image(); this.halo.src = '../shared/light/assets/halo-20260928.webp';
+    this.halo = new Image(); this.halo.src = '../shared/light/assets/halo-20260928.webp?mobile=20261002-quality4-r1';
     this.halo.onload = () => { if (this.lastGame && !this.destroyed) this.draw(this.lastGame); };
     this.ready = Promise.resolve();
     this.clear();

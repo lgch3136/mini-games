@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<meta name="arcade-build" content="20261002-quality4-r1">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>英语打砖块 · WORD BREAKER</title>
-<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20261001-quality3-r2">
-<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261001-quality3-r2">
+<link rel="stylesheet" href="style.css?v=20261001-quality4-instrument&mobile=20261002-quality4-r1">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261002-quality4-r1">
 </head>
 <body>
 <div id="game-wrap">
@@ -29,18 +30,18 @@
       <div id="wb-zh"></div>
     </div>
     <div id="feedback" role="status"></div><div id="sector-status"></div>
-    <button id="recall-btn" type="button">召回瞄准 <b id="recall-count">1</b> · R</button>
+    <div id="control-deck"><div id="aim-controls"><button id="aim-left" type="button" aria-label="向左调角，飞行时左移挡板">↶</button><button id="launch-btn" type="button">发射</button><button id="aim-right" type="button" aria-label="向右调角，飞行时右移挡板">↷</button></div><button id="recall-btn" type="button">接球 <b id="recall-count">2</b> · R<small>充能 <b id="charge-count">0/3</b></small></button></div>
   </div>
 
   <div class="overlay" id="menu">
     <div class="panel">
-      <img class="menu-cover" src="../shared/mobile-art/breaker-diorama.webp" alt="">
+      <img class="menu-cover" src="../shared/mobile-art/breaker-diorama.webp?mobile=20261002-quality4-r1" alt="">
 
       <h1>英语打砖块<small>WORD BREAKER</small></h1>
-      <p class="sub">弹球撞碎砖墙，收集砖上字母按顺序拼单词。<br>板心精准接球可攒召回；危急时召回球，再瞄准绿色字母。四座星区循环递进。</p>
+      <p class="sub">拆开三座陶瓷天文仪：瞄准字母，开闸、借墙破甲，最后击中核心。<br>接板积累充能，按 R 接回球，再亲手选择下一条球路。</p>
       <button class="btn-main" id="start-btn">开始游戏</button>
       <div class="keys">
-        <span>← → / A D 移动挡板</span><span>空格 发射</span><span>每破 4 块必掉 M/W/S/F 胶囊</span><span>P 暂停</span><span>M 静音</span><span>📱 拖动 + 点击</span>
+        <span>接球时 ← → 调角 · 飞行时移板</span><span>A D 始终移板 · 空格发射</span><span>板心接球充 2 格 · 其他接球充 1 格</span><span>P 暂停</span><span>M 静音</span><span>📱 指向目标 · 按发射</span>
       </div>
       <div class="diff-row">
         <button class="difficulty selected" data-difficulty="easy">初级</button>
@@ -48,7 +49,7 @@
         <button class="difficulty" data-difficulty="hard">高级</button>
       </div>
       <label class="letter-assist"><input id="letter-assist" type="checkbox" checked> 字母引导 <span>关闭后，只看词义回忆拼写</span></label>
-      <a class="arcade-menu-home" href="../index.html">← 返回游戏合集</a>
+      <a class="arcade-menu-home" href="../index.html?mobile=20261002-quality4-r1">← 返回游戏合集</a>
     </div>
   </div>
 
@@ -66,21 +67,19 @@
     <div class="panel">
       <p id="over-kicker" style="color:#7dd3fc;letter-spacing:4px;font-size:12px;margin-bottom:6px;">行动结束</p>
       <h1 id="over-title" style="font-size:32px;color:#e0f2fe;text-shadow:0 3px 16px rgba(80,160,255,.4);">再来一局？</h1>
-      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本局徽章">
+      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp?mobile=20261002-quality4-r1" alt="本局徽章">
       <div id="over-stats"></div>
       <div class="btn-row">
-        <button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
+        <button class="btn-main hidden" id="continue-btn">继续远征</button><button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
         <button class="btn-sub" id="menu-btn">回主菜单</button>
       </div>
     </div>
   </div>
 </div>
 
-<script src="../shared/vocabulary.js"></script>
-<script src="../shared/audio.js?v=20260930-mobile-r2&mobile=20261001-quality3-r1"></script>
-<script src="../shared/chip-music.js?v=20260930-mobile-r2&mobile=20261001-quality3-r1"></script>
-<script src="../shared/gameplay-art/motion.js?v=20261001&mobile=20261001-quality2-r1"></script>
-<script src="../shared/gameplay-art/runtime.js?v=20261001&mobile=20261001-quality2-r1"></script>
-<script src="game.js?v=20260930-mobile-r2&mobile=20261001-quality3-r5"></script>
+<script src="../shared/vocabulary.js?mobile=20261002-quality4-r1"></script>
+<script src="../shared/audio.js?v=20260930-mobile-r2&mobile=20261002-quality4-r1"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2&mobile=20261002-quality4-r1"></script>
+<script src="game.js?v=20261001-quality4-instrument&mobile=20261002-quality4-r1"></script>
 </body>
 </html>

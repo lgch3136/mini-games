@@ -1,13 +1,13 @@
-import { EXPEDITIONS, expeditionProgress } from "./expedition.mjs?v=20260930-quality-r1&mobile=20261001-quality2-r1";
+import { EXPEDITIONS, expeditionProgress } from "./expedition.mjs?v=20260930-quality-r1&mobile=20261002-quality4-r1";
 import {
   SnakeGame,
   STEP,
   VERSION,
   wordsFor,
-} from "./engine.mjs?v=20260930-quality-r1&mobile=20261001-quality3-r2";
-import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r3";
-import { GardenAudio } from "./audio.mjs?v=20260912-garden-r4&mobile=20260930-quality-r2";
-import { SnakeInput } from "./input.mjs?v=20260912-garden-r4&mobile=20261001-quality3-r2";
+} from "./engine.mjs?v=20260930-quality-r1&mobile=20261002-quality4-r1";
+import { GardenRenderer } from "./render.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
+import { GardenAudio } from "./audio.mjs?v=20260912-garden-r4&mobile=20261002-quality4-r1";
+import { SnakeInput } from "./input.mjs?v=20260912-garden-r4&mobile=20261002-quality4-r1";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game"),
@@ -21,6 +21,7 @@ const vocabularyCounts = Object.fromEntries(
     wordsFor(banks.words[level]).length,
   ]),
 );
+let reviewByBank = {};
 let game = null,
   raf = 0,
   accumulator = 0,
@@ -92,6 +93,8 @@ try {
   best = Number(localStorage.getItem("word-snake-garden-best")) || 0;
   const savedStars = JSON.parse(localStorage.getItem("word-snake-expedition-stars-v1") || "{}");
   if (savedStars && typeof savedStars === "object" && !Array.isArray(savedStars)) expeditionRecords = savedStars;
+  const reviewSaved=JSON.parse(localStorage.getItem("word-snake-spaced-review-v1")||"{}");
+  if(reviewSaved&&typeof reviewSaved==="object"&&!Array.isArray(reviewSaved))reviewByBank=reviewSaved;
 } catch {}
 function expeditionKey() { return `${$("expedition").value}-${mode}-${$("difficulty").value}-${$("arena").value}-${$("assistance").value}`; }
 function bestStars() { return Math.max(0, Math.min(3, Number(expeditionRecords[expeditionKey()]) || 0)); }
@@ -99,6 +102,11 @@ function record() {
   const count = wordsFor(banks.words[$("difficulty").value]).length;
   $("record").textContent =
     `项目词库 ${count} 词${$("expedition").value !== "endless" ? ` · 本目标 ${bestStars()}/3 星` : ""}${best ? ` · 最高收获 ${best.toLocaleString()} 分` : " · 无时间限制，按自己的节奏来"}`;
+}
+function retainReviews(){
+  if(!game?.vocabularyKey)return;
+  reviewByBank[game.vocabularyKey]=game.reviewWords.map(r=>({word:{...r.word},otherWords:[...r.otherWords]}));
+  try{localStorage.setItem('word-snake-spaced-review-v1',JSON.stringify(reviewByBank));}catch{}
 }
 function save() {
   try {
@@ -172,12 +180,19 @@ function screen() {
     : "完整动效 · 点按简化动效";
 }
 function wordHud(force = false) {
+  if(game.forkGates.length){
+    const key='fork/'+game.completed;
+    if(force||key!==lastWordKey){lastWordKey=key;lastCursor=-1;$("meaning").textContent=game.forkGates.length===2?'下一段走哪条小径？':'沿这条小径继续';$("word").hidden=true;$("answers").hidden=false;$("answers").replaceChildren();
+      for(const gate of game.forkGates){const item=document.createElement('span'),mark=document.createElement('b'),copy=document.createElement('small');mark.textContent=gate.label;copy.append(document.createTextNode(`${gate.routeLabel} · ${gate.word.en.length}字`),document.createElement('br'),document.createTextNode(`${gate.word.zh} · 基础+${gate.reward}`));item.append(mark,copy);$("answers").append(item);}
+    }
+    return;
+  }
   const key = game.mode + (game.word.en || game.word.prompt) + game.completed + game.assistance;
   if (force || key !== lastWordKey) {
     lastWordKey = key;
     lastCursor = -1;
     $("meaning").textContent =
-      game.mode === "spell" ? game.word.zh : game.word.prompt;
+      game.mode === "spell" ? (game.wordReviewing?"回访 · ":"")+game.word.zh : game.word.prompt;
     $("word").replaceChildren();
     $("answers").replaceChildren();
     $("word").hidden = game.mode !== "spell";
@@ -233,13 +248,14 @@ function hud(force = false) {
   lastHud = game.time;
   if (renderer.reduced && game.time > toastUntil)
     $("toast").style.opacity = "0";
+  $("app").dataset.fork=String(game.forkGates.length>0);$("hint").hidden=game.forkGates.length>0;
   $("score").textContent = game.score.toLocaleString();
   $("combo").textContent =
     game.combo >= 2
       ? `${game.combo} 连 · x${game.multiplier()}`
       : `x${game.multiplier()}`;
   $("progress").textContent =
-    `${game.completed} 个${game.mode === "spell" ? "单词" : "答案"}`;
+    `${game.completed} 次${game.mode === "spell" ? "拼写" : "作答"}`;
   $("hearts").textContent =
     "♥ ".repeat(Math.max(0, game.hp)) + "♡ ".repeat(3 - Math.max(0, game.hp));
   $("hearts").setAttribute("aria-label", `${game.hp} 点生命`);
@@ -254,8 +270,8 @@ function hud(force = false) {
   $("expedition-title").textContent = game.wordGoal === 5 ? "五词小花园" : game.wordGoal === 10 ? "十词果园" : "自在生长";
   $("expedition-fill").style.transform = `scaleX(${progress.fraction})`;
   $("depart").hidden = !game.reading;
-  $("route-name").textContent = game.route?.name || "自由花园";
-  $("route-rule").textContent = game.reading ? "安心读题，不计时 · 方向键或点出发" : game.route?.rule || (game.arena === "classic" ? "护栏会扣生命，边界不能穿越" : "边界相通");
+  $("route-name").textContent = game.forkGates.length ? "下一条小径" : game.route?.name || "自由花园";
+  $("route-rule").textContent = game.forkGates.length ? "方向键或出发，再游进A/B木门" : game.reading ? "安心读题，不计时 · 方向键或点出发" : game.route?.rule || (game.arena === "classic" ? "护栏会扣生命，边界不能穿越" : "边界相通");
   wordHud(force);
 }
 function events() {
@@ -265,11 +281,12 @@ function events() {
     renderer.event(event);
     audio.effect(event.type, event.combo);
     if (event.type === "complete") {
+      retainReviews();
       completedWords.push({ word: event.label, meaning: event.meaning });
       if (completedWords.length > 30) completedWords.shift();
       toast(
         event.label,
-        `${event.meaning} · ${game.mode === "spell" ? "拼词完成" : "回答正确"} +${100 * game.multiplier()}`,
+        `${event.meaning} · ${game.mode === "spell" ? "拼词完成" : "回答正确"} +${event.reward ?? 100 * game.multiplier()}`,
       );
     }
     if (event.type === "eat")
@@ -335,6 +352,7 @@ function loop(now) {
   else raf = requestAnimationFrame(loop);
 }
 function start() {
+  retainReviews();
   stop();
   save();
   menu = false;
@@ -346,7 +364,9 @@ function start() {
   $("app").dataset.phase = "playing";
   const box = canvas.getBoundingClientRect(),
     {cols, rows, portrait} = boardSize(box, window.innerWidth, window.innerHeight);
+  const vocabularyKey=mode+"/"+$("difficulty").value;
   game = new SnakeGame({
+    vocabularyKey,reviewWords:reviewByBank[vocabularyKey],
     cols,
     rows,
     speed: Number($("menu-speed").value),
@@ -413,6 +433,7 @@ function resume() {
   raf = requestAnimationFrame(loop);
 }
 function finish() {
+  retainReviews();
   stop();
   best = Math.max(best, game.score);
   try {
@@ -425,7 +446,7 @@ function finish() {
   }
   const earnedStars = progress.stars;
   $("mastery-medal").hidden = earnedStars === 0;
-  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp`;
+  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp?mobile=20261002-quality4-r1`;
   $("mastery-medal").alt = `${earnedStars} 星完成奖章`;
   $("result-title").textContent = game.won ? "这一篮，圆满收官" : "种下的每个词，都算数";
   $("expedition-stars").textContent = game.wordGoal ? "★".repeat(progress.stars) + "☆".repeat(3 - progress.stars) : "✿";
@@ -434,7 +455,7 @@ function finish() {
   $("restart").querySelector(".button-label").textContent = game.won ? "再收一篮" : "再试同样目标";
   $("final-score").textContent = game.score.toLocaleString();
   $("final-details").textContent =
-    `完成 ${game.completed} 个${game.mode === "spell" ? "单词" : "答案"} · 独立无提示 ${game.recalledWords} · 引导/提示 ${game.guidedWords} · 最高 ${game.bestCombo} 连`;
+    `完成 ${game.completed} 次${game.mode === "spell" ? "拼写" : "作答"}${game.mode === "spell" ? " · "+game.seenWords.length+"个不同词" : ""} · 独立无提示 ${game.recalledWords} · 引导/提示 ${game.guidedWords}${game.reviewWords.length?" · 待间隔回访 "+game.reviewWords.length:""} · 最高 ${game.bestCombo} 连`;
   $("word-review").replaceChildren();
   for (const item of completedWords.slice(-12)) {
     const span = document.createElement("span");
@@ -447,6 +468,7 @@ function finish() {
   render();
 }
 function toMenu() {
+  retainReviews();
   if (game?.phase === "playing") game.setPaused(true);
   stop();
   menu = true;
@@ -474,6 +496,11 @@ function resize() {
   lastBox = { width: box.width, height: box.height };
   render();
 }
+function requestHint(showAnswer=true){
+  if(menu||game?.phase!=='playing'||game.forkGates.length||!game.hint())return false;
+  hud(true);if(showAnswer)toast(game.mode==='spell'?game.target()?.label.toUpperCase():game.word.answer,'提示 · 消耗15分');
+  canvas.focus({preventScroll:true});return true;
+}
 const input = new SnakeInput({
   document,
   canvas,
@@ -482,18 +509,7 @@ const input = new SnakeInput({
     if (game) game.boostHeld = !menu && game.phase === "playing" && held;
   },
   pause: () => (game?.phase === "paused" ? resume() : pause()),
-  hint: () => {
-    if (game?.phase === "playing") {
-      game.hint();
-      hud(true);
-      toast(
-        game.mode === "spell"
-          ? game.target()?.label.toUpperCase()
-          : game.word.answer,
-        "提示 · 消耗 15 分",
-      );
-    }
-  },
+  hint: () => requestHint(true),
   playing: () => !menu && game?.phase === "playing",
 });
 for (const button of document.querySelectorAll("[data-mode]"))
@@ -513,13 +529,7 @@ $("pause").addEventListener("click", () =>
 );
 for (const id of ["exit", "pause-menu", "over-menu"])
   $(id).addEventListener("click", toMenu);
-$("hint").addEventListener("click", () => {
-  if (game?.phase === "playing") {
-    game.hint();
-    hud(true);
-    canvas.focus({ preventScroll: true });
-  }
-});
+$('hint').addEventListener('click',()=>requestHint(false));
 $("difficulty").addEventListener("change", record);
 $("expedition").addEventListener("change", record);
 $("arena").addEventListener("change", record);

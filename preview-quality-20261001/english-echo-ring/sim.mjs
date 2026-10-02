@@ -1,4 +1,4 @@
-import { trialPhase, trialSchedule } from "./encounters.mjs?mobile=20261001-quality2-r1";
+import { trialPhase, trialSchedule } from "./encounters.mjs?mobile=20261002-quality4-r1";
 // Echo Ring — original simulation. No DOM, render-rate dependence, or global RNG.
 export const TAU = Math.PI * 2;
 export const RADIUS = 280;
@@ -25,6 +25,17 @@ export function swept(ax, ay, bx, by, cx, cy, dx, dy, radius) {
   const t = clamp(-(x * vx + y * vy) / (vx * vx + vy * vy || 1), 0, 1);
   return (x + vx * t) ** 2 + (y + vy * t) ** 2 <= radius * radius;
 }
+// Exact ray/circle prediction used by the first-use return guide. Read-only.
+export function projectedBounce(b) {
+  const r=RADIUS-3, vv=b.vx*b.vx+b.vy*b.vy;
+  if(!vv)return null;
+  const dot=b.x*b.vx+b.y*b.vy;
+  const t=(-dot+Math.sqrt(Math.max(0,dot*dot+vv*(r*r-b.x*b.x-b.y*b.y))))/vv;
+  const x=b.x+b.vx*t,y=b.y+b.vy*t,n=Math.hypot(x,y),nx=x/n,ny=y/n;
+  const d=b.vx*nx+b.vy*ny;
+  return {x,y,vx:b.vx-2*d*nx,vy:b.vy-2*d*ny,time:t};
+}
+
 export class Membrane {
   constructor(n = 192) {
     this.n = n;
@@ -65,11 +76,13 @@ export class Membrane {
   }
 }
 export class Game {
-  constructor({ seed = 9173, mode = "flow", duration = 0 } = {}) {
+  constructor({ seed = 9173, mode = "flow", duration = 0, lesson = false, lessonSetup = null } = {}) {
     this.seed = seed;
     this.rng = random(seed);
     this.mode = mode;
-    this.duration = duration === 90 ? 90 : 0;
+    this.duration = lesson ? 0 : duration === 90 ? 90 : 0;
+    this.lesson = lesson ? { stage: "fire", shotId: null, origin: null, targetId: null,
+      fireHeld: false, completed: false, failedFrom: null, setup: null, history: [] } : null;
     this.won = false;
     this.encounters = this.duration ? trialSchedule(seed) : [];
     this.encounterIndex = 0;
@@ -94,7 +107,7 @@ export class Game {
     this.over = false;
     this.reason = "";
     this.nextId = 1;
-    this.spawnClock = this.duration ? this.encounters[0].at : 1.2;
+    this.spawnClock = lesson ? Infinity : this.duration ? this.encounters[0].at : 1.2;
     this.enemies = [];
     this.bullets = [];
     this.events = [];
@@ -117,7 +130,29 @@ export class Game {
       recoil: 0,
     };
     this.ring = new Membrane();
+    if (this.lesson && lessonSetup) {
+      const r = Math.hypot(lessonSetup.x, lessonSetup.y), scale = Math.min(1, 245 / (r || 1));
+      this.p.x = this.p.px = lessonSetup.x * scale;
+      this.p.y = this.p.py = lessonSetup.y * scale;
+      this.prepareLessonArmor();
+    }
   }
+  lessonEvent(stage, detail = {}) {
+    if (!this.lesson) return;
+    this.lesson.stage = stage;
+    const event = { stage, time: this.time, ...detail };
+    this.lesson.history.push(event);
+    this.emit("lesson", event);
+  }
+  prepareLessonArmor() {
+    this.lesson.setup = { x: this.p.x, y: this.p.y };
+    this.lesson.shotId = null;
+    this.spawn({ type: "armor", angle: -Math.PI / 2, cue: .45 });
+    this.lesson.targetId = this.enemies.at(-1).id;
+    this.lessonEvent("armor", { targetId: this.lesson.targetId });
+  }
+  get lessonFrozen() { return !!this.lesson && ["retry", "complete"].includes(this.lesson.stage); }
+
   emit(type, data = {}) {
     if (this.events.length < 100) this.events.push({ type, ...data });
   }
@@ -183,6 +218,10 @@ export class Game {
       vx: dx * 390,
       vy: dy * 390,
       age: 0,
+      origin: { x, y },
+      launch: { x: p.x, y: p.y },
+      firstBounce: null,
+      lastBounce: null,
       bounces: 0,
       grazed: false,
       dead: false,
@@ -190,21 +229,33 @@ export class Game {
     p.shootCooldown = 0.24;
     p.recoil = 1;
     this.shots++;
-    this.emit("shot", { x, y, angle: Math.atan2(dy, dx) });
+    const bullet = this.bullets.at(-1);
+    this.emit("shot", { x, y, angle: Math.atan2(dy, dx), bulletId: bullet.id });
+    if (this.lesson) {
+      this.lesson.shotId = bullet.id;
+      this.lesson.origin = { x: p.x, y: p.y };
+      if(this.lesson.stage === "fire") this.lessonEvent("watch", { bulletId: bullet.id });
+    }
   }
-  hurt(reason, x, y) {
+  hurt(reason, x, y, source = null) {
     const p = this.p;
     if (p.invulnerable > 0 || p.dash > 0 || this.over) return false;
     p.health--;
     this.damageTaken++;
-    this.lastThreat = { angle: Math.atan2(y - p.y, x - p.x), until: this.time + 1.2, reason };
+    this.lastThreat = { angle: Math.atan2(y - p.y, x - p.x), until: this.time + 1.2, reason,
+      source, impact: { x:p.x,y:p.y }, time:this.time };
     p.invulnerable = 1.8;
     this.combo = 0;
     this.comboTime = 0;
     this.charge = Math.max(0, this.charge - 20);
-    this.emit("hurt", { x, y, health: p.health });
+    this.emit("hurt", { x, y, health: p.health, source });
     // A readable recovery window, without moving the camera or teleporting the ship.
     for (const b of this.bullets) if (b.bounces) b.dead = true;
+    if (this.lesson) {
+      this.lesson.failedFrom = this.lesson.stage === "armor" ? "armor" : "fire";
+      this.lessonEvent("retry", { bulletId: source?.bulletId, reason });
+      return true;
+    }
     if (p.health <= 0) {
       this.over = true;
       this.reason = reason;
@@ -254,9 +305,17 @@ export class Game {
       points,
       combo: this.combo,
       returning: b.bounces > 0,
+      bulletId: b.id, enemyId:e.id, origin:b.origin, bounce:b.lastBounce,
+      directArmor: b.armorTargetId === e.id,
     });
     this.gain(12.5);
+    if(b.bounces)this.emit("returnGain",{x:e.x,y:e.y,tx:this.p.x,ty:this.p.y,amount:12.5,charge:this.charge,bulletId:b.id});
     this.ring.pluck(Math.atan2(e.y, e.x), -70);
+    if(this.lesson && e.id === this.lesson.targetId && b.bounces > 0) {
+      this.lesson.completed = true;
+      this.lesson.directArmor = b.armorTargetId === e.id;
+      this.lessonEvent("complete", {bulletId:b.id, targetId:e.id, directArmor:b.armorTargetId===e.id, charge:this.charge});
+    }
     if (e.type === "split" && this.enemies.length < 12) {
       const a = Math.atan2(e.y - this.p.y, e.x - this.p.x);
       for (const side of [-1, 1]) {
@@ -283,7 +342,7 @@ export class Game {
     }
   }
   step(dt, input = {}) {
-    if (this.over) return;
+    if (this.over || this.lessonFrozen) return;
     // Fixed timestep is enforced by the browser runner; guard accidental huge steps too.
     dt = clamp(dt, 0, 1 / 30);
     this.time += dt;
@@ -311,7 +370,7 @@ export class Game {
         this.emit("repair", { health: p.health });
       }
     }
-    const phase = this.duration ? (this.time < 31 ? 0 : this.time < 63 ? 1 : 2) : Math.min(3, Math.floor(this.time / 28));
+    const phase = this.lesson ? 0 : this.duration ? (this.time < 31 ? 0 : this.time < 63 ? 1 : 2) : Math.min(3, Math.floor(this.time / 28));
     if (phase !== this.phase) {
       this.phase = phase;
       this.emit("phase", { phase });
@@ -362,14 +421,18 @@ export class Game {
         this.ring.pluck(Math.atan2(ny, nx), Math.min(impact, 160));
     }
     if (pr > 12) p.aim = Math.atan2(-p.y, -p.x);
-    if (input.fire && !section?.recovery) this.shoot();
+    if(this.lesson) {
+      const pressed = input.fire && !this.lesson.fireHeld;
+      this.lesson.fireHeld = !!input.fire;
+      if(pressed && ["fire", "armor"].includes(this.lesson.stage) && !this.bullets.some(b=>!b.dead)) this.shoot();
+    } else if (input.fire && !section?.recovery) this.shoot();
     this.spawnClock -= dt;
     if (this.duration) {
       while (this.spawnClock <= 1e-7 && this.encounterIndex < this.encounters.length) {
         this.spawn(this.encounters[this.encounterIndex++]);
         this.spawnClock = this.encounterIndex < this.encounters.length ? this.encounters[this.encounterIndex].at - this.time : Infinity;
       }
-    } else if (this.spawnClock <= 0) {
+    } else if (!this.lesson && this.spawnClock <= 0) {
       this.spawn();
       const breath = this.time % 26 > 21 ? 1.8 : 1;
       this.spawnClock =
@@ -388,11 +451,11 @@ export class Game {
         continue;
       }
       if (e.type === "armor") {
-        const orbit = e.anchorAngle + (e.age - e.cueDuration) * .10 * e.spin;
+        const orbit = e.anchorAngle + (this.lesson ? 0 : (e.age - e.cueDuration) * .10 * e.spin);
         const tx = Math.cos(orbit) * 180, ty = Math.sin(orbit) * 180;
         e.vx = (tx - e.x) * 3; e.vy = (ty - e.y) * 3;
         e.x += e.vx * dt; e.y += e.vy * dt;
-        if (swept(e.px, e.py, e.x, e.y, p.px, p.py, p.x, p.y, e.r + 6)) this.hurt("碰到了回弹装甲", e.x, e.y);
+        if (swept(e.px, e.py, e.x, e.y, p.px, p.py, p.x, p.y, e.r + 6)) this.hurt("碰到了回弹装甲", e.x, e.y, {kind:"enemy",enemyId:e.id,from:{x:e.px-e.vx*.4,y:e.py-e.vy*.4}});
         continue;
       }
       const a = Math.atan2(p.y - e.y, p.x - e.x),
@@ -407,14 +470,14 @@ export class Game {
       e.x += e.vx * dt;
       e.y += e.vy * dt;
       if (swept(e.px, e.py, e.x, e.y, p.px, p.py, p.x, p.y, e.r + 6)) {
-        if (this.hurt("被追迹者撞到", e.x, e.y)) {
+        if (this.hurt("被追迹者撞到", e.x, e.y, {kind:"enemy",enemyId:e.id,from:{x:e.px-e.vx*.4,y:e.py-e.vy*.4}})) {
           e.dead = true;
           break;
         }
       }
     }
     for (const b of this.bullets) {
-      if (this.over) break;
+      if (this.over || this.lessonFrozen) break;
       if (b.dead) continue;
       b.px = b.x;
       b.py = b.y;
@@ -444,7 +507,11 @@ export class Game {
         b.vy -= 2 * dot * ny;
         b.bounces++;
         this.ring.pluck(Math.atan2(ny, nx), 160);
-        this.emit("bounce", { x: b.x, y: b.y, angle: Math.atan2(ny, nx) });
+        b.lastBounce = {x:b.x,y:b.y,time:this.time};
+        b.firstBounce ||= b.lastBounce;
+        this.emit("bounce", { x: b.x, y: b.y, angle: Math.atan2(ny, nx), bulletId:b.id, vx:b.vx, vy:b.vy });
+        if(this.lesson?.stage === "watch" && b.id === this.lesson.shotId)
+          this.lessonEvent("evade", {bulletId:b.id,bounce:b.lastBounce});
         b.x += b.vx * dt * (1 - fraction);
         b.y += b.vy * dt * (1 - fraction);
         if (b.bounces >= 3) b.dead = true;
@@ -459,7 +526,7 @@ export class Game {
         if (swept(b.px, b.py, b.x, b.y, e.px, e.py, e.x, e.y, e.r + 3)) {
           if (e.type === "armor" && b.bounces === 0) {
             // Direct fire passes through. Destroying it must still require arranging a return trajectory.
-            if (!b.armorSeen) { e.armorFlash = .25; this.emit("armor", { x: e.x, y: e.y }); b.armorSeen = true; }
+            if (!b.armorSeen) { e.armorFlash = .25; this.emit("armor", { x: e.x, y: e.y, bulletId:b.id,enemyId:e.id }); b.armorSeen = true;b.armorTargetId=e.id; }
             continue;
           }
           e.hp--;
@@ -474,7 +541,7 @@ export class Game {
       if (b.dead || !b.bounces) continue;
       const distance = Math.hypot(b.x - p.x, b.y - p.y);
       if (swept(b.px, b.py, b.x, b.y, p.px, p.py, p.x, p.y, 8.2)) {
-        if (this.hurt("撞到了自己的回弹", b.x, b.y)) b.dead = true;
+        if (this.hurt("撞到了自己的回弹", b.x, b.y, {kind:"self",bulletId:b.id,origin:b.origin,firstBounce:b.firstBounce,bounce:b.lastBounce,bounceCount:b.bounces,from:{x:b.px,y:b.py},velocity:{x:b.vx,y:b.vy}})) b.dead = true;
       } else if (
         !b.grazed &&
         distance < 27 &&
@@ -486,6 +553,16 @@ export class Game {
         this.score += 25;
         this.emit("graze", { x: p.x, y: p.y });
         this.gain(8);
+      }
+    }
+    if(this.lesson?.stage === "evade") {
+      const shot=this.bullets.find(b=>b.id===this.lesson.shotId),origin=this.lesson.origin;
+      if(shot?.bounces && origin && !shot.dead && p.dash===0 && Math.hypot(p.x-origin.x,p.y-origin.y)>22 &&
+        swept(shot.px,shot.py,shot.x,shot.y,origin.x,origin.y,origin.x,origin.y,8.2)) {
+        this.lesson.history.push({stage:"safeCrossing",time:this.time,bulletId:shot.id,origin:{...origin},player:{x:p.x,y:p.y}});
+        // This practice beat ends only after the real return crossed the abandoned line.
+        shot.dead=true;
+        this.prepareLessonArmor();
       }
     }
     this.bullets = this.bullets.filter((b) => !b.dead);
@@ -502,6 +579,7 @@ export class Game {
     return {
       time: this.time,
       duration: this.duration,
+      lesson: this.lesson ? {stage:this.lesson.stage,completed:this.lesson.completed} : null,
       won: this.won,
       dashes: this.dashes,
       seed: this.seed,

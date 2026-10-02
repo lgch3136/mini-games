@@ -1,5 +1,5 @@
-import { WindScore } from "./sound.js?v=20260905-sonic&mobile=20260930-quality-r2";
-import { makeChart } from "./rhythm.mjs?v=20260905-sonic&mobile=20261001-quality2-r1";
+import { WindScore } from "./sound.js?v=20260905-sonic&mobile=20261002-quality4-r1";
+import { makeChart } from "./rhythm.mjs?v=20260905-sonic&mobile=20261002-quality4-r1";
 
 export function scoreEvents(track, chart = makeChart(track)) {
   const { beat, leadIn } = chart;
@@ -46,7 +46,7 @@ export class RhythmScore extends WindScore {
             timeout = setTimeout(() => controller.abort(), 8000);
           try {
             const response = await fetch(
-              new URL(`./assets/piano/C${midi / 12 - 1}.mp3`, import.meta.url),
+              new URL(`./assets/piano/C${midi / 12 - 1}.mp3?mobile=20261002-quality4-r1`, import.meta.url),
               { signal: controller.signal },
             );
             if (!response.ok)

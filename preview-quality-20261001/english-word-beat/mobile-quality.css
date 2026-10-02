@@ -90,3 +90,17 @@ button,select,input { touch-action:manipulation; }
   .song-progress { top:calc(max(8px,env(safe-area-inset-top)) + 89px); bottom:auto; }
   #feedback { bottom:3px; font-size:10px; }
 }
+
+/* The live playfield is a quiet wood/ivory instrument, with rhythm owning the HUD. */
+.companion-choice {display:grid;gap:8px;margin:12px 0;color:#bfc9ba;font-size:12px;}
+.companion-choice label {display:flex;align-items:center;gap:8px;min-height:44px;}
+.companion-choice input {width:20px;height:20px;accent-color:#bfa36d;}
+.companion-choice .btn-sub {min-height:44px;justify-self:start;font-size:12px;padding:8px 12px;}
+#hud .chip {border-color:#9cae9c40;color:#d7dfcf;background:#12272dd9;}
+#hud button {border-color:#a497734d;background:#152b32;color:#dce4d5;}
+#word-bar {border-color:#b9aa7a55;background:#182f35e8;color:#e1d8bc;}
+#wb-word .got {color:#d7c185;}
+#wb-word .next {color:#f1e8ca;}
+#feedback {color:#d7ddc8;}
+.song-progress {color:#aebfae;}
+.song-progress em {background:#bb9e67;}

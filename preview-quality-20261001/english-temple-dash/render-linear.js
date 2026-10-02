@@ -9,9 +9,9 @@ import {
   biomeAt,
   lerp,
   clamp,
-} from "./engine.mjs?v=20260905-sonic&mobile=20261001-quality2-r1";
-import { runnerPose, footPose } from "./motion.mjs?v=20260905-sonic&mobile=20261001-quality2-r1";
-import { LEAD, CUE_HEIGHT, CUE_FRONT } from "./rhythm.mjs?v=20260905-sonic&mobile=20261001-quality2-r1";
+} from "./engine.mjs?v=20260905-sonic&mobile=20261002-quality4-r1";
+import { runnerPose, footPose } from "./motion.mjs?v=20260905-sonic&mobile=20261002-quality4-r1";
+import { LEAD, CUE_HEIGHT, CUE_FRONT } from "./rhythm.mjs?v=20260905-sonic&mobile=20261002-quality4-r1";
 
 // A real orthographic diorama: depth-tested solid geometry, a single camera and
 // one physical scale. Nothing grows, flattens or eases as it approaches the feet.
@@ -80,6 +80,20 @@ const roundedBox = () => {
   return g;
 };
 
+const brokenArch=()=>{
+  const shape=new T.Shape(),steps=10,end=.82;
+  for(let i=0;i<=steps;i++){const t=i/steps*end,x=-.53-3.92*Math.cos(t),y=4.5+3.1*Math.sin(t);if(!i)shape.moveTo(x,y);else shape.lineTo(x,y);}
+  for(let i=steps;i>=0;i--){const t=i/steps*end;shape.lineTo(-.53-3.32*Math.cos(t),4.5+2.54*Math.sin(t));}
+  shape.closePath();const g=new T.ExtrudeGeometry(shape,{depth:1.7,bevelEnabled:true,bevelSegments:1,bevelSize:.035,bevelThickness:.035,steps:1,curveSegments:1});g.translate(0,0,-.85);g.computeVertexNormals();return g;
+};
+
+const waterArch=()=>{
+  const shape=new T.Shape(),steps=16;
+  for(let i=0;i<=steps;i++){const t=i/steps*Math.PI,x=4*Math.cos(t),y=-3.1+3.9*Math.sin(t);if(!i)shape.moveTo(x,y);else shape.lineTo(x,y);}
+  for(let i=steps;i>=0;i--){const t=i/steps*Math.PI;shape.lineTo(3.42*Math.cos(t),-3.1+3.32*Math.sin(t));}
+  shape.closePath();const g=new T.ExtrudeGeometry(shape,{depth:1.6,bevelEnabled:true,bevelSegments:1,bevelSize:.035,bevelThickness:.035,steps:1,curveSegments:1});g.translate(0,0,-.8);return g;
+};
+
 export class Batch {
   constructor(scene, geometry, material, capacity, shadow = true) {
     this.mesh = new T.InstancedMesh(geometry, material, capacity);
@@ -141,7 +155,7 @@ export class Renderer {
     this.scene.background = new T.Color("#91c5c6");
     this.scene.fog = new T.Fog("#91c5c6", 65, 96);
     this.camera = new T.OrthographicCamera(-8, 8, 10, -3, 0.1, 140);
-    this.camera.position.set(0, 30, 40);
+    this.camera.position.set(0, 25, 60);
     this.camera.lookAt(0, 0, 0);
     this.hemi = new T.HemisphereLight("#fff5df", "#66878b", 2.05);
     this.scene.add(this.hemi);
@@ -169,6 +183,8 @@ export class Renderer {
     });
     const flat = new T.MeshBasicMaterial({ color: 0xffffff });
     this.batches = {
+      arch: new Batch(this.scene,brokenArch(),material,6),
+      aqueduct: new Batch(this.scene,waterArch(),material,24),
       box: new Batch(this.scene, roundedBox(), material, 2100),
       cube: new Batch(this.scene, new T.BoxGeometry(1, 1, 1), material, 1800),
       rock: new Batch(
@@ -238,10 +254,13 @@ export class Renderer {
       top: spec.top,
       bottom: spec.bottom,
     });
+    this.camera.position.set(...spec.viewPosition);this.camera.lookAt(0,0,0);
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();
     this.project = projection(this.width, 720);
     this.visibleZ = Math.min(SIGHT, (spec.top + 3) / (SPACE.depth * SPACE.sin));
+    this.floorFar=(spec.top+.7)/(SPACE.depth*SPACE.sin);
+    this.floorNear=(spec.bottom-.7)/(SPACE.depth*SPACE.sin);
   }
   box(x, y, z, w, h, d, c, ry = 0, rx = 0, rz = 0) {
     this.batches.box.add(x, y, z, w, h, d, c, rx, ry, rz, this.parent);
@@ -336,102 +355,171 @@ export class Renderer {
     this.lastFrame++;
   }
   environment() {
-    const distance = this.distance;
-    this.cube(0, -3.8, -9, 150, 0.2, 140, this.waterColor);
-    const base = Math.floor((distance - 45) / 68) * 68;
-    for (let n = 0; n < 5; n++) {
-      const abs = base + n * 68,
-        z = -(abs - distance) * SPACE.depth,
-        p = PALETTES[biomeAt(Math.max(0, abs))],
-        mine = biomeAt(abs) === 2;
-      if (z > 14 || z < -30) continue;
-      for (const side of [-1, 1]) {
-        const v = hash(abs + side * 32),
-          x = side * (7 + v * 1.3);
-        this.rock(x, -3.2, z, 8.5, 6.5, 9, p.dark, v * 2);
-        this.rock(x, -0.95, z, 7.9, 2, 8.2, mine ? "#507888" : "#83a887", v);
-        this.box(
-          x,
-          -0.25,
-          z,
-          5.1,
-          0.65,
-          6.3,
-          mine ? "#70918e" : "#a3bd91",
-          v * 0.15,
-        );
-        if (!mine) {
-          for (let j = 0; j < 3; j++) {
-            const tx = x + side * (j % 2) * 1.35,
-              tz = z - 1.8 + j * 1.8,
-              h = 1.8 + hash(abs + j) * 1.5;
-            this.rod([tx, 0, tz], [tx + 0.12, h, tz], 0.22, "#817953");
-            this.rock(tx, h + 0.3, tz, 2.5, 2.8, 2.4, p.leaves, j);
-            this.rock(
-              tx - 0.5,
-              h + 0.8,
-              tz - 0.35,
-              1.8,
-              1.9,
-              1.8,
-              "#77af82",
-              j + 0.3,
-            );
-          }
-          // Ruins are outside the usable track, never disguised as hazards.
-          const rx = side * 4.85,
-            rz = z + 2;
-          for (const dz of [-0.58, 0.58]) {
-            this.box(rx, 0.15, rz + dz, 0.68, 0.3, 0.66, p.rim);
-            this.batches.pole.add(rx, 1.3, rz + dz, 0.36, 2.3, 0.36, "#d4cf9e");
-            this.box(rx, 2.45, rz + dz, 0.64, 0.22, 0.64, p.rim);
-          }
-          this.box(rx, 2.65, rz, 0.78, 0.27, 2, p.rim);
-        } else {
-          for (let j = 0; j < 4; j++) {
-            const cx = x + Math.sin(j * 2) * 1.6,
-              cz = z + j - 2,
-              h = 0.9 + hash(abs + j) * 1.6;
-            this.rock(
-              cx,
-              h * 0.45,
-              cz,
-              0.7,
-              h,
-              0.8,
-              j % 2 ? "#92ceca" : "#56adb5",
-              j,
-            );
-            this.batches.glow.add(
-              cx,
-              h * 0.82,
-              cz,
-              0.18,
-              0.35,
-              0.18,
-              "#b0f4df",
-            );
-          }
-          this.rock(side * 9, 3, z, 4, 10, 6, "#426d7e", v);
+    const distance=this.distance;
+    this.cube(0,-6.1,-10,150,.16,160,this.waterColor);
+    // A continuous raised causeway over water, with visible foundations. Side
+    // masses frame the path instead of filling it with two featureless walls.
+    const base=Math.floor((distance-60)/80)*80;
+    for(let n=0;n<8;n++){
+      const abs=base+n*80,z=-(abs-distance)*SPACE.depth,p=PALETTES[biomeAt(Math.max(0,abs))],mode=biomeAt(abs);
+      if(z>15||z< -66)continue;
+      this.box(0,-.69,z,6.5,.72,2.4,p.side);
+      for(const side of[-1,1]){
+        this.box(side*2.72,-3.2,z,.88,5.4,1.42,p.dark);
+        this.box(side*2.72,-5.83,z,1.65,.34,2.1,p.side);
+        this.box(side*2.72,-1.2,z,1.12,.28,1.78,p.rim);
+        this.rod([side*2.72,-2.9,z],[side*.6,-.74,z],.28,p.side);
+        if(mode===2){this.box(side*4.3,.24,z,1.02,.46,1.24,p.rim);this.box(side*4.3,.64,z,.45,.35,.55,'#9eb5a7');this.batches.glow.add(side*4.3,.9,z,.23,.4,.23,'#efc881');}
+
+      }
+    }
+    // Continuous banks, a supported aqueduct and an actual mine opening are
+    // authored middle-distance places, not a row of unrelated display plinths.
+    const landBase=Math.floor((distance-140)/160)*160;
+    for(let n=0;n<6;n++){
+      const abs=landBase+n*160,z=-(abs-distance)*SPACE.depth,mode=biomeAt(Math.max(0,abs)),p=PALETTES[mode],depth=27.6;
+      if(z>30||z< -70)continue;
+      if(mode===0){
+        for(const side of[-1,1]){
+          const x=side*10;
+          this.box(x,-5.1,z,13,2.5,depth,p.dark);
+          this.box(x,-3.87,z,12.8,.22,depth,'#829b71');
+          this.box(x+side*2,-3.58,z-2,8.9,.42,depth-1.5,'#91a478');
+          for(const along of[-10,-4,3,10])this.rock(side*4.4,-4.65,z+along,2.6,2.55,7.3,p.side,hash(abs+along));
+          const tx=side*(7.6+hash(abs)*1.3),tz=z+(side<0?-2:5);
+          this.gardenTree(tx,tz,p,side);
+          this.box(side*5.3,-3.45,tz+2.8,1.6,.55,3.4,p.rim);
+          this.box(side*5.3,-3.15,tz+2.8,1.4,.10,3.2,'#769264');
         }
-        for (let j = 0; j < 3; j++) {
-          this.cube(
-            side * (4.6 + j * 1.4),
-            -3.65,
-            z + Math.sin(j + v) * 2,
-            1.1,
-            0.02,
-            0.05,
-            "#a8d0cc",
-          );
+      }else if(mode===1){
+        const x=-8.3,cz=z-3;
+        // A transverse branch exposes the arch itself to the forward view.
+        // It meets the continuous outer feeder canal, then spills beside the
+        // causeway; its solids stay outside the readable three-lane corridor.
+        this.box(-13.15,1.05,z,1.82,.5,depth,p.side);
+        this.box(-13.15,1.32,z,1.18,.05,depth,'#8dccca');
+        for(const side of[-1,1])this.box(-13.15+side*.8,1.55,z,.22,.54,depth,p.rim);
+        this.box(x,1.05,cz,8.6,.5,2.12,p.side);
+        this.box(x,1.32,cz,8.4,.05,1.45,'#8dccca');
+        for(const side of[-1,1])this.box(x,1.55,cz+side*.94,8.6,.54,.25,p.rim);
+        this.batches.aqueduct.add(x,0,cz,1,1,1,p.floor[0]);
+        for(const side of[-1,1]){
+          this.box(x+side*4,-4.42,cz,1.1,2.62,1.7,p.side);
+          this.box(x+side*4,-5.86,cz,1.85,.3,2.7,p.dark);
+        }
+        this.box(-4.05,-2.05,cz,.045,6.8,.73,'#a2d4ce');
+        this.box(-4.07,-5.55,cz,.52,.05,1.28,'#c1e0d4');
+        this.box(10,-5.5,z,12,1.15,depth,p.dark);
+        this.box(10,-4.92,z,11.8,.12,depth,'#90afa4');
+        this.box(8.7,-4.81,z,4.8,.10,depth-1.1,'#86bbb1');
+        for(const edge of[-1,1])this.box(8.7+edge*2.53,-4.57,z,.23,.5,depth-1.0,p.rim);
+      }else{
+        this.box(10,-5.04,z,13,2.3,depth,p.dark);
+        this.box(10,-3.86,z,12.8,.13,depth,'#74897f');
+        // A single connected cliff bank; the visible entrance is genuinely
+        // open between its two shoulders and beneath the rock lintel.
+        for(const along of[-10,-3,5,11])this.rock(13.1,.3,z+along,8.7,10.2,8.8,p.dark,hash(abs+along));
+        const mx=8.0,mz=z+3;
+        this.rock(mx-2.28,-.82,mz,2.2,6.0,5.4,p.side,.2);
+        this.rock(mx+2.33,-.6,mz,2.6,6.5,5.1,p.dark,.3);
+        this.rock(mx,2.27,mz-.3,6.0,2.65,5.3,p.side,.18);
+        this.box(mx,-1.70,mz-2.1,2.75,4.05,.25,'#243d47');
+        this.box(mx,-3.72,mz+1,3.5,.18,6.5,'#8a8971');
+        for(const side of[-1,1]){
+          this.box(mx+side*1.37,-1.67,mz+1.93,.29,4.12,.42,'#9b815b',0,0,side*.06);
+          this.rod([mx+side*1.22,-2.9,mz+2.05],[mx+side*.64,.05,mz+2.05],.16,'#b09362');
+          this.box(mx+side*.59,-3.56,mz+.6,.10,.08,6.2,'#a6b5ad');
+        }
+        this.box(mx,.51,mz+1.93,3.25,.35,.46,'#b39765');
+        this.box(mx-1.5,-.44,mz+2.22,.25,.42,.25,'#e5b970');
+        for(const along of[-8,8])this.rock(-10,-4.9,z+along,12,2.4,18,p.dark,.2);
+      }
+    }
+    // Broken ceremonial gateways make a readable destination. The columns
+    // and every solid arch fragment remain outside the usable lane corridor.
+    const gateBase=Math.floor((distance+30)/256)*256;
+    for(let n=-1;n<3;n++){
+      const abs=gateBase+n*256,z=-(abs-distance)*SPACE.depth,p=PALETTES[biomeAt(Math.max(0,abs))];
+      if(z>17||z< -68)continue;
+      // One surviving arch and its fallen opposite form a place, not paired
+      // lane furniture. Both share a thick landing and piers over the water.
+      for(const side of[-1,1]){
+        const x=side*4.13,standing=side<0,height=standing?4.35:2.18;
+        this.box(x,-.36,z+.5,2.25,.76,5.0,p.dark);
+        this.box(x,.06,z+.5,2.16,.18,4.85,p.rim);
+        this.box(x,-2.65,z+.5,1.24,4.5,2.65,p.side);
+        this.box(x,-5.16,z+.5,2.8,.7,3.6,p.dark);
+        this.box(x,height/2+.12,z,1.28,height,1.65,p.side);
+        this.box(x,height/2+.14,z+.86,.7,height-.45,.10,p.floor[0]);
+        for(let y=.72;y<height-.3;y+=1.03){this.box(x,y,z+.94,.56,.11,.06,p.dark);this.box(x-side*.29,y+.17,z+.94,.10,.39,.07,p.rim);}
+        this.box(x,height+.14,z,1.64,.31,1.94,p.rim);
+        if(standing){
+          this.batches.arch.add(0,0,z,1,1,1,p.floor[0]);
+          for(let j=1;j<5;j++){
+            const t=j*.164,ax=-.53-3.62*Math.cos(t),ay=4.5+2.82*Math.sin(t);
+            this.box(ax,ay,z+.889,.022,.54,.025,p.side,0,0,Math.atan2(.6*Math.cos(t),.56*Math.sin(t)));
+          }
+          for(let v=0;v<4;v++)this.rod([-4.46+v*.11,3.9-v*.52,z+.94],[-4.35+v*.11,3.1-v*.49,z+1],.044,p.leaves);
+        }else{
+          this.rock(x,2.36,z,1.24,.56,1.7,p.side,.13);
+          this.box(x+.08,.48,z+1.26,1.25,.7,2.8,p.side,.10,.19,.07);
+          this.box(x+.10,.91,z+1.5,1.32,.18,2.08,p.rim,.10,.19,.07);
+          this.box(x-.34,.3,z+2.46,.54,.4,.65,p.floor[0],.12,.32,.16);
+          this.rock(x+.49,.24,z-1.22,.62,.47,.84,p.leaves,.2);
+        }
+        const district=biomeAt(Math.max(0,abs));
+        if(side>0&&district===0){
+          this.box(x,-.36,z+3.2,1.9,.76,2.4,p.dark);
+          this.box(x,.06,z+3.2,1.86,.18,2.36,p.rim);
+          // A planted, inhabited ruin court. Roots meet masonry and stay clear
+          // of both the walking lanes and incoming arrow cards.
+          this.box(x+.10,.22,z+3.5,1.42,.32,1.04,p.side);
+          this.box(x+.10,.41,z+3.5,1.20,.08,.84,'#656f47');
+          this.rod([x+.4,.45,z+3.5],[x+.22,1.7,z+3.43],.11,'#847249');
+          this.rock(x+.23,1.78,z+3.42,.78,.84,.78,p.leaves,.2);
+          this.rock(x+.56,1.4,z+3.58,.56,.65,.63,'#61956e',.6);
+        }else if(side>0&&district===1){
+          // The second place has a small parallel spill channel and steps down
+          // to the water, rather than repeating a garden with a colour change.
+          this.box(x,-.34,z-1.7,1.5,.26,2.2,'#7d8e84');
+          this.box(x,-.18,z-1.7,.88,.025,2.0,'#82c5c0');
+          for(const dx of[-.58,.58])this.box(x+dx,.04,z-1.7,.24,.46,2.2,p.rim);
+          for(let step=0;step<11;step++){const top=-.1-step*.5,height=5.8+top;this.box(x,-5.8+height/2,z+2.9+step*.48,1.65,height,.53,p.floor[step%3]);}
+          this.box(x,-5.65,z+8.0,2.3,.3,1.9,p.rim);
+          this.box(x,-1.6,z-2.82,.8,2.8,.055,'#a1d5d0');
+          this.box(x,-3.07,z-2.85,1.1,.08,.44,'#bce0d5');
+        }else if(side>0&&district===2){
+          this.box(x,-.36,z+3.2,1.9,.76,2.4,p.dark);
+          this.box(x,.06,z+3.2,1.86,.18,2.36,p.rim);
+          // Flooded mine ledge: cut rock, propped portal and a small warm lamp.
+          this.rock(x+.5,-.25,z+3.1,2.15,3.8,3.3,p.dark,.25);
+          this.rock(x+.7,1.9,z+3.03,1.6,2.5,2.0,p.side,.17);
+          for(const dx of[-.45,.52])this.box(x+dx,1.14,z+4.05,.18,2.25,.24,'#947854',0,0,dx*.1);
+          this.box(x,2.25,z+4.05,1.44,.2,.28,'#b3996b');
+          this.box(x,.10,z+4.05,1.38,.13,1.22,'#756650');
+          this.rod([x+.5,2.26,z+4.08],[x+.5,1.87,z+4.08],.035,p.dark);
+          this.box(x+.5,1.78,z+4.08,.22,.29,.2,'#e9be71');
         }
       }
     }
   }
+  gardenTree(x,z,p,side){
+    const bark='#7c7655';
+    this.rod([x,-3.74,z],[x+.12,-2.0,z+.08],.46,bark);
+    this.rod([x+.12,-2.0,z+.08],[x-.05,-.55,z],.31,bark);
+    const limbs=[[-1.15,-.45,-.4],[1.1,-.06,.45],[.18,.34,-1.03]];
+    for(const [dx,y,dz]of limbs)this.rod([x+.08,-1.8,z],[x+dx,y,z+dz],.17,bark);
+    for(const [dx,dz]of[[-1.3,-.5],[1.15,.6],[-.5,1.35]])this.rod([x,-3.12,z],[x+dx,-3.7,z+dz],.18,bark);
+    this.sphere(x-.85,.20,z-.25,3.0,2.3,2.8,p.leaves);
+    this.sphere(x+1.04,.57,z+.25,3.0,2.45,2.65,'#5b9876');
+    this.sphere(x+.04,1.32,z-.55,3.45,1.8,2.8,'#74aa7c');
+    this.sphere(x+.02,-.12,z+.76,3.45,1.25,2.38,'#498d70');
+  }
+
   road() {
     const d = this.distance,
-      near = d - 40,
-      far = d + this.visibleZ + 12;
+      near = d + this.floorNear,
+      far = d + this.floorFar, stride=this.world.rhythm?24:5;
     const holes = [[], [], []];
     for (const row of this.world.rows)
       if (row.kind === "hazards")
@@ -441,12 +529,21 @@ export class Renderer {
               row.z - HAZARDS.O.depth / 2,
               row.z + HAZARDS.O.depth / 2,
             ]);
-    for (let abs = Math.floor(near / 5) * 5; abs < far; abs += 5) {
+    for (let abs = Math.floor(near / stride) * stride; abs < far; abs += stride) {
       const p = PALETTES[biomeAt(abs)],
         mode = biomeAt(abs),
-        z = -(abs + 2.5 - d) * SPACE.depth;
-      for (let lane = -1; lane <= 1; lane++) {
-        let pieces = [[abs, abs + 5]];
+        z = -(abs + stride*.5 - d) * SPACE.depth;
+      if(this.world.rhythm){
+        // Broad causeway stones span all lanes. Fine recessed seams identify
+        // choices without turning the floor into a three-column tiled diagram.
+        this.cube(0,-.25,z,6.35,.52,stride*SPACE.depth,p.side);
+        this.box(0,-.025,z,6.31,.14,stride*SPACE.depth-.025,p.floor[Math.abs(Math.floor(abs/stride))%3]);
+        for(const x of[-SPACE.lane/2,SPACE.lane/2])this.box(x,.049,z,.026,.012,stride*SPACE.depth,p.side);
+        const crack=(hash(abs)-.5)*3.2;
+        this.box(crack,.051,z+.7,.6,.007,.017,p.side,0,.28,0);
+      }
+      for (let lane = -1; lane <= 1 && !this.world.rhythm; lane++) {
+        let pieces = [[abs, abs + stride]];
         for (const [a, b] of holes[lane + 1])
           pieces = pieces.flatMap(([start, end]) =>
             end <= a || start >= b
@@ -478,7 +575,7 @@ export class Renderer {
             length - 0.025,
             p.floor[Math.abs(Math.floor(abs / 5) + lane) % 3],
           );
-          if (mode === 1) {
+          if (mode === 1 && !this.world.rhythm) {
             for (const t of [-0.24, 0.24])
               this.cube(
                 lane * SPACE.lane,
@@ -489,7 +586,7 @@ export class Renderer {
                 0.02,
                 "#8f6b4d",
               );
-          } else if (mode === 2) {
+          } else if (mode === 2 && !this.world.rhythm) {
             this.box(
               lane * SPACE.lane,
               0.055,
@@ -509,7 +606,7 @@ export class Renderer {
                 length,
                 "#b6c7b9",
               );
-          } else if (Math.floor(abs / 5) % 4 === 0) {
+          } else if (Math.floor(abs / stride) % 3 === 0) {
             this.cube(
               lane * SPACE.lane + 0.45,
               0.044,
@@ -529,13 +626,13 @@ export class Renderer {
           z,
           0.16,
           0.26,
-          5 * SPACE.depth + 0.018,
+          stride * SPACE.depth + 0.018,
           p.rim,
         );
-        if (Math.floor(abs / 5) % 4 === 0) {
+        if (Math.floor(abs / stride) % 2 === 0) {
           this.box(side * 3.25, 0.36, z, 0.28, 0.77, 0.3, p.side);
           this.box(side * 3.25, 0.78, z, 0.39, 0.13, 0.4, p.rim);
-          if (mode === 2) {
+          if (mode === 2 && !this.world.rhythm) {
             this.rod(
               [side * 3.35, 0.1, z],
               [side * 3.35, 2.5, z],
@@ -660,17 +757,15 @@ export class Renderer {
     const hitZ = -LEAD * 26 * SPACE.depth + CUE_FRONT;
     const beat = (this.world.scoreTime / this.world.chart.beat) % 1;
     const light = beat < 0.14 ? "#fff0ad" : "#ddba65";
-    // A thin stable timing rail, never a thick black central seam.
-    this.box(0, CUE_HEIGHT, hitZ, 6.18, 0.03, 0.04, light);
-    for (const side of [-1, 1]) {
-      this.rod(
-        [side * 3.3, 0, hitZ],
-        [side * 3.3, CUE_HEIGHT, hitZ],
-        0.055,
-        "#9bbbaa",
-      );
-      this.box(side * 3.3, CUE_HEIGHT, hitZ, 0.22, 0.12, 0.24, "#f4cf7d");
-      this.label("BEAT", side * 3.65, CUE_HEIGHT, hitZ, 0.64, "#f9eac5", true);
+    // An architectural timing threshold: broad stone footings and inlaid
+    // brass notches share the exact old cue plane, without floating BEAT text.
+    this.box(0,.03,hitZ,6.18,.05,.13,'#b9985f');
+    this.box(0,CUE_HEIGHT,hitZ,6.18,.015,.025,light);
+    for(const side of[-1,1]){
+      this.box(side*3.4,.16,hitZ,.72,.32,.78,'#9ead96');
+      this.box(side*3.4,.99,hitZ,.34,1.7,.42,'#64867d');
+      this.box(side*3.4,CUE_HEIGHT,hitZ,.68,.20,.59,'#e6c483');
+      this.box(side*3.4,1.05,hitZ+.23,.085,1.18,.035,'#c3bb88');
     }
     const stride = this.world.chart.beat * 26;
     for (
@@ -720,50 +815,36 @@ export class Renderer {
           "#e7f5d8",
         );
       this.box(x, 0.1, z - depth, 1.22, 0.08, 0.075, "#fff0b6");
-      for (const side of [-1, 1])
-        this.box(
-          x + side * 0.2,
-          CUE_HEIGHT,
-          z - depth / 2 + CUE_FRONT,
-          0.055,
-          0.04,
-          depth,
-          tint,
-        );
-      this.box(
-        x,
-        CUE_HEIGHT,
-        z - depth + CUE_FRONT,
-        0.48,
-        0.06,
-        0.06,
-        "#fff0b6",
-      );
+      // One fine score ribbon keeps the exact shared judgement plane. The
+      // physical duration is also inlaid in the floor, not a tall wire cage.
+      this.box(x,CUE_HEIGHT,z-depth/2+CUE_FRONT,.10,.025,depth,tint);
+      this.box(x,CUE_HEIGHT,z-depth+CUE_FRONT,.30,.07,.09,"#fff0b6");
+
     }
     // Arrow stars are beat markers; real low geometry gives each action a
     // readable meaning without tall walls hiding the next musical phrase.
     if (n.actions.includes("jump")) {
-      this.box(x, 0.23, z, 1.6, 0.46, 0.26, "#aa7951");
-      this.box(x, 0.49, z, 1.72, 0.1, 0.31, tint);
-      for (const side of [-1, 1])
-        this.box(x + side * 0.7, 0.25, z, 0.12, 0.5, 0.38, "#eee0b7");
-    } else if (n.actions.includes("slide")) {
-      const length = Math.max(0.3, depth);
-      for (const side of [-1, 1]) {
-        this.box(x + side * 0.8, 0.76, z, 0.09, 1.5, 0.25, "#68949c");
-        if (n.hold)
-          this.box(x + side * 0.8, 0.76, z - depth, 0.09, 1.5, 0.25, "#68949c");
-        this.box(
-          x + side * 0.8,
-          1.48,
-          z - length / 2 + 0.15,
-          0.12,
-          0.13,
-          length,
-          tint,
-        );
+      const yielding=Number.isFinite(n.brushTime),fold=yielding?clamp(.18+(this.world.time-n.brushTime)/.11,0,1):0,tilt=fold*1.48;
+      this.box(x,.23*Math.cos(tilt),z+.23*Math.sin(tilt),1.6,.46,.12,"#aa7951",0,tilt);
+      this.box(x,.49*Math.cos(tilt),z+.49*Math.sin(tilt),1.72,.10,.18,missed?"#bd7e72":yielding?"#c4a273":tint,0,tilt);
+      for (const side of [-1, 1]){
+        this.box(x + side * 0.82, 0.20, z, 0.15, 0.40, 0.33, "#c5b891");
+        this.batches.coin.add(x+side*.78,.07,z,.21,.10,.21,"#cba563",0,0,Math.PI/2);
+        this.batches.coin.add(x+side*.845,.07,z,.09,.02,.09,"#776b54",0,0,Math.PI/2);
       }
-      this.box(x, 1.19, z, 1.66, 0.26, 0.18, tint);
+    } else if (n.actions.includes("slide")) {
+      // A low stone/copper lintel has the same event centre and clearance.
+      // Its continuation lies low along the ground so the crouched silhouette
+      // remains visible through the held tail and release.
+      for(const side of[-1,1]){
+        this.box(x+side*.84,.57,z,.21,1.14,.40,"#71938a");
+        this.box(x+side*.84,.10,z,.34,.20,.52,"#c4c9a4");
+        this.box(x+side*.84,1.11,z,.31,.16,.48,"#e0cf9d");
+        if(n.hold)this.box(x+side*.83,.16,z-depth/2,.09,.13,depth,"#bfa66c");
+      }
+      this.box(x,1.22,z,1.88,.15,.22,"#b0c0ad");
+      this.box(x,1.32,z,1.99,.045,.27,"#dfc687");
+      this.box(x,1.22,z+.126,.32,.09,.035,tint);
     } else {
       const opposite = n.lane === -1 ? 1 : -1;
       for (const lane of [0, opposite]) {
@@ -959,27 +1040,16 @@ export class Renderer {
     this.avatar.rotation.set(flinch, -lean * 0.42 + flinch, lean);
     this.avatar.updateMatrix();
     this.parent = this.avatar.matrix;
-    const { airborne, hip, torso, head } = runnerPose(gait, jump, slide, cart);
+    const landingAge=this.world.time-(p.landAt??-10),landing=landingAge>=0&&landingAge<.24?Math.sin(landingAge/.24*Math.PI):0;
+    const { airborne, hip, torso, head } = runnerPose(gait, jump, slide, cart,landing);
     const jacket =
       p.inv > 0 && Math.floor(this.time * 14) % 2 ? "#c5e9d5" : "#419b93";
     for (const side of [-1, 1]) {
       let { z: footZ, y: footY } = footPose(gait, side, jump, slide, cart);
-      const skating = this.world.rhythm;
-      if (skating && jump < 0.05 && slide < 0.1) {
-        footZ = Math.sin(gait + (side === 1 ? 0 : Math.PI)) * 0.16;
-        footY =
-          0.1 + Math.max(0, Math.cos(gait + (side * Math.PI) / 2)) * 0.075;
-      }
       const hx = side * 0.2,
         fx =
           side *
-          (lerp(0.23, 0.34, slide) +
-            (skating
-              ? (1 - slide) *
-                (1 - Math.min(1, jump)) *
-                Math.max(0, Math.sin(gait + (side * Math.PI) / 2)) *
-                0.23
-              : 0)),
+          lerp(0.23, 0.34, slide),
         ankleY = footY + 0.15;
       const dy = ankleY - hip,
         dz = footZ,
@@ -995,45 +1065,16 @@ export class Renderer {
       this.rod(knee, [fx, ankleY, footZ], 0.21, "#567284");
       this.box(fx, footY + 0.12, footZ - 0.1, 0.27, 0.24, 0.44, "#685544");
       this.box(fx, footY + 0.025, footZ - 0.1, 0.29, 0.065, 0.46, "#d7c498");
-      if (skating)
-        for (let wheel = 0; wheel < 4; wheel++) {
-          this.batches.coin.add(
-            fx,
-            footY - 0.015,
-            footZ - 0.28 + wheel * 0.12,
-            0.13,
-            0.09,
-            0.13,
-            "#365867",
-            0,
-            0,
-            Math.PI / 2,
-            this.parent,
-          );
-          this.batches.coin.add(
-            fx + 0.055,
-            footY - 0.015,
-            footZ - 0.28 + wheel * 0.12,
-            0.065,
-            0.025,
-            0.065,
-            "#f1c677",
-            0,
-            0,
-            Math.PI / 2,
-            this.parent,
-          );
-        }
       const arm =
         Math.sin(gait + (side === 1 ? 0 : Math.PI)) *
         0.42 *
         (1 - cart) *
         (1 - slide);
       const shoulder = [side * 0.36, torso + 0.15, -0.06],
-        elbow = [side * 0.48, torso - 0.17, arm];
+        elbow = [side * 0.48, torso - 0.17 + airborne*.46, arm];
       const hand = [
         side * lerp(0.43, 0.58, airborne),
-        torso - 0.26 + airborne * 0.2,
+        torso - 0.26 + airborne * 0.7,
         arm - 0.26 - cart * 0.1,
       ];
       this.rod(shoulder, elbow, 0.2, "#ece1bf");

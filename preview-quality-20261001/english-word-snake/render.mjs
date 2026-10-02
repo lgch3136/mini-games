@@ -1,4 +1,4 @@
-import { DIRS, mod, random } from "./engine.mjs?mobile=20261001-quality3-r2";
+import { DIRS, mod, random } from "./engine.mjs?mobile=20261002-quality4-r1";
 
 const THEMES = [
   {
@@ -55,6 +55,7 @@ export class GardenRenderer {
     this.particles = [];
     this.rings = [];
     this.eatAge = 10;
+    this.swallows=[];this.blooms=[];this.departingGates=[];this.gateAge=1;this.missAge=10;this.gameCols=24;this.gameRows=16;
     this.displayLength = 5;
     this.frames = 0;
     this.cacheBuilds = 0;
@@ -122,7 +123,10 @@ export class GardenRenderer {
       }
     }
     round(c, x - 4, y + 2, w + 8, h + 8, 15, "#53673b1c");
-    round(c, x - 4, y - 4, w + 8, h + 8, 15, "#ffffff90");
+    round(c,x-5,y-5,w+10,h+10,12,'#b5a483');
+    round(c,x-3,y-3,w+6,h+6,10,'#d7cbaa');
+    c.strokeStyle='#aa9a75';c.lineWidth=1;
+    for(let xx=x+18;xx<x+w;xx+=32){c.beginPath();c.moveTo(xx,y-5);c.lineTo(xx,y-1);c.moveTo(xx,y+h+1);c.lineTo(xx,y+h+5);c.stroke();}
     round(c, x, y, w, h, 12, t.ground);
     c.save();
     c.beginPath();
@@ -183,6 +187,9 @@ export class GardenRenderer {
     c.restore();
   }
   event(event) {
+    if(event.type==='fork')this.gateAge=0;
+    if(event.type==='fork-chosen')this.departingGates=(event.gates||[]).map(g=>({...g,age:0}));
+    if(event.type==='wrong'||event.type==='hurt')this.missAge=0;
     if (["eat", "fruit", "complete", "hurt", "basket"].includes(event.type)) {
       const color =
         event.type === "hurt"
@@ -190,10 +197,15 @@ export class GardenRenderer {
           : event.type === "fruit"
             ? "#e2aa39"
             : "#f1aa61";
-      this.rings.push({ x: event.x + 0.5, y: event.y + 0.5, age: 0, color });
+      if(event.type!=="eat")this.rings.push({ x: event.x + 0.5, y: event.y + 0.5, age: 0, color });
       if (this.rings.length > 6) this.rings.shift();
-      if (event.type === "eat") this.eatAge = 0;
-      if (this.reduced) return;
+      if(event.type==='eat'){
+        this.eatAge=0;
+        if(!this.reduced){this.swallows.push({age:0});if(this.swallows.length>4)this.swallows.shift();}
+        this.blooms.push({nx:(event.x+.5)/this.gameCols,ny:(event.y+.5)/this.gameRows,age:0,index:this.blooms.length});
+        if(this.blooms.length>36)this.blooms.shift();
+      }
+      if (this.reduced || event.type==="eat") return;
       const count = event.type === "complete" ? 14 : 7;
       for (let i = 0; i < count && this.particles.length < 64; i++) {
         const a = (i / count) * Math.PI * 2 + 0.2;
@@ -212,9 +224,13 @@ export class GardenRenderer {
     }
   }
   update(dt, game) {
-    this.eatAge += dt;
-    this.displayLength +=
-      (game.length - this.displayLength) * (1 - Math.exp(-dt * 9));
+    this.eatAge += dt;this.missAge+=dt;this.gateAge+=dt;
+    for(const g of this.departingGates)g.age+=dt;
+    this.departingGates=this.departingGates.filter(g=>g.age<.48);
+    this.displayLength=game.length;this.gameCols=game.cols;this.gameRows=game.rows;
+    for(const wave of this.swallows)wave.age+=dt;
+    this.swallows=this.swallows.filter(w=>w.age*8<game.length+1);
+    for(const flower of this.blooms)flower.age+=dt;
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.age += dt;
@@ -244,6 +260,8 @@ export class GardenRenderer {
     c.translate(this.ox, this.oy);
     c.scale(s, s);
     const time = game.time + extra;
+    for(const gate of this.departingGates){c.save();c.globalAlpha=Math.max(0,1-gate.age/.48);this.drawGate(c,gate,gate.selected?1:Math.max(0,1-gate.age/.18),s,false);c.restore();}
+    for(const gate of game.forkGates||[])this.drawGate(c,gate,.5+.5*Math.min(1,this.gateAge/.12),s,true);
     // Preview fruit and active fruit share a silhouette; saturation carries order.
     for (const t of game.tiles) {
       const revealed = game.assistance !== "recall" || game.hintAge > 0;
@@ -334,7 +352,7 @@ export class GardenRenderer {
       c.stroke();
       c.restore();
     }
-    const points = game.bodyPoints(extra, this.displayLength);
+    const points = game.bodyPoints(extra, game.length);
     this.wrappedSnake(c, points, game, time);
     for (const ring of this.rings) {
       c.globalAlpha = Math.max(0, 1 - ring.age / 0.55);
@@ -350,6 +368,41 @@ export class GardenRenderer {
     }
     c.globalAlpha = 1;
     c.restore();
+    this.drawBlooms(c,game);
+  }
+  drawGate(c,gate,open,s,label){
+    const x=gate.x+.5,y=gate.y+.5;
+    round(c,x-.48,y-.47,.96,.94,.16,'#b29a6540');
+    for(const side of[-1,1]){
+      round(c,x+side*.40-.09,y+.29,.18,.18,.04,'#a49f82');
+      round(c,x+side*.40-.052,y-.40,.105,.77,.03,'#806642');
+      round(c,x+side*.40-.035,y-.41,.042,.70,.02,'#c7ad78');
+      const width=.34*(1-open*.68),start=side<0?x-.36:x+.36-width;
+      round(c,start,y-.18,width,.48,.025,gate.selected?'#b39055':'#ae8f60');
+      c.strokeStyle='#6c6b49';c.lineWidth=.028;
+      c.beginPath();c.moveTo(start+.03,y-.12);c.lineTo(start+width-.03,y+.21);c.moveTo(start+.03,y+.02);c.lineTo(start+width-.03,y+.02);c.stroke();
+    }
+    round(c,x-.48,y-.47,.96,.12,.045,'#bfa47a');round(c,x-.41,y-.46,.82,.035,.01,'#e5d4a9');
+    if(label){c.save();c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle=gate.reward>100?'#9b543b':'#315d40';c.font=`800 ${Math.max(13,s*.55)}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.fillText(gate.label,this.ox+x*s,this.oy+(y+.10)*s);c.restore();}
+  }
+  drawBlooms(c,game){
+    const left=this.ox,right=this.ox+game.cols*this.cell,top=this.oy,bottom=this.oy+game.rows*this.cell;
+    const vertical=this.ox>=14,groups=new Map();
+    for(const f of this.blooms){const side=vertical?(f.nx<.5?0:1):(f.ny<.5?0:1),bed=Math.min(2,Math.floor((vertical?f.ny:f.nx)*3)),key=side+','+bed;if(!groups.has(key))groups.set(key,{side,bed,flowers:[]});groups.get(key).flowers.push(f);}
+    for(const group of groups.values()){
+      const {side,bed}=group;let x=vertical?(side?right+13:left-13):left+(bed+.5)*(right-left)/3,y=vertical?top+(bed+.5)*(bottom-top)/3:(side?bottom+7:top-7);
+      x=Math.max(7,Math.min(this.width-7,x));y=Math.max(vertical?16:8,Math.min(this.height-(vertical?16:6),y));
+      c.save();c.translate(x,y);
+      round(c,-7,vertical?-15:-4,14,vertical?31:8,5,'#b5ab7f66');
+      for(let i=0;i<Math.min(4,group.flowers.length);i++){
+        const f=group.flowers[i],age=this.reduced?1:Math.min(1,f.age/.45),xx=vertical?(i%2?3:-3):(i-1.5)*6,yy=vertical?(-9+Math.floor(i/2)*13):0;
+        c.save();c.translate(xx,yy);c.scale(age,age);c.strokeStyle='#718b52';c.lineWidth=1.1;c.beginPath();c.moveTo(0,4);c.quadraticCurveTo(-.5,0,0,-2);c.stroke();
+        c.fillStyle='#8fa664';for(const side of[-1,1]){c.beginPath();c.ellipse(side*1.6,1.3,2.1,1,side*.55,0,Math.PI*2);c.fill();}
+        for(let k=0;k<5;k++){const a=k*Math.PI*2/5;disc(c,Math.cos(a)*2,Math.sin(a)*2-3,1.8,f.index%2?'#da9a74':'#dca4a1');}
+        disc(c,0,-3,1.2,'#fff0b5');c.restore();
+      }
+      c.restore();
+    }
   }
   wrappedSnake(c, points, game, time) {
     const shiftX = Math.floor(points[0].x / game.cols) * game.cols,
@@ -376,30 +429,34 @@ export class GardenRenderer {
     c.save();
     c.lineCap = "round";
     c.lineJoin = "round";
-    const stroke = (width, color, y = 0) => {
-      c.beginPath();
-      c.moveTo(points[0].x, points[0].y + y);
-      for (let i = 1; i < points.length; i++)
-        c.lineTo(points[i].x, points[i].y + y);
-      c.lineWidth = width;
-      c.strokeStyle = color;
-      c.stroke();
-    };
-    if (game.invincible > 0) c.globalAlpha = 0.65 + 0.2 * Math.sin(time * 15);
-    stroke(0.72, "#4a643328", 0.13);
-    if (game.shield) stroke(0.91, "#82bac355");
-    stroke(0.72, game.boosting ? "#518345" : "#3d7047");
-    stroke(0.57, game.boosting ? "#b0d45e" : "#8dbb67", -0.035);
-    stroke(0.13, "#d9ec9d50", -0.16);
-    for (let i = 2; i < points.length; i += 2) {
-      const p = points[i];
-      disc(c, p.x, p.y, 0.065, "#40694435");
+    const total=points.slice(1).reduce((n,p,i)=>n+Math.hypot(p.x-points[i].x,p.y-points[i].y),0);
+    const at=(distance)=>{let used=0;for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],len=Math.hypot(b.x-a.x,b.y-a.y);if(distance<=used+len||i===points.length-1){const u=Math.min(1,Math.max(0,(distance-used)/Math.max(.0001,len)));return{x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u,angle:Math.atan2(b.y-a.y,b.x-a.x)};}used+=len;}return{...points[0],angle:0};};
+    if(game.invincible>0)c.globalAlpha=.65+.2*Math.sin(time*15);
+    // Every sample remains on the exact grid polyline; the widest swallow is
+    // less than one cell. No spline cuts a hedge corner or hides an occupied tail.
+    const sections=Math.ceil(total/.13),samples=this.bodySamples||(this.bodySamples=[]);
+    for(let n=0;n<=sections;n++){
+      const d=Math.min(total,n*.13),p=at(d),tail=Math.min(1,(total-d)/1.25);
+      const swell=this.reduced?0:this.swallows.reduce((sum,w)=>{const v=Math.abs(d-(.3+w.age*8));return sum+.068*Math.max(0,1-v/.9)-.016*Math.max(0,1-Math.abs(v-1.25)/.4);},0);
+      const sample=samples[n]||(samples[n]={});sample.x=p.x;sample.y=p.y;sample.r=.21+.15*tail+Math.min(.065,swell)-.055*Math.max(0,1-d/.85);
     }
+    // Two compound fills, instead of hundreds of overlapping draw calls.
+    for(let pass=0;pass<2;pass++){
+      c.fillStyle=pass===0?'#3f6747':game.boosting?'#afcf66':'#98bf74';c.beginPath();
+      for(let n=sections;n>=0;n--){const p=samples[n],r=p.r-(pass?.065:0),y=p.y+(pass?-.026:.04);c.moveTo(p.x+r,y);c.arc(p.x,y,r,0,Math.PI*2);}
+      c.fill();
+    }
+    c.strokeStyle='#deebb075';c.lineWidth=.10;c.beginPath();c.moveTo(points[0].x,points[0].y-.15);for(const p of points.slice(1))c.lineTo(p.x,p.y-.15);c.stroke();
+    if(game.shield){c.strokeStyle='#78aeb5';c.lineWidth=.038;c.beginPath();c.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))c.lineTo(p.x,p.y);c.stroke();}
+    for(let d=1.1;d<total-.5;d+=.72){const p=at(d);c.save();c.translate(p.x,p.y);c.rotate(p.angle);c.fillStyle='#60895465';c.beginPath();c.moveTo(-.16,0);c.quadraticCurveTo(0,-.19,.15,0);c.quadraticCurveTo(0,.14,-.16,0);c.fill();c.strokeStyle='#d7e6a56b';c.lineWidth=.025;c.beginPath();c.moveTo(-.12,-.025);c.lineTo(.10,-.025);c.stroke();c.restore();}
     const p = points[0];
     c.translate(p.x, p.y);
     c.rotate((game.direction * Math.PI) / 2);
-    const chew = Math.max(0, 1 - this.eatAge / 0.18);
-    c.scale(1 + chew * 0.1, 1 - chew * 0.06);
+    const dir=DIRS[game.direction];let facing=null;
+    for(const tile of game.tiles){let dx=tile.x-points[0].x,dy=tile.y+.5-(points[0].y+.5);if(game.arena!=='classic'){dx=mod(dx+game.cols/2,game.cols)-game.cols/2;dy=mod(dy+game.rows/2,game.rows)-game.rows/2;}const forward=dx*dir.x+dy*dir.y,side=dy*dir.x-dx*dir.y;if(forward>0&&forward<2&&Math.abs(side)<.7&&(!facing||forward<facing.forward))facing={forward,side};}
+    const anticipate=facing?Math.max(0,1-facing.forward/1.4):0;
+    const chew = Math.max(0, 1 - this.eatAge / 0.28),open=Math.max(anticipate*.8,chew*.55);
+    c.scale(1 + chew * 0.035, 1 - chew * 0.04);
     c.fillStyle = "#386b42";
     c.beginPath();
     c.ellipse(0.04, 0.03, 0.46, 0.4, 0, 0, Math.PI * 2);
@@ -412,7 +469,7 @@ export class GardenRenderer {
     c.beginPath();
     c.ellipse(0.18, 0.06, 0.23, 0.22, 0, 0, 6.29);
     c.fill();
-    const blink = !this.reduced && time % 4.7 < 0.12;
+    const blink = !this.reduced && (time % 4.7 < 0.12 || (this.eatAge>.09&&this.eatAge<.16));
     for (const side of [-1, 1]) {
       const ex = 0.13,
         ey = side * 0.215;
@@ -421,10 +478,14 @@ export class GardenRenderer {
       c.ellipse(ex, ey, 0.14, blink ? 0.035 : 0.13, 0, 0, 6.29);
       c.fill();
       if (!blink) {
-        disc(c, ex + 0.045, ey, 0.066, "#24392b");
+        disc(c, ex + 0.045+anticipate*.025, ey+(facing?facing.side*.045:0), 0.066, "#24392b");
         disc(c, ex + 0.061, ey - 0.028, 0.021, "#ffffff");
       }
     }
+    // A small jaw opening accompanies this one swallow; the eyes stay forward.
+    if(open>.04){c.fillStyle='#40543a';c.beginPath();c.moveTo(.47,-.15*open);c.quadraticCurveTo(.16,0,.47,.15*open);c.closePath();c.fill();c.strokeStyle='#deebad';c.lineWidth=.045;c.beginPath();c.moveTo(.21,.02);c.quadraticCurveTo(.35,.16*open,.46,.17*open);c.stroke();}
+    if(this.missAge<.5){c.strokeStyle='#557142';c.lineWidth=.045;for(const side of[-1,1]){c.beginPath();c.moveTo(-.03,side*.29);c.lineTo(.22,side*.23);c.stroke();}}
+    for(const side of[-1,1])disc(c,.33,side*.09,.018,'#527447');
     c.strokeStyle = "#496d3e";
     c.lineWidth = 0.025;
     c.beginPath();
@@ -446,7 +507,7 @@ export class GardenRenderer {
   clear() {
     this.particles.length = 0;
     this.rings.length = 0;
-    this.eatAge = 10;
+    this.eatAge = 10;this.swallows.length=0;this.blooms.length=0;this.departingGates.length=0;this.missAge=10;
   }
   diagnostics() {
     return {
@@ -455,7 +516,7 @@ export class GardenRenderer {
       cacheBuilds: this.cacheBuilds,
       particles: this.particles.length,
       maxParticles: this.maxParticles,
-      rings: this.rings.length,
+      rings: this.rings.length,swallows:this.swallows.length,blooms:this.blooms.length,
       dpr: this.dpr,
       cell: this.cell,
       width: this.width,

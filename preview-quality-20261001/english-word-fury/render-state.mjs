@@ -1,4 +1,4 @@
-import { pose, interpolatePose } from './motion.mjs?v=20260918-play-r1&mobile=20261001-quality3-r8';
+import { pose, interpolatePose } from './motion.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1';
 const POSE_FIELDS = ['id', 'stateFrame', 'state', 'crouch', 'down', 'facing', 'freeze', 'rollDirection', 'vx', 'walkPhase', 'y', 'contact'];
 
 // Fixed-size display snapshots avoid copying input Sets, statistics, command

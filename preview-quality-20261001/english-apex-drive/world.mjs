@@ -1,5 +1,5 @@
-import { circuitChallenge, challengeIntent, SectorClock } from "./race-craft.mjs?mobile=20261001-quality2-r1";
-import { DrivingContract } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { circuitChallenge, challengeIntent, SectorClock } from "./race-craft.mjs?mobile=20261002-quality4-r1";
+import { DrivingContract } from "./mastery.mjs?v=20260930-quality-r1&mobile=20261002-quality4-r1";
 import {
   clamp,
   lerp,
@@ -8,13 +8,13 @@ import {
   mixAngle,
   hypot,
   random,
-} from "../shared/first-person/math.mjs";
+} from "../shared/first-person/math.mjs?mobile=20261002-quality4-r1";
 import {
   stepKart,
   motionState,
   cancelDrift,
-} from "./kart-motion.mjs?v=20260918-play-r1";
-import { TyreTrails } from "./tyre-trails.mjs";
+} from "./kart-motion.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { TyreTrails } from "./tyre-trails.mjs?mobile=20261002-quality4-r1";
 export const VERSION = "20260918-play-r1",
   DT = 1 / 120;
 // Includes the visible tyre shoulders and front/rear rounded bumpers.

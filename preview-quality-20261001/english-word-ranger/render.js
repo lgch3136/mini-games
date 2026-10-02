@@ -1,10 +1,12 @@
-import { canvasBudget } from "../shared/render-budget.mjs?v=20260930-polish-r1";
+import { PresentationCamera } from "./camera.mjs?v=20261001-quality4-ranger-r1&mobile=20261002-quality4-r1";
+import { buildStageBackdrop, drawStageScenery, drawPlatformSupport, paintDeck, STAGE_PALETTES } from "./stage-art.mjs?v=20261001-quality4-ranger-r1&mobile=20261002-quality4-r1";
+import { canvasBudget } from "../shared/render-budget.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
 import {
   HEIGHT,
   clamp,
   rng,
   weaponPose,
-} from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
+} from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&teaching=20261001-r1";
 
 const mix = (a, b, t) => a + (b - a) * t;
 const TAU = Math.PI * 2;
@@ -37,6 +39,9 @@ export class Renderer {
     this.ctx = canvas.getContext("2d", { alpha: false });
     this.width = 960;
     this.ratio = 1;
+    this.viewHeight = 540;
+    this.cameraY = 184;
+    this.presentationCamera = new PresentationCamera();
     this.tileCache = new Map();
     this.world = null;
     this.draws = 0;
@@ -44,28 +49,25 @@ export class Renderer {
   }
   async load() {
     if (typeof Image === 'undefined') return;
-    const image = new Image();
-    await new Promise(resolve => {
-      const timeout=setTimeout(resolve,3000);
-      image.onload = () => { clearTimeout(timeout); this.environmentAtlas = image; if(this.world)this.setWorld(this.world); resolve(); };
+    const load = (file, key) => new Promise(resolve => {
+      const image = new Image();
+      const timeout = setTimeout(resolve, 3000);
+      image.onload = () => { clearTimeout(timeout); this[key] = image; resolve(); };
       image.onerror = () => { clearTimeout(timeout); resolve(); };
-      image.src = new URL('./assets/environments-quality3.webp', import.meta.url).href;
+      image.src = new URL('./assets/' + file + '?mobile=20261002-quality4-r1', import.meta.url).href;
     });
-    // Fallback geometry remains available if the optional illustration fails.
+    await Promise.all([
+      load('environments-quality3.webp', 'environmentAtlas'),
+      load('operation-distance-quality4.webp', 'operationAtlas'),
+      load('facilities-quality4.webp', 'facilityAtlas'),
+    ]);
     if (this.world) this.setWorld(this.world);
-  }
-  paintedBackdrop(panelIndex, tint) {
-    if (!this.environmentAtlas) return null;
-    this.paintedEnvironment = true;
-    const panel = document.createElement('canvas'); panel.width=1600; panel.height=HEIGHT;
-    const c=panel.getContext('2d'), image=this.environmentAtlas, half=image.height/2;
-    c.drawImage(image,0,panelIndex*half,image.width,half,0,0,1600,HEIGHT);
-    // Keep projectiles and outlined actors ahead of the environment in contrast.
-    c.fillStyle=tint; c.fillRect(0,0,1600,HEIGHT);
-    return panel;
   }
   resize() {
     const rect = this.canvas.getBoundingClientRect();
+    // Preserve the existing simulation viewport. The render frame can move closer
+    // only when the player, current threat and next landing surface still fit.
+    this.viewHeight = 540;
     this.width = clamp((rect.width / Math.max(1, rect.height)) * HEIGHT, 480, 1360);
     const budget = canvasBudget(rect.width, rect.height, window.devicePixelRatio || 1);
     this.ratio = budget.ratio;
@@ -74,158 +76,17 @@ export class Renderer {
       this.canvas.height = budget.height;
       this.atmosphere = null;
     }
+    this.safeTop = Math.min(.35, 64 / Math.max(1, rect.height));
     this.scaleX = this.canvas.width / this.width;
-    this.scaleY = this.canvas.height / HEIGHT;
+    this.scaleY = this.canvas.height / this.viewHeight;
   }
   setWorld(world) {
     this.world = world;
+    this.presentationCamera.reset();
     this.operation = world.stage % 6;
-    this.paintedEnvironment = false;
-    this.operationArt =
-      this.operation >= 3 ? this.buildOperationBackdrop() : this.buildWoodlandBackdrop();
+    this.operationArt = buildStageBackdrop(this.operation, this.environmentAtlas, this.operationAtlas);
     this.tileCache.clear();
-    for (const t of world.terrain)
-      this.tileCache.set(t.id, this.buildTerrain(t));
-  }
-  buildWoodlandBackdrop() {
-    const painted=this.paintedBackdrop(0,['#50757125','#78857130','#244c6340'][this.operation]);
-    if(painted)return painted;
-    // Broad, matte cut-paper planes share the actors' edge/material language.
-    // Painted once: there is no per-frame blur, filter or oversized photograph.
-    const panel = document.createElement("canvas"); panel.width = 1600; panel.height = HEIGHT;
-    const c = panel.getContext("2d"), op = this.operation;
-    const sky = c.createLinearGradient(0, 0, 0, HEIGHT);
-    sky.addColorStop(0, ["#719b99", "#899f9c", "#647e8a"][op]);
-    sky.addColorStop(1, "#b2bf9b"); c.fillStyle = sky; c.fillRect(0,0,1600,HEIGHT);
-    c.fillStyle = "#dae0b94a"; c.beginPath(); c.ellipse(1160,110,52,52,0,0,TAU); c.fill();
-    for (let layer=0; layer<3; layer++) {
-      c.fillStyle = ["#7d9e97", "#62857f", "#496d69"][layer];
-      for (let i=0; i<13; i++) {
-        const x=i*140+layer*35, y=185+layer*60+Math.sin(i*2.3)*24;
-        c.beginPath(); c.moveTo(x-82,450); c.lineTo(x-65,y+95); c.lineTo(x-98,y+80);
-        c.lineTo(x-49,y+26); c.lineTo(x-69,y+15); c.lineTo(x,y-70);
-        c.lineTo(x+53,y+16); c.lineTo(x+33,y+26); c.lineTo(x+89,y+80);
-        c.lineTo(x+51,y+89); c.lineTo(x+76,450); c.closePath(); c.fill();
-      }
-    }
-    c.fillStyle = "#abc0a72c"; c.fillRect(0,310,1600,155);
-    for (let i=0;i<5;i++) {
-      const x=150+i*320; c.fillStyle="#496963"; c.fillRect(x,335,10,120);
-      c.fillStyle="#b0bf9470"; c.fillRect(x,335,2,95);
-      c.fillStyle="#576f63"; c.fillRect(x-25,334,118,8);
-      c.fillStyle="#263f3f55"; c.fillRect(x-17,344,102,38);
-    }
-    return panel;
-  }
-  buildOperationBackdrop() {
-    if(this.operation===5){const painted=this.paintedBackdrop(1,'#263a4740');if(painted)return painted;}
-    // Prepaint a seamless parallax panel once per level, not per animation frame.
-    const panel = document.createElement("canvas");
-    panel.width = 1600;
-    panel.height = HEIGHT;
-    const c = panel.getContext("2d"),
-      op = this.operation;
-    const colors =
-      op === 3
-        ? ["#172837", "#506570", "#293f4b"]
-        : op === 4
-          ? ["#587f9d", "#bdd4d9", "#789fac"]
-          : ["#282c38", "#786357", "#493e3f"];
-    const sky = c.createLinearGradient(0, 0, 0, HEIGHT);
-    sky.addColorStop(0, colors[0]);
-    sky.addColorStop(0.72, colors[1]);
-    sky.addColorStop(1, colors[2]);
-    c.fillStyle = sky;
-    c.fillRect(0, 0, 1600, HEIGHT);
-    if (op === 4) {
-      for (let layer = 0; layer < 3; layer++) {
-        c.fillStyle = ["#abc6d0", "#8aabb9", "#70909f"][layer];
-        c.beginPath();
-        c.moveTo(0, HEIGHT);
-        for (let i = 0; i <= 16; i++)
-          c.lineTo(
-            i * 100,
-            260 + layer * 49 - Math.abs(Math.sin(i * 2.2 + layer)) * 95,
-          );
-        c.lineTo(1600, HEIGHT);
-        c.fill();
-      }
-      c.fillStyle = "#bedadd55";
-      c.fillRect(0, 402, 1600, 138);
-      for (let i = 0; i < 36; i++) {
-        c.fillStyle = i % 2 ? "#d2e5df30" : "#52839535";
-        c.fillRect(
-          (i * 197) % 1600,
-          420 + ((i * 29) % 115),
-          45 + (i % 5) * 20,
-          1,
-        );
-      }
-    } else {
-      for (let i = 0; i < 16; i++) {
-        const x = i * 110,
-          h = 70 + ((i * 71) % 180);
-        c.fillStyle = op === 3 ? "#253c49" : "#403e44";
-        c.fillRect(x, 350 - h, 85, h + 110);
-        c.fillStyle = op === 3 ? "#9bc7c230" : "#ffbd7930";
-        for (let j = 0; j < 5; j++) c.fillRect(x + 12 + j * 13, 365 - h, 5, 3);
-      }
-    }
-    for (let i = 0; i < 4; i++) {
-      const x = i * 400 + 120;
-      if (op === 3) {
-        c.fillStyle = "#273e49";
-        c.fillRect(x, 125, 14, 330);
-        c.fillRect(x - 75, 120, 205, 10);
-        c.strokeStyle = "#405d67";
-        c.lineWidth = 3;
-        c.beginPath();
-        c.moveTo(x - 65, 129);
-        c.lineTo(x + 100, 190);
-        c.lineTo(x + 6, 190);
-        c.stroke();
-        c.fillStyle = "#3f5660";
-        c.fillRect(x + 65, 298, 180, 105);
-        for (let k = 0; k < 9; k++) {
-          c.fillStyle = "#526b702f";
-          c.fillRect(x + 70 + k * 20, 302, 2, 97);
-        }
-        c.fillStyle = "#d6cba280";
-        c.fillRect(x + 90, 297, 125, 3);
-      } else if (op === 4) {
-        c.fillStyle = "#557783";
-        c.fillRect(x, 285, 10, 180);
-        c.fillRect(x - 26, 283, 65, 5);
-        c.strokeStyle = "#5b7f8c";
-        c.lineWidth = 2;
-        c.beginPath();
-        c.moveTo(x - 400, 274);
-        c.quadraticCurveTo(x - 190, 334, x, 274);
-        c.stroke();
-      } else {
-        c.strokeStyle = "#484b50";
-        c.lineWidth = 27;
-        c.beginPath();
-        c.moveTo(x, 455);
-        c.lineTo(x, 186);
-        c.quadraticCurveTo(x, 147, x + 40, 147);
-        c.lineTo(x + 270, 147);
-        c.stroke();
-        c.strokeStyle = "#8b80704a";
-        c.lineWidth = 2;
-        c.stroke();
-        c.fillStyle = "#2c3440";
-        c.fillRect(x + 45, 280, 215, 149);
-        const glow = c.createLinearGradient(0, 290, 0, 410);
-        glow.addColorStop(0, "#cd875465");
-        glow.addColorStop(1, "#cd875408");
-        c.fillStyle = glow;
-        c.fillRect(x + 57, 291, 190, 126);
-        c.fillStyle = "#e7b27c80";
-        c.fillRect(x + 57, 290, 190, 3);
-      }
-    }
-    return panel;
+    for (const t of world.terrain) this.tileCache.set(t.id, this.buildTerrain(t));
   }
   polygon(points, fill, stroke = null, width = 1) {
     const c = this.ctx;
@@ -272,161 +133,112 @@ export class Renderer {
   buildTerrain(t) {
     const canvas = document.createElement("canvas");
     canvas.width = Math.ceil(t.w + 4);
-    canvas.height = Math.ceil(t.h + 20);
-    const ctx = canvas.getContext("2d");
-    const original = this.ctx;
+    canvas.height = Math.ceil(t.h + 24);
+    const ctx = canvas.getContext("2d"), original = this.ctx;
     this.ctx = ctx;
-    const r = rng(t.id * 113),
-      w = t.w,
-      h = t.h;
-    ctx.translate(2, 6);
-    if (t.material === "earth" && this.operation === 4) {
-      const ice = ctx.createLinearGradient(0, 0, 0, h);
-      ice.addColorStop(0, "#6b9ead");
-      ice.addColorStop(0.18, "#487386");
-      ice.addColorStop(1, "#243f55");
-      this.rect(0, 0, w, h, ice);
-      // Broad facets are cached with the terrain; the solid top is unambiguous.
-      for (let x = 0; x < w; x += 92) {
-        this.polygon(
-          [
-            [x, 8],
-            [x + 42, 14],
-            [x + 64, h],
-            [x + 12, h],
-          ],
-          "#b6e4e810",
-        );
-        this.line(
-          [
-            [x + 17, 11],
-            [x + 32, 36],
-            [x + 21, 57],
-          ],
-          "#c2e7e426",
-          1,
-        );
+    const random = rng(t.id * 113), p = STAGE_PALETTES[this.operation], w=t.w, h=t.h;
+    ctx.translate(2,6);
+    if(t.oneWay){
+      if(this.facilityAtlas) paintDeck(ctx,this.facilityAtlas,this.operation,w);
+      else {
+        const wood=t.material==='wood';
+        this.rect(0,0,w,16,wood?'#70674e':'#596b70');
+        this.rect(0,1,w,3,wood?'#a59b76':'#b5bbaa');
+        this.rect(0,13,w,4,'#273d3b');
       }
-      this.rect(0, 0, w, 5, "#dcecec");
-      this.rect(0, 5, w, 2, "#89c5d2");
-      this.line(
-        [
-          [0.5, 7],
-          [0.5, h],
-        ],
-        "#b1d7df",
-        1.2,
-      );
-      this.line(
-        [
-          [w - 1, 7],
-          [w - 1, h],
-        ],
-        "#152d43",
-        2,
-      );
-    } else if (t.material === "earth") {
-      const gradient = ctx.createLinearGradient(0, 0, 0, h);
-      gradient.addColorStop(0, "#6b715a");
-      gradient.addColorStop(0.2, "#4c5950");
-      gradient.addColorStop(1, "#203a3c");
-      this.rect(0, 0, w, h, gradient);
-      // Broad strata are tangible at phone scale and match the matte crates.
-      for (let x = 0; x < w; x += 84) {
-        this.polygon([[x,12],[x+64,18],[x+80,66],[x+31,79],[x+4,52]], "#566253", "#344e48", 2);
-        this.line([[x+8,18],[x+60,23]], "#9b9e7455", 2);
+      if(t.motion){this.rect(10,1,22,2,'#a4dbc9');this.rect(w-32,1,22,2,'#a4dbc9');}
+    }else if(t.material==='earth'){
+      const ice=this.operation===4;
+      const gradient=ctx.createLinearGradient(0,0,0,h);
+      gradient.addColorStop(0,ice?'#7598a2':p.soil);
+      gradient.addColorStop(.45,ice?'#476878':p.wall);
+      gradient.addColorStop(1,ice?'#294654':p.dark);
+      this.rect(0,0,w,h,gradient);
+      // Irregular strata form one continuous bank, rather than repeated UI tiles.
+      let x=-40;
+      while(x<w){
+        const span=72+random()*85, shoulder=12+random()*23, depth=55+random()*75;
+        this.polygon([[x,shoulder],[x+span*.36,shoulder-7],[x+span*.85,shoulder+4],[x+span,depth*.64],[x+span*.7,depth],[x+span*.18,depth+12],[x-5,depth*.7]],ice?'#648795':(random()>.55?'#5e6853':'#52614f'));
+        this.polygon([[x+5,shoulder+3],[x+span*.36,shoulder-7],[x+span*.68,shoulder+3],[x+span*.48,shoulder+6]],ice?'#a6c6cd':'#758163');
+        this.line([[x+span*.88,shoulder+10],[x+span*.94,depth*.62],[x+span*.7,depth],[x+span*.27,depth+10]],ice?'#345769':'#40513e',2.5);
+        this.line([[x+span*.41,shoulder+19],[x+span*.53,depth*.58],[x+span*.44,depth*.81]],ice?'#9ac2ca50':'#bdba8050',2);
+        x+=span-7;
       }
-      this.rect(0,0,w,6,"#8a9c70");
-      this.rect(0, 0, w, 1.5, "#c6d294");
-      this.line(
-        [
-          [0.5, 14],
-          [0.5, h],
-        ],
-        "#c2cda0",
-        1.3,
-      );
-      this.line(
-        [
-          [w - 1, 10],
-          [w - 1, h],
-        ],
-        "#183438",
-        2,
-      );
-    } else if (t.material === "wood") {
-      this.rect(0, 0, w, 17, "#524e3e");
-      this.rect(0, 0, w, 4, "#d5c690");
-      for (let x = 0; x < w; x += 26) {
-        this.rect(x + 1, 4, 24, 9, r() > 0.5 ? "#8d8160" : "#a0956b");
-        this.rect(x + 9, 6, 2, 2, "#394640");
+      // Turf or frost has depth but its tread stays precisely on the collision top.
+      this.rect(0,0,w,5,ice?'#d4e4df':this.operation===1?'#b9ab7e':'#a1ac79');
+      for(let x=0;x<w;x+=24){
+        const len=18+random()*21,depth=7+random()*11;
+        this.polygon([[x,4],[x+len,4],[x+len-4,depth],[x+len*.5,depth-3],[x+4,depth+2]],ice?'#aecbd0':this.operation===1?'#968d62':'#6e8155');
+        if(!ice&&random()>.45)this.line([[x+7,8],[x+9,22],[x+3,34]],'#8b95716b',2);
       }
-      this.rect(0, 13, w, 3, "#293f3e");
-      this.rect(8, 17, w - 16, 5, "#627164");
-    } else {
-      const furnace = this.operation === 5;
-      this.rect(0, 0, w, h, furnace ? "#3f3942" : "#294451");
-      this.rect(
-        0,
-        0,
-        w,
-        4,
-        t.motion ? "#9bf4df" : furnace ? "#efc392" : "#cfceac",
-      );
-      for (let x = 0; x < w; x += 64) {
-        this.rect(
-          x + 2,
-          6,
-          60,
-          Math.min(h - 8, 52),
-          furnace ? "#5f5360" : "#45646c",
-          2,
-        );
-        this.line(
-          [
-            [x + 6, 8],
-            [x + 56, 8],
-          ],
-          "#70918e",
-          1,
-        );
-        this.rect(x + 6, 12, 2, 2, "#c0c9ae");
-        this.rect(x + 54, 12, 2, 2, "#c0c9ae");
-        if (h > 40)
-          for (let k = 0; k < 3; k++)
-            this.rect(x + 18, 21 + k * 7, 27, 2, "#2b4650");
+      if(!ice){
+        for(let x=8;x<w;x+=39+random()*21){
+          this.line([[x,8],[x+11,10],[x+19,8],[x+33,11]],'#707253',2.2);
+          if(random()>.6)this.line([[x+9,9],[x+12,17],[x+8,25]],'#9c98726b',1.5);
+        }
       }
-      if (t.oneWay) {
-        this.rect(0, 13, w, 3, "#152f3c");
-        this.rect(9, 17, w - 18, 4, "#60867f");
+      this.rect(0,0,w,1,ice?'#eff4e9':'#c2c99a');
+      this.rect(0,14,3,h-14,ice?'#b1cfd1':'#81916b');
+      this.rect(w-3,10,3,h-10,ice?'#244759':'#294438');
+    }else{
+      const furnace=this.operation===5;
+      const gradient=ctx.createLinearGradient(0,0,0,h);
+      gradient.addColorStop(0,furnace?'#625954':'#536970');
+      gradient.addColorStop(.25,furnace?'#3e4147':'#354f59');
+      gradient.addColorStop(1,'#1d333c');
+      this.rect(0,0,w,h,gradient);
+      this.rect(0,0,w,7,furnace?'#a99a7e':'#a0b5ae');
+      this.rect(0,7,w,7,furnace?'#71685b':'#617a7b');
+      this.rect(0,14,w,7,'#1a3037');
+      this.rect(0,21,w,4,furnace?'#64564c':'#47636a');
+      // Load-bearing dock piers and welded spans, quiet enough for low bullets.
+      for(let x=70;x<w;x+=220+Math.floor(random()*70)){
+        this.polygon([[x-26,25],[x+28,25],[x+18,h],[x-39,h]],furnace?'#4e4b49':'#46616a');
+        this.polygon([[x+28,25],[x+39,25],[x+30,h],[x+18,h]],'#243b43');
+        this.line([[x-23,31],[x+21,31]],'#858c7880',2);
+        this.rect(x-12,34,4,4,'#1d333b');this.rect(x+13,34,4,4,'#1d333b');
       }
+      this.line([[0,39],[w,39]],furnace?'#8c6b4f':'#66868a',5);
+      this.line([[0,43],[w,43]],'#20363e',3);
+      this.rect(0,0,w,1,furnace?'#ddd0aa':'#d0ded0');
     }
-    this.ctx = original;
+    this.ctx=original;
     return canvas;
   }
 
+  prepareFrame(world, alpha = 1) {
+    if (this.world !== world) this.setWorld(world);
+    const frame = this.presentationCamera.update(world, this.width, alpha, this.safeTop || 0);
+    this.frame = frame;
+    this.frameWidth = frame.width;
+    this.viewHeight = frame.height;
+    this.cameraY = frame.y;
+    this.scaleX = this.canvas.width / frame.width;
+    this.scaleY = this.canvas.height / frame.height;
+    return frame;
+  }
   render(world, alpha = 1) {
     const started = performance.now();
     this.draws++;
-    if (this.world !== world) this.setWorld(world);
+    const frame = this.prepareFrame(world, alpha);
     const c = this.ctx,
-      W = this.width,
+      W = frame.width,
       H = HEIGHT,
-      cam = mix(world.prevCamera, world.camera, alpha);
+      cam = frame.x;
     this.cam = cam;
     this.alpha = alpha;
     this.time = world.time;
-    c.setTransform(this.scaleX, 0, 0, this.scaleY, 0, 0);
+    // Interpolate from production positions; rendering never advances the clock.
+    c.setTransform(1,0,0,1,0,0);
+    c.fillStyle=STAGE_PALETTES[this.operation].sky; c.fillRect(0,0,this.canvas.width,this.canvas.height);
+    c.setTransform(this.scaleX, 0, 0, this.scaleY, 0, -this.cameraY * this.scaleY);
     c.globalAlpha = 1;
     c.imageSmoothingEnabled = true;
     this.rect(0, 0, W, H, "#789995");
     if (this.operationArt) {
-      const x = -((cam * 0.16) % (this.paintedEnvironment ? 3200 : 1600));
+      const x = -((cam * 0.18) % 1600);
       c.drawImage(this.operationArt, x, 0);
-      if (this.paintedEnvironment) {
-        c.save();c.translate(x+3200,0);c.scale(-1,1);c.drawImage(this.operationArt,0,0);c.restore();
-        c.drawImage(this.operationArt,x+3200,0);
-      } else c.drawImage(this.operationArt, x + 1600, 0);
+      c.drawImage(this.operationArt, x + 1600, 0);
     }
     if (!this.atmosphere) {
       this.atmosphere = c.createLinearGradient(0, 0, 0, H);
@@ -440,55 +252,7 @@ export class Renderer {
       const x = mix(t.px ?? t.x, t.x, alpha) - cam,
         y = mix(t.py ?? t.y, t.y, alpha);
       if (x > W + 10 || x + t.w < -10) continue;
-      if (t.motion) {
-        if (t.motion === "x") {
-          this.line(
-            [
-              [t.base - t.range - cam, y + 33],
-              [t.base + t.range + t.w - cam, y + 33],
-            ],
-            "#6d9891",
-            3,
-          );
-        } else {
-          this.rect(x + t.w / 2 - 7, t.base - t.range - 15, 14, 290, "#284750");
-          this.rect(x + t.w / 2 - 2, t.base - t.range - 15, 4, 290, "#698d88");
-        }
-      } else if (t.oneWay) {
-        const floor = world.terrain.find(
-          (g) =>
-            !g.oneWay &&
-            g.x < t.x + t.w / 2 &&
-            g.x + g.w > t.x + t.w / 2 &&
-            g.y > y,
-        );
-        if (floor) {
-          for (const leg of [22, t.w - 22]) {
-            this.rect(x + leg - 3, y + 16, 7, floor.y - y - 16, "#3d5a55");
-            this.rect(x + leg - 3, y + 16, 2, floor.y - y - 16, "#6d8267");
-          }
-        }
-        // Slender structural brackets live behind the playable ledge.
-        this.line(
-          [
-            [x + 18, y + 17],
-            [x + 40, y + 40],
-            [x + 63, y + 17],
-          ],
-          "#536e60",
-          4,
-        );
-        if (t.w > 180)
-          this.line(
-            [
-              [x + t.w - 63, y + 17],
-              [x + t.w - 40, y + 40],
-              [x + t.w - 18, y + 17],
-            ],
-            "#536e60",
-            4,
-          );
-      }
+      if (t.oneWay) drawPlatformSupport(this, world, t, x, y);
       c.drawImage(this.tileCache.get(t.id), x - 2, y - 6);
     }
     for (const b of world.level.beacons)
@@ -542,87 +306,25 @@ export class Renderer {
       else this.ellipse(x, y, part.size, part.size * 0.6, part.color);
     }
     c.globalAlpha = 1;
+    c.setTransform(this.scaleX, 0, 0, this.scaleY, 0, 0);
     if (p.invincible > 0.9 && world.status === "playing") {
       c.strokeStyle = "#ffbe9160";
       c.lineWidth = 5;
-      c.strokeRect(2.5, 2.5, W - 5, H - 5);
+      c.strokeRect(2.5, 2.5, W - 5, this.viewHeight - 5);
     }
     this.lastRenderMs = performance.now() - started;
   }
 
   drawScenery(world, cam) {
-    const W = this.width,
-      c = this.ctx;
-    if (this.operation >= 3) {
-      // Restrained weather: fixed count, no allocation, no light flashes.
-      for (let i = 0; i < 24; i++) {
-        const x =
-          (((i * 173.7 - cam * 0.22 + this.time * 7) % (W + 40)) + W + 40) %
-          (W + 40);
-        const y =
-          (i * 71 + this.time * (this.operation === 3 ? 135 : 18)) % HEIGHT;
-        if (this.operation === 3)
-          this.line(
-            [
-              [x, y],
-              [x - 3, y + 9],
-            ],
-            "#bbd8e024",
-            0.7,
-          );
-        else
-          this.ellipse(
-            x,
-            y,
-            this.operation === 4 ? 1.4 : 1,
-            1,
-            this.operation === 4 ? "#eff8ed70" : "#f6c28565",
-          );
+    drawStageScenery(this, world, cam);
+    // Sparse operation weather stays behind actors and projectiles.
+    if (this.operation === 3 || this.operation === 4) {
+      for (let i = 0; i < 18; i++) {
+        const x = ((i * 173 - cam * .22 + this.time * 7) % (this.width + 40) + this.width + 40) % (this.width + 40);
+        const y = (i * 71 + this.time * (this.operation === 3 ? 130 : 18)) % 600;
+        if (this.operation === 3) this.line([[x,y],[x-3,y+8]], '#bcd5dc25', .8);
+        else this.ellipse(x,y,1.1,1,'#eef7ee70');
       }
-      return;
-    }
-    // Parallax structures are low contrast; never resemble collision surfaces.
-    for (let i = 0; i < 16; i++) {
-      const x = i * 420 - cam * 0.66 + 260;
-      if (x < -200 || x > W + 200) continue;
-      c.globalAlpha = 0.45;
-      if (i % 3 === 2) {
-        this.rect(x, 272, 22, 183, "#355959");
-        this.rect(x - 22, 265, 67, 11, "#5b7c6b");
-        this.line(
-          [
-            [x + 11, 272],
-            [x + 11, 228],
-            [x + 52, 243],
-          ],
-          "#789081",
-          3,
-        );
-        this.line(
-          [
-            [x - 12, 296],
-            [x + 39, 296],
-          ],
-          "#99ac83",
-          2,
-        );
-      }
-      c.globalAlpha = 1;
-    }
-    // A few slowly drifting motes, never a full-screen rain/particle layer.
-    for (let i = 0; i < 14; i++) {
-      const x =
-        (((i * 167.8 + this.time * (3 + (i % 3)) - cam * 0.3) % (W + 30)) +
-          W +
-          30) %
-        (W + 30);
-      this.ellipse(
-        x,
-        150 + ((i * 71) % 270) + Math.sin(this.time * 0.4 + i) * 12,
-        1.2,
-        0.8,
-        "#e8e6b260",
-      );
     }
   }
 
@@ -754,7 +456,7 @@ export class Renderer {
     const gait = moving ? p.gait * (Math.sign(p.vx) * p.face || 1) : 0.9;
     const bob = p.grounded
       ? moving
-        ? Math.sin(gait * 2) * 0.9
+        ? Math.sin(gait * 2) * 1.4
         : Math.sin(this.time * 2) * 0.4
       : 0;
     const ground = shadowSurface(this.world, p.x, y);
@@ -776,9 +478,11 @@ export class Renderer {
     if (hero && p.invincible > 0) {
       c.globalAlpha = 0.82 + Math.sin(this.time * 22) * 0.12;
     }
+    const landing = hero ? (p.land || 0) : 0;
+    const hurt = hero ? clamp((p.invincible - 1) / .25, 0, 1) : (p.flash || 0) * 4;
     const hip = {
-      x: crouch ? -5 : -3,
-      y: crouch ? -15 : -28 + bob + (p.land || 0) * 3,
+      x: crouch ? -5 : -3 - hurt * 3,
+      y: crouch ? -15 : -28 + bob + landing * 9,
     };
     const backFoot = crouch
       ? { x: -14, y: -1 }
@@ -798,9 +502,9 @@ export class Renderer {
       pal.trim,
       pal.outline,
     );
-    // Pack, scarf, torso, head and weapon share this one animated shoulder anchor.
-    const shoulderY = crouch ? -25 : -45;
-    const lean = clamp((p.vx * p.face) / 292, -1, 1) * 2;
+    // Body joints compress on landing/hurt; the gun retains the physical muzzle anchor.
+    const shoulderY = crouch ? -25 : -45 + landing * 5 + hurt * 2;
+    const lean = clamp((p.vx * p.face) / 292, -1, 1) * 3 - hurt * 5;
     this.rect(-15 + lean, shoulderY + 1, 9, crouch ? 13 : 18, pal.outline, 3);
     this.rect(-14 + lean, shoulderY + 2, 6, 13, pal.trim, 2);
     if (hero) {
@@ -893,7 +597,7 @@ export class Renderer {
     );
     const recoil = hero ? p.recoil * 2 : (p.recoil || 0) * 18;
     const sx = 2,
-      sy = shoulderY,
+      sy = crouch ? -25 : -45,
       handX = sx + Math.cos(angle) * (20 - recoil),
       handY = sy + Math.sin(angle) * (20 - recoil);
     const elbowX = (sx + handX) / 2 - Math.sin(angle) * 8,
@@ -1005,12 +709,13 @@ export class Renderer {
       this.drawHuman(e, x, y);
       if (e.type === "shield" && e.phase !== "recover") {
         c.save();
+        const guardRise = (e.guardHeight || 43) - 43;
         c.translate(x + e.face * 16, y - 25);
         c.scale(e.face, 1);
         this.polygon(
           [
-            [-6, -17],
-            [5, -15],
+            [-6, -17 - guardRise],
+            [5, -15 - guardRise],
             [10, -4],
             [10, 14],
             [1, 24],
@@ -1022,7 +727,7 @@ export class Renderer {
         );
         this.line(
           [
-            [3, -12],
+            [3, -12 - guardRise],
             [7, 0],
             [6, 12],
             [1, 19],
@@ -1168,6 +873,12 @@ export class Renderer {
         "#ffe0a1",
       );
       c.globalAlpha = 1;
+    }
+    if (e.pierced > 0) {
+      c.font = "800 11px system-ui";
+      c.textAlign = "center";
+      c.fillStyle = "#b7fff0";
+      c.fillText("PIERCE", x, y - e.h - 13);
     }
     if (e.flash > 0) {
       const max = { grunt: 3, shield: 8, turret: 6, runner: 3, drone: 3 }[
@@ -1489,7 +1200,7 @@ export class Renderer {
       c.font = "600 10px system-ui";
       c.textAlign = "center";
       c.fillStyle = "#d2eece";
-      c.fillText(item.type === "spread" ? "散射" : "脉冲", x, y + 28);
+      c.fillText(item.type === "spread" ? "可选 · 散射" : "可选 · 脉冲", x, y + 28);
     }
   }
 

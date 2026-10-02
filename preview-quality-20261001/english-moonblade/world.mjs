@@ -1,5 +1,5 @@
-import { strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";
-export const VERSION = "20260929-fluid-r2";
+import { strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+export const VERSION = "20261002-quality4-r1";
 export const DT = 1 / 60;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
@@ -284,6 +284,11 @@ export class World {
         return { id: `cache-${i}`, x: cx, y: cy, w: 0.82, h: 0.86, broken: false, reward };
       });
     this.hint = "";
+    this.intro = this.stage === 0 && checkpoint === 0 ? {
+      guardId: this.enemies.find(e => e.kind === "guard" && !e.armored)?.id,
+      attempt: null, avoided: false, counter: false, highPickups: 0, energyGain: 0,
+      highLanded: false, wallJumped: false, wallLanded: false,
+    } : null;
     this.goalX = this.level.length - 2;
   }
   emit(type, data = {}) {
@@ -400,6 +405,11 @@ export class World {
       e.kind === "boss" && ["tell", "rush", "sweep", "leap"].includes(e.state);
     damage = bossArmored ? Math.min(1, damage) : damage;
     e.lastHit = id;
+    if(this.intro && e.id === this.intro.guardId && this.intro.avoided && !this.intro.counter &&
+       e.state === "recover" && this.player.attack?.id === id) {
+      this.intro.counter = true;
+      this.emit("intro", { beat:"counter", x:e.x, y:e.y+1, target:e.id });
+    }
     e.hp -= damage;
     e.flash = 0.1;
     e.stun = e.kind === "boss" ? (bossArmored ? 0 : 0.1) : 0.21;
@@ -490,6 +500,7 @@ export class World {
         p.wallMemory = 0;
         p.ground = false;
         this.emit("jump", { x: p.x, y: p.y, wall: !!wall, dir: p.facing });
+        if(this.intro && wall && p.x > 27 && p.x < 34) this.intro.wallJumped = true;
       }
       if (p.attackBuffer > 0 && p.dash <= 0) {
         if (p.attack) {
@@ -543,6 +554,10 @@ export class World {
     }
     if (p.ground && !wasGround) {
       this.emit("land", { x: p.x, y: p.y, speed: landingSpeed });
+      if(this.intro) {
+        if(p.x >= 7 && p.x <= 10 && Math.abs(p.y-1.8)<.01) this.intro.highLanded=true;
+        if(this.intro.wallJumped && p.x >= 33 && p.x < 46 && Math.abs(p.y-1.5)<.01) this.intro.wallLanded=true;
+      }
       if (p.attack?.kind === "dive") {
         for (const e of this.enemies)
           if (!e.dead && Math.abs(e.x - p.x) < 2 && Math.abs(e.y - p.y) < 1)
@@ -653,10 +668,14 @@ export class World {
       if (!l.taken && !l.hidden && Math.hypot(l.x - p.x, l.y - p.y - 0.9) < 1) {
         l.taken = true;
         this.score += 30;
+        const energyBefore = p.energy;
         if (l.kind === "energy") p.energy = Math.min(10, p.energy + 2);
         else if (l.kind === "health") p.hp = Math.min(p.maxHp, p.hp + 3);
         else this.collected++;
-        this.emit("loot", { ...l });
+        if(this.intro && l.kind === "energy" && l.x >= 7 && l.x <= 10 && l.y > 2.5 && l.y < 2.8) {
+          this.intro.highPickups++;this.intro.energyGain += p.energy-energyBefore;
+        }
+        this.emit("loot", { ...l, energyGain:p.energy-energyBefore });
       }
     for (let i = this.checkpoint + 1; i < this.level.checkpoints.length; i++) {
       const [x, y] = this.level.checkpoints[i];
@@ -669,6 +688,16 @@ export class World {
     this.hint =
       this.level.hints.filter((h) => p.x >= h.x && p.x < h.x + 10).at(-1)
         ?.text || "";
+    if(this.intro && p.x < 16) {
+      const guard=this.enemies.find(e=>e.id===this.intro.guardId);
+      if(guard?.dead) this.hint="守卫已击败 · 前方短隙：长按跳跃飞得更远";
+      else if(this.intro.counter) this.hint="已完成避让反击 · 主动先攻或换路线也可以";
+      else if(guard?.state==="recover"&&this.intro.avoided) this.hint="守卫收刀中 · 靠近按 J 反击";
+      else if(p.x<6.5) this.hint="A / D 移动 · 轻点跳跃试落点，长按跳得更高";
+      else if(p.x<10.5&&p.y>1) this.hint=p.energy>=10?"高檐补给 · 忍力已满，落地继续":"高檐双忍力 · 落稳屋檐，再选择回到下路";
+      else if(p.x<10.5) this.hint="上方屋檐有双忍力 · 地面也能直接前进";
+      else this.hint="先看守卫抬刀 · 退半步或越身，等收招出刀";
+    }
     if (this.stage === 2 && p.x > 82 && !this.bossDefeated)
       this.bossLocked = true;
     if (p.x >= this.goalX && (this.stage < 2 || this.bossDefeated)) {
@@ -712,7 +741,9 @@ export class World {
       if (dist < 0.65 && Math.abs(e.y - p.y - 1) < 1) this.hurt(1, dir);
       return;
     }
-    e.facing = e.kind === "boss" && ["tell", "rush", "sweep", "leap"].includes(e.state) ? e.lockDir : dir;
+    const committed = e.kind === "boss" ? ["tell", "rush", "sweep", "leap"].includes(e.state)
+      : e.kind === "guard" && ["tell", "strike"].includes(e.state);
+    e.facing = committed ? e.lockDir : dir;
     if (e.kind === "boss") {
       if (!this.bossLocked) return;
       if (e.state === "idle" && e.timer <= 0) {
@@ -801,6 +832,9 @@ export class World {
           e.timer = 0.42;
           e.lockDir = dir;
           e.vx = 0;
+          if(this.intro && e.id===this.intro.guardId && !this.intro.counter) {
+            this.intro.attempt={time:this.time,x:p.x,y:p.y,hp:p.hp};this.intro.avoided=false;
+          }
         }
       } else if (e.state === "tell" && e.timer <= 0) {
         e.state = "strike";
@@ -825,6 +859,10 @@ export class World {
           e.state = "recover";
           e.timer = 0.7;
           e.vx = 0;
+          const attempt=this.intro?.attempt;
+          if(this.intro && e.id===this.intro.guardId && attempt && !this.intro.counter) {
+            this.intro.avoided=p.hp===attempt.hp&&Math.hypot(p.x-attempt.x,p.y-attempt.y)>.5;
+          }
         }
       } else if (e.state === "recover" && e.timer <= 0) {
         e.state = "idle";
@@ -857,6 +895,7 @@ export class World {
       props: this.props.map(({ id, x, y, broken }) => ({ id, x, y, broken })),
       deaths: this.deaths,
       chapterSkills: { ...this.chapterSkills },
+      intro: this.intro ? {...this.intro,attempt:this.intro.attempt?{...this.intro.attempt}:null} : null,
       player: {
         x: p.x,
         y: p.y,

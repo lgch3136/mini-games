@@ -1,13 +1,13 @@
-import { SectorClock, readSectors, saveSectors } from "./race-craft.mjs?mobile=20261001-quality2-r1";
-import { drivingGoals, saveDrivingRecord, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
-import { Race, ITEMS } from "./world.mjs?v=20260918-play-r1&mobile=20261001-quality2-r1";
-import { RaceView } from "./view.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r8";
+import { SectorClock, readSectors, saveSectors } from "./race-craft.mjs?mobile=20261002-quality4-r1";
+import { drivingGoals, saveDrivingRecord, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20261002-quality4-r1";
+import { Race, ITEMS } from "./world.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { RaceView } from "./view.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20261001-quality3-r8";
+} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20261002-quality4-r1";
 let app;
 try {
 app = new Shell({
@@ -43,7 +43,7 @@ app = new Shell({
     const approaching = line && local > line.start - 120 && local < line.end;
     const splitVisible = w.lastSplit && w.time - w.lastSplit.at < 4;
     $("driver-contract").hidden = w.time > 9 && !approaching && !splitVisible;
-    if (approaching) text("driver-goal", `${line.name} · ${line.side > 0 ? '右' : '左'}侧色带 / 另一侧宽路`);
+    if (approaching) text("driver-goal", `${line.side > 0 ? '右' : '左'}窄门3道：全过加速 / 碰桩减速 · ${line.side > 0 ? '左' : '右'}宽路`);
     text("driver-coach", approaching ? "三道窄门全过 → 出弯加速 · 碰桩减速" : next?.help || "小喷出弯，氮气留给直道");
     $("sector-split").hidden = !splitVisible;
     text("sector-split", w.lastSplit ? `S${w.lastSplit.index + 1}  ${w.lastSplit.duration.toFixed(2)}s  ${w.lastSplit.delta == null ? '建立基准' : `${w.lastSplit.delta >= 0 ? '+' : ''}${w.lastSplit.delta.toFixed(2)}s`}` : '');
@@ -206,7 +206,7 @@ app = new Shell({
     const report = saveDrivingRecord(w);
     saveSectors(w);
     $("license-medal").hidden = !report.stars;
-    if (report.stars) $("license-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+    if (report.stars) $("license-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp?mobile=20261002-quality4-r1`;
     text("license-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip + (report.improved ? "\n赛道驾驶勋章已升级" : ""));
     let best = null;
     try {

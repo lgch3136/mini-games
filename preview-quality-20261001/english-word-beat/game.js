@@ -19,7 +19,7 @@ const canvas = $id('game');
 const ctx = canvas.getContext('2d', { alpha: false });
 const wrap = $id('game-wrap');
 const StageBackground = new Image();
-StageBackground.src = 'assets/stage-bg-v3.webp';
+StageBackground.src = 'assets/stage-bg-v3.webp?mobile=20261002-quality4-r1';
 
 let W = 560, H = 640;
 const TAU = Math.PI * 2;
@@ -418,7 +418,8 @@ function wordBank() {
 /* ---------------- 状态 ---------------- */
 const Game = {
   state: 'menu',
-  build: '20260930-quality-r1',
+  build: '20261002-quality4-instrument-r1',
+  lesson:false, lessonSeen:false, companion:false, missedSources:[], retryGroups:{}, retryAttempts:{}, chartSource:[], brokenHolds:[], recoveryKind:null, keyTravel:[0,0,0,0,0,0,0],
   session: 'song', timingOffset: 0, timingErrors: [], laneMistakes: [0,0,0,0,0,0,0], completed: false,
   difficulty: 'medium',
   keyMode: window.matchMedia?.('(pointer:coarse)').matches ? 4 : 7, scrollMul: 1.25, songId: 'joy', section: 0, currentSection: '',
@@ -633,7 +634,7 @@ function chooseWord() {
 }
 
 function buildChart(retryWord, seamless) {
-  if (!retryWord) chooseWord();
+  if (!retryWord) {if(Game.companion)chooseWord();else Game.word={en:'',zh:'',progress:0,collected:[],complete:true};}
   if (!seamless) {
     Game.notes = [];
     Game.pulses = [];
@@ -762,17 +763,65 @@ function buildChart(retryWord, seamless) {
   Game.letterSources = melodyNotes.filter((note)=>note.isLetter).map((note)=>({...note}));
 
   Game.notes.push(...phraseNotes);
-  Game.notes.sort((a, b) => a.hitAt - b.hitAt);
+  Game.notes.sort((a, b) => a.hitAt - b.hitAt);cacheChartSources();
   pendingNotes = null;
   Game.autoEvents.sort((a, b) => a.hitAt - b.hitAt);
   Game.songEndAt = phraseStart + cursorDuration + beat * .5;
   Game.currentSection = melodyNotes[0]?.section || '主题';
 
   updateHud();
-  showFeedback(`${song.title} · ${formatDuration(song.duration)} · ${safe(Game.word.en)} (${safe(Game.word.zh)})`);
+  showFeedback(`${song.title} · ${formatDuration(song.duration)}${Game.companion?` · 伴读 ${safe(Game.word.en)} (${safe(Game.word.zh)})`:''}`);
 }
 
-function startGame() {
+function buildFirstPhrase() {
+  Game.word={en:'',zh:'',progress:0,collected:[],complete:true};Game.letterSources=[];
+  Game.bpm=96;Game.phraseStartAt=2.5;Game.songEndAt=23.55;Game.currentSection='轻点 · 到线按下再松开';
+  const beat=60/Game.bpm,notes=[],add=(at,lane,duration=0,section='')=>notes.push({lane,degree:lane,pitches:[degreeMidi([0,2,4,6][lane]??lane)],hitAt:2.5+at*beat,endAt:duration?2.5+(at+duration)*beat:null,beatLength:duration||1,soundDuration:(duration||.7)*beat,judged:false,isLetter:false,section,lessonKind:duration?'hold':at>=22?'chord':'tap',sourceId:`lesson:${at}:${lane}`});
+  [0,2,4,6].forEach((at,i)=>add(at,[0,2,1,3][i],0,'轻点 · 到线按下，再松开'));
+  add(10,1,3,'长按 · 持续到叉形尾端碰线');add(15,2,3,'长按 · 持续到叉形尾端碰线');
+  for(const[at,pair]of[[22,[0,3]],[26,[1,2]]])for(const lane of pair)add(at,lane,0,'和弦 · 两轨同时按下');
+  for(const lane of[0,3])add(28,lane,3,'双长按 · 各自守住尾端');
+  Game.notes=notes;cacheChartSources();pendingNotes=null;Game.autoEvents=[];Game.autoIndex=0;
+  for(let b=0;b<32;b+=4)Game.autoEvents.push({hitAt:2.5+b*beat,duration:.5,pitches:b<16?[48,55]:[43,50],volume:.045});
+  Game.autoEvents.push({hitAt:22.6,duration:.55,pitches:[48,55,60],volume:.055});updateHud();showFeedback('24秒基础乐句 · 轻点、长按、双指和弦');
+}
+function sourceIdentity(note){return note.sourceId||note.sampleId||`${note.hitAt}:${note.lane}`;}
+function cacheChartSources(){
+  for(const n of Game.notes){n.sourceId||=`${Game.level}:${n.sampleId||`${n.hitAt}:${n.lane}`}`;n.sourceGroup||=`${Game.level}:${n.hitAt}`;}
+  Game.chartSource=Object.freeze(Game.notes.map(n=>Object.freeze({...n,pitches:Object.freeze([...(n.pitches||[])])})));
+}
+function recordMiss(note){
+  if(Game.recoveryKind==='notes'){const attempt=Game.retryAttempts[note.retryGroupId];if(attempt)attempt.failed=true;return;}
+  const id=sourceIdentity(note),groupId=note.sourceGroup||id;
+  if(!Game.retryGroups[groupId])Game.retryGroups[groupId]=Object.freeze((Game.chartSource.filter(n=>n.sourceGroup===groupId).length?Game.chartSource.filter(n=>n.sourceGroup===groupId):[note]).map(n=>Object.freeze({...n})));
+  if(!Game.missedSources.some(n=>sourceIdentity(n)===id)){
+    Game.missedSources.push({...note,sourceId:id,sourceGroup:groupId});
+    if(Game.missedSources.length>64){const removed=Game.missedSources.shift();if(!Game.missedSources.some(n=>n.sourceGroup===removed.sourceGroup))delete Game.retryGroups[removed.sourceGroup];}
+  }
+}
+function resolveRetry(note){
+  if(Game.recoveryKind!=='notes')return;note.retryPassed=true;
+  const groupId=note.retryGroupId,attempt=Game.retryAttempts[groupId];
+  if(attempt&&!attempt.failed&&Game.notes.filter(n=>n.retryGroupId===groupId).every(n=>n.retryPassed)){
+    Game.missedSources=Game.missedSources.filter(n=>n.sourceGroup!==groupId);delete Game.retryGroups[groupId];attempt.cleared=true;
+  }
+}
+function startMissRetry(){
+  if(Game.state!=='over'||!Game.missedSources.length)return;
+  stopVoices();ensureAudioClock();initSfx();Game.recovery=true;Game.recoveryKind='notes';Game.completed=false;
+  Game.score=0;Game.lives=100;Game.combo=0;Game.maxCombo=0;Game.capsules=0;Game.counts={perfect:0,great:0,good:0,miss:0};Game.timingErrors=[];Game.laneMistakes.fill(0);Game.activeHolds.fill(null);Game.heldLane.fill(0);Game.flashLane.fill(0);Game.keyTravel.fill(0);keyboardLanes.clear();pointerLanes.clear();Game.brokenHolds=[];
+  Game.particles.length=Game.floaters.length=Game.pulses.length=0;Game.time=0;Game.judgement=null;Game.instrumentBuffers=pianoBuffers.slice();
+  const selected=[],groupIds=[...new Set(Game.missedSources.slice().sort((a,b)=>a.hitAt-b.hitAt).map(n=>n.sourceGroup))].slice(0,4);Game.retryAttempts={};
+  const beat=60/Game.bpm;Game.phraseStartAt=COUNT_IN_BEATS*beat;let at=Game.phraseStartAt;
+  for(const groupId of groupIds){const group=Game.retryGroups[groupId];if(!group?.length)continue;Game.retryAttempts[groupId]={failed:false,cleared:false};let gap=beat*2;
+    for(const source of group){const hold=source.endAt?source.endAt-source.hitAt:0;selected.push({...source,sourceId:sourceIdentity(source),retryGroupId:groupId,hitAt:at,endAt:hold?at+hold:null,judged:false,missed:false,holding:false,holdBroken:false,holdComplete:false,retryPassed:false,isLetter:false,section:'漏拍短句 · 按原组合再试'});gap=Math.max(gap,hold+beat*.5);}at+=Math.ceil(gap/beat-1e-8)*beat;
+  }
+  Game.notes=selected;pendingNotes=null;Game.songEndAt=at+beat*2;Game.autoEvents=[{hitAt:at,duration:beat*.9,pitches:[48,55,60],volume:.055}];Game.autoIndex=0;Game.backingStep=0;
+  Game.audioStart=Game.actx.currentTime+.45;Game.state='playing';Game.currentSection='漏拍短句';$id('over').classList.add('hidden');$id('paused').classList.add('hidden');$id('word-bar').classList.add('hidden');highwayLayoutDirty=true;updateHud();showFeedback('四拍准备 · 只重练刚才漏掉的组合');ensureLoop();focusGameplay();
+}
+
+function startGame(lesson=false) {
+  Game.lesson=lesson===true;Game.recoveryKind=null;Game.missedSources=[];Game.retryGroups={};Game.retryAttempts={};Game.chartSource=[];Game.brokenHolds=[];Game.keyTravel.fill(0);
   stopVoices();
   ensureAudioClock(); initSfx();
   LANES = Game.keyMode || 7;
@@ -793,8 +842,8 @@ function startGame() {
   $id('menu').classList.add('hidden');
   $id('over').classList.add('hidden');
   $id('paused').classList.add('hidden');
-  $id('word-bar').classList.remove('hidden');
-  buildChart();
+  if(!Game.companion||Game.lesson)$id('word-bar').classList.add('hidden');else $id('word-bar').classList.remove('hidden');highwayLayoutDirty=true;
+  if(Game.lesson)buildFirstPhrase();else buildChart();
   Game.audioStart = Game.actx.currentTime + .45;
   Game.backingStep = 0;
   Game.autoIndex = 0;
@@ -807,16 +856,15 @@ function missingWordIndices() {
   return [...Game.word.en].map((_,i)=>i).filter((i)=>i >= Game.word.progress && !Game.word.collected?.[i]);
 }
 function collectWordLetter(note) {
-  if (!note.isLetter || note.index < 0 || note.index >= Game.word.en.length) return false;
+  if (!Game.companion || Game.lesson || !note.isLetter || note.index < 0 || note.index >= Game.word.en.length) return false;
   if (!Game.word.collected) Game.word.collected = [...Game.word.en].map((_,i)=>i<Game.word.progress);
   if (Game.word.collected[note.index]) return false;
   Game.word.collected[note.index] = true;
   Game.word.progress = Game.word.collected.indexOf(false);
   if (Game.word.progress < 0) Game.word.progress = Game.word.en.length;
-  Game.score += 80;
   if (!missingWordIndices().length && !Game.word.complete) {
-    Game.word.complete = true; Game.score += 200;
-    floatText(`${Game.word.en} · +200`, W/2, H*.22, '#fde68a');
+    Game.word.complete = true;
+    showFeedback(`${Game.word.en} · ${Game.word.zh} · 字卡收集完成`);
   }
   return true;
 }
@@ -824,7 +872,7 @@ function startWordRetry() {
   const missing = missingWordIndices();
   if (!missing.length || Game.state !== 'over') return;
   stopVoices(); ensureAudioClock(); initSfx();
-  Game.recovery = true; Game.completed = false;
+  Game.recovery = true;Game.recoveryKind='word'; Game.completed = false;
   Game.instrumentBuffers = pianoBuffers.slice();
   Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0; Game.capsules = 0;
   Game.counts = { perfect:0, great:0, good:0, miss:0 };
@@ -837,13 +885,13 @@ function startWordRetry() {
   let at=Game.phraseStartAt;
   Game.notes=missing.map((index,i)=>{
     const source=Game.letterSources.find((n)=>n.index===index) || {lane:i%LANES,degree:i%7,pitches:[60+i]};
-    const hold=source.endAt ? Math.min(1,source.endAt-source.hitAt) : 0;
+    const hold=source.endAt ? source.endAt-source.hitAt : 0;
     const note={...source,index,letter:Game.word.en[index],isLetter:true,hitAt:at,endAt:hold?at+hold:null,judged:false,missed:false,holding:false,holdBroken:false,section:'补齐漏拍'};
-    at+=Math.max(.65,hold+.35);
+    at+=Math.ceil(Math.max(beat*2,hold+beat*.5)/beat-1e-8)*beat;
     return note;
   });
   pendingNotes=null;
-  Game.songEndAt=at+.5; Game.autoEvents=[]; Game.autoIndex=0; Game.backingStep=0;
+  Game.songEndAt=at+beat*2; Game.autoEvents=[{hitAt:at,duration:beat*.9,pitches:[48,55,60],volume:.055}]; Game.autoIndex=0; Game.backingStep=0;
   Game.audioStart=Game.actx.currentTime+.45; Game.state='playing';
   $id('over').classList.add('hidden'); $id('paused').classList.add('hidden'); $id('word-bar').classList.remove('hidden');
   Game.currentSection='短句重练'; updateHud(); showFeedback('四拍准备 · 只练刚才漏掉的字母'); ensureLoop();
@@ -851,7 +899,7 @@ function startWordRetry() {
 
 function nextChart() {
   Game.level++; Game.section++;
-  Game.wordsDone++;
+  if(Game.companion&&Game.word?.complete)Game.wordsDone++;
   const bonus = 500 + Game.maxCombo * 10;
   Game.score += bonus;
   Game.lives = Math.min(100, Game.lives + 12);
@@ -904,6 +952,7 @@ function firstPendingNote() { return Game.notes[firstPendingIndex()]; }
 function* visibleNotes(time, speed) {
   const earliest = time - .2, latest = time + (HIT_Y - trackTop) / speed;
   // A held tail may start before the visible time window, but must stay on screen.
+  for(const note of Game.brokenHolds)if(note.hitAt<earliest&&time<note.endAt+.15)yield note;
   for (const note of Game.activeHolds)
     if (note?.holding && note.hitAt < earliest) yield note;
   let low = 0, high = Game.notes.length;
@@ -954,20 +1003,20 @@ function judgeHit(lane, eventTime) {
   Game.lives = Math.min(100, Game.lives + (verdict === 'PERFECT' ? 2 : verdict === 'GREAT' ? 1 : 0));
   Game.bgPulse = Math.min(1, Game.bgPulse + .18);
   Game.pulses.push({ lane, t: Game.time, color: LANE_COLORS()[lane] });
-  burst(laneX(lane) + laneW() / 2, HIT_Y, LANE_COLORS()[lane], verdict === 'PERFECT' ? 10 : 6);
+  burst(laneX(lane) + laneW() / 2, HIT_Y, LANE_COLORS()[lane], verdict === 'PERFECT' ? 4 : 2);
   if (best.endAt) {
     best.holding = true;
     Game.activeHolds[lane] = best;
   }
   tapSound(verdict !== 'GOOD', lane, noteSoundDuration(best), best);
-  collectWordLetter(best);
+  collectWordLetter(best);if(!best.endAt)resolveRetry(best);
   updateHud();
 }
 
 function breakHold(lane) {
   const note = Game.activeHolds[lane];
   if (!note) return;
-  note.holding = false; note.holdBroken = true;
+  note.holding = false; note.holdBroken = true;note.breakAt=judgeNow();recordMiss(note);Game.brokenHolds.push(note);if(Game.brokenHolds.length>7)Game.brokenHolds.shift();
   Game.activeHolds[lane] = null;
   Game.combo = 0; Game.lives -= 6; Game.counts.miss++; Game.laneMistakes[lane]++;
   Game.judgement = { text: 'HOLD BREAK', timing: 'TOO EARLY', color: '#ff6688', until: Game.time + .52 };
@@ -989,11 +1038,11 @@ function updateHolds() {
       else { breakHold(lane); continue; }
     }
     if (t >= note.endAt - .035) {
-      note.holding = false; note.holdComplete = true;
+      note.holding = false; note.holdComplete = true;resolveRetry(note);
       Game.activeHolds[lane] = null;
       Game.score += 120; Game.bgPulse = Math.min(1, Game.bgPulse + .24);
-      burst(laneX(lane) + laneW() / 2, HIT_Y - 4, LANE_COLORS()[lane], 12);
-      floatText('HOLD +120', laneX(lane) + laneW() / 2, HIT_Y - 58, '#fde68a');
+      burst(laneX(lane) + laneW() / 2, HIT_Y - 4, LANE_COLORS()[lane], 4);
+      Game.judgement={text:'TAIL',timing:'END +120',color:'#d6c08d',until:Game.time+.35};
       updateHud();
     } else if (!Game.heldLane[lane]) {
       breakHold(lane);
@@ -1022,11 +1071,11 @@ function scanMisses() {
         floatText('💊 MISS → GOOD', laneX(n.lane) + laneW() / 2, HIT_Y - 58, '#67e8f9');
         continue;
       }
-      n.missed = true;
+      n.missed = true;recordMiss(n);
       Game.counts.miss++;
       Game.laneMistakes[n.lane]++;
       Game.combo = 0;
-      Game.lives -= n.isLetter ? 8 : 4;
+      Game.lives -= 4;
       Game.judgement = { text: 'MISS', color: '#ff6688', until: Game.time + .42 };
       missSound();
       if (Game.lives <= 0 && Game.session !== "practice" && !Game.recovery) { gameOver(); return; }
@@ -1057,11 +1106,11 @@ function gameOver() {
   Game.activeHolds.fill(null);
   $id('word-bar').classList.add('hidden');
   $id('over').classList.remove('hidden');
-  const key = `word-beat-${Game.recovery ? "recovery" : "highscore"}-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
+  const key = `word-beat-performance-v2-${Game.recovery ? "recovery" : "highscore"}-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
   let high = 0;
   try {
     high = Number(localStorage.getItem(key) || 0);
-    if (Game.score > high) { high = Game.score; localStorage.setItem(key, String(Game.score)); }
+    if (!Game.lesson&&Game.score > high) { high = Game.score; localStorage.setItem(key, String(Game.score)); }
   } catch (e) {}
   const tn = totalNotes();
   const acc = tn ? Math.round(((Game.counts.perfect + Game.counts.great * .7 + Game.counts.good * .35) / tn) * 100) : 0;
@@ -1075,7 +1124,7 @@ function gameOver() {
     `<div><span>MISS</span><b>${safe(Game.counts.miss, 0)}</b></div>`;
   const recap = performanceRecap();
   $id('mastery-medal').hidden = recap.stars === 0;
-  $id('mastery-medal').src = `../shared/mobile-art/medal-${['bronze','bronze','silver','gold'][recap.stars]}.webp`;
+  $id('mastery-medal').src = `../shared/mobile-art/medal-${['bronze','bronze','silver','gold'][recap.stars]}.webp?mobile=20261002-quality4-r1`;
   $id('mastery-medal').alt = `${recap.stars} 星完成奖章`;
   $id('result-stars').textContent = '★'.repeat(recap.stars) + '☆'.repeat(3 - recap.stars);
   $id('result-star-rule').textContent = recap.stars ? '全曲完成记录' : '';
@@ -1088,8 +1137,17 @@ function gameOver() {
   $id('retry-btn').textContent = '从头演奏整曲';
   try {
     const masteryKey = `word-beat-mastery-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
-    localStorage.setItem(masteryKey, String(Math.max(Math.max(0, Math.min(3, Number(localStorage.getItem(masteryKey)) || 0)), recap.stars)));
+    if(!Game.lesson)localStorage.setItem(masteryKey, String(Math.max(Math.max(0, Math.min(3, Number(localStorage.getItem(masteryKey)) || 0)), recap.stars)));
   } catch {}
+  if(!Game.companion||Game.lesson||Game.recoveryKind==='notes'){
+    if(Game.recoveryKind==='notes')$id('over-title').textContent=Game.missedSources.length?'这一段结束，还有拍点可以再试':'漏拍短句完成';
+    $id('word-recap').textContent=Game.missedSources.length?`${Game.missedSources.length} 个拍点需要再试；短句保留原来的和弦组合与长按。`:Game.lesson?'轻点、长按、和弦的基础乐句结束。':'本段拍点已接上。';
+    $id('retry-word').hidden=!Game.missedSources.length;$id('retry-word').textContent='只练漏掉的短句';
+  }else $id('word-recap').textContent+=' · 随曲伴读只记录字卡接触与收集';
+  if(Game.lesson){
+    $id('over-kicker').textContent='基础乐句 · 24秒';$id('over-title').textContent=Game.recovery?'漏拍短句结束':'基础乐句结束';$id('result-stars').textContent='';$id('result-star-rule').textContent='基础练习，不计整曲纪录';$id('result-advice').textContent='可以进入完整曲练习，也可以先补刚才漏掉的拍点。';$id('retry-btn').textContent='进入完整曲练习';
+    if(Game.completed){Game.lessonSeen=true;try{localStorage.setItem('word-beat-first-phrase-v1','seen');}catch{}}updateQuickEntry();
+  }
   $id('retry-btn').focus?.({ preventScroll: true });
 }
 function performanceRecap() {
@@ -1097,7 +1155,7 @@ function performanceRecap() {
   const errors = Game.timingErrors.filter(Number.isFinite).slice().sort((a,b) => a-b);
   const bias = errors.length ? errors[Math.floor(errors.length / 2)] : 0;
   const spreads = errors.map((v) => Math.abs(v-bias)).sort((a,b)=>a-b), spread = spreads[Math.floor(spreads.length/2)] || 0;
-  const stars = Game.completed && !Game.recovery ? 1 + Number(accuracy >= 85) + Number(accuracy >= 95) : 0;
+  const stars = Game.completed && !Game.recovery && !Game.lesson ? 1 + Number(accuracy >= 85) + Number(accuracy >= 95) : 0;
   let advice = '先用 4K 与宽判定，盯住发光判定线；长条需要一直按到尾端。';
   if (errors.length >= 12 && spread < 65 && Math.abs(bias) > 25)
     advice = `你这次稳定${bias > 0 ? '偏晚' : '偏早'}。在选曲页把节拍校准尝试调到 ${Math.round(clamp(Game.timingOffset * 1000 + bias, -200, 200))} ms，再听一轮确认。`;
@@ -1211,8 +1269,8 @@ function showFeedback(text) {
   el.classList.add('show');
 }
 function updateSection() {
-  let next;
-  for (let i = firstPendingIndex(); i < Game.notes.length; i++) {
+  let next=Game.lesson?Game.activeHolds.find(note=>note?.holding):null;
+  for (let i = firstPendingIndex(); !next && i < Game.notes.length; i++) {
     const note = Game.notes[i];
     if (!note.judged && note.section) { next = note; break; }
   }
@@ -1222,7 +1280,7 @@ function updateSection() {
   if (!sectionChanged && !bpmChanged) return;
   Game.currentSection = next.section;
   if (bpmChanged) Game.bpm = next.bpm;
-  if (sectionChanged) showFeedback(`${currentSong().title} · ${Game.currentSection}`);
+  if (sectionChanged) showFeedback(`${Game.lesson?'基础乐句':currentSong().title} · ${Game.currentSection}`);
   updateHud();
 }
 const hudCache = new Map();
@@ -1244,8 +1302,8 @@ function updateHud() {
     hudCache.set('life', life);
   }
   const w = Game.word;
-  if (w && w.en) {
-    hudText('wb-kind', `${song.title} · ${Game.currentSection || song.composer}`);
+  if (Game.companion&&!Game.lesson&&Game.recoveryKind!=='notes'&&w && w.en) {
+    hudText('wb-kind', `随曲伴读 · ${song.title}`);
     const key = `${w.en}/${w.progress}/${w.collected?.join('')}`;
     if (hudCache.get('word') !== key) {
       $id('wb-word').replaceChildren(...[...w.en].map((ch, i) => {
@@ -1297,153 +1355,64 @@ function shouldShowReady(chartTime, firstPending) {
   // A brief distance between note heads is not a rest, especially during a tail.
   return entryAt - chartTime >= .65;
 }
-function render() {
-  Game.renderCount++;
-  if (highwayLayoutDirty) measureHighway();
-  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
-  if (Game.state === 'menu' && StageBackground.complete && StageBackground.naturalWidth) {
-    const sw = StageBackground.naturalHeight * W / H;
-    ctx.drawImage(StageBackground, (StageBackground.naturalWidth - sw) / 2, 0, sw, StageBackground.naturalHeight, 0, 0, W, H);
-  } else {
-    ctx.fillStyle = '#080314';
-    ctx.fillRect(0, 0, W, H);
+const InstrumentImage=new Image();InstrumentImage.src='assets/quality4/instrument.webp?mobile=20261002-quality4-r1';
+const INSTRUMENT_RECTS={socket:[64,8,128,240],key:[330,8,108,240],hammer:[568,8,143,240],tap:[8,320,240,127],hold:[264,288,240,191],tail:[549,276,182,216]};
+function instrumentPart(id,x,y,w,h,alpha=1){
+  ctx.save();ctx.globalAlpha*=alpha;
+  if(InstrumentImage.complete&&InstrumentImage.naturalWidth){const a=INSTRUMENT_RECTS[id];ctx.drawImage(InstrumentImage,...a,x,y,w,h);}
+  else{ctx.fillStyle=id==='socket'?'#283e3f':id==='hammer'?'#628e89':'#d7cfb1';ctx.beginPath();ctx.roundRect(x,y,w,h,2);ctx.fill();}
+  ctx.restore();
+}
+function instrumentFrame(){
+  const bed=ctx.createLinearGradient(0,HIT_Y-5,0,H);bed.addColorStop(0,'#68553b');bed.addColorStop(.25,'#2d3735');bed.addColorStop(1,'#101d23');
+  ctx.fillStyle=bed;ctx.beginPath();ctx.roundRect(13,HIT_Y-5,W-26,H-HIT_Y-4,6);ctx.fill();
+  ctx.fillStyle='#856d47';ctx.fillRect(16,HIT_Y-5,W-32,3);ctx.fillStyle='#293d3f';ctx.fillRect(19,trackTop,W-38,HIT_Y-trackTop-6);
+  for(let l=0;l<LANES;l++){
+    const x=laneX(l),lw=laneW(),cx=x+lw/2,press=Game.keyTravel[l]||0,held=Game.activeHolds[l]?.holding;
+    ctx.fillStyle=l%2?'#162a30':'#1b3035';ctx.fillRect(x+1,trackTop,lw-2,HIT_Y-trackTop-5);
+    ctx.strokeStyle='#a5916326';ctx.lineWidth=1;for(const d of[-2.5,2.5]){ctx.beginPath();ctx.moveTo(cx+d,trackTop);ctx.lineTo(cx+d,HIT_Y-5);ctx.stroke();}
+    ctx.strokeStyle='#07181d';ctx.beginPath();ctx.moveTo(x,trackTop);ctx.lineTo(x,HIT_Y);ctx.stroke();
+    instrumentPart('socket',x+2,HIT_Y+5,lw-4,68);
+    const hw=Math.min(lw*.62,44);instrumentPart('hammer',cx-hw/2,HIT_Y+1-press*3,hw,34);
+    const kw=Math.min(lw*.74,53);instrumentPart('key',cx-kw/2,HIT_Y+16,kw,48+press*4);
+    ctx.fillStyle='#263b39';ctx.font=`700 ${clamp(lw*.28,15,19)}px ui-monospace,monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(LANE_LABEL()[l]==='␣'?'SP':LANE_LABEL()[l],cx,HIT_Y+44+press*4);
+    if(held){ctx.strokeStyle='#e1bf76';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(cx,HIT_Y-2);ctx.lineTo(cx,HIT_Y+12-press*3);ctx.stroke();}
+    const pulse=Game.pulses.filter(p=>p.lane===l&&Game.time-p.t<.2).at(-1);
+    if(pulse){const a=1-(Game.time-pulse.t)/.2;ctx.strokeStyle=hexA('#f1d997',a*.8);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x+lw*.19,HIT_Y+2);ctx.quadraticCurveTo(cx,HIT_Y+2-a*3,x+lw*.81,HIT_Y+2);ctx.stroke();}
   }
-  // 舞台随连击呼吸，但保留足够暗度让音符不被背景吞掉。
-  const glow = Game.bgPulse;
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, `rgba(10,3,24,${.52 - glow * .12})`);
-  bg.addColorStop(.55, `rgba(6,2,18,${.62 - glow * .14})`);
-  bg.addColorStop(1, `rgba(4,1,14,${.48 - glow * .12})`);
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  if (Game.state === 'menu') { drawMenuDemo(); return; }
-
-  ctx.save();
-  ctx.translate(Game.shakeX, 0);
-
-  // 每个物理按键终身绑定一种颜色，键数切换也不改变色义。
-  for (let l = 0; l < LANES; l++) {
-    const x = laneX(l);
-    ctx.fillStyle = hexA(LANE_COLORS()[l], .045);
-    ctx.fillRect(x + 2, trackTop, laneW() - 4, H - trackTop);
-    // 纵向流光: 轨道中央微弱光带(下落方向感)
-    const streamG = ctx.createLinearGradient(0, trackTop, 0, H);
-    streamG.addColorStop(0, 'rgba(168,85,247,.02)');
-    streamG.addColorStop(.5, `rgba(168,85,247,${.05 + .03 * Math.sin(Game.time * 1.8 + l)})`);
-    streamG.addColorStop(1, 'rgba(168,85,247,.09)');
-    ctx.fillStyle = streamG;
-    ctx.fillRect(x + laneW() * .3, trackTop, laneW() * .4, H - trackTop);
-  }
-  // 侧边流光: 判定线亮光向上升起
-  for (let l = 0; l < LANES; l++) {
-    const x = laneX(l);
-    const g = ctx.createLinearGradient(0, HIT_Y - 130, 0, HIT_Y);
-    const a = .08 + Math.max(Game.flashLane[l], Game.heldLane[l]) * .72;
-    g.addColorStop(0, 'rgba(0,0,0,0)');
-    g.addColorStop(1, hexA(LANE_COLORS()[l], a));
-    ctx.fillStyle = g;
-    ctx.fillRect(x + 2, HIT_Y - 130, laneW() - 4, 130);
-  }
-  // playfield两侧收边(切掉死黑留白)
-  ctx.fillStyle = 'rgba(5,3,12,.55)';
-  ctx.fillRect(0, trackTop, 20, H - trackTop); ctx.fillRect(W - 20, trackTop, 20, H - trackTop);
-  // 分隔线
-  for (let l = 0; l <= LANES; l++) {
-    ctx.strokeStyle = 'rgba(255,255,255,.09)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(laneX(l), trackTop); ctx.lineTo(laneX(l), H); ctx.stroke();
-  }
-
-  // 乐句进度固定在谱面顶沿，玩家能预估当前段落而不遮挡音符。
-  const phraseProgress = clamp((now() - Game.phraseStartAt) / Math.max(.001, Game.songEndAt - Game.phraseStartAt), 0, 1);
-  ctx.fillStyle = 'rgba(255,255,255,.1)'; ctx.fillRect(20, trackTop - 4, W - 40, 3);
-  const progressGradient = ctx.createLinearGradient(20, 0, W - 20, 0);
-  progressGradient.addColorStop(0, O2_BLUE); progressGradient.addColorStop(.5, O2_GOLD); progressGradient.addColorStop(1, O2_BLUE);
-  ctx.fillStyle = progressGradient; ctx.fillRect(20, trackTop - 4, (W - 40) * phraseProgress, 3);
-
-  // 小节线
-  {
-    const beat = 60 / Game.bpm;
-    const pxPerSec = scrollSpeed();
-    const t = now();
-    const firstBeat = Math.ceil(t / beat) * beat;
-    for (let bt = firstBeat; bt < t + (HIT_Y - trackTop) / pxPerSec; bt += beat) {
-      const y = HIT_Y - (bt - t) * pxPerSec;
-      if (y < trackTop || y > HIT_Y) continue;
-      const isBar = Math.round(bt / beat) % 4 === 0;
-      ctx.strokeStyle = isBar ? 'rgba(168,85,247,.32)' : 'rgba(168,85,247,.13)';
-      ctx.lineWidth = isBar ? 1.6 : 1;
-      ctx.beginPath(); ctx.moveTo(20, y); ctx.lineTo(W - 20, y); ctx.stroke();
+  for(const x of[13,W-19]){ctx.fillStyle='#5c4e37';ctx.fillRect(x,trackTop-5,6,HIT_Y-trackTop+6);ctx.fillStyle='#927a4c';ctx.fillRect(x,trackTop-5,1,HIT_Y-trackTop+6);}
+  ctx.fillStyle='#b8b08a';ctx.fillRect(20,HIT_Y-1,W-40,2);ctx.fillStyle='#253c3e';ctx.fillRect(20,trackTop-5,W-40,4);
+  const fraction=clamp((now()-Game.phraseStartAt)/Math.max(.001,Game.songEndAt-Game.phraseStartAt),0,1);ctx.fillStyle='#bd9f64';ctx.fillRect(20,trackTop-5,(W-40)*fraction,3);
+  const beat=60/Game.bpm,t=now(),speed=scrollSpeed();for(let bt=Math.ceil(t/beat)*beat;bt<t+(HIT_Y-trackTop)/speed;bt+=beat){const y=HIT_Y-(bt-t)*speed;if(y<trackTop||y>HIT_Y)continue;ctx.strokeStyle=Math.round(bt/beat)%4===0?'#e0d4ad23':'#e0d4ad0c';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(20,y);ctx.lineTo(W-20,y);ctx.stroke();}
+}
+function instrumentNote(n,t){
+  if(n.judged&&!n.holding&&!n.missed&&!n.holdBroken)return;
+  const dt=n.hitAt-t;if(dt<-.2&&!n.holding&&!n.holdBroken)return;
+  const y=n.holding||n.holdBroken?HIT_Y:Math.min(HIT_Y,HIT_Y-dt*scrollSpeed());if(y<trackTop||y>H+30)return;
+  const x=laneX(n.lane),lw=laneW(),cx=x+lw/2,letter=Game.companion&&n.isLetter&&!Game.word.collected?.[n.index],broken=n.holdBroken||n.missed;
+  if(n.endAt){
+    const tail=HIT_Y-(n.endAt-t)*scrollSpeed(),top=Math.max(trackTop,tail),bottom=n.holdBroken?HIT_Y-18:Math.min(HIT_Y,y-7);
+    if(bottom>top){
+      ctx.fillStyle=broken?'#68747255':n.holding?'#cba75f':'#6f7869';ctx.fillRect(cx-3,top,6,bottom-top);ctx.fillStyle=broken?'#27393b':'#e4cea0';ctx.fillRect(cx-.7,top,1.4,bottom-top);
+      const count=Math.min(8,Math.floor((bottom-top)/28));ctx.strokeStyle=broken?'#7a817550':'#b19b7180';ctx.lineWidth=1;for(let i=1;i<=count;i++){const yy=top+(bottom-top)*i/(count+1);ctx.beginPath();ctx.moveTo(cx-4,yy);ctx.lineTo(cx+4,yy);ctx.stroke();}
+      if(tail>=trackTop-16)instrumentPart('tail',cx-9,tail-11,18,15,broken?.28:1);
+      if(n.holdBroken){ctx.strokeStyle='#af7770';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(cx-5,bottom-4);ctx.lineTo(cx+4,bottom+1);ctx.moveTo(cx-4,bottom+3);ctx.lineTo(cx+5,bottom+7);ctx.stroke();}
     }
   }
-
-  const keyBed = ctx.createLinearGradient(0, HIT_Y, 0, H);
-  keyBed.addColorStop(0, 'rgba(25,35,58,.96)'); keyBed.addColorStop(.32, 'rgba(8,13,26,.98)'); keyBed.addColorStop(1, 'rgba(2,5,13,1)');
-  ctx.fillStyle = keyBed; ctx.fillRect(15, HIT_Y, W - 30, H - HIT_Y);
-  ctx.strokeStyle = 'rgba(166,212,255,.42)'; ctx.lineWidth = 2;
-  ctx.strokeRect(16, HIT_Y + 1, W - 32, H - HIT_Y - 3);
-
-  // 判定线(呼吸脉冲)
-  {
-    const breathe = .06 + Math.sin(Game.time * 3.2) * .03 + Game.bgPulse * .1;
-    ctx.fillStyle = `rgba(255,255,255,${breathe})`;
-    ctx.fillRect(20, HIT_Y, W - 40, 46);
-    // O2Jam式判定线: 加亮加强——白芯+青光晕双层
-    ctx.save();
-    ctx.shadowColor = 'rgba(34,211,238,1)';
-    ctx.shadowBlur = 16;
-    ctx.strokeStyle = 'rgba(224,252,255,.98)';
-    ctx.lineWidth = 3.2;
-    ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(255,255,255,.95)';
-    ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(20, HIT_Y); ctx.lineTo(W - 20, HIT_Y); ctx.stroke();
-    ctx.restore();
+  if(n.holdBroken)return;
+  const nw=lw-(n.harmony?12:8),nh=letter?34:n.endAt?Math.min(31,Math.max(23,nw*.57)):Math.min(26,Math.max(18,nw*.38));
+  instrumentPart(n.endAt?'hold':'tap',cx-nw/2,y-nh,nw,nh,broken?.28:1);
+  if(!broken){
+    ctx.fillStyle=LANE_COLORS()[n.lane]===O2_BLUE?'#4c8b92':LANE_COLORS()[n.lane]===O2_GOLD?'#b18d3b':'#697d6f';ctx.fillRect(cx-nw*.31,y-4,nw*.62,1.2);
+    if(letter){ctx.fillStyle='#172c2e';ctx.font='800 19px ui-monospace,monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n.letter||'?',cx,y-nh*.46);}
   }
-  // 命中冲击波
-  for (let i = Game.pulses.length - 1; i >= 0; i--) {
-    const p = Game.pulses[i];
-    const age = Game.time - p.t;
-    if (age > .35) { Game.pulses.splice(i, 1); continue; }
-    const r = 20 + age * 190;
-    ctx.strokeStyle = hexA(p.color, (1 - age / .35) * .8);
-    ctx.lineWidth = 3 * (1 - age / .35) + 1;
-    ctx.beginPath(); ctx.ellipse(laneX(p.lane) + laneW() / 2, HIT_Y + 22, r * .8, r * .34, 0, 0, TAU); ctx.stroke();
-  }
-  // 劲乐团式机械键床：蓝/白/金颜色固定，按下时键帽有真实行程与持续光柱。
-  for (let l = 0; l < LANES; l++) {
-    const x = laneX(l);
-    const press = Math.max(Game.flashLane[l], Game.heldLane[l]);
-    const color = LANE_COLORS()[l];
-    const capY = HIT_Y + 6 + press * 5;
-    const capH = Math.min(34, laneW() * .72) - press * 3;
-    ctx.fillStyle = 'rgba(2,4,12,.88)';
-    ctx.beginPath(); ctx.roundRect(x + 5, HIT_Y + 5, laneW() - 10, 41, 9); ctx.fill();
-    ctx.save();
-    ctx.shadowColor = color; ctx.shadowBlur = 8 + press * 24;
-    const keyGradient = ctx.createLinearGradient(0, capY, 0, capY + capH);
-    keyGradient.addColorStop(0, hexA(color, .98));
-    keyGradient.addColorStop(1, shade(color, .34));
-    ctx.fillStyle = keyGradient;
-    ctx.beginPath(); ctx.roundRect(x + 8, capY, laneW() - 16, capH, 7); ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = color === O2_BLUE ? 'rgba(255,255,255,.62)' : 'rgba(255,255,255,.9)';
-    ctx.fillRect(x + 12, capY + 3, laneW() - 24, 2);
-    ctx.font = `900 ${clamp(laneW() * .24, 11, 17)}px ui-monospace, monospace`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    // Crisp flat glyphs on physical caps; heavy outlines closed the S/F/J counters.
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = color === O2_BLUE ? '#ffffff' : '#152239';
-    ctx.fillText(LANE_LABEL()[l] === '␣' ? 'SP' : LANE_LABEL()[l], x + laneW() / 2, capY + capH / 2 + 1);
-    ctx.fillStyle = 'rgba(190,220,255,.22)';
-    ctx.beginPath(); ctx.arc(x + 9, HIT_Y + 53, 2, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(x + laneW() - 9, HIT_Y + 53, 2, 0, TAU); ctx.fill();
-    // Lanes are keysound channels, not fixed pitches. Repeating the internal
-    // 'KS' tag on every key added no information, so the key bed stays clean.
-  }
+}
 
+function render() {
+  Game.renderCount++;if(highwayLayoutDirty)measureHighway();ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);
+  ctx.fillStyle='#102129';ctx.fillRect(0,0,W,H);
+  if(Game.state==='menu'){if(StageBackground.complete&&StageBackground.naturalWidth){const sw=StageBackground.naturalHeight*W/H;ctx.drawImage(StageBackground,(StageBackground.naturalWidth-sw)/2,0,sw,StageBackground.naturalHeight,0,0,W,H);}drawMenuDemo();return;}
+  ctx.save();ctx.translate(Game.shakeX,0);instrumentFrame();
   // Combo belongs in the clear top rail, never over approaching notes.
   if (Game.combo >= 2) {
     ctx.save();
@@ -1485,92 +1454,12 @@ function render() {
       ctx.globalAlpha = 1;
   }
 
-  // The top rail stays clear even as new notes enter.
-  ctx.save(); ctx.beginPath(); ctx.rect(20, trackTop, W - 40, HIT_Y - trackTop + 2); ctx.clip();
-  // 音符
-  const t = chartTime;
-  for (const n of visibleNotes(t, scrollSpeed())) {
-    if (n.judged && !n.holding && !n.missed) continue;
-    const dt = n.hitAt - t;
-    if (dt < -.2 && !n.holding) continue;
-    const y = n.holding ? HIT_Y : Math.min(HIT_Y, HIT_Y - dt * scrollSpeed());
-    if (y < trackTop || y > H + 30) continue;
-    const x = laneX(n.lane);
-    const isNextLetter = n.isLetter && !(Game.word.collected?.[n.index]);
-    const color = LANE_COLORS()[n.lane];
-    const pad = n.harmony ? 8 : 3;
-    const nx = x + pad, nw = laneW() - pad * 2;
-    ctx.save();
 
-    if (n.endAt && !n.missed && !n.holdBroken) {
-      const tailY = HIT_Y - (n.endAt - t) * scrollSpeed();
-      const bodyTop = Math.max(trackTop, Math.min(tailY, y - 12));
-      const bodyBottom = Math.min(HIT_Y, y - 8);
-      if (bodyBottom > bodyTop) {
-        const hg = ctx.createLinearGradient(nx, 0, nx + nw, 0);
-        hg.addColorStop(0, hexA(color, .28)); hg.addColorStop(.5, hexA(color, .92)); hg.addColorStop(1, hexA(color, .28));
-        ctx.fillStyle = hg;
-        ctx.beginPath(); ctx.roundRect(nx + 3, bodyTop, nw - 6, bodyBottom - bodyTop, 5); ctx.fill();
-        ctx.strokeStyle = hexA(color, .88); ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.roundRect(nx + 3, bodyTop, nw - 6, bodyBottom - bodyTop, 5); ctx.stroke();
-      }
-    }
-
-    if (isNextLetter) {
-      const nh = 34, ny = y - nh;
-      ctx.save();
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 16;
-      const lg = ctx.createLinearGradient(0, ny, 0, ny + nh);
-      lg.addColorStop(0, '#ffffff');
-      lg.addColorStop(.3, color);
-      lg.addColorStop(1, shade(color, .38));
-      ctx.fillStyle = lg;
-      ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.fill();
-      ctx.restore();
-      ctx.strokeStyle = '#fff4b8'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.stroke();
-      ctx.fillStyle = '#07111f';
-      ctx.font = '900 19px ui-monospace, monospace';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(n.letter || '?', x + laneW() / 2, ny + nh / 2 + 1);
-    } else {
-      const nh = n.harmony ? 20 : 26;
-      const ny = y - nh;   // 底边=y=判定对齐点
-      if (!n.missed) {
-        const ng = ctx.createLinearGradient(0, ny, 0, ny + nh);
-        ng.addColorStop(0, '#ffffff');
-        ng.addColorStop(.28, color);
-        ng.addColorStop(1, shade(color, .45));
-        ctx.fillStyle = ng;
-        ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.fill();
-        ctx.strokeStyle = 'rgba(10,5,20,.55)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,.75)';
-        ctx.fillRect(nx + 2, ny + 2.5, nw - 4, 2);
-        if (!n.harmony && laneW() > 44) {
-          ctx.fillStyle = color === O2_WHITE ? '#17233b' : '#f8fbff';
-          ctx.font = '800 9px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          const pitch = n.pitches?.at(-1);
-          ctx.fillText(n.pitches?.length > 1 ? 'CH' : midiName(pitch ?? degreeMidi(n.degree)), x + laneW() / 2, ny + nh / 2 + 2);
-        }
-      } else {
-        ctx.fillStyle = 'rgba(150,150,160,.3)';
-        ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 3); ctx.fill();
-      }
-    }
-    if (n.voicing?.length && !n.missed) {
-      ctx.fillStyle = '#67e8f9';
-      ctx.font = '900 9px ui-monospace, monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText('CH', nx + nw - 4, y - (isNextLetter ? 26 : 18));
-    }
-    ctx.restore();
-  }
-
-  ctx.restore();
-  drawParticles();
-  ctx.restore();
+  ctx.save();ctx.beginPath();ctx.rect(20,trackTop,W-40,HIT_Y-trackTop+2);ctx.clip();
+  for(const n of visibleNotes(chartTime,scrollSpeed()))instrumentNote(n,chartTime);
+  ctx.restore();drawParticles();ctx.restore();
 }
+
 function shade(hex, k) {
   const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
   return `rgb(${Math.round(r*(1-k))},${Math.round(g*(1-k))},${Math.round(b*(1-k))})`;
@@ -1610,15 +1499,20 @@ function drawMenuDemo() {
 }
 
 function savePlayPrefs() {
-  try { localStorage.setItem('word-beat-play-prefs-v1', JSON.stringify({ keyMode: Game.keyMode, session: Game.session, timingOffset: Game.timingOffset })); } catch {}
+  try { localStorage.setItem('word-beat-play-prefs-v1', JSON.stringify({ keyMode: Game.keyMode, session: Game.session, timingOffset: Game.timingOffset, companion:Game.companion })); } catch {}
 }
 try {
   const prefs = JSON.parse(localStorage.getItem('word-beat-play-prefs-v1') || '{}');
+  Game.companion=prefs.companion===true;Game.lessonSeen=localStorage.getItem('word-beat-first-phrase-v1')==='seen';
   if ([4,5,7].includes(prefs.keyMode)) Game.keyMode = prefs.keyMode;
   if (['song','practice','endless'].includes(prefs.session)) Game.session = prefs.session;
   if (Number.isFinite(prefs.timingOffset)) Game.timingOffset = clamp(prefs.timingOffset, -.2, .2);
 } catch {}
 LANES = Game.keyMode;
+$id('companion-toggle').checked=Game.companion;
+$id('companion-toggle').addEventListener('change',e=>{Game.companion=e.target.checked;savePlayPrefs();});
+function updateQuickEntry(){$id('quick-start').textContent=Game.lessonSeen?'即刻练习 · 完整一曲':'24秒基础乐句 · 先试手感';}
+updateQuickEntry();
 $id('session-select').value = Game.session;
 $id('timing-offset').value = Math.round(Game.timingOffset * 1000);
 $id('timing-offset-value').textContent = `${Math.round(Game.timingOffset * 1000)} ms`;
@@ -1665,9 +1559,10 @@ $id('pause-btn').addEventListener('click', togglePause);
 $id('exit-btn').addEventListener('click', backToMenu);
 $id('start-btn').addEventListener('click', startFromMenu);
 $id('retry-btn').addEventListener('click', startGame);
-$id('retry-word').addEventListener('click', startWordRetry);
+$id('retry-word').addEventListener('click',()=>Game.companion&&!Game.lesson&&Game.recoveryKind!=='notes'?startWordRetry():startMissRetry());
 $id('retry-audio').addEventListener('click', () => { ensureAudioClock(); loadPianoSamples(); });
-$id('quick-start').addEventListener('click', () => { Game.keyMode=4; Game.session='practice'; Game.difficulty='easy'; syncPlaySettings(); startGame(); });
+$id('quick-start').addEventListener('click', () => { Game.keyMode=4; Game.session='practice'; Game.difficulty='easy'; syncPlaySettings(); startGame(!Game.lessonSeen); });
+$id('lesson-start').addEventListener('click',()=>{Game.keyMode=4;Game.session='practice';Game.difficulty='easy';syncPlaySettings();startGame(true);});
 $id('menu-btn').addEventListener('click', backToMenu);
 $id('resume-btn').addEventListener('click', togglePause);
 $id('pause-menu-btn').addEventListener('click', backToMenu);
@@ -1764,9 +1659,12 @@ function frame(nowMs) {
     updateSection();
     const songFraction = Math.max(0, Math.min(1, (now() - Game.phraseStartAt) / Math.max(1, Game.songEndAt - Game.phraseStartAt)));
     $id('song-progress-fill').style.transform = `scaleX(${songFraction})`;
-    hudText('session-label', Game.recovery ? '短句重练 · 四拍准备后进入' : Game.session === 'endless' ? '连续巡演' : Game.session === 'practice' ? '完整练习 · 不会失败' : '一曲挑战');
+    hudText('session-label', Game.lesson&&!Game.recovery ? Game.currentSection : Game.recovery ? '短句重练 · 四拍准备后进入' : Game.session === 'endless' ? '连续巡演' : Game.session === 'practice' ? '完整练习 · 不会失败' : '一曲挑战');
     for (let lane = 0; lane < Game.flashLane.length; lane++) Game.flashLane[lane] = Math.max(0, Game.flashLane[lane] - dt * 7.5);
     Game.bgPulse = Math.max(0, Game.bgPulse - dt * .72);
+    Game.pulses=Game.pulses.filter(p=>Game.time-p.t<.25);
+    for(let lane=0;lane<LANES;lane++){const wanted=Game.heldLane[lane]?1:Game.flashLane[lane]*.5;Game.keyTravel[lane]+=(wanted-Game.keyTravel[lane])*(1-Math.exp(-dt*28));}
+    Game.brokenHolds=Game.brokenHolds.filter(n=>judgeNow()<n.endAt+.15);
     for (let i = Game.particles.length - 1; i >= 0; i--) {
       const pt = Game.particles[i];
       pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt;
@@ -1792,7 +1690,7 @@ window.__wordBeat = Game;
 if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
   requestAnimationFrame(() => {
     try {
-      Game.difficulty = 'easy'; Game.level = 6; Game.songId = 'joy';
+      Game.companion=true;Game.difficulty = 'easy'; Game.level = 6; Game.songId = 'joy';
       if (Math.abs(W / H - wrap.clientWidth / wrap.clientHeight) > .01) throw new Error('responsive playfield ratio failed');
       const expectedDpr = Math.min(window.devicePixelRatio || 1, 2);
       if (canvas.width < wrap.clientWidth * expectedDpr - 1 || canvas.height < wrap.clientHeight * expectedDpr - 1) throw new Error('retina canvas resolution failed');

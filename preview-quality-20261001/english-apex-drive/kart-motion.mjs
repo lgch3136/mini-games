@@ -6,7 +6,7 @@ import {
   damp,
   lerp,
   mixAngle,
-} from "../shared/first-person/math.mjs";
+} from "../shared/first-person/math.mjs?mobile=20261002-quality4-r1";
 
 export const DRIFT = Object.freeze({
   minSpeed: 12,

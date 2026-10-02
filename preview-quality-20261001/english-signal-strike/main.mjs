@@ -1,12 +1,12 @@
-import { relayBearing, threatCue, rememberOperation, storedMedal } from "./tactics.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { Strike, MAPS, WEAPONS } from "./world.mjs?v=20260918-play-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { StrikeView } from "./view.mjs?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r8";
+import { relayBearing, threatCue, rememberOperation, storedMedal } from "./tactics.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { Strike, MAPS, WEAPONS } from "./world.mjs?v=20260918-play-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { StrikeView } from "./view.mjs?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
 import {
   Shell,
   $,
   text,
   clock,
-} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20261001-quality3-r8";
+} from "../shared/first-person/shell.mjs?v=20260928-light-r1&mobile=20261002-quality4-r1";
 let hitUntil = 0;
 let app;
 try {
@@ -67,6 +67,7 @@ app = new Shell({
       $("boss-fill").style.transform = `scaleX(${boss.hp / boss.maxHp})`;
   },
   event(e, app) {
+    if(e.type==='operation')app.toast(`${e.label} · ${e.effect}`,2);
     if (e.type === "isolated") app.toast(`${e.label}已切断 · 敌人短暂失能`, 1.8);
     if (e.type === "flank") app.toast("无人机正在换侧 · 离开原来的射线", 1.4);
     if (e.type === "coreShift") app.toast(`核心侧口转向${e.side < 0 ? "西廊" : "东廊"} · 横移寻找青色地标`, 1.8);
@@ -86,7 +87,7 @@ app = new Shell({
     const w = app.world;
     const report = rememberOperation(w);
     $("operation-medal").hidden = !report.stars;
-    if (report.stars) $("operation-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+    if (report.stars) $("operation-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp?mobile=20261002-quality4-r1`;
     text("operation-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip + (report.improved ? "\n个人行动勋章已升级" : ""));
     text("panel-title", w.dead ? "信号中断" : "城市，重新上线");
     text(

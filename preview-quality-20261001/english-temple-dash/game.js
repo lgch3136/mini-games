@@ -1,19 +1,19 @@
-import { bindGameplayFocus } from "../shared/gameplay-focus.mjs?mobile=20261001-quality3-r8";
-import { ActionSources } from "./input-sources.mjs?mobile=20261001-quality3-r1";
-import { difficultPhrase } from "./phrases.mjs?mobile=20261001-quality2-r1";
-import { showStartupFailure } from "./startup.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
-import { rhythmRecap, templeRecordKey } from "./recap.mjs?v=20260930-quality-r1&mobile=20261001-quality2-r1";
+import { bindGameplayFocus } from "../shared/gameplay-focus.mjs?mobile=20261002-quality4-r1";
+import { ActionSources } from "./input-sources.mjs?mobile=20261002-quality4-r1";
+import { difficultPhrase } from "./phrases.mjs?mobile=20261002-quality4-r1";
+import { showStartupFailure } from "./startup.mjs?v=20260930-quality-r1&mobile=20261002-quality4-r1";
+import { rhythmRecap, templeRecordKey } from "./recap.mjs?v=20260930-quality-r1&mobile=20261002-quality4-r1";
 import {
   World,
   STEP,
   BIOMES,
   biomeAt,
   clamp,
-} from "./engine.mjs?v=20260905-sonic&mobile=20261001-quality2-r1";
-import { Renderer } from "./render-linear.js?v=20260930-polish-r1&mobile=20261001-quality2-r1";
-import { WindScore } from "./sound.js?v=20260905-sonic&mobile=20260930-quality-r2";
-import { RhythmWorld, TRACKS, makeChart } from "./rhythm.mjs?v=20260930-quality-r1&mobile=20261001-quality2-r1";
-import { RhythmScore } from "./rhythm-audio.js?v=20260905-sonic&mobile=20261001-quality2-r1";
+} from "./engine.mjs?v=20260905-sonic&mobile=20261002-quality4-r1";
+import { Renderer } from "./render-linear.js?v=20260930-polish-r1&mobile=20261002-quality4-r1";
+import { WindScore } from "./sound.js?v=20260905-sonic&mobile=20261002-quality4-r1";
+import { RhythmWorld, TRACKS, makeChart } from "./rhythm.mjs?v=20260930-quality-r1&mobile=20261002-quality4-r1";
+import { RhythmScore } from "./rhythm-audio.js?v=20260905-sonic&mobile=20261002-quality4-r1";
 
 try {
 const $ = (id) => document.getElementById(id),
@@ -116,6 +116,11 @@ function selectDifficulty() {
   updateBest();
 }
 function updateBest() {
+  if(mode==='rhythm'&&$("session-select").value==='lesson'){
+    text("best","8 次动作 · 跃起、俯身、组合与长条 · 可逐段接奏");
+    document.querySelector(".session-goals").textContent="入门和短句只记录本段，不授予全曲星；完整曲目仍可直接选择。";
+    return;
+  }
   const repeatSong = $("session-select").value === "loop";
   const options = { mode, track: trackId, difficulty, speed, repeatSong };
   const recordKey = templeRecordKey(options);
@@ -135,7 +140,7 @@ function setupMode() {
       : "穿过庭院、悬桥与矿道。稳走安全路线，或跃过机关，带走宝藏。";
   document.querySelector(".menu-footer").textContent =
     mode === "rhythm"
-      ? "一曲收官 · 三星目标 · 组合动作 · 40 连击保护胶囊"
+      ? "入门短段 · 逐段接奏 · 完整曲目 · 组合动作与长条"
       : "线性匀速 · 跳跃取宝 · 分岔奖励 · 词条伴读补充护符";
   document
     .querySelectorAll("[data-mode]")
@@ -257,6 +262,7 @@ function echo(en, zh, complete = false) {
   );
 }
 function hud() {
+  $("flow-meter").style.visibility=world.rhythm&&world.scoreTime-world.cycle*world.chart.duration<world.chart.leadIn?"hidden":"";
   if (world.time > (uiCache.echoUntil || 0) && $("word-echo").childElementCount)
     $("word-echo").replaceChildren();
   text("distance", Math.floor(world.distance).toLocaleString());
@@ -323,7 +329,7 @@ function hud() {
     const local = world.scoreTime - world.cycle * world.chart.duration;
     const seconds = Math.max(0, local - world.chart.leadIn),
       total = ((world.chart.sourceEndBeat ?? world.track.beats) - (world.chart.sourceStartBeat || 0)) * world.chart.beat;
-    text("track-name", world.track.title + (world.chart.practice ? ` · 第 ${world.chart.practicePhrase + 1} 短句练习` : ""));
+    text("track-name", world.track.title + (world.chart.lesson ? " · 入门短段" : world.chart.practice ? ` · 第 ${world.chart.practicePhrase + 1} 短句练习` : ""));
     text(
       "track-time",
       `${Math.floor(seconds / 60)}:${String(Math.floor(seconds) % 60).padStart(2, "0")} / ${Math.floor(total / 60)}:${String(Math.round(total) % 60).padStart(2, "0")}`,
@@ -338,7 +344,7 @@ function hud() {
     text("health", `◇ ${world.capsules} 胶囊`);
     text(
       "buffs",
-      world.flow ? "连击爆发 · 得分 ×2 · 跑速不变" : "每 40 连击 +1 保护胶囊",
+      world.flow ? "连击爆发 · 得分 ×2 · 跑速不变" : world.chart.lesson ? ((world.notes.find(n=>n.status==='holding')?"长条：保持到尾端，再松开":world.notes.find(n=>n.status==='waiting')?.hold?"下一拍是长条：按住 ↓ 直到尾端":"入门：↑ 跃起 · ↓ 俯身 · 斜箭头同时按")) : "每 40 连击 +1 保护胶囊",
     );
     $("boost-btn").disabled = world.charge < 100 || world.flow > 0;
     text(
@@ -388,6 +394,7 @@ function events() {
         { duration: 850, fill: "forwards", easing: "ease-out" },
       );
     }
+    if(event.type==="brush")audio.sound("land",{...event,coins:world.coins});
     if (event.type === "hold") {
       text("judgement", "HOLD");
       text("timing-error", "保持按住，直到长条结束");
@@ -541,7 +548,7 @@ function finish() {
   const recap = world.rhythm ? rhythmRecap(world) : null;
   const earnedStars = recap?.stars || 0;
   $("mastery-medal").hidden = earnedStars === 0;
-  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp`;
+  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp?mobile=20261002-quality4-r1`;
   $("mastery-medal").alt = `${earnedStars} 星完成奖章`;
   $("result-stars").hidden = !recap || world.repeatSong || world.chart?.practice;
   text("result-title", world.cleared ? "终章落定，远征完成。" : "这一程，留有回响。");
@@ -556,7 +563,16 @@ function finish() {
   const phrase = world.rhythm ? difficultPhrase(world) : null;
   $("phrase-btn").hidden = !phrase;
   if (phrase) text("phrase-btn", `只练第 ${phrase.index + 1} 短句 · ${phrase.miss} 次失误 · 8 拍预备`);
-  if (world.chart?.practice) { text("retry-btn", "回到完整曲目 ↗"); text("result-title", "短句练习结束"); text("result-summary", `${world.track.title} · 练习准确率 ${recap.accuracy.toFixed(1)}% · 不写入全曲纪录`); }
+  const nextPhrase=world.chart?.practice&&world.chart.sourceEndBeat<world.track.beats;
+  $("continue-phrase-btn").hidden=!nextPhrase;
+  if(nextPhrase)text("continue-phrase-btn",`接奏第 ${Math.floor(world.chart.sourceEndBeat/16)+1} 短句 · 8 拍预备`);
+  if (world.chart?.practice) {
+    text("retry-btn", "重练这一段");text("result-title",world.chart.lesson?"入门短段结束":"短句练习结束");
+    text("result-summary",`${world.track.title} · 本段 ${world.judged}/${world.notes.length} 拍 · 准确率 ${recap.accuracy.toFixed(1)}% · 不写入全曲纪录`);
+    text("practice-advice",world.judgements.miss?"可以重练同一段；接奏会先给完整预备拍，再从下一安全小节开始。":"脚步已接上这一段。接奏下一短句时，先听八拍再行动。");
+    $("phrase-btn").hidden=true;
+  }
+  text("new-btn",world.chart?.practice?"从头挑战完整曲目":"探索一条新路线");
   $("retry-btn").focus({ preventScroll: true });
 }
 function frame(now) {
@@ -610,7 +626,12 @@ function frame(now) {
   if (workTimes.length > 900) workTimes.shift();
   raf = requestAnimationFrame(frame);
 }
-async function start(same = false, practicePhrase = null) {
+function replaySelection(){
+  if(world?.chart?.lesson)return {lesson:true};
+  if(world?.chart?.practice)return {startBeat:world.chart.sourceStartBeat,endBeat:world.chart.sourceEndBeat};
+  return {full:true};
+}
+async function start(same = false, selection = null) {
   if (!ready) return;
   stop();
   if (!same) seed = randomSeed();
@@ -627,7 +648,8 @@ async function start(same = false, practicePhrase = null) {
     track: trackId,
     offset: latency,
     repeatSong: $("session-select").value === "loop",
-    practicePhrase,
+    ...(typeof selection==='number'?{practicePhrase:selection}:selection||{}),
+    lesson: selection?.lesson || (!selection && mode==='rhythm' && $("session-select").value==='lesson'),
   });
   uiCache = {};
   wordSignature = "";
@@ -637,13 +659,8 @@ async function start(same = false, practicePhrase = null) {
   audio.step = 0;
   overlay("playing");
   hud();
-  notice(
-    world.rhythm ? "跟着预备拍出发" : "出发 · 匀速古道",
-    world.rhythm
-      ? "箭头到金线时按下对应方向"
-      : "石柱换道 · 横木跳跃 · 拱门滑行",
-    world.rhythm ? 3 : 2,
-  );
+  if(world.rhythm){$("notice").hidden=true;noticeUntil=0;}
+  else notice("出发 · 匀速古道","石柱换道 · 横木跳跃 · 拱门滑行",2);
   renderer.render(world, 1);
   canvas.focus({ preventScroll: true });
   if (world.rhythm) {
@@ -757,11 +774,12 @@ for (const [id, handler] of Object.entries({
   "start-btn": () => start(),
   "pause-btn": pause,
   "resume-btn": resume,
-  "restart-btn": () => start(true),
+  "restart-btn": () => start(true,replaySelection()),
   "pause-menu": menu,
-  "retry-btn": () => start(true),
+  "retry-btn": () => start(true,replaySelection()),
   "phrase-btn": () => start(true, difficultPhrase(world)?.index ?? null),
-  "new-btn": () => start(),
+  "continue-phrase-btn": () => { if(state==="over"&&world.chart?.practice&&world.chart.sourceEndBeat<world.track.beats)return start(true,{startBeat:world.chart.sourceEndBeat}); },
+  "new-btn": () => start(false,world?.chart?.practice?{full:true}:null),
   "result-menu": menu,
   "end-btn": finish,
   "boost-btn": () => command("boost", true, true),

@@ -310,3 +310,20 @@ const GRAMMAR = {
     { prompt: 'On no account ___ give up our dreams.', options: ['we should', 'should we', 'we would', 'would we'], answer: 'should we' },
   ],
 };
+
+// One authored mission. Times use the same pausable play clock as movement.
+const THUNDER_TACTICS = {
+  PIERCE: { en: 'PIERCE', zh: '穿透', effect: 'pierce', detail: '16 秒穿甲 · 快速拆开装甲', color: '#94e8e5' },
+  SHIELD: { en: 'SHIELD', zh: '护盾', effect: 'shield', detail: '抵挡两次命中 · 适合穿越火线', color: '#94e8e5' },
+  HEAL: { en: 'HEAL', zh: '修复', effect: 'heal', detail: '恢复 30 · 满血时保留应急修复', color: '#94e8e5' },
+};
+const THUNDER_MISSION = [
+  { at: 0, id: 'sweep', label: '01 / 航道试飞', objective: '读橙色预告，横移让过扫射', waves: [{at:1,x:.24,role:'scout'},{at:4,x:.76,role:'scout'},{at:7,x:.42,role:'scout'}] },
+  { at: 12, id: 'armor-bay', label: '02 / 装甲前线整备', objective: '自由选装备 · 本次不计英语对错', bay: 'free', target: 'PIERCE' },
+  { at: 18, id: 'armor', label: '03 / 装甲封锁', objective: '击开前甲；PIERCE 更快，普通弹也能逐层拆开', waves: [{at:.6,x:.32,role:'armor'},{at:4,x:.68,role:'armor'},{at:9,x:.5,role:'scout'}] },
+  { at: 32, id: 'supply', label: '04 / 补给航道', objective: '自由补给 · 修复可保留到受伤时', bay: 'free', target: 'HEAL' },
+  { at: 39, id: 'dispatch', label: '05 / 夹击前的指令核验', objective: '识别「护盾」指令，为下一段交叉火力准备', bay: 'dispatch', target: 'SHIELD' },
+  { at: 45, id: 'pincer', label: '06 / 双侧夹击', objective: '先看两侧枪口锁定，再从中间空隙穿行', waves: [{at:.5,x:.18,role:'flanker',edge:'left'},{at:.5,x:.82,role:'flanker',edge:'right'},{at:5.8,x:.28,role:'flanker',edge:'left'},{at:5.8,x:.72,role:'flanker',edge:'right'}] },
+  { at: 60, id: 'core-bay', label: '07 / 核心突入准备', objective: '识别「穿透」指令，首领即将进入航道', bay: 'dispatch', target: 'PIERCE' },
+  { at: 66, id: 'boss', label: '08 / 航道守卫', objective: '炮架预告 → 避开弹扇 → 抓住开舱窗口', boss: true },
+];

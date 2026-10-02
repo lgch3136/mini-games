@@ -1,4 +1,5 @@
-import { musicalGesture, makePhraseChart } from "./phrases.mjs?mobile=20261001-quality2-r1";
+import {footPose} from "./motion.mjs?v=20261002-quality4&mobile=20261002-quality4-r1";
+import { musicalGesture, makePhraseChart, makeLessonChart, makeSegmentChart } from "./phrases.mjs?mobile=20261002-quality4-r1";
 import {
   World,
   STEP,
@@ -8,8 +9,9 @@ import {
   lerp,
   biomeAt,
   SECTOR_LENGTH,
-} from "./engine.mjs?v=20260905-sonic&mobile=20261001-quality2-r1";
-import { TRACKS } from "./tracks.mjs?v=20260905-sonic";
+  GAIT_RATE,
+} from "./engine.mjs?v=20260905-sonic&mobile=20261002-quality4-r1";
+import { TRACKS } from "./tracks.mjs?v=20260905-sonic&mobile=20261002-quality4-r1";
 
 export { TRACKS };
 export const COUNT_IN = 8;
@@ -110,10 +112,12 @@ export class RhythmWorld extends World {
     this.phraseStats = {};
     this.track = TRACKS.find((t) => t.id === options.track) || TRACKS[0];
     this.chart = makeChart(this.track, this.difficulty);
-    if (Number.isFinite(options.practicePhrase)) {
-      this.chart = makePhraseChart(this.chart, options.practicePhrase);
-      this.repeatSong = false;
-    }
+    if(options.lesson)this.chart=makeLessonChart(this.chart);
+    else if(Number.isFinite(options.startBeat))this.chart=makeSegmentChart(this.chart,options.startBeat,options.endBeat);
+    else if(Number.isFinite(options.practicePhrase))this.chart=makePhraseChart(this.chart,options.practicePhrase);
+    if(this.chart.practice)this.repeatSong=false;
+    this.distanceOffset=(this.chart.sourceStartBeat||0)*this.chart.beat*26;
+    this.distance=this.previousDistance=this.distanceOffset;
     this.notes = this.chart.notes.map((n) => ({
       ...n,
       pressed: {},
@@ -149,7 +153,7 @@ export class RhythmWorld extends World {
     if (!this.notes) return; // World constructor calls the virtual fill.
     while (this.spawnCursor < this.notes.length) {
       const n = this.notes[this.spawnCursor];
-      const z = (this.cycle * this.chart.duration + n.time + LEAD) * 26;
+      const z = this.distanceOffset+(this.cycle * this.chart.duration + n.time + LEAD) * 26;
       if (z > this.distance + SIGHT + 32) break;
       this.rows.push({
         id: this.nextId++,
@@ -397,7 +401,7 @@ export class RhythmWorld extends World {
     this.time += STEP;
     this.tick++;
     this.scoreTime += STEP * this.speedScale;
-    this.distance = this.scoreTime * 26;
+    this.distance = this.distanceOffset+this.scoreTime * 26;
     for (const a of actions)
       this.command(
         typeof a === "string" ? a : a.action,
@@ -443,11 +447,28 @@ export class RhythmWorld extends World {
       this.diveFrom *
         Math.max(0, 1 - (this.scoreTime - this.diveAt) / 0.12) ** 2,
     );
+    if(p.ph>0&&p.h===0)p.landAt=this.time;
     p.slide = Math.max(0, this.slideUntil - this.scoreTime);
     p.pose +=
       ((p.slide > 0 ? 1 : 0) - p.pose) *
       Math.min(1, STEP * 35 * this.speedScale);
-    p.gait += STEP * this.speedScale * 5.4;
+    if(p.h===0&&!p.slide)p.gait += STEP * this.speedScale * 26 * GAIT_RATE;
+    // A rhythm GOOD may be slightly late without changing its score window.
+    // Real shoe contact makes the lightweight wooden hurdle yield; it must
+    // not remain a rigid solid through an otherwise valid animated foot.
+    for(const row of this.rows){
+      const n=row.note;if(!n?.actions.includes("jump")||Number.isFinite(n.brushTime))continue;
+      const z=-(row.z-this.distance)*SPACE.depth;if(Math.abs(z)>1.1)continue;
+      for(const side of[-1,1]){
+        const foot=footPose(p.gait,side,p.h,p.pose,0),x=p.x*SPACE.lane+side*lerp(.23,.34,p.pose);
+        if(Math.abs(x-n.lane*SPACE.lane)<1.005&&Math.abs(foot.z-.1-z)<.385&&p.h+foot.y-.0075<.54){
+          n.brushTime=this.time;n.brushScoreTime=this.scoreTime;
+          this.emit("brush",{note:n.id,grade:n.grade});
+          for(let chip=0;chip<4;chip++)this.particles.push({x:n.lane+(chip-1.5)*.12,z:row.z-this.distance,h:.22,vx:(chip-1.5)*.6,vh:1.0,life:.24,color:"#c69e67"});
+          break;
+        }
+      }
+    }
     p.inv = 0;
     p.stumble = Math.max(0, p.stumble - STEP);
     this.flow = Math.max(0, this.flow - STEP);

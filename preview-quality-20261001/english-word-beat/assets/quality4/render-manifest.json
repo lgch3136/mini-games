@@ -1,0 +1,13 @@
+{
+  "source": "Original Blender geometry",
+  "renderer": "Blender4.3 CPU Cycles,56 samples, denoise disabled",
+  "materials": "Procedural walnut, matte felt, brass pivot and ivory plates",
+  "parts": [
+    "socket",
+    "key",
+    "hammer",
+    "tap",
+    "hold",
+    "tail"
+  ]
+}

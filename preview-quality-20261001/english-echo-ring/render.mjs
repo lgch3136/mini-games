@@ -1,7 +1,7 @@
-import { canvasBudget } from "../shared/render-budget.mjs?v=20260930-polish-r1";
-import { RADIUS, TAU, mix, random } from "./sim.mjs?v=20260906-echo-r5&mobile=20261001-quality2-r1";
-import { FlowField, ShipShape } from "./field.mjs?v=20260929-membrane-r1";
-import { MembraneSurface } from "./surface.mjs?v=20260929-membrane-r1";
+import { canvasBudget } from "../shared/render-budget.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
+import { RADIUS, TAU, mix, random, projectedBounce } from "./sim.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { FlowField, ShipShape } from "./field.mjs?v=20260929-membrane-r1&mobile=20261002-quality4-r1";
+import { MembraneSurface } from "./surface.mjs?v=20260929-membrane-r1&mobile=20261002-quality4-r1";
 const C = {
   ship: "#bdfcf1",
   shot: "#70e5e0",
@@ -36,7 +36,7 @@ export class Renderer {
     this.fieldEnabled = true;
     this.surface = null;
     this.halo = new Image();
-    this.halo.src = '../shared/light/assets/halo-20260928.webp';
+    this.halo.src = '../shared/light/assets/halo-20260928.webp?mobile=20261002-quality4-r1';
     this.edgeX = new Float64Array(192);
     this.edgeY = new Float64Array(192);
     this.edgeRadius = new Float32Array(192);
@@ -90,6 +90,8 @@ export class Renderer {
     this.rimFinish.addColorStop(.35, '#80b5ad78');
     this.rimFinish.addColorStop(.7, '#577a9b45');
     this.rimFinish.addColorStop(1, '#a8d3be97');
+    this.armorFinish=this.ctx.createLinearGradient(-18,-18,18,18);
+    this.armorFinish.addColorStop(0,'#d7c493');this.armorFinish.addColorStop(.38,'#928569');this.armorFinish.addColorStop(1,'#454e4c');
     this.enemyFinishes = {};
     for (const [name, color] of [['seek',C.enemy],['orbit',C.orbit],['split',C.enemy]]) {
       const finish = this.ctx.createRadialGradient(-4,-5,0,0,0,17);
@@ -117,8 +119,7 @@ export class Renderer {
     c.fillStyle = glow;
     c.fillRect(0, 0, width, height);
     const r = random(621);
-    c.fillStyle = "#b6ceda14";
-    for (let i = 0; i < 95; i++) c.fillRect(r() * width, r() * height, 1, 1);
+    // Keep the playfield quiet; the membrane and actors carry the response.
   }
   clear() {
     this.particles.length = 0;
@@ -150,6 +151,7 @@ export class Renderer {
       if (this.effects.length >= 40) this.effects.shift();
       this.effects.push(item);
     };
+    if(e.type === "returnGain") {push({...e,age:0,life:.7});return;}
     if (
       ["kill", "hit", "hurt", "graze", "resonance", "bounce", "dash"].includes(
         e.type,
@@ -168,7 +170,7 @@ export class Renderer {
       push({
         ...e,
         age: 0,
-        life: e.type === "resonance" ? 1.35 : e.type === "kill" ? 0.58 : 0.42,
+        life: e.type === "resonance" ? 1.35 : e.type === "kill" ? 0.58 : e.type === "bounce" ? .65 : 0.42,
         color,
       });
       const count = this.reduced
@@ -330,6 +332,29 @@ export class Renderer {
     c.restore();
     this.ctx.drawImage(this.fieldCanvas, -RADIUS, -RADIUS, RADIUS * 2, RADIUS * 2);
   }
+  drawPracticeGuide(game) {
+    const c=this.ctx,lesson=game.lesson;
+    const shot=lesson&&game.bullets.find(b=>b.id===lesson.shotId);
+    if(shot && !shot.bounces) {
+      const next=projectedBounce(shot),speed=Math.hypot(next.vx,next.vy);
+      c.save();c.setLineDash([7,10]);c.lineWidth=Math.max(1,.6/this.scale);c.strokeStyle="#d6b77948";
+      c.beginPath();c.moveTo(next.x,next.y);c.lineTo(next.x+next.vx/speed*554,next.y+next.vy/speed*554);c.stroke();c.setLineDash([]);
+      for(const d of [95,320]){
+        const x=next.x+next.vx/speed*d,y=next.y+next.vy/speed*d,a=Math.atan2(next.vy,next.vx);
+        c.save();c.translate(x,y);c.rotate(a);c.strokeStyle="#d6b77968";c.beginPath();c.moveTo(-5,-4);c.lineTo(1,0);c.lineTo(-5,4);c.stroke();c.restore();
+      }
+      c.restore();
+    }
+    if((game.over||game.lessonFrozen)&&game.lastThreat?.source) {
+      const {source,impact}=game.lastThreat;c.save();c.lineWidth=Math.max(1,.8/this.scale);
+      if(source.origin&&source.firstBounce){c.setLineDash([6,9]);c.strokeStyle="#9fbeb64a";c.beginPath();c.moveTo(source.origin.x,source.origin.y);c.lineTo(source.firstBounce.x,source.firstBounce.y);c.stroke();}
+      const from=source.bounce||source.from;
+      if(from){c.setLineDash([]);c.strokeStyle=source.kind==='self'?"#dfbb82a0":"#d88e9b90";c.beginPath();c.moveTo(from.x,from.y);c.lineTo(impact.x,impact.y);c.stroke();
+        const angle=Math.atan2(impact.y-from.y,impact.x-from.x);c.translate(impact.x,impact.y);c.rotate(angle);c.beginPath();c.moveTo(-12,-7);c.lineTo(0,0);c.lineTo(-12,7);c.stroke();}
+      c.restore();this.circle(impact.x,impact.y,17,"#e6b389b0",1.3);
+    }
+  }
+
   draw(game, alpha = 1, preview = false) {
     if (!this.background) return;
     const c = this.ctx;
@@ -353,7 +378,10 @@ export class Renderer {
     // Sample once: both the optical meniscus and the sharp foreground outline
     // follow this exact boundary, instead of two visibly disconnected circles.
     for (let j = 0; j < game.ring.n; j++) {
-      const a = (j / game.ring.n) * TAU, r = game.ring.radius(j, alpha, t, this.reduced);
+      const a = (j / game.ring.n) * TAU;
+      const response=mix(game.ring.prev[j],game.ring.y[j],alpha)*(this.reduced?.35:1);
+      // Only the outer skin compresses. The inner 277-unit collision trace stays fixed.
+      const r=RADIUS+5-Math.max(-3,Math.min(7,response*.6));
       this.edgeRadius[j] = r;
       this.edgeX[j] = Math.cos(a) * r;
       this.edgeY[j] = Math.sin(a) * r;
@@ -423,7 +451,7 @@ export class Renderer {
     }
     path.closePath();
     c.strokeStyle = game.resonance > 0 ? "#b9ffe513" : "#7be6dd0a";
-    c.lineWidth = 14;
+    c.lineWidth = 9;
     c.stroke(path);
     c.strokeStyle = this.rimFinish;
     c.lineWidth = 4;
@@ -431,8 +459,20 @@ export class Renderer {
     c.strokeStyle = game.resonance > 0 ? "#d6ffe8" : "#cee7df";
     c.lineWidth = 1.1;
     c.stroke(path);
-    // A faint stable inner guide keeps the true circular play area legible.
-    this.circle(0, 0, RADIUS - 16, "#8de5d615", 0.65);
+    // The sharp inner seam is the actual bullet collision surface; no elastic
+    // displacement can suggest a gap through this fixed boundary.
+    this.circle(0, 0, RADIUS - 3, "#b9ddd972", 1.05);
+    for(const event of this.effects)if(event.type === "bounce") {
+      const fade=(1-event.age/event.life)**2;
+      for(const side of [-1,1]){
+        const a=event.angle+side*event.age*1.5;
+        c.beginPath();c.arc(0,0,RADIUS+1,a-side*.14,a,side<0);
+        c.strokeStyle=`rgba(235,209,159,${fade*.8})`;c.lineWidth=2.2;c.stroke();
+      }
+      const pressure=Math.max(0,1-event.age/.18);
+      if(pressure){this.circle(event.x,event.y,4+pressure*5,`rgba(255,231,187,${pressure*.75})`,1.2);}
+    }
+    this.drawPracticeGuide(game);
     c.save();
     c.clip(path);
     for (const e of this.effects)
@@ -484,16 +524,22 @@ export class Renderer {
         c.globalAlpha = 1;
         continue;
       }
-      this.glow(e.type === "orbit" ? "orbit" : "enemy", ex, ey, 62, 0.65);
+      this.glow(e.type === "armor" ? "return" : e.type === "orbit" ? "orbit" : "enemy", ex, ey, e.type === "armor" ? 38 : 52, .38);
       this.line(ex - e.vx * 0.14, ey - e.vy * 0.14, ex, ey, color + "22", 2);
       c.save();
       c.translate(ex, ey);
       if (e.type === "armor") {
         c.beginPath();
         for (let i = 0; i < 6; i++) { const a = i * TAU / 6; const px = Math.cos(a) * e.r, py = Math.sin(a) * e.r; i ? c.lineTo(px,py) : c.moveTo(px,py); }
-        c.closePath(); c.fillStyle = e.armorFlash ? '#715830' : '#332a24'; c.fill();
-        c.strokeStyle = color; c.lineWidth = 2.6; c.stroke();
-        // An unmistakable return arrow inside the armor, rather than a recolored seeker.
+        c.closePath(); c.fillStyle=this.armorFinish;c.fill();
+        c.strokeStyle=e.armorFlash?'#eee6c7':'#b29b71';c.lineWidth=1.5;c.stroke();
+        for(let i=0;i<6;i++){
+          const a=i*TAU/6,b=(i+1)*TAU/6;
+          c.beginPath();c.moveTo(Math.cos(a)*e.r,Math.sin(a)*e.r);c.lineTo(Math.cos(b)*e.r,Math.sin(b)*e.r);c.lineTo(Math.cos(b)*(e.r-5),Math.sin(b)*(e.r-5));c.lineTo(Math.cos(a)*(e.r-5),Math.sin(a)*(e.r-5));c.closePath();
+          c.fillStyle=e.armorFlash&&i<3?'#f0e8cdaa':i<3?'#ead7ac44':'#1a30354d';c.fill();
+        }
+        c.beginPath();for(let i=0;i<6;i++){const a=i*TAU/6; i?c.lineTo(Math.cos(a)*11,Math.sin(a)*11):c.moveTo(Math.cos(a)*11,Math.sin(a)*11);}c.closePath();c.fillStyle='#20383b';c.fill();
+        // Recessed return marking is part of the armor face, not a floating label.
         c.beginPath(); c.arc(0,0,8,-.8,3.8); c.strokeStyle = '#ffdda2'; c.lineWidth = 2; c.stroke();
         c.beginPath(); c.moveTo(-8,-5); c.lineTo(-10,1); c.lineTo(-4,-1); c.stroke();
       } else if (e.type === "split") {
@@ -542,34 +588,25 @@ export class Renderer {
       const bx = mix(b.px, b.x, alpha),
         by = mix(b.py, b.y, alpha),
         danger = b.bounces > 0;
-      const color = danger ? C.return : C.shot;
-      this.glow(danger ? "return" : "shot", bx, by, danger ? 39 : 30, 0.8);
-      this.line(
-        bx - b.vx * 0.055,
-        by - b.vy * 0.055,
-        bx,
-        by,
-        color + "35",
-        danger ? 2.5 : 1.6,
-      );
-      this.line(
-        bx - b.vx * 0.017,
-        by - b.vy * 0.017,
-        bx,
-        by,
-        color,
-        Math.max(danger ? 3 : 2.4, (danger ? 1.6 : 1.2) / this.scale),
-      );
-      if (danger) {
-        c.save(); c.translate(bx,by); c.rotate(Math.atan2(b.vy,b.vx)); const tipScale=Math.max(1,2.5/(5.5*this.scale)); c.scale(tipScale,tipScale);
-        c.beginPath(); c.moveTo(5.5,0); c.lineTo(-3,-4); c.lineTo(-1,0); c.lineTo(-3,4); c.closePath();
-        c.fillStyle = '#ffcf88'; c.fill(); c.restore();
+      const angle=Math.atan2(b.vy,b.vx),speed=Math.hypot(b.vx,b.vy),ux=b.vx/speed,uy=b.vy/speed;
+      const color=danger?C.return:"#e2f3ed";
+      this.glow(danger?"return":"shot",bx,by,danger?25:18,danger?.42:.28);
+      if(danger){
+        for(let segment=1;segment<=3;segment++){
+          const a=segment*13,bk=a+7;
+          this.line(bx-ux*bk,by-uy*bk,bx-ux*a,by-uy*a,segment===1?"#dcb574b0":"#b58c5160",Math.max(1.5,.7/this.scale));
+        }
+        c.save();c.translate(bx,by);c.rotate(angle);const sz=Math.max(1,2.7/(6*this.scale));c.scale(sz,sz);
+        c.beginPath();c.moveTo(6,0);c.lineTo(-5,-4.2);c.lineTo(-1,0);c.lineTo(-5,4.2);c.closePath();c.fillStyle="#e7bd79";c.fill();
+        this.line(-1.5,0,4,0,"#fff4dc",1);c.restore();
+      }else{
+        this.line(bx-ux*18,by-uy*18,bx-ux*6,by-uy*6,"#80bcb344",Math.max(1,.5/this.scale));
+        this.line(bx-ux*5,by-uy*5,bx+ux*3,by+uy*3,color,Math.max(2.4,1.4/this.scale));
       }
-      // The sharp head, not its halo or tail, tells the player where a shot is.
-      c.fillStyle = danger ? "#fff4d4" : "#d7ffff";
-      c.beginPath();
-      c.arc(bx, by, Math.max(danger ? 1.65 : 1.25, .85/this.scale), 0, TAU);
-      c.fill();
+      if(b.lastBounce&&game.time-b.lastBounce.time<.12){
+        const f=1-(game.time-b.lastBounce.time)/.12;c.save();c.translate(b.lastBounce.x,b.lastBounce.y);c.rotate(Math.atan2(b.lastBounce.y,b.lastBounce.x));
+        c.strokeStyle=`rgba(255,232,190,${f})`;c.lineWidth=Math.max(1,.65/this.scale);c.beginPath();c.moveTo(-3,-9);c.quadraticCurveTo(-9,0,-3,9);c.stroke();c.restore();
+      }
     }
     for (let i = 1; i < this.trail.length; i++) {
       const a = this.trail[i - 1],
@@ -604,38 +641,32 @@ export class Renderer {
         recoil = p.recoil * 2;
       const bank = this.reduced ? 0 : this.shape.bank;
       const stretch = this.reduced ? 1 : this.shape.stretch;
-      this.glow("ship", x, y, p.dash > 0 ? 84 : 59, 0.8);
+      this.glow("ship", x, y, p.dash > 0 ? 54 : 32, p.dash > 0 ? .35 : .16);
       if (p.invulnerable > 0)
-        this.circle(x, y, 16 + Math.sin(t * 7) * 0.8, "#afeedd60", 1);
+        this.circle(x, y, 16 + Math.sin(t * 7) * 0.8, "#99c4b533", .8);
       c.save();
       c.translate(x - Math.cos(angle) * recoil, y - Math.sin(angle) * recoil);
       c.rotate(angle);
-      const shipScale=Math.max(1.18, .55/this.scale);
+      const shipScale=Math.max(1.18, .8/this.scale);
       c.scale(stretch * shipScale, shipScale / Math.sqrt(stretch));
-      c.fillStyle = this.shipFinish;
-      c.strokeStyle = "#fff9e8";
-      c.lineWidth = 0.8;
-      c.beginPath();
-      c.moveTo(11.5, 0);
-      c.quadraticCurveTo(-1, -3.2, -8.5 + bank * 2.2, -7.5 + bank * 1.1);
-      c.lineTo(-4, 0);
-      c.lineTo(-8.5 - bank * 2.2, 7.5 + bank * 1.1);
-      c.closePath();
-      c.fill();
-      c.stroke();
-      c.fillStyle = "#163c40";
-      c.beginPath();
-      c.moveTo(5.7, 0);
-      c.lineTo(-5, -3.8);
-      c.lineTo(-2, 0);
-      c.closePath();
-      c.fill();
+      const hit=Math.max(0,Math.min(1,(p.invulnerable-1.2)/.6));
+      const spread=6.3+p.recoil*3.2-hit*1.4;
+      const tip=14/shipScale;
+      c.fillStyle="#739e94";c.strokeStyle="#a5c2aa";c.lineWidth=.5;
+      for(const side of [-1,1]){
+        c.beginPath();c.moveTo(3,side*2.2);c.lineTo(-6+bank*side,side*spread);c.lineTo(-11,side*(spread-1));c.lineTo(-5,side*1.7);c.closePath();c.fill();c.stroke();
+        c.fillStyle="#42685f";c.beginPath();c.moveTo(-5,side*2);c.lineTo(-11,side*(spread-1));c.lineTo(-6,side*(spread-2.5));c.closePath();c.fill();c.fillStyle="#739e94";
+      }
+      c.fillStyle=this.shipFinish;c.strokeStyle="#e3efdc";c.lineWidth=.8;
+      c.beginPath();c.moveTo(tip,0);c.lineTo(2,-4.4);c.lineTo(-7,-3.1);c.lineTo(-10,0);c.lineTo(-7,3.1);c.lineTo(2,4.4);c.closePath();c.fill();c.stroke();
+      c.fillStyle="#173d48";c.beginPath();c.moveTo(5,0);c.lineTo(0,-1.8);c.lineTo(-4,0);c.lineTo(0,1.8);c.closePath();c.fill();
+      this.line(-7,0,-4,0,p.recoil>0?"#f9e2b8":"#8bc2b2",1.2);
       c.restore();
       // Shield segments live beside the ship; the missing gap and impact direction survive silent play.
       const maxShield = game.mode === 'edge' ? 1 : 3;
       for (let i=0; i<maxShield; i++) {
-        c.beginPath(); c.arc(x,y,24,-Math.PI/2 + i*TAU/maxShield + .17,-Math.PI/2+(i+1)*TAU/maxShield-.17);
-        c.strokeStyle = i < p.health ? '#baf5df' : '#fa8e9c45'; c.lineWidth = i < p.health ? 2.5 : 1; c.stroke();
+        c.beginPath(); c.arc(x,y,23,-Math.PI/2 + i*TAU/maxShield + .25,-Math.PI/2+(i+1)*TAU/maxShield-.25);
+        c.strokeStyle = i < p.health ? '#84b49e66' : '#fa8e9c35'; c.lineWidth = i < p.health ? 1.6 : 1; c.stroke();
       }
       if (game.lastThreat?.until > t) {
         c.beginPath(); c.arc(x,y,32,game.lastThreat.angle-.5,game.lastThreat.angle+.5);
@@ -656,11 +687,29 @@ export class Renderer {
       }
     }
     for (const e of this.effects) {
+      if(e.type === "returnGain") {
+        for(let i=0;i<3;i++){
+          const phase=Math.max(0,Math.min(1,e.age/e.life*1.4-i*.13));
+          if(phase<=0||phase>=1)continue;
+          const xx=mix(e.x,e.tx,phase),yy=mix(e.y,e.ty,phase);
+          this.circle(xx,yy,2.6-i*.45,"#b7d8bd",1.2);
+        }
+        continue;
+      }
       if (e.type === "resonance") continue;
       const f = e.age / e.life,
         opacity = Math.round((1 - f) ** 1.6 * 190)
           .toString(16)
           .padStart(2, "0");
+      if(e.type === "kill" && e.kind === "armor") {
+        c.save();c.globalAlpha=Math.max(0,1-f);
+        for(let i=0;i<6;i++){
+          const a=i*TAU/6,rr=12+f*40;c.save();c.translate(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr);c.rotate(a+f*.5);
+          c.fillStyle=i<3?'#c5b181':'#7e8270';c.strokeStyle='#e1c994';c.lineWidth=.7;
+          c.beginPath();c.moveTo(-3,-7);c.lineTo(3,-5);c.lineTo(3,5);c.lineTo(-3,7);c.closePath();c.fill();c.stroke();c.restore();
+        }
+        c.restore();
+      }
       if (e.type === "kill" || e.type === "hurt") {
         const r = 8 + f * (e.type === "hurt" ? 56 : 30);
         if (e.type === "kill") {

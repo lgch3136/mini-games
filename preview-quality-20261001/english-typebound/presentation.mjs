@@ -33,7 +33,8 @@ export const CHAPTER_ART = [
     accent: "#b6a7ff",
   },
 ];
-export const FLIGHT = { letter: 0.19, word: 0.3, hostile: 0.22 };
+export const WORD_WINDUP = .22;
+export const FLIGHT = { letter: 0.19, word: 0.54, hostile: 0.22 };
 export function flightPoint(p, t) {
   const u = clamp(t / p.life);
   return {
@@ -111,7 +112,7 @@ export class StoryMotion {
     if (e.type === "letter" && e.fresh) {
       this.letterAge = 0;
       this.counters.letters++;
-      this.queue("letter", FLIGHT.letter, 0.18, e);
+      // A letter becomes ink on the held page; it is not an enemy impact.
     }
     if (e.type === "word") {
       this.castAge = 0;

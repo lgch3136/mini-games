@@ -1,18 +1,21 @@
-import { buildEnvironment } from "./environment.mjs?v=20261001-signal-places-r1&mobile=20261001-quality3-r8";
-import { bossVulnerable } from "./encounters.mjs?v=20261001-action-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
+import {GLTFLoader} from '../shared/vendor/three-0.185.1/GLTFLoader.js';
+import {mergeGeometries} from '../shared/vendor/three-0.185.1/BufferGeometryUtils.js';
+import { buildEnvironment } from "./environment.mjs?v=20261001-signal-places-r1&mobile=20261002-quality4-r1";
+import { bossVulnerable } from "./encounters.mjs?v=20261001-action-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
 import {
   SceneKit,
   T,
   label,
   roadTexture,
-} from "../shared/first-person/scene.mjs?v=20260918-play-r1";
-import { lerp, mixAngle, damp, clamp } from "../shared/first-person/math.mjs";
-import { LightPool, loadLightTexture } from '../shared/light/pool.mjs?v=20260928-light-r1';
+} from "../shared/first-person/scene.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { lerp, mixAngle, damp, clamp } from "../shared/first-person/math.mjs?mobile=20261002-quality4-r1";
+import { LightPool, loadLightTexture } from '../shared/light/pool.mjs?v=20260928-light-r1&mobile=20261002-quality4-r1';
 const dummy = new T.Object3D();
+export const MUZZLE=Object.freeze({x:0,y:.012,z:-.952});
 export function weaponFrame(aspect, aim = 0) {
   const narrow = clamp((aspect - .5) / .9, 0, 1);
-  return { x: lerp(.06, .27, narrow) - aim * .05,
-    y: lerp(-.21, -.19, narrow) - aim * .025, z: lerp(-.96, -.82, narrow), scale: lerp(.70, 1, narrow) * (1 - aim * .2) };
+  const scale=lerp(.60,.78,narrow)*(1-aim*.2);
+  return {x:lerp(lerp(.06,.20,narrow),0,aim),y:lerp(lerp(-.24,-.23,narrow),-.20*scale,aim),z:lerp(-.96,-.88,narrow),scale};
 }
 export class StrikeView extends SceneKit {
   constructor(canvas) {
@@ -34,13 +37,17 @@ export class StrikeView extends SceneKit {
     this.aim = 0;
   }
   async preload() {
-    await this.load(["pulse-rifle", "operator-grip", "ion-drone", "crawler", "sentry"]);
+    await this.load(["ion-drone", "crawler", "sentry"]);
+    const loader=new GLTFLoader();
+    const [carbine,grip]=await Promise.all(['pulse-carbine-v4.glb','operator-grip-v4.glb'].map(name=>loader.loadAsync(new URL('./assets/'+name+'?mobile=20261002-quality4-r1',import.meta.url).href)));
+    this.assets['pulse-rifle']=carbine.scene;this.assets['operator-grip']=grip.scene;
+    for(const name of ['furnace-v4','cross-feed-v4','maintenance-shuttle-v4'])this.assets[name]=(await loader.loadAsync(new URL('./assets/'+name+'.glb?mobile=20261002-quality4-r1',import.meta.url).href)).scene;
     this.floorMap = roadTexture();
     this.floorMap.repeat.set(12, 48);
     this.textures.push(this.floorMap);
     this.weapon = this.model("pulse-rifle");
-    this.weapon.rotation.y = Math.PI;
-    this.weapon.scale.setScalar(0.88);
+    this.weapon.rotation.y = 0;
+    this.weapon.scale.setScalar(1);
     this.gunRoot.add(this.weapon);
     this.operatorGrip = this.model("operator-grip");
     this.gunRoot.add(this.operatorGrip);
@@ -78,6 +85,7 @@ export class StrikeView extends SceneKit {
     this.gates = [];
     this.relayModels = [];
     this.objectiveModels = [];
+    this.sluiceModels = [];
     const b = this.batch(),
       wall = this.mat("concrete", 0xced4cd),
       trim = this.mat("structural", 0x758b97, 0.57, 0.25),
@@ -104,7 +112,21 @@ export class StrikeView extends SceneKit {
     ).rotation.x = -Math.PI / 2;
     this.add(new T.PlaneGeometry(40, 175), floor, 0, -0.01, -77.5).rotation.x =
       -Math.PI / 2;
-    for (const o of w.boxes) {
+    const paletteMaterials={wall,trim,dark,orange,glass,floor,white,teal,gold};
+    const stamp=(name,x,y,z,yaw=0,mirror=1)=>{
+      const source=this.assets[name];source.updateMatrixWorld(true);
+      source.traverse(o=>{if(!o.isMesh)return;const g=o.geometry.clone().applyMatrix4(o.matrixWorld);if(mirror<0){g.scale(-1,1,1);const ix=g.index;if(ix)for(let i=0;i<ix.count;i+=3){const a=ix.getX(i);ix.setX(i,ix.getX(i+2));ix.setX(i+2,a);}g.computeVertexNormals();}
+        for(const key of Object.keys(g.attributes))if(!['position','normal','uv'].includes(key))g.deleteAttribute(key);
+        if(!g.attributes.normal)g.computeVertexNormals();
+        if(!g.attributes.uv){const p=g.attributes.position,n=g.attributes.normal,uv=new Float32Array(p.count*2);for(let i=0;i<p.count;i++){uv[i*2]=(Math.abs(n.getX(i))>.65?p.getZ(i):p.getX(i))/2;uv[i*2+1]=(Math.abs(n.getY(i))>.65?p.getZ(i):p.getY(i))/2;}g.setAttribute('uv',new T.BufferAttribute(uv,2));}
+        if(!g.index)g.setIndex(Array.from({length:g.attributes.position.count},(_,i)=>i));
+        const key=o.material.name.replace(/^site-/,'').replace(/\.\d+$/,'');b.geometry(g,paletteMaterials[key]||trim,x,y,z,0,yaw);g.dispose();});
+    };
+    for(const o of w.boxes){
+      if(w.map.id==='foundry'&&o.kind==='building'&&o.x===0){stamp('furnace-v4',o.x,0,o.z);continue;}
+      if(o.kind==='cross-feed'){stamp('cross-feed-v4',o.x,0,o.z,0,o.x>0?-1:1);continue;}
+      if(o.kind==='feed-riser'||o.kind==='feed-overhead')continue;
+      if(o.kind.startsWith('shuttle-'))continue;
       b.box(
         o.x,
         o.y,
@@ -112,16 +134,17 @@ export class StrikeView extends SceneKit {
         o.hx * 2,
         o.hy * 2,
         o.hz * 2,
-        o.kind === "crate" ? dark : wall,
+        o.kind === "crate" || o.kind === "maintenance" ? dark : o.kind === "pier" || o.kind === "support" ? trim : wall,
       );
     }
+    if(w.map.id==='hangar')for(let zone=0;zone<3;zone++)stamp('maintenance-shuttle-v4',zone%2?3:-3,0,-zone*52-19,-Math.PI/2);
     for (let zone = 0; zone < 3; zone++) {
-      const z = -52 * zone;
+      const z = -52 * zone,door=w.gatePlans[zone];
       // Ground navigation markings and coherent frame modules, no coplanar layers.
       for (let j = 1; j < 10; j++)
         b.box(0, 0.013, z - j * 4.7, 0.1, 0.014, 1.5, white);
-      b.box(-2, 0.016, z - 45, 4, 0.016, 0.12, orange);
-      b.box(2, 0.016, z - 45, 4, 0.016, 0.12, orange);
+      b.box(door.x-2, 0.016, z - 45, 4, 0.016, 0.12, orange);
+      b.box(door.x+2, 0.016, z - 45, 4, 0.016, 0.12, orange);
       const signKey = `sign-${palette.id}-${zone}`;
       let pm = this.materials.get(signKey);
       if (!pm) {
@@ -139,16 +162,16 @@ export class StrikeView extends SceneKit {
         this.materials.set(signKey, pm);
       }
       const sign = this.add(
-        new T.PlaneGeometry(10, 1.25),
+        new T.PlaneGeometry(Math.min(10,door.half*2-.6), 1.25),
         pm,
-        0,
+        door.x,
         6.5,
         z - 47.9,
       );
       for (const side of [-1, 1])
-        b.box(side * 6.25, 3.1, z - 48.7, 0.45, 6.2, 0.8, trim);
-      b.box(0, 6.3, z - 48.7, 13, 0.5, 0.85, trim);
-      b.box(0, 5.95, z - 48.18, 11.8, 0.055, 0.06, teal);
+        b.box(door.x+side*(door.half-.25), 3.1, z - 48.7, 0.45, 6.2, 0.8, trim);
+      b.box(door.x, 6.3, z - 48.7, door.half*2, 0.5, 0.85, trim);
+      b.box(door.x, 5.95, z - 48.18, door.half*2-.7, 0.055, 0.06, teal);
       const r = w.props[zone],
         root = new T.Group();
       root.position.set(r.x, 0, r.z);
@@ -181,32 +204,43 @@ export class StrikeView extends SceneKit {
           });
         this.materials.set("forcefield" + zone, material);
         const gate = this.add(
-          new T.PlaneGeometry(12.5, 4.8),
+          new T.PlaneGeometry(door.half*2, 4.8),
           material,
-          0,
+          door.x,
           2.4,
           z - 49,
         );
         this.gates.push(gate);
-        for (let j = 0; j < 10; j++)
-          b.box(-6 + j * 1.3, 0.04, z - 49, 0.38, 0.04, 0.5, orange);
+        for (let j = 0; j < Math.floor(door.half*2/1.3); j++)
+          b.box(door.x-door.half+.5+j*1.3, 0.04, z - 49, 0.38, 0.04, 0.5, orange);
       }
     }
     this.environmentMetrics = buildEnvironment(b, w, { wall, trim, dark, orange, glass, floor, white, teal, gold }, T);
-    // Each operation object is a real readable cabinet, not just a HUD counter.
-    for (const node of w.objectives) {
-      b.box(node.x, .65, node.z, 1.15, 1.3, .65, dark);
-      b.box(node.x, 1.38, node.z, 1.4, .14, .85, orange);
-      b.box(node.x, .72, node.z + .34, .9, .85, .04, white);
-      const marker = this.add(new T.OctahedronGeometry(.23), gold, node.x, 2, node.z);
-      this.objectiveModels.push({ marker, id: node.id });
-      for (let k = 0; k < 4; k++) b.box(node.x + (k - 1.5) * .25, .018, node.z + 1.1, .1, .025, .65, white);
+    // Each cabinet is a physical target with a face and a linked world result.
+    for(const node of w.objectives){
+      if(node.kind==='core')continue;
+      b.box(node.x,.65,node.z,1.15,1.3,.65,dark);b.box(node.x,1.38,node.z,1.4,.14,.85,orange);
+      b.box(node.x,.72,node.z+.34,.9,.85,.04,dark);
+      const cable=new T.Group();this.group.add(cable);const cb=this.batch();cb.box(node.x,.85,node.z+.365,.62,.58,.035,gold);
+      const target=node.kind==='power'?w.enemies.find(e=>e.zone===node.zone&&e.role==='suppressor'):node.kind==='isolator'?w.enemies.find(e=>e.zone===node.zone&&e.kind==='sentry'&&Math.sign(e.baseX)===node.side):{x:0,z:-node.zone*52-26.5};
+      if(target){const mx=(node.x+target.x)/2;cb.box(mx,.038,node.z,Math.max(.1,Math.abs(target.x-node.x)),.055,.085,gold);cb.box(target.x,.038,(target.z+node.z)/2,.085,.055,Math.max(.1,Math.abs(target.z-node.z)),gold);}
+      cb.finish(cable);this.objectiveModels.push({cable,id:node.id});
+      if(node.kind==='drain'){
+        const parts=[];
+        for(const [x,y,z,a,h,d,material]of [[0,0,0,4.1,2.6,6.6,trim],...[-1.35,0,1.35].map(x=>[x,0,3.34,.38,2.2,.055,orange])]){
+          const g=new T.BoxGeometry(a,h,d);g.translate(x,y,z);const colors=new Float32Array(g.attributes.position.count*3);for(let i=0;i<colors.length;i+=3)colors.set([material.color.r,material.color.g,material.color.b],i);g.setAttribute('color',new T.BufferAttribute(colors,3));parts.push(g);
+        }
+        const material=this.mat('operation-sluice',0xffffff,.57,.25);material.vertexColors=true;
+        const geometry=mergeGeometries(parts,false);parts.forEach(g=>g.dispose());
+        const gate=this.add(geometry,material,0,1.3,-node.zone*52-26.5);
+        this.sluiceModels.push({gate,id:node.id});
+      }
     }
-    for (let zone = 0; zone < 3; zone++) {
-      const z = -zone * 52 - 4;
-      b.box(0, .6, z, .9, 1.2, .55, white);
-      b.box(0, 1.25, z, 1.1, .12, .65, teal);
-      b.box(0, .8, z + .3, .45, .3, .025, dark);
+    for(const supply of w.supplyPlans){
+      const{x,z}=supply;b.box(x,.27,z,2,.54,1.2,dark);b.box(x,.57,z,2.02,.12,1.22,white);
+      for(const side of [-1,1]){b.box(x+side*.88,.28,z,.22,.56,1.24,white);b.box(x+side*.43,.74,z,.51,.2,.66,trim);}
+      b.box(x,.64,z+.25,.13,.20,.15,teal);
+      b.box(x,.82,z-.28,.75,.09,.10,dark);
     }
     b.finish();
     for (const e of w.enemies) {
@@ -218,6 +252,8 @@ export class StrikeView extends SceneKit {
             : "sentry";
       const root = new T.Group(),
         model = this.model(name);
+      const powerFaces=[];
+      if(e.role==='suppressor')model.traverse(mesh=>{if(!mesh.isMesh)return;const list=Array.isArray(mesh.material)?mesh.material:[mesh.material];if(list.some(m=>m.name==='Tail red'))powerFaces.push({mesh,on:mesh.material,off:Array.isArray(mesh.material)?list.map(m=>m.name==='Tail red'?dark:m):dark});});
       model.rotation.y = Math.PI;
       root.add(model);
       this.group.add(root);
@@ -245,12 +281,16 @@ export class StrikeView extends SceneKit {
       charge.receiveShadow = false;
       charge.visible = false;
       let core = null, lane = null;
-      if (e.kind === "boss") {
+      if (e.kind === "boss" || e.role==='maintenance-core') {
         core = this.add(new T.OctahedronGeometry(.45), teal, e.x, 2, e.z);
-        lane = this.add(new T.TorusGeometry(1.25, .065, 6, 24), teal, 7, .06, e.z + 13);
-        lane.rotation.x = Math.PI / 2;
+        if(e.kind==='boss'){lane = this.add(new T.TorusGeometry(1.25, .065, 6, 24), teal, 7, .06, e.z + 13);lane.rotation.x = Math.PI / 2;}
       }
-      this.actors.push({ root, model, shadow, charge, core, lane, id: e.id });
+      let shieldGeometry=null;
+      if(e.kind==='boss'||e.role==='maintenance-core'||(w.map.id==='foundry'&&e.kind==='sentry')){
+        shieldGeometry=new T.SphereGeometry(e.kind==='boss'?1.9:1.05,12,8);this.geometries.add(shieldGeometry);
+        if(!this.materials.has('operation-shield'))this.materials.set('operation-shield',new T.MeshStandardMaterial({color:0x6ee8d6,emissive:0x2b8d84,emissiveIntensity:.3,transparent:true,opacity:.25,roughness:.5,depthWrite:false}));
+      }
+      this.actors.push({root,model,shadow,charge,core,lane,powerFaces,shieldGeometry,chargeRingGeometry:charge.geometry,id:e.id});
     }
     this.bulletMesh = new T.InstancedMesh(
       new T.IcosahedronGeometry(0.14, 1),
@@ -305,13 +345,14 @@ export class StrikeView extends SceneKit {
     this.resize();
     this.render(w, 1, 0);
   }
+  muzzlePoint(){this.camera.updateMatrixWorld(true);const p=this.gunRoot.localToWorld(new T.Vector3(MUZZLE.x,MUZZLE.y,MUZZLE.z));return {x:p.x,y:p.y,z:p.z};}
   event(e) {
     if (e.type === "shot") {
       this.kick = e.weapon === 1 ? 0.11 : 0.055;
       this.flashTime = 0.05;
       for (const p of e.impacts) {
         this.lights.emit(p.x,p.y,p.z,0x9eede9,e.weapon===1?1.3:0.8,0.22);
-        this.traces.push({ a: { ...e.origin }, b: p, life: 0.065 });
+        this.traces.push({ a: this.muzzlePoint(), b: p, life: 0.065 });
         for (let i = 0; i < 3; i++)
           this.effects.push({
             x: p.x,
@@ -381,9 +422,10 @@ export class StrikeView extends SceneKit {
     this.gunRoot.rotation.set(
       reload * -0.8,
       this.reduced ? 0 : Math.sin(p.step * 1.35) * 0.012 * moving,
-      -0.018 + reload * 0.45,
+      -0.018*(1-this.aim) + reload * 0.45,
     );
-    this.weapon.scale.setScalar(p.weapon === 1 ? 0.99 : 0.88);
+    this.weapon.scale.setScalar(1);
+    this.flash.position.set(MUZZLE.x,MUZZLE.y,MUZZLE.z-.155);
     this.flashTime = Math.max(0, this.flashTime - dt);
     this.flash.visible = this.flashTime > 0;
     this.flash.rotation.y = w.time * 13;
@@ -392,11 +434,12 @@ export class StrikeView extends SceneKit {
       const e = w.enemies[a.id];
       a.root.visible = !e.dead && Math.abs(e.z - p.z) < 65;
       if (a.core) {
-        a.core.visible = a.lane.visible = a.root.visible && !!e.corePhase;
+        a.core.visible = a.root.visible && !!e.corePhase;
+        if(a.lane)a.lane.visible=a.core.visible;
         a.core.position.set(e.x + (e.coreSide || 1) * 1.35, e.y + .3, e.z);
         a.core.rotation.y = w.time;
         a.core.scale.setScalar(bossVulnerable(e, p) ? 1 : .65);
-        a.lane.position.x = (e.coreSide || 1) * 7;
+        if(a.lane)a.lane.position.x = (e.coreSide || 1) * 7;
       }
       if (!a.root.visible) continue;
       const previous = e.previous || e;
@@ -410,6 +453,9 @@ export class StrikeView extends SceneKit {
       a.model.scale.setScalar(scale);
       a.model.position.y =
         e.kind === "sentry" ? -0.6 : e.kind === "boss" ? -1.8 : 0;
+      a.model.rotation.x=e.disabled?.9:0;
+      for(const face of a.powerFaces)face.mesh.material=e.disabled?face.off:face.on;
+      if(e.disabled){a.charge.visible=false;continue;}
       if (e.kind === "spider") {
         a.model.position.y = Math.sin(e.phase * 19) * 0.025;
         a.model.rotation.z = Math.sin(e.phase * 9.5) * 0.045;
@@ -424,8 +470,12 @@ export class StrikeView extends SceneKit {
       if (e.wind > 0) {
         a.model.scale.multiplyScalar(1 + Math.sin(e.phase * 22) * 0.018);
       }
-      a.charge.visible = e.wind > 0 || e.flankTell > 0;
-      a.charge.scale.setScalar(0.55 + Math.max(0, e.wind) * 1.6);
+      const protectedNow=a.shieldGeometry&&(w.protected(e)||(e.corePhase&&!bossVulnerable(e,p)));
+      a.charge.geometry=protectedNow?a.shieldGeometry:a.chargeRingGeometry;
+      a.charge.position.z=protectedNow?0:-.65;
+      a.charge.material=this.materials.get(protectedNow?'operation-shield':'gold');
+      a.charge.visible=!!protectedNow||e.wind>0||e.flankTell>0;
+      a.charge.scale.setScalar(protectedNow?1:0.55+Math.max(0,e.wind)*1.6);
     }
     this.gates.forEach((g, i) => (g.visible = !w.relays[i]));
     this.relayModels.forEach((m, i) => {
@@ -435,10 +485,9 @@ export class StrikeView extends SceneKit {
     });
     for (const m of this.objectiveModels) {
       const node = w.objectives.find(n => n.id === m.id);
-      m.marker.visible = !node.done;
-      m.marker.rotation.y = w.time * .6;
-      m.marker.scale.setScalar(1 + node.charge * .35);
+      m.cable.visible=!node.done;
     }
+    for(const m of this.sluiceModels){const node=w.objectives.find(n=>n.id===m.id);m.gate.position.y=node.done?-1.32:1.3;}
     this.updateDynamic(w, dt);
     this.lights.begin(dt,this.camera,this.reduced);
     for (let i=0;i<this.relayModels.length;i++) {

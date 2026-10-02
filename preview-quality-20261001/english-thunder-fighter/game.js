@@ -79,9 +79,9 @@ function roundRectPath(x, y, w, h, r) {
 
 /* ---------------- 封面同风格像素素材 ---------------- */
 const ShipAtlas = new Image();
-ShipAtlas.src = 'assets/ships-atlas-v2.webp?v=20260826a';
+ShipAtlas.src = 'assets/ships-atlas-v2.webp?v=20260826a&mobile=20261002-quality4-r1';
 const StageBackground = new Image();
-StageBackground.src = 'assets/stage-bg-v2.webp?v=20260826a';
+StageBackground.src = 'assets/stage-bg-v2.webp?v=20260826a&mobile=20261002-quality4-r1';
 const SPRITE_CELLS = {
   player: [25, 25, 565, 450],
   enemy: [785, 60, 310, 350],
@@ -260,10 +260,15 @@ window.addEventListener('keyup', (ev) => {
 
 /* 计算题目栏下方的最小飞行高度（逻辑坐标），避免战机躲进 HUD */
 function hudClearanceY() {
-  const scale = wrap.clientWidth / W || 1;
+  const scale = wrap.clientHeight / H || 1;
   const qb = $id('question-bar');
   const wrapTop = wrap.getBoundingClientRect().top;
-  const barBottom = qb.getBoundingClientRect().bottom - wrapTop;
+  let barBottom = qb.getBoundingClientRect().bottom - wrapTop;
+  for(const id of ['hud-top','hp-wrap','sector-progress']) {
+    const box=$id(id).getBoundingClientRect();
+    if(box.height>0&&box.height<wrap.clientHeight*.4&&box.bottom-wrapTop<wrap.clientHeight*.6)
+      barBottom=Math.max(barBottom,box.bottom-wrapTop);
+  }
   return Math.max(120, (barBottom + 16) / scale + 30);
 }
 let movePointerId = null, moveStart = null, firePointerId = null;
@@ -364,6 +369,246 @@ function suspendControls() {
 }
 window.addEventListener('blur', suspendControls);
 document.addEventListener('visibilitychange', () => { if (document.hidden) suspendControls(); });
+
+/* ---------------- Authored mission and tactical word cores ---------------- */
+function beginMission() {
+  Game.mission = { index: -1, event: 0, wave: 0, phaseStart: 0, bayUntil: 0,
+    baySerial: 0, chosen: null, reviewQueue: [], history: [], outcome: null,
+    coreReviewDone: false, peakBullets: 0, armorBreaks: 0, partsBroken: 0,
+    readingSteps: 0, readingDamage: 0, readingShots: 0, lastHudSecond: -1 };
+  Game.tactic = null; Game.reserveHeal = 0; Game.player.pierceUntil = 0;
+  advanceMissionPhase(0);
+}
+function missionRecord(type, detail = {}) {
+  const m = Game.mission;
+  if (!m) return;
+  m.history.push({ time: +Game.time.toFixed(4), type, ...detail });
+  if (m.history.length > 100) m.history.shift();
+}
+function missionReading() {
+  return !!(Game.mission && Game.time < Game.mission.bayUntil);
+}
+function openTacticalBay(mode, target, duration = 6) {
+  const m = Game.mission;
+  m.bayUntil = Game.time + duration; m.baySerial++; m.chosen = null;
+  m.bayStarted=Game.time;m.bayOrigin={x:Game.player.x,y:Game.player.y};
+  Game.enemyBullets.length = 0;
+  Game.powerups = Game.powerups.filter(u => u.kind !== 'answer');
+  const due = m.reviewQueue.find(item => item.dueEvent <= m.event);
+  if (mode === 'dispatch' && due) target = due.word;
+  const options = ['PIERCE', 'SHIELD', 'HEAL'].map(word => ({
+    text: word, correct: word === target, word, ...THUNDER_TACTICS[word],
+  }));
+  // Rotate bays deterministically so meaning, not a fixed lane, guides recall.
+  const order = m.baySerial % 3;
+  const arranged = options.slice(order).concat(options.slice(0, order));
+  Game.question = { kind: mode === 'free' ? '自由选装' : '指令核验',
+    prompt: mode === 'free' ? '选择下一段需要的装备' : `「${THUNDER_TACTICS[target].zh}」是哪张指令？`,
+    hint: mode === 'free' ? '靠近芯片中心选装 · 不计对错，不选保留现装' : '靠近对应英文芯片中心；选到的装备仍会生效',
+    answer: target, en: target, zh: THUNDER_TACTICS[target].zh, isGrammar: false,
+    options: arranged, mode, bayId: m.baySerial, review: !!due };
+  Game.questionIndex++;
+  if (mode === 'dispatch') Game.stats.questions++;
+  const y = clamp(H * .58, Game._minY + 72, H - 145);
+  arranged.forEach((option, index) => Game.powerups.push({ ...option, kind: 'answer',
+    tactical: true, bayId: m.baySerial, mode, x: W * (.18 + index * .32), y,
+    vy: 0, t: 0, expires: m.bayUntil, color: '#91dfd5' }));
+  missionRecord('bay', { mode, target, event: m.event, until: m.bayUntil, review: !!due });
+  updateQuestionBar();
+}
+function advanceMissionPhase(index) {
+  const m = Game.mission, phase = THUNDER_MISSION[index];
+  if (!phase) return;
+  if(m.bayUntil&&!m.chosen){missionRecord('baySkipped',{bayId:m.baySerial});toast('未选 · 保留现装','#9cbcd4',Game.player.x,Game.player.y-46,13);}
+  m.index = index; m.event++; m.wave = 0; m.phaseStart = Game.time;
+  m.bayUntil = 0; m.chosen = null;
+  Game.question = null; Game.nextWaveTimer = null; Game.bossPending = false;
+  Game.powerups = Game.powerups.filter(u => u.kind !== 'answer');
+  for (const enemy of Game.enemies) if (!enemy.boss) { enemy.retreating = true; enemy.option = null; }
+  Game.phase = phase.boss ? 'boss' : 'question';
+  Game.level = index >= 5 ? 2 : 1;
+  els.qKind.textContent = phase.label.split(' / ')[0] + ' 航段'; els.qPrompt.textContent = phase.objective;
+  els.qHint.textContent = phase.bay ? '六秒整备，任务会继续；圆环内可以安全读卡' : '橙色是来弹预告 · 浅绿圆角芯片可以收集';
+  els.qFeedback.textContent = '';
+  missionRecord('phase', { id: phase.id, event: m.event });
+  if (phase.bay) openTacticalBay(phase.bay, phase.target);
+  if (phase.boss) spawnBoss(true);
+  Game._nextLayoutCheck = 0; updateHud();
+}
+function spawnMissionEnemy(spec) {
+  const conf = DIFF_CONF[Game.difficulty], role = spec.role;
+  const armored = role === 'armor', side = spec.edge;
+  const homeY = clamp(Game._minY + 65, 158, H * .42);
+  const enemy = {
+    x: side === 'left' ? -70 : side === 'right' ? W + 70 : W * spec.x,
+    y: side ? homeY : -75, homeX: W * spec.x, homeY,
+    r: armored ? 29 : 23, hp: 6,
+    maxHp: 6,
+    armor: armored ? 4 : 0, maxArmor: armored ? 4 : 0, role, missionShip: true,
+    vy: conf.speed * .8, t: 0, phase: spec.x * 2, amp: armored ? 12 : 24,
+    wf: 1.2, option: null, elite: armored, boss: false,
+    nextShot: .72, shotInterval: role === 'flanker' ? 2.8 : 3.3,
+    hitFlash: 0, dead: false, spawnAt: Game.time, entering: true, retreating: false,
+    entryEdge: side || 'top', flight: 'sine', formation: THUNDER_MISSION[Game.mission.index].id,
+    linger: 9, route: 0, bulletColor: '#f6b46c',
+  };
+  Game.enemies.push(enemy);
+  missionRecord('spawn', { role, x: spec.x });
+  return enemy;
+}
+function updateMissionDirector() {
+  const m = Game.mission;
+  if (!m || m.outcome) return;
+  const next = THUNDER_MISSION[m.index + 1];
+  if (next && Game.time >= next.at) advanceMissionPhase(m.index + 1);
+  const phase = THUNDER_MISSION[m.index];
+  while (phase.waves && m.wave < phase.waves.length && Game.time - m.phaseStart >= phase.waves[m.wave].at)
+    spawnMissionEnemy(phase.waves[m.wave++]);
+  if (m.bayUntil && Game.time >= m.bayUntil) {
+    if (!m.chosen) missionRecord('baySkipped', { bayId: m.baySerial });
+    m.bayUntil = 0; Game.question = null;
+    Game.powerups = Game.powerups.filter(u => !u.tactical);
+    els.qKind.textContent = phase.label.split(' / ')[0] + ' 航段'; els.qPrompt.textContent = phase.objective;
+    els.qHint.textContent = m.chosen ? '装备已装载，准备进入下一段' : '未选择 · 保留现装，任务继续';
+  }
+  m.peakBullets = Math.max(m.peakBullets, Game.enemyBullets.length);
+  if (missionReading()) m.readingSteps++;
+  if (Math.floor(Game.time) !== m.lastHudSecond) { m.lastHudSecond = Math.floor(Game.time); updateHud(); }
+}
+function applyTacticalCore(core) {
+  const m = Game.mission, q = Game.question;
+  if (Game.state!=='playing' || !m || !q || !missionReading() || core.bayId !== q.bayId || m.chosen) return;
+  const word = core.word, tactic = THUNDER_TACTICS[word];
+  if (!tactic) return;
+  m.chosen = word; Game.tactic = word;
+  Game.stats.tacticalChoices = (Game.stats.tacticalChoices || 0) + 1;
+  if(q.mode==='free')Game.stats.freeChoices=(Game.stats.freeChoices||0)+1;
+  if (q.mode === 'dispatch') {
+    if (word === q.answer) {
+      Game.stats.correct++; Game.stats.vocab++;
+      m.reviewQueue = m.reviewQueue.filter(item => item.word !== word);
+      SFX.correct();
+    } else {
+      Game.stats.wrongAnswers++; Game.combo = 0;
+      const missed = q.answer;
+      if (!m.reviewQueue.some(item => item.word === missed)) m.reviewQueue.push({ word: missed, dueEvent: m.event + 3 });
+      Game.review.push(`${missed} = ${THUNDER_TACTICS[missed].zh}`);
+      Game.review = Game.review.slice(-5); SFX.wrong();
+    }
+  }
+  if (word === 'PIERCE') Game.player.pierceUntil = Game.time + 16;
+  else if (word === 'SHIELD') Game.shield = Math.max(2, Game.shield);
+  else if (Game.hp < 100) Game.hp = Math.min(100, Game.hp + 30);
+  else Game.reserveHeal = 30;
+  Game.score += q.mode === 'dispatch' && word === q.answer ? 250 : 50;
+  missionRecord('choice', { mode: q.mode, target: q.answer, selected: word, correct: q.mode === 'dispatch' ? word === q.answer : null, hp: Game.hp, shield: Game.shield, reserveHeal: Game.reserveHeal });
+  Game.powerups = Game.powerups.filter(u => !u.tactical);
+  els.qFeedback.textContent = q.mode === 'dispatch' && word !== q.answer
+    ? `${q.answer} = ${THUNDER_TACTICS[q.answer].zh}；本次仍装载 ${word} · ${tactic.zh}`
+    : `${word} · ${tactic.detail}`;
+  els.qHint.textContent = word === 'HEAL' && Game.reserveHeal ? '应急修复已保留；生命降到70时自动恢复30' : tactic.detail;
+  toast(`${word} · ${tactic.zh}`, '#a4ebdd', Game.player.x, Game.player.y - 48, 16);
+  SFX.power(); updateHud();
+}
+function missionCannonPose(boss, part) {
+  const span = Math.min(62, W * .18), x = boss.x + part.side * span, y = boss.y + 10;
+  const angle = part.angle ?? Math.PI / 2;
+  return { x, y, angle, mx: x + Math.cos(angle) * 33, my: y + Math.sin(angle) * 33 };
+}
+function missionBossPhase(boss, phase, duration) {
+  boss.attackPhase = phase; boss.attackTimer = duration;
+  boss.open = phase === 'recover' || (phase === 'tell' && (boss.hp < boss.maxHp*.55 || boss.cannons.every(p=>p.hp<=0)));
+  if (phase === 'tell') {
+    boss.cycle++;
+    if(boss.safeLane==null)boss.safeLane=clamp(Math.floor(Game.player.x/(W/5)),0,4);
+    else {let direction=boss.gapDirection||1;if(boss.safeLane+direction>4||boss.safeLane+direction<0)direction*=-1;boss.gapDirection=direction;boss.safeLane+=direction;}
+    boss.patternWarmup = .9;
+    for (const part of boss.cannons) {
+      const pose = missionCannonPose(boss, part);
+      part.angle = Math.atan2(Game.player.y - pose.y, Game.player.x - pose.x);
+    }
+  }
+}
+function updateMissionBoss(boss, dt) {
+  boss.shutter=(boss.shutter||0)+((boss.open?1:0)-(boss.shutter||0))*Math.min(1,dt*9);
+  const podTarget=['tell','attack'].includes(boss.attackPhase)?1:0;
+  boss.podOpen=(boss.podOpen||0)+(podTarget-(boss.podOpen||0))*Math.min(1,dt*10);
+  if (boss.entering) {
+    boss.y += boss.vy * dt;
+    const arrivalY=Math.min(H-220,Math.max(230,Game._minY+112));
+    if (boss.y >= arrivalY) {
+      boss.y = arrivalY; boss.entering = false;
+      missionBossPhase(boss, 'tell', .9);
+    }
+    return;
+  }
+  if(boss.attackPhase==='recover')boss.x=W/2+Math.sin(boss.t*.36)*Math.min(72,W*.13);
+  if (missionReading()) { boss.open = false; boss.patternWarmup = 0; return; }
+  if (!Game.mission.coreReviewDone && (boss.hp < boss.maxHp * .55 || boss.cannons.every(p => p.hp <= 0))) {
+    Game.mission.coreReviewDone = true; Game.mission.event++;
+    missionRecord('bossCore', { hp: boss.hp, event: Game.mission.event });
+    openTacticalBay('dispatch', 'SHIELD', 6);
+    missionBossPhase(boss, 'recover', 1.2);
+    return;
+  }
+  boss.attackTimer -= dt;
+  boss.patternWarmup = boss.attackPhase === 'tell' ? Math.max(0, boss.attackTimer) : 0;
+  for (const part of boss.cannons) { part.flash = Math.max(0, (part.flash || 0) - dt); part.recoil = Math.max(0, (part.recoil || 0) - dt * 4); }
+  if (boss.attackTimer > 0) return;
+  if (boss.attackPhase === 'tell') {
+    for (const part of boss.cannons) if (part.hp > 0) {
+      const gun = missionCannonPose(boss, part); part.recoil = 1;
+      for (const offset of [-.26, 0, .26]) {
+        const angle = gun.angle + offset;
+        Game.enemyBullets.push({ x: gun.mx, y: gun.my, vx: Math.cos(angle) * 165, vy: Math.sin(angle) * 165, r: 5, color: '#f7b56a', kind: 'orb', cannon: part.side });
+      }
+      missionRecord('cannonFire', { side: part.side, x: gun.mx, y: gun.my, angle: gun.angle });
+    }
+    if (boss.hp < boss.maxHp * .55 || boss.cannons.every(p => p.hp <= 0)) {
+      // One bounded row, one announced adjacent gap. The next row gets a fresh tell.
+      const laneWidth = W / 5, safe = boss.safeLane;
+      for (let lane = 0; lane < 5; lane++) if (lane !== safe) {
+        const count = Math.ceil(laneWidth / 25), stride = laneWidth / count;
+        for (let i = 0; i < count; i++) Game.enemyBullets.push({ x: lane * laneWidth + (i + .5) * stride, y: boss.y + 42, vx: 0, vy: 150, r: 5, color: '#f8bc70', kind: 'diamond', curtain: boss.cycle, gap: safe });
+      }
+    }
+    const curtain=boss.hp<boss.maxHp*.55||boss.cannons.every(p=>p.hp<=0);
+    const passage=clamp((H-70-(boss.y+42))/150+.35,1.6,3.5);
+    missionBossPhase(boss, 'attack', curtain?passage:.65);
+  } else if (boss.attackPhase === 'attack') missionBossPhase(boss, 'recover', 2.1);
+  else missionBossPhase(boss, 'tell', .9);
+}
+function hitMissionBoss(boss, bullet) {
+  if(boss.entering)return false;
+  if(missionReading())return Math.hypot(bullet.x-boss.x,bullet.y-boss.y)<90;
+  for (const part of boss.cannons) {
+    if (part.hp <= 0) continue;
+    const gun = missionCannonPose(boss, part);
+    if (Math.hypot(bullet.x - gun.x, bullet.y - gun.y) > 22 + bullet.r) continue;
+    part.hp -= bullet.tacticalPierce ? 2 : bullet.damage || 1; part.flash = .12;
+    hitSparks(gun.x, gun.y, '#eac790');
+    if (part.hp <= 0) {
+      Game.mission.partsBroken++;
+      explode(gun.x, gun.y, '#c3b494', 14, .65);
+      missionRecord('partBroken', { side: part.side });
+      toast('炮架失效', '#a8e9d7', gun.x, gun.y + 30, 13);
+    }
+    return true;
+  }
+  if (Math.hypot(bullet.x - boss.x, bullet.y - (boss.y + 8)) > 30 + bullet.r) return false;
+  const amount = (boss.shutter||0)>.65 ? bullet.damage || 1 : bullet.tacticalPierce ? .55 : 0;
+  if (amount) { boss.hp -= amount; boss.coreFlash = .1; }
+  hitSparks(bullet.x, bullet.y, amount ? '#9adfdc' : '#d9a368');
+  if (boss.hp <= 0) killEnemy(boss, false);
+  return true;
+}
+function completeMission() {
+  if (!Game.mission || Game.mission.outcome) return;
+  Game.mission.outcome = 'complete'; Game.sectors = 1;
+  missionRecord('complete', { hp: Game.hp });
+  Game.enemyBullets.length = 0; Game.enemies.length = 0; Game.powerups.length = 0;
+  gameOver(true);
+}
 
 /* ---------------- 出题 ---------------- */
 function pickDistractors(bank, item, field, count) {
@@ -482,6 +727,7 @@ function spawnStreamEnemy(option) {
 }
 
 function updateDirector(dt) {
+  if (Game.mission) { updateMissionDirector(); return; }
   if (Game.phase !== 'question' || !Game.question) return;
   Game.spawnTimer -= dt;
   Game.eventTimer -= dt;
@@ -518,11 +764,11 @@ function spawnQuestionWave() {
   updateDirector(0);
 }
 
-function spawnBoss() {
+function spawnBoss(authored = false) {
   Game.phase = 'boss';
   Game.question = null;
   const conf = DIFF_CONF[Game.difficulty];
-  const hp = Math.round(conf.bossHp * (1 + (Game.level - 1) * 0.25));
+  const hp = authored ? Math.round(conf.bossHp * .9) : Math.round(conf.bossHp * (1 + (Game.level - 1) * 0.25));
   Game.enemies.push({
     x: W / 2, y: -90, r: 46, hp, maxHp: hp,
     vy: conf.bossSpeed,
@@ -530,7 +776,8 @@ function spawnBoss() {
     option: null, elite: false, boss: true,
     nextShot: 1.6, shotInterval: 1.6,
     patternT: 5, entering: true, leaving: false,
-    hitFlash: 0, dead: false,
+    hitFlash: 0, dead: false, missionBoss: authored, coreFlash: 0, open: false, cycle: 0,
+    cannons: authored ? [{side:-1,hp:9,angle:Math.PI/2},{side:1,hp:9,angle:Math.PI/2}] : null,
   });
   Game._nextLayoutCheck = 0;
   els.qKind.textContent = 'BOSS';
@@ -613,6 +860,7 @@ function killEnemy(e, byCrash) {
     updateHud();
     return;
   }
+  if (e.boss && e.missionBoss) { Game.score += 1000; completeMission(); return; }
   if (e.boss) {
     Game.sectors++; Game.refitPending=true;
     Game.score += 1000;
@@ -629,6 +877,7 @@ function killEnemy(e, byCrash) {
   const gain = (35 + Game.combo * 4 + (e.elite ? 55 : 0)) * quick * (Game.player.berserk > 0 ? 2 : 1);
   Game.score += gain;
   toast('+' + gain, e.elite ? '#ffe066' : '#9ff3ff', e.x, e.y - 20, 16);
+  if (Game.mission) {updateHud();return;}
   if (e.option) dropAnswerChip(e.option, e.x, e.y);
   if (e.supply) dropBerserk(e.x, e.y);
   dropPowerup(e.x, e.y, e.elite ? .5 : .08);
@@ -650,6 +899,7 @@ function damagePlayer(amount) {
   if (p.invuln > 0 || Game.state !== 'playing') return;
   if (Game.shield > 0) {
     Game.shield--;
+    missionRecord('shieldAbsorb',{prevented:amount,charges:Game.shield});
     p.invuln = 1.2;
     SFX.shieldPop();
     toast('🛡 护盾抵挡！', '#54a0ff', p.x, p.y - 40, 15);
@@ -658,6 +908,12 @@ function damagePlayer(amount) {
     return;
   }
   Game.hp -= amount;
+  if (Game.mission && missionReading()) Game.mission.readingDamage += amount;
+  if (Game.reserveHeal && Game.hp > 0 && Game.hp <= 70) {
+    Game.hp = Math.min(100, Game.hp + Game.reserveHeal); Game.reserveHeal = 0;
+    toast('HEAL · 应急修复 +30', '#a4ebdd', p.x, p.y - 44, 15);
+    missionRecord('storedHeal', {hp:Game.hp});
+  }
   p.invuln = 1.0;
   Game.shake = Math.max(Game.shake, 0.35);
   SFX.hurt();
@@ -733,6 +989,7 @@ function dropLootChest(x, y) {
 }
 
 function applyPowerup(u) {
+  if (u.tactical) { applyTacticalCore(u); return; }
   if (u.kind === 'answer') {
     if (!Game.question || Game.phase !== 'question') return;
     if (u.correct) {
@@ -787,7 +1044,9 @@ function applyPowerup(u) {
 function firePlayerWeapon() {
   const p = Game.player, level = p.weaponLevel;
   p.muzzle = .09;
-  if (p.weapon === 'laser') {
+  if (p.pierceUntil > Game.time) {
+    Game.bullets.push({x:p.x,y:p.y-24,vx:0,vy:-730,r:3,damage:1,pierce:1,tacticalPierce:true,color:'#98eeed',kind:'laser'});
+  } else if (p.weapon === 'laser') {
     const offsets = level === 1 ? [0] : level === 2 ? [-7, 7] : [-12, 0, 12];
     for (const x of offsets) Game.bullets.push({ x: p.x + x, y: p.y - 24, vx: 0, vy: -720, r: 4, damage: level >= 3 ? 2 : 1, pierce: level, color: '#5caeff', kind: 'laser' });
   } else if (p.weapon === 'homing') {
@@ -802,20 +1061,22 @@ function firePlayerWeapon() {
 /* ---------------- 射击 ---------------- */
 function fireAtPlayer(e, speed, color) {
   const p = Game.player;
-  const dx = (e.aimLocked ? e.aimX : p.x) - e.x, dy = (e.aimLocked ? e.aimY : p.y) - e.y;
+  const gunY=e.missionShip?e.y+e.r*1.08:e.y;
+  const dx = (e.aimLocked ? e.aimX : p.x) - e.x, dy = (e.aimLocked ? e.aimY : p.y) - gunY;
   const d = Math.hypot(dx, dy) || 1;
-  const ang = Math.atan2(dy, dx) + rand(-0.06, 0.06);
-  Game.enemyBullets.push({ x: e.x, y: e.y + 6, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, r: 5, color: color || e.bulletColor || '#ff9b45', kind: 'orb' });
+  const ang = Math.atan2(dy, dx) + (e.missionShip?0:rand(-0.06, 0.06));
+  Game.enemyBullets.push({ x: e.x, y: e.missionShip?gunY:e.y+6, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, r: 5, color: color || e.bulletColor || '#ff9b45', kind: 'orb' });
   if (e.boss || e.elite) SFX.shoot();
 }
 
 function aimedSpread(e, n, spread) {
   const p = Game.player;
-  const base = Math.atan2((e.aimLocked?e.aimY:p.y) - e.y, (e.aimLocked?e.aimX:p.x) - e.x);
+  const gunY=e.missionShip?e.y+e.r*1.08:e.y;
+  const base = Math.atan2((e.aimLocked?e.aimY:p.y) - gunY, (e.aimLocked?e.aimX:p.x) - e.x);
   const speed = DIFF_CONF[Game.difficulty].bulletSpeed + Game.level * 6;
   for (let i = 0; i < n; i++) {
     const ang = base + (i - (n - 1) / 2) * spread;
-    Game.enemyBullets.push({ x: e.x, y: e.y + 10, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, r: 5, color: '#ff5e9a', kind: 'diamond' });
+    Game.enemyBullets.push({ x: e.x, y: e.missionShip?gunY:e.y+10, vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed, r: 5, color: '#ff5e9a', kind: 'diamond' });
   }
   SFX.shoot();
 }
@@ -923,8 +1184,8 @@ function toast(text, color, x, y, size) {
 
 function capCombatBudget() {
   const trim = (items, max) => { if (items.length > max) items.splice(0, items.length - max); };
-  trim(Game.enemyBullets, MAX_ENEMY_BULLETS);
-  trim(Game.particles, MAX_PARTICLES);
+  trim(Game.enemyBullets, Game.mission ? 160 : MAX_ENEMY_BULLETS);
+  trim(Game.particles, Game.mission ? 180 : MAX_PARTICLES);
   trim(Game.shockwaves, MAX_SHOCKWAVES);
   trim(Game.floaters, MAX_FLOATERS);
 }
@@ -1039,12 +1300,27 @@ function updateBullets(dt) {
     let killed = false;
     for (let j = Game.enemies.length - 1; j >= 0; j--) {
       const e = Game.enemies[j];
-      if (!e) continue;
+      if (!e || b.hitTargets?.has(e)) continue;
+      if(e.missionShip&&e.entering)continue;
+      if (e.missionBoss) {
+        if (hitMissionBoss(e,b)) {Game.bullets.splice(i,1);killed=true;break;}
+        continue;
+      }
       if (Math.hypot(b.x - e.x, b.y - e.y) < e.r + b.r + 4) {
+        if (e.armor > 0) {
+          e.firstArmorHit??=Game.time;e.armorHits=(e.armorHits||0)+1;
+          e.armor=Math.max(0,e.armor-(b.tacticalPierce?2:.25));
+          e.armorFlash=.14;
+          hitSparks(b.x,b.y,b.tacticalPierce?'#99ece6':'#e6b777');
+          if(!e.armor){Game.mission.armorBreaks++;missionRecord('armorBreak',{pierce:!!b.tacticalPierce,role:e.role,hits:e.armorHits,duration:Game.time-e.firstArmorHit});explode(e.x,e.y,'#b6ada0',10,.4);}
+          if(!b.tacticalPierce){Game.bullets.splice(i,1);killed=true;break;}
+        }
         e.hp -= b.damage || 1;
         e.hitFlash = 0.08;
         hitSparks(b.x, b.y, b.color || '#9ff3ff');
-        if (b.pierce > 0) b.pierce--;
+        if (b.pierce > 0) {
+          b.hitTargets ||= new WeakSet(); b.hitTargets.add(e); b.pierce--;
+        }
         else Game.bullets.splice(i, 1);
         if (e.hp <= 0) killEnemy(e, false);
         killed = true;
@@ -1062,6 +1338,14 @@ function updateEnemies(dt) {
     if (!e) continue;
     e.t += dt;
     e.hitFlash = Math.max(0, e.hitFlash - dt);
+    e.armorFlash = Math.max(0, (e.armorFlash || 0) - dt);
+    e.coreFlash = Math.max(0, (e.coreFlash || 0) - dt);
+    if (e.missionBoss) {
+      updateMissionBoss(e, dt);
+      const p=Game.player;
+      if(Math.hypot(e.x-p.x,e.y-p.y)<e.r+p.r){damagePlayer(28);p.y=clamp(e.y+e.r+62,Game._minY,H-46);p.py=p.y;}
+      continue;
+    }
 
     if (e.boss) {
       if (e.entering) {
@@ -1133,7 +1417,7 @@ function updateEnemies(dt) {
     e.x = e.homeX + routeWave * routeAmp;
     e.x = clamp(e.x, e.option && W < 600 ? Math.max(62, W * 0.17) : 30, W - (e.option && W < 600 ? Math.max(62, W * 0.17) : 30));
 
-    const canFire = waveAge > 1;
+    const canFire = waveAge > 1 && !missionReading();
     if (canFire && e.y > 30 && e.y < H * 0.85) {
       e.nextShot -= dt;
       if(e.nextShot<=.55&&!e.aimLocked) { e.aimLocked=true;e.aimX=Game.player.x;e.aimY=Game.player.y; }
@@ -1142,7 +1426,7 @@ function updateEnemies(dt) {
           // Delay only the shot. Ramming and off-screen cleanup still run below.
           e.nextShot = .65;
         } else {
-          e.nextShot = e.shotInterval * rand(0.8, 1.3);
+          e.nextShot = e.shotInterval * (e.missionShip?1:rand(0.8, 1.3));
           if (e.elite) aimedSpread(e, 3, .16);
           else fireAtPlayer(e, Math.min(320, conf.bulletSpeed + Game.level * 6));
         }
@@ -1162,7 +1446,7 @@ function updateEnemies(dt) {
 }
 
 function answerShelter(x,y) {
-  return Game.powerups.some(u=>u.kind==='answer' && u.y>90 && u.y<H-40 && Math.hypot(x-u.x,y-u.y)<58);
+  return Game.powerups.some(u=>u.kind==='answer' && (!u.expires || Game.time<u.expires) && u.y>90 && u.y<H-40 && Math.hypot(x-u.x,y-u.y)<58);
 }
 function updateEnemyBullets(dt) {
   const p = Game.player;
@@ -1189,8 +1473,15 @@ function updateEnemyBullets(dt) {
 
 function updatePowerups(dt) {
   const p = Game.player;
+  const bay = Game.mission;
+  if (bay && missionReading() && !bay.chosen && Game.time - bay.bayStarted >= .7 && Math.hypot(p.x-bay.bayOrigin.x,p.y-bay.bayOrigin.y)>18) {
+    const nearest = Game.powerups.filter(u=>u.tactical&&u.bayId===bay.baySerial)
+      .map(u=>({u,d:Math.hypot(u.x-p.x,u.y-p.y)})).filter(o=>o.d<43).sort((a,b)=>a.d-b.d)[0];
+    if(nearest)applyTacticalCore(nearest.u);
+  }
   for (let i = Game.powerups.length - 1; i >= 0; i--) {
     const u = Game.powerups[i];
+    if(u.tactical){u.t+=dt;continue;}
     u.y += u.vy * dt;
     u.x += Math.sin(u.t * 3) * 30 * dt;
     u.t += dt;
@@ -1216,7 +1507,9 @@ function render(dt) {
     ctx.fillRect(0, 0, W, H);
   }
   ctx.save();ctx.globalAlpha=.22;drawNebula();ctx.restore();
-  drawStars(dt);
+  ctx.save();ctx.globalAlpha=.45;drawStars(dt);ctx.restore();
+  // Quiet only the firing lanes; the outer nebula and distant perimeter remain visible.
+  ctx.drawImage(nebulaTexture('rgba(3,9,21,.70)','rgba(3,9,21,.32)'),-W*.12,H*.14,W*1.24,H*.92);
 
   ctx.save();
   if (!reducedMotion.matches && Game.shake > 0) {
@@ -1235,8 +1528,10 @@ function render(dt) {
   const curtains=new Map();
   for(const b of Game.enemyBullets)if(b.curtain)curtains.set(b.curtain,b);
   for(const row of curtains.values()) {
-    ctx.strokeStyle='#a6f5d6aa';ctx.lineWidth=2;ctx.setLineDash([4,6]);
-    ctx.strokeRect(row.gap*W/5+5,row.y-12,W/5-10,24);ctx.setLineDash([]);
+    if(Game.mission){
+      if(row.curtain<=3){ctx.strokeStyle='#7cadd0';ctx.lineWidth=1.5;
+        for(const side of [-1,1]){const x=(row.gap+.5)*W/5+side*(W/10-10);ctx.beginPath();ctx.moveTo(x-side*4,row.y-6);ctx.lineTo(x,row.y);ctx.lineTo(x-side*4,row.y+6);ctx.stroke();}}
+    }else{ctx.strokeStyle='#a6f5d6aa';ctx.lineWidth=2;ctx.setLineDash([4,6]);ctx.strokeRect(row.gap*W/5+5,row.y-12,W/5-10,24);ctx.setLineDash([]);}
   }
   drawEnemyBullets();
   drawBullets();
@@ -1306,9 +1601,10 @@ function drawStars(dt) {
   for (const s of Game.stars) {
     s.y += s.speed * dt * speedMul * (Game.state === 'menu' ? 0.35 : 1);
     if (s.y > H + 4) { s.y = -4; s.x = Math.random() * W; }
-    const alpha = 0.3 + 0.55 * (0.5 + 0.5 * Math.sin(s.tw + Game.time * 2.4));
+    const activeLane=s.x>24&&s.x<W-24&&s.y>H*.24&&s.y<H*.9;
+    const alpha = (0.3 + 0.55 * (0.5 + 0.5 * Math.sin(s.tw + Game.time * 2.4)))*(activeLane?.28:1);
     ctx.fillStyle = starTints[Math.floor((s.hue || 0) * 3) % 3](alpha);
-    if (s.size > 1.8) {
+    if (s.size > 1.8 && !activeLane) {
       // 大星加十字光芒+光晕，近层更醒目（前后景深的关键）
       ctx.save();
       ctx.shadowColor = 'rgba(200,220,255,.9)';
@@ -1338,7 +1634,7 @@ function drawSprite(name, w, h, alpha, flip, flash) {
 
 function drawPlayer() {
   const p = Game.player;
-  const isWreck = Game.state === 'over';
+  const isWreck = Game.state === 'over' && Game.mission?.outcome !== 'complete';
   const blink = !isWreck && p.invuln > 0 && p.spawnRing <= 0 && (Math.floor(p.invuln * 12) % 2 === 0);
   ctx.save();
   ctx.translate(p.x, p.y);
@@ -1456,6 +1752,91 @@ function drawPlayer() {
   }
 }
 
+function drawMissionBoss(boss) {
+  const span = Math.min(62, W * .18);
+  // Retain the atlas' detailed central hull and wing shoulders, separating the
+  // weapon pods into actual rotating, independently destructible components.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(-33,-87,66,174);ctx.rect(-106,-16,68,33);ctx.rect(38,-16,68,33);
+  ctx.clip();drawSprite('boss',221,175,1,true,false);ctx.restore();
+  for(const part of boss.cannons) {
+    const x=part.side*span,y=10;
+    ctx.fillStyle='#192332';ctx.fillRect(Math.min(0,x),y-13,Math.abs(x),21);
+    ctx.fillStyle='#87939a';ctx.fillRect(Math.min(0,x),y-10,Math.abs(x),5);
+    ctx.fillStyle='#c4ab71';ctx.fillRect(Math.min(0,x),y+4,Math.abs(x),3);
+    if(part.hp>0){ctx.fillStyle='#111927';ctx.fillRect(x-18,y-20,36,42);ctx.fillStyle='#78838b';ctx.fillRect(x-16,y-18,32,37);ctx.fillStyle='#c8cbd0';ctx.fillRect(x-14,y-16,28,3);}
+    if(part.hp<=0) {
+      ctx.fillStyle='#191d24';ctx.beginPath();ctx.arc(x,y,16,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#887d68';ctx.lineWidth=4;ctx.beginPath();ctx.arc(x,y,14,.2,5.7);ctx.stroke();
+      ctx.strokeStyle='#bdad85';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,10,3.5,5.8);ctx.stroke();
+      ctx.strokeStyle='#69727a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x-9,y+7);ctx.lineTo(x-4,y+3);ctx.lineTo(x-7,y-4);ctx.stroke();
+      ctx.strokeStyle='#b88361';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+8,y-4);ctx.lineTo(x+2,y+3);ctx.lineTo(x+5,y+10);ctx.stroke();
+      continue;
+    }
+    ctx.save();ctx.translate(x,y);ctx.rotate((part.angle??Math.PI/2)+Math.PI/2);
+    const recoil=(part.recoil||0)*4;
+    ctx.imageSmoothingEnabled=false;
+    if(ShipAtlas.complete&&ShipAtlas.naturalWidth)
+      ctx.drawImage(ShipAtlas,690,625,172,320,-16,-32+recoil,32,64);
+    else {ctx.fillStyle='#a8a49a';ctx.fillRect(-11,-31+recoil,22,58);}
+    // A visible, dark barrel mouth defines exactly where the fan begins.
+    ctx.fillStyle='#263440';ctx.fillRect(-8,-35+recoil,16,10);
+    ctx.fillStyle='#d4c6a2';ctx.fillRect(-9,-34+recoil,18,3);
+    ctx.fillStyle=part.recoil>0?'#ffe3a0':'#1b202b';ctx.fillRect(-5,-36+recoil,10,5);
+    if(part.flash>0){ctx.fillStyle='#f6ddb766';ctx.fillRect(-15,-28,30,52);}
+    ctx.restore();
+    const cover=(1-(boss.podOpen||0))*15;
+    if(cover>0){
+      if(ShipAtlas.complete&&ShipAtlas.naturalWidth){
+        ctx.drawImage(ShipAtlas,881,650,58,186,x-17,y-19,cover,39);
+        ctx.drawImage(ShipAtlas,939,650,58,186,x+17-cover,y-19,cover,39);
+      }else{ctx.fillStyle='#777b76';ctx.fillRect(x-17,y-19,cover,39);ctx.fillRect(x+17-cover,y-19,cover,39);}
+      ctx.strokeStyle='#aea183';ctx.lineWidth=1;ctx.strokeRect(x-17,y-19,cover,39);ctx.strokeRect(x+17-cover,y-19,cover,39);
+    }
+  }
+  const open=boss.shutter||0,cy=13;
+  ctx.save();ctx.translate(0,cy);ctx.imageSmoothingEnabled=false;
+  ctx.beginPath();ctx.moveTo(-24,-16);ctx.lineTo(-16,-25);ctx.lineTo(16,-25);ctx.lineTo(24,-16);ctx.lineTo(24,18);ctx.lineTo(16,25);ctx.lineTo(-16,25);ctx.lineTo(-24,18);ctx.closePath();
+  ctx.fillStyle='#212c35';ctx.fill();ctx.strokeStyle='#a18b63';ctx.lineWidth=3;ctx.stroke();
+  if(ShipAtlas.complete&&ShipAtlas.naturalWidth)ctx.drawImage(ShipAtlas,878,908,122,142,-22,-23,44,48);
+  else {ctx.fillStyle='#93d8d1';ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);ctx.fill();}
+  for(const side of [-1,1]) {
+    const x=side<0?-22-open*21:open*21;
+    ctx.save();ctx.beginPath();ctx.rect(x,-22,22,45);ctx.clip();
+    if(ShipAtlas.complete&&ShipAtlas.naturalWidth)ctx.drawImage(ShipAtlas,side<0?881:939,650,58,186,x,-22,22,45);
+    else {ctx.fillStyle='#8b8675';ctx.fillRect(x,-22,22,45);}
+    ctx.restore();ctx.strokeStyle='#aaad9f';ctx.lineWidth=1;ctx.strokeRect(x,-22,22,45);
+    ctx.fillStyle='#242d35';for(const y of [-16,15])ctx.fillRect(x+3,y,3,3);
+  }
+  if(boss.coreFlash>0){ctx.strokeStyle='#cbefe5';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,17,0,Math.PI*2);ctx.stroke();}
+  ctx.restore();
+  ctx.fillStyle='#0c1421';ctx.fillRect(-70,-103,140,6);
+  ctx.fillStyle='#ddbb7e';ctx.fillRect(-70,-103,140*clamp(boss.hp/boss.maxHp,0,1),6);
+  ctx.font='700 11px "Noto Sans CJK SC","PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillStyle='#d4e1de';
+  ctx.fillText((boss.shutter||0)>.65?'核心开启':boss.attackPhase==='tell'?'炮架锁定':'装甲舱盖',0,-111);
+}
+function drawMissionTacticalCore(core) {
+  // Combat stays in its existing world coordinates. Only the information
+  // cartridge cancels the cached CSS scale, so landscape text stays readable.
+  // Its centre remains the real near-approach pickup; this is not a tap button.
+  const cssScaleX=Math.max(.001,lastW/W),cssScaleY=Math.max(.001,lastH/H);
+  ctx.scale(1/cssScaleX,1/cssScaleY);
+  const width=lastW<360?80:88,hh=27;
+  // A metal data cartridge: clipped corners, connector pins and a dark display.
+  ctx.beginPath();ctx.moveTo(-width/2+8,-hh);ctx.lineTo(width/2-8,-hh);ctx.lineTo(width/2,-hh+8);ctx.lineTo(width/2,hh-8);ctx.lineTo(width/2-8,hh);ctx.lineTo(-width/2+8,hh);ctx.lineTo(-width/2,hh-8);ctx.lineTo(-width/2,-hh+8);ctx.closePath();
+  ctx.fillStyle='#314866';ctx.fill();ctx.strokeStyle='#91aac6';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#6687ad';ctx.fillRect(-width/2+10,-hh+2,width-20,3);
+  ctx.fillStyle='#101b31';ctx.fillRect(-width/2+7,-18,width-14,36);
+  ctx.fillStyle='#8c9ba9';
+  for(const side of [-1,1])for(const y of [-12,-3,6])ctx.fillRect(side<0?-width/2-4:width/2-1,y,5,5);
+  ctx.fillStyle='#76bcec';ctx.fillRect(-width/2+9,18,width-18,3);
+  ctx.fillStyle='#e2e9ef';ctx.font='800 14px ui-monospace,monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(core.word,0,-6);
+  ctx.fillStyle='#9ab5cf';ctx.font='12px "Noto Sans CJK SC","PingFang SC",sans-serif';
+  ctx.fillText(core.mode==='free'?core.zh:'指令核验',0,10);
+}
+
 function drawEnemies() {
   for (const e of Game.enemies) {
     if (e.entering && e.entryEdge && Game.time >= e.spawnAt - .35) {
@@ -1512,6 +1893,8 @@ function drawEnemies() {
           ctx.strokeStyle='#bbcbd06b';ctx.lineWidth=.7;ctx.beginPath();ctx.arc(x,y,cr,-.1,Math.PI*.75);ctx.stroke();
         }
       }
+    } else if (e.missionBoss) {
+      drawMissionBoss(e);
     } else if (e.boss) {
       const aura = ctx.createRadialGradient(0, 0, e.r * .2, 0, 0, e.r * 2.4);
       aura.addColorStop(0, 'rgba(255,65,218,.34)');
@@ -1558,6 +1941,16 @@ function drawEnemies() {
         ctx.beginPath();
         ctx.arc(0, e.r * 0.1, 3, 0, Math.PI * 2);
         ctx.fill();
+      }
+      if(e.maxArmor) {
+        const plates=Math.ceil(e.armor),yy=spriteH*.19;
+        for(let part=0;part<4;part++) {
+          const x=(part-1.5)*13;
+          if(part>=plates){ctx.fillStyle='#1f2b36';ctx.fillRect(x-5,yy,10,7);continue;}
+          ctx.fillStyle=e.armorFlash>0?'#f2d2a1':'#a8b0b3';
+          ctx.fillRect(x-6,yy-8,12,21);ctx.fillStyle='#454f5b';ctx.fillRect(x-4,yy-3,8,12);
+          ctx.fillStyle='#d9b768';ctx.fillRect(x-5,yy+10,10,3);
+        }
       }
       if (e.option || e.supply) {
         const bracketW = spriteW * .62, bracketH = spriteH * .58, corner = 8;
@@ -1634,13 +2027,17 @@ function drawEnemyBullets() {
 
 function drawPowerups() {
   for(const u of Game.powerups) if(u.kind==='answer' && u.y>90 && u.y<H-40) {
-    ctx.fillStyle='#7de6cd0b';ctx.strokeStyle='#a6edda77';ctx.lineWidth=1.3;
+    ctx.fillStyle=u.tactical?'#438ec008':'#7de6cd0b';ctx.strokeStyle=u.tactical?'#719bb63d':'#a6edda77';ctx.lineWidth=1;
     ctx.beginPath();ctx.arc(u.x,u.y,58,0,Math.PI*2);ctx.fill();ctx.stroke();
-    ctx.setLineDash([4,8]);ctx.beginPath();ctx.arc(u.x,u.y,62,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    if(u.tactical){
+      ctx.strokeStyle='#74bde17a';ctx.lineWidth=1.5;
+      const scan=Game.time*.6;for(let arm=0;arm<3;arm++){ctx.beginPath();ctx.arc(u.x,u.y,58,scan+arm*Math.PI*2/3,scan+arm*Math.PI*2/3+.3);ctx.stroke();}
+    }
   }
   for (const u of Game.powerups) {
     ctx.save();
     ctx.translate(u.x, u.y);
+    if(u.tactical){drawMissionTacticalCore(u);ctx.restore();continue;}
     const pulse = 1 + Math.sin(Game.time * 6 + u.t * 4) * 0.12;
     ctx.scale(pulse, pulse);
     if (u.kind === 'answer') {
@@ -1763,8 +2160,37 @@ function chooseRefit(kind) {
 function drawThreats() {
   ctx.save();ctx.lineWidth=1.5;
   for(const e of Game.enemies) {
+    if(e.missionBoss) {
+      const curtainReady=e.hp<e.maxHp*.55||e.cannons.every(p=>p.hp<=0);
+      if(curtainReady&&!e.entering&&!missionReading()&&['tell','attack'].includes(e.attackPhase)) {
+        const sy=e.y+42,lw=W/5;
+        ctx.strokeStyle='#8b795e66';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(12,sy-8);ctx.lineTo(W-12,sy-8);ctx.stroke();
+        ctx.strokeStyle='#b8a775';ctx.beginPath();ctx.moveTo(e.x,e.y+27);ctx.lineTo(e.x,sy-8);ctx.stroke();
+        for(let lane=0;lane<5;lane++)if(lane!==e.safeLane){
+          const count=Math.ceil(lw/25),stride=lw/count;
+          for(let i=0;i<count;i++){
+            const xx=lane*lw+(i+.5)*stride;
+            ctx.strokeStyle='#ac8f5966';ctx.beginPath();ctx.moveTo(xx,sy-8);ctx.lineTo(xx,sy-2);ctx.stroke();
+            ctx.fillStyle=e.attackPhase==='attack'?'#f1cd89':'#b39159';ctx.beginPath();ctx.ellipse(xx,sy-1,1.5,2.5,0,0,Math.PI*2);ctx.fill();
+          }
+        }
+      }
+      if(e.attackPhase==='tell'&&!missionReading()) {
+        for(const part of e.cannons)if(part.hp>0){
+          const gun=missionCannonPose(e,part);
+          ctx.strokeStyle='#f0b96b99';ctx.setLineDash([5,7]);
+          for(const offset of [-.26,0,.26]){const a=gun.angle+offset;ctx.beginPath();ctx.moveTo(gun.mx,gun.my);ctx.lineTo(gun.mx+Math.cos(a)*220,gun.my+Math.sin(a)*220);ctx.stroke();}
+          ctx.setLineDash([]);ctx.strokeStyle='#e4c58b';ctx.beginPath();ctx.arc(gun.x,gun.y,25,-Math.PI/2,-Math.PI/2+Math.PI*2*(1-e.attackTimer/.9));ctx.stroke();
+        }
+        if(e.hp<e.maxHp*.55||e.cannons.every(p=>p.hp<=0)){
+          ctx.strokeStyle='#7cadd0';ctx.lineWidth=1.5;
+          for(const side of [-1,1]){const x=(e.safeLane+.5)*W/5+side*(W/10-10),y=e.y+62;ctx.beginPath();ctx.moveTo(x-side*4,y-6);ctx.lineTo(x,y);ctx.lineTo(x-side*4,y+6);ctx.stroke();}
+        }
+      }
+      continue;
+    }
     if(e.aimLocked&&!e.entering&&!e.retreating) {
-      ctx.strokeStyle='rgba(255,185,110,.58)';ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.aimX,e.aimY);ctx.stroke();ctx.setLineDash([]);
+      ctx.strokeStyle='rgba(255,185,110,.58)';ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(e.x,e.missionShip?e.y+e.r*1.08:e.y);ctx.lineTo(e.aimX,e.aimY);ctx.stroke();ctx.setLineDash([]);
       ctx.strokeStyle='#ffd166';ctx.beginPath();ctx.arc(e.x,e.y,e.r+8,0,Math.PI*2*clamp(1-e.nextShot/.55,0,1));ctx.stroke();
     }
     if(e.boss && e.patternWarmup>0) {
@@ -1785,14 +2211,14 @@ function updateQuestionBar() {
   if (!q) return;
   els.qKind.textContent = q.kind;
   els.qPrompt.textContent = q.prompt;
-  els.qHint.textContent = '击落任意敌机，收集正确的数据芯片';
+  els.qHint.textContent = q.hint || '击落任意敌机，收集正确的数据芯片';
   els.qFeedback.textContent = '';
   els.qFeedback.style.color = '#7dffa8';
 }
 
 function updateHud() {
   updateDashHud();
-  $id('sector-progress').textContent = Game.phase==='boss' ? '核心守卫 · 读懂预警再穿行' : `航段 ${Game.sectors+1} · 数据 ${Game.stats.correct%8}/8 · 冲刺可穿过弹幕`;
+  $id('sector-progress').textContent = Game.mission ? `${THUNDER_MISSION[Game.mission.index].label} · ${Math.floor(Game.time)}s${missionReading() ? ` · 整备 ${Math.max(0,Math.ceil(Game.mission.bayUntil-Game.time))}s` : ''}` : Game.phase==='boss' ? '核心守卫 · 读懂预警再穿行' : `航段 ${Game.sectors+1} · 数据 ${Game.stats.correct%8}/8 · 冲刺可穿过弹幕`;
   els.score.textContent = Game.score;
   els.level.textContent = Game.level;
   els.bombs.textContent = Game.bombs;
@@ -1800,6 +2226,9 @@ function updateHud() {
   const weaponNames = { spread: '散射', laser: '雷光', homing: '追踪' };
   els.weapon.textContent = weaponNames[Game.player.weapon] + ' ' + 'I'.repeat(Game.player.weaponLevel);
   if (Game.player.berserk > 0) els.weapon.textContent += ' · 暴走';
+  if(Game.player.pierceUntil>Game.time)els.weapon.textContent=`PIERCE ${Math.ceil(Game.player.pierceUntil-Game.time)}s`;
+  else if(Game.shield)els.weapon.textContent+=` · 护盾×${Game.shield}`;
+  else if(Game.reserveHeal)els.weapon.textContent+=' · 应急修复';
   els.medalChain.textContent = Game.medalChain;
   els.hpBar.style.width = Game.hp + '%';
   els.hpText.textContent = Math.round(Game.hp);
@@ -1862,7 +2291,7 @@ function startGame() {
   els.over.classList.add('hidden');
   els.paused.classList.add('hidden');
   els.hud.classList.remove('hidden');
-  spawnQuestionWave();
+  beginMission();
   updateHud();
   accumulator = 0;
   ensureLoop();
@@ -1899,19 +2328,21 @@ function backToMenu() {
   updateHighScore();
 }
 
-function gameOver() {
+function gameOver(completed = false) {
+  if(Game.mission && !completed) {Game.mission.outcome="failed";missionRecord("failed",{hp:Game.hp});}
+  els.over.querySelector("h1").textContent=completed?"航道已打通":"战机失联";
   const medalPoints=Game.sectors*4+Math.floor(Game.stats.correct/2);
   $id('run-medal').hidden = medalPoints<=0;
-  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp?mobile=20261002-quality4-r1';
   if (window.ChipMusic) ChipMusic.stop();
   releaseTouchControls();
   Game.state = 'over';
-  explode(Game.player.x, Game.player.y, '#4f9dff', 70, 2.4);
-  explode(Game.player.x, Game.player.y, '#ffd166', 40, 1.8);
-  SFX.bigBoom();
-  SFX.gameover();
+  if(!completed){
+    explode(Game.player.x, Game.player.y, '#4f9dff', 36, 1.4);
+    SFX.bigBoom();SFX.gameover();
+  }else SFX.levelup();
   setTimeout(() => { if (Game.state === 'over') SFX.ac?.suspend().catch(() => {}); }, 1400);
-  Game.shake = 0.9;
+  Game.shake = completed ? 0 : .45;
   const key = 'thunder-fighter-hs-' + Game.difficulty;
   const prev = highScore();
   const isNew = Game.score > prev;
@@ -1922,11 +2353,12 @@ function gameOver() {
     '<div class="stat-row"><span>最终得分</span><b>' + Game.score + (isNew ? ' 🏆新纪录' : '') + '</b></div>' +
     '<div class="stat-row"><span>最高连击</span><b>x' + Game.maxCombo + '</b></div>' +
     '<div class="stat-row"><span>极限擦弹</span><b>' + Game.graze + ' 次</b></div>' +
-    '<div class="stat-row"><span>答对题目</span><b>' + Game.stats.correct + ' 题</b></div>' +
+    '<div class="stat-row"><span>独立识别</span><b>' + Game.stats.correct + ' 题</b></div>' +
     '<div class="stat-row"><span>答对率</span><b>' + accPct + '%</b></div>' +
     '<div class="stat-row"><span>词义答对</span><b>' + Game.stats.vocab + ' 个</b></div>' +
-    '<div class="stat-row"><span>攻克语法</span><b>' + Game.stats.grammar + ' 题</b></div>' +
+    '<div class="stat-row"><span>自由选装（不计对错）</span><b>' + (Game.stats.freeChoices||0) + ' 次</b></div>' +
     '<div class="stat-row"><span>到达关卡</span><b>第 ' + Game.level + ' 关</b></div>';
+  if(Game.mission){const status=document.createElement('p');status.className='review-recap';status.textContent=(completed?'任务完成':'任务失败')+` · ${Math.floor(Game.time)} 秒 · 再来一局从航道试飞重新开始；装备与生命重置。`;els.overStats.appendChild(status);}
   if(Game.review.length) { const review=document.createElement('p');review.className='review-recap';review.textContent='回看数据 · '+[...new Set(Game.review)].join(' / ');els.overStats.appendChild(review); }
   els.hud.classList.add('hidden');
   els.over.classList.remove('hidden');
@@ -2014,95 +2446,26 @@ els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
 /* ---------------- 自检（仅 ?selftest 触发，供无头测试） ---------------- */
 if (/[?&]selftest/.test(location.search)) {
   try {
-    Game.difficulty = 'easy';
     startGame();
-    if (FIXED_STEP !== 1 / 60 || FX_STAR_COUNT > 120 || canvas.width * canvas.height > MAX_CANVAS_PIXELS * 1.01 || (FX.available && FX.cv.width * FX.cv.height > MAX_CANVAS_PIXELS * 1.01)) throw new Error('frame pacing or render budget failed');
-    const openingFormation = Game.encounterKind;
-    for (let i = 1; i < 4; i++) spawnStreamEnemy(null);
-    const openingShips = Game.enemies.filter((e) => e.formation === openingFormation);
-    if (openingShips.length !== 4 || openingShips.some((e, index) => e.formationSlot !== index)) throw new Error('continuous formation failed');
-    const streamBefore = Game.enemies.length;
-    Game.spawnTimer = 0; updateDirector(0);
-    if (Game.enemies.length <= streamBefore) throw new Error('continuous director failed');
-    const entrants = Game.enemies.filter((e) => !e.meteor);
-    if (entrants.length < 2 || !entrants.every((e) => e.entering && (e.y < 0 || e.x < 0 || e.x > W))) throw new Error('formation entry failed');
-    const entryEdges = ENCOUNTERS.map((kind) => formationPlan(kind, 0, 4, W * .25, 150).edge);
-    if (new Set(entryEdges).size < 2) throw new Error('encounter variety failed');
-    const wrongOption = Game.question.options.find((option) => !option.correct);
-    const correctOption = Game.question.options.find((option) => option.correct);
-    if (!Game.enemies.some((e) => e.option && !e.option.correct)) spawnStreamEnemy(wrongOption);
-    if (!Game.enemies.some((e) => e.option && e.option.correct)) spawnStreamEnemy(correctOption);
-    Game.player.invuln = 0;
-    const beforeGraze = Game.score;
-    Game.enemyBullets.push({ x: Game.player.x + 28, y: Game.player.y, vx: 0, vy: 0, r: 4 });
-    updateEnemyBullets(0);
-    if (Game.graze !== 1 || Game.score !== beforeGraze + 5) throw new Error('graze failed');
-    fireAtPlayer(Game.enemies[0], 170);
-    const styledBullet = Game.enemyBullets.pop();
-    if (!styledBullet.color || styledBullet.kind !== 'orb') throw new Error('bullet style failed');
-    applyPowerup({ kind: 'weapon', mode: 'spread', name: '红色散射', color: '#ff5b69', x: 0, y: 0 });
-    if (Game.player.weaponLevel !== 2) throw new Error('weapon stacking failed');
-    const bulletsBefore = Game.bullets.length;
-    Game.fireHeld = true; Game.player.fireTimer = 0; update(1 / 60); Game.fireHeld = false;
-    if (Game.bullets.length < bulletsBefore + 2) throw new Error('weapon pattern failed');
-    const medalScore = Game.score;
-    applyPowerup({ kind: 'medal', name: '连锁勋章', color: '#ffe066', x: 0, y: 0 });
-    if (Game.medalChain !== 1 || Game.score !== medalScore + 50) throw new Error('medal chain failed');
-    applyPowerup({ kind: 'berserk', name: '暴走核心', color: '#ff5ed8', x: 0, y: 0 });
-    if (Game.player.berserk <= 0 || Game.player.weaponLevel !== 3) throw new Error('berserk failed');
-    Game.player.berserk = 0;
-    for (let i = 0; i < 110; i++) { update(1 / 60); updateFx(1 / 60); }
-    const hpBeforeAnswers = Game.hp;
-    const wrong = Game.enemies.find((e) => e.option && !e.option.correct);
-    if (wrong) killEnemy(wrong, false);
-    const wrongChip = Game.powerups.find((u) => u.kind === 'answer' && !u.correct);
-    if (!wrongChip || Game.hp !== hpBeforeAnswers) throw new Error('enemy combat penalty returned');
-    wrongChip.x = Game.player.x; wrongChip.y = Game.player.y; updatePowerups(0);
-    if (Game.stats.wrongAnswers !== 1 || Game.hp !== hpBeforeAnswers) throw new Error('wrong chip penalty failed');
-    const correct = Game.enemies.find((e) => e.option && e.option.correct);
-    if (correct) killEnemy(correct, false);
-    const correctChip = Game.powerups.find((u) => u.kind === 'answer' && u.correct);
-    if (!correctChip) throw new Error('correct chip missing');
-    const liveStream = Game.enemies.length;
-    correctChip.x = Game.player.x; correctChip.y = Game.player.y; updatePowerups(0);
-    if (Game.enemies.length !== liveStream) throw new Error('answer cleared continuous stream');
-    for (let i = 0; i < 10; i++) { update(1 / 60); updateFx(1 / 60); }
-    const rect = canvas.getBoundingClientRect();
-    Game.fireHeld = false;
-    canvas.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 91, pointerType: 'touch', clientX: rect.left + 20, clientY: rect.top + rect.height / 2 }));
-    const startPx = Game.player.px;
-    canvas.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 91, pointerType: 'touch', clientX: rect.left + 100, clientY: rect.top + rect.height / 2 }));
-    const moveOnly = !Game.fireHeld && Game.player.pointer && Game.player.px > startPx;
-    els.fireBtn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 92, pointerType: 'touch' }));
-    const separateFire = Game.fireHeld && movePointerId === 91 && firePointerId === 92;
-    els.fireBtn.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 92, pointerType: 'touch' }));
-    const fireReleased = !Game.fireHeld && movePointerId === 91 && firePointerId === null;
-    canvas.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 91, pointerType: 'touch' }));
-    const inputOk = moveOnly && separateFire && fireReleased && movePointerId === null;
-    Game.enemies.length = 0; Game.enemyBullets.length = 0; Game.phase = 'boss'; Game.hp = 100; Game.shield = 0;
-    spawnBoss();
-    const boss = Game.enemies.find((enemy) => enemy.boss);
-    boss.entering = false; boss.x = Game.player.x = W / 2; boss.y = Game.player.y = 130; Game.player.py = 130; Game.player.invuln = 0;
-    const bossHp = boss.hp;
-    updateEnemies(0);
-    const collisionOk = Game.enemies.includes(boss) && boss.hp === bossHp && Game.hp === 72 && Game.player.y > boss.y;
-    Game.bombs = 1; Game.player.invuln = 0; useBomb();
-    const bombOk = Game.enemies.includes(boss) && boss.hp < bossHp && boss.hp > 0 && Game.player.invuln >= 1.2;
-    Game.enemyBullets.length = MAX_ENEMY_BULLETS + 10;
-    Game.particles.length = MAX_PARTICLES + 10;
-    Game.shockwaves.length = MAX_SHOCKWAVES + 10;
-    Game.floaters.length = MAX_FLOATERS + 10;
-    capCombatBudget();
-    const budgetOk = Game.enemyBullets.length === MAX_ENEMY_BULLETS && Game.particles.length === MAX_PARTICLES && Game.shockwaves.length === MAX_SHOCKWAVES && Game.floaters.length === MAX_FLOATERS;
-    Game.enemyBullets.length = 0; Game.particles.length = 0; Game.shockwaves.length = 0; Game.floaters.length = 0;
-    const passed = Game.score > 0 && Game.stats.correct === 1 && inputOk && collisionOk && bombOk && budgetOk;
-    document.title = passed ? 'SELFTEST-OK' : 'SELFTEST-FAIL';
-    document.documentElement.dataset.selftest = passed ? 'pass' : 'fail';
-    Game.state = 'paused';
-  } catch (err) {
-    document.title = 'SELFTEST-ERR:' + err.message;
-    document.documentElement.dataset.selftest = 'fail';
-    Game.state = 'paused';
+    if(FIXED_STEP!==1/60||canvas.width*canvas.height>MAX_CANVAS_PIXELS*1.01)throw new Error('render budget');
+    if(Game.mission.index!==0||Game.question!==null)throw new Error('mission did not start on flight lane');
+    for(let tick=0;tick<61;tick++)update(FIXED_STEP);
+    if(!Game.enemies.some(e=>e.role==='scout'))throw new Error('authored sweep absent');
+    advanceMissionPhase(1);
+    const q=Game.question;
+    if(q.mode!=='free'||Game.powerups.filter(u=>u.tactical).length!==3)throw new Error('equipment bay');
+    const core=Game.powerups.find(u=>u.word==='SHIELD');
+    applyTacticalCore(core);
+    if(Game.shield!==2||Game.stats.wrongAnswers||Game.stats.correct)throw new Error('free choice counted as recall');
+    applyTacticalCore({...core,word:'HEAL'});
+    if(Game.reserveHeal)throw new Error('choice was not atomic');
+    const old=Game.time;togglePause();frame(last+500);
+    if(Game.time!==old||Game.state!=='paused')throw new Error('pause clock');
+    startGame();
+    if(Game.hp!==100||Game.shield||Game.mission.index!==0||Game.reserveHeal)throw new Error('retry reset');
+    document.title='SELFTEST-OK';document.documentElement.dataset.selftest='pass';Game.state='paused';
+  } catch(err) {
+    document.title='SELFTEST-ERR:'+err.message;document.documentElement.dataset.selftest='fail';Game.state='paused';
   }
 }
 

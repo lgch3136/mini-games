@@ -192,3 +192,50 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   #feedback { position:static; transform:none; width:100%; max-width:none; height:34px; flex:none; padding:3px; font-size:11px; line-height:14px; white-space:normal; text-align:center; }
   #recall-btn { position:static; margin-top:auto; width:100%; min-height:44px; padding:7px; font-size:12px; flex:none; }
 }
+
+/* The direct control deck belongs to the instrument, below the travel lane. */
+#control-deck {position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;pointer-events:auto;}
+#aim-controls {display:flex;gap:4px;}
+#control-deck button {position:static;transform:none;margin:0;min-height:48px;min-width:44px;border:1px solid #918d71;background:#304a4c;color:#ece3c5;border-radius:8px;font:700 14px system-ui;padding:5px 8px;cursor:pointer;}
+#control-deck #launch-btn {min-width:78px;background:#bcb694;color:#23383a;}
+#control-deck #recall-btn {min-width:110px;white-space:nowrap;}
+#recall-btn small {display:block;font-size:10px;font-weight:500;color:#b8c6b4;}
+#control-deck button:disabled {opacity:.45;cursor:default;}
+#game-wrap {box-shadow:0 18px 70px #020d17aa;border-color:#64766d;}
+#word-bar {box-shadow:none;border-color:#778e7d;background:#183239;}
+#wb-word .next {text-shadow:none;border-color:#cab175;}
+#feedback {top:auto;bottom:68px;max-width:90%;font-size:12px;border-color:#748e7c;background:#102a32e8;}
+@media (max-width:600px) and (orientation:portrait){
+ #control-deck {bottom:max(10px,env(safe-area-inset-bottom));gap:4px;width:calc(100% - 16px);justify-content:center;}
+ #control-deck button {padding:4px 6px;}
+ #control-deck #recall-btn {min-width:104px;}
+ #feedback {top:auto;bottom:68px;font-size:11px;padding:3px 8px;}
+}
+@media (orientation:landscape) and (max-height:440px){
+ #control-deck {position:static;transform:none;margin-top:auto;display:flex;flex-direction:column;width:140px;gap:5px;}
+ #control-deck #launch-btn {min-width:44px;padding:4px;}
+ #control-deck #recall-btn {width:100%;}
+ #feedback {position:static;bottom:auto;}
+}
+
+#feedback {bottom:calc(64px + env(safe-area-inset-bottom,0px));}
+
+/* The two-row Q4 deck must also fit a notched 568x320 viewport. Keep the
+   three aiming actions, catch, pause and sound at44px; secondary counters
+   yield their row before any direct control or spelling clue does. */
+@media(orientation:landscape) and (max-height:360px){
+ #hud{top:calc(6px + env(safe-area-inset-top,0px));bottom:calc(6px + env(safe-area-inset-bottom,0px));gap:4px;}
+ #stats{gap:4px;flex:none;}
+ #stats .chips:first-child{grid-template-columns:1fr 1fr;gap:3px;height:20px;}
+ #stats .chips:first-child .chip:nth-child(n+3){display:none;}
+ #stats .chip{font-size:9px;line-height:14px;padding:2px;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+ #pause-btn,#mute-btn{height:44px;min-height:44px;}
+ #word-bar{flex:none;height:48px;min-height:48px;padding:2px 4px;}
+ #wb-kind{display:none;}
+ #wb-word{display:block;font-size:15px;line-height:18px;letter-spacing:1px;}
+ #wb-zh{font-size:11px;line-height:12px;margin:0;max-height:24px;overflow:hidden;}
+ #feedback{flex:none;height:30px;padding:1px 2px;font-size:10.5px;line-height:13px;max-width:100%;}
+ #control-deck{flex:none;gap:4px;}
+ #control-deck button{height:44px;min-height:44px;padding:3px 5px;}
+ #control-deck #recall-btn{height:44px;min-height:44px;}
+}

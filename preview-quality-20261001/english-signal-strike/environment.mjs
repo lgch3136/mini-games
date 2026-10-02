@@ -37,7 +37,7 @@ export function environmentPlan(world) {
       shutter(o,o.hx*(service?1.05:1.5),top*(service?.56:.67));
       if(service)box(o.x+o.hx*.72,2.1,front+.045,.66,2.7,.08,'glass','dock-service-panel');
       box(o.x,top-1.15,front+.07,o.hx*1.5,.52,.035,'orange','dock-header');
-      for(const z of service?[o.z-.65]:[o.z-o.hz*.45,o.z+o.hz*.36]) {
+      for(const z of service?[o.z-.65]:[o.z+1]) {
         const width=service?5.1:3.3;
         inward(o,2.6,z,width,4.6,'trim','warehouse-loading-bay');
         for(let y=.7;y<4.8;y+=.7)inward(o,y,z,width-.05,.045,'dark','warehouse-shutter-seam');
@@ -108,11 +108,15 @@ export function environmentPlan(world) {
     }
   }
   for(const o of boxes.filter(o=>Math.abs(o.x)>10))facade(o);
-  for(const o of world.boxes.filter(o=>['cover','crate','conduit'].includes(o.kind))) {
+  for(const o of world.boxes.filter(o=>['cover','crate','conduit','perch','maintenance','loading-platform','service-deck'].includes(o.kind))) {
     on(o);const front=o.z+o.hz,top=o.y+o.hy;
     box(o.x,top+.025,o.z,o.hx*2,.05,o.hz*2,'trim','cover-top');
     box(o.x,.1,front+.03,o.hx*2,.18,.06,'dark','cover-base');
-    if(id==='canal'&&o.kind==='conduit') {
+    if(o.kind==='maintenance'){
+      box(o.x,top-.25,o.z,o.hx*1.55,.5,o.hz*1.8,'dark','maintenance-chassis');
+      for(const side of [-1,1])box(o.x+side*o.hx*.76,o.y,front+.04,.6,o.hy*1.7,.06,'orange','service-frame');
+      for(const x of [-.55,.55])box(o.x+x*o.hx,top+.07,o.z,1.2,.09,o.hz*1.5,'white','maintenance-hatch');
+    }else if(id==='canal'&&o.kind==='conduit') {
       // The rectangular pipe housing remains solid exactly where physics says it is.
       cylinder(o.x,o.y,front+.03,Math.min(o.hy-.1,o.hx-.15),.055,'trim','trunk-pipe-flange','z',16);
       cylinder(o.x,o.y,front+.065,Math.min(o.hy-.28,o.hx-.3),.03,'dark','trunk-pipe-cap','z',16);
@@ -124,6 +128,13 @@ export function environmentPlan(world) {
       if(cargo)box(o.x,o.y+o.hy*.6,front+.08,o.hx*1.7,.13,.035,'white','cargo-identification');
       else box(o.x,top-.2,front+.08,o.hx*1.85,.16,.035,'orange','barrier-reflector');
     }
+  }
+  // Cast feet and structural caps give the actual load-bearing piers depth.
+  for(const o of world.boxes.filter(o=>['support','pier','portal-pier'].includes(o.kind))){
+    on(o);const top=o.y+o.hy;
+    box(o.x,.22,o.z,o.hx*2+.18,.44,o.hz*2+.18,'dark','pier-foot');
+    box(o.x,top-.2,o.z,o.hx*2+.12,.4,o.hz*2+.12,'trim','pier-cap');
+    if(o.kind!=='portal-pier')for(let y=1.1;y<top-1;y+=2.8)box(o.x,y,o.z+o.hz+.03,o.hx*1.55,.16,.06,'orange','pier-load-band');
   }
   // Gate walls retain their exact collision volume; seams and inspection panels
   // make their large near surfaces read as prefabricated industrial bulkheads.
@@ -145,35 +156,25 @@ export function environmentPlan(world) {
     }
     if(id==='harbor') {
       mark('quayside-container-crane',zone);
-      for(const o of near) {
-        on(o,'roof');const side=Math.sign(o.x),top=o.y+o.hy;
-        for(const dz of [-4,4])box(o.x,11.1,z-18+dz,.75,22.2-2*top,.8,'orange','crane-tower');
-        box(o.x,15,z-18,1.2,.7,9.5,'orange','crane-head');
-        beam([o.x,top+.5,z-22],[o.x,14.8,z-14],.28,'trim','crane-tower-brace');
-        scope={type:'overhead'};
-        box(o.x,16,z-18,.28,2,.3,'dark','crane-tie-mast');
-        if(side===1)continue;
-        const end=2.5;
-        box(0,15,z-18,30.8,.6,1,'orange','quay-crane-jib');
-        for(const x of [-15,15])beam([x,16.9,z-18],[0,15.1,z-18],.14,'dark','crane-tie');
-        box(end,14.58,z-18,3,.3,1.2,'dark','hoist-trolley');
-        box(end,13,z-18,.11,4,.12,'dark','hoist-cable');
-        box(end,10.8,z-18,2,.3,.9,'trim','lifting-spreader');
+      const anchor=boxes.find(o=>o.x<0&&Math.abs(o.z-(z-13))<1);
+      const pier=world.boxes.find(o=>o.kind==='pier'&&Math.abs(o.z-(z-18))<1);
+      for(const o of [anchor,pier].filter(Boolean)){
+        on(o,'roof');const top=o.y+o.hy;
+        box(o.x,(top+12.3)/2,z-18,.65,12.3-top,.65,'orange','crane-tower');
+        box(o.x,12.45,z-18,1.2,.3,1.2,'trim','crane-bearing');
       }
+      scope={type:'overhead'};
+      box(-5,12.9,z-18,21.1,.6,1.25,'orange','quay-crane-jib');
+      beam([-15,14,z-18],[-5,13.25,z-18],.16,'dark','crane-tie');
+      beam([5,14,z-18],[-5,13.25,z-18],.16,'dark','crane-tie');
+      box(1.5,12.48,z-18,3,.24,1.55,'dark','hoist-trolley');
+      box(1.5,11.7,z-18,.11,1.5,.12,'dark','hoist-cable');
+      box(1.5,10.85,z-18,2.6,.3,1.2,'trim','lifting-spreader');
       scope={type:'ground'};
       for(let j=0;j<5;j++)box(6,.024,z-4-j*.75,5,.02,.17,'white','loading-zone-hatch');
     } else if(id==='foundry') {
       mark('furnace-and-extraction-ducts',zone);
       const furnace=boxes.find(o=>o.x===0&&Math.abs(o.z-(z-19))<1);
-      on(furnace);const front=furnace.z+furnace.hz;
-      box(0,2.5,front+.035,6.8,4.5,.07,'trim','furnace-mouth-frame');
-      box(0,2.4,front+.074,5.1,2.9,.045,'dark','furnace-refractory-face');
-      for(const x of [-1.75,0,1.75]) {
-        box(x,2.4,front+.103,.46,2.3,.025,'gold','furnace-heat-slot');
-        box(x,2.4,front+.123,.17,2.3,.01,'dark','furnace-grille');
-      }
-      for(const y of [1,3.8])box(0,y,front+.101,5.1,.12,.018,'orange','furnace-aperture-frame');
-      for(const side of [-1,1])box(side*4.43,2.7,z-19,.06,4.8,7.8,'dark','furnace-side-intake');
       on(furnace,'roof');
       box(0,6.0,z-19,7.3,1.2,7.8,'trim','furnace-extractor-hood');
       cylinder(0,9.3,z-19,1.25,5.4,'dark','furnace-main-flue', 'y',12);

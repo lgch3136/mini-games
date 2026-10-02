@@ -1,15 +1,16 @@
-import { practiceProgress, typingCoach, practiceAdvice } from "./practice.mjs?v=20261001-world-r2&mobile=20261001-quality3-r2";
-import { Journey, STEP } from "./sim.mjs?v=20261001-world-r2&mobile=20261001-quality3-r2";
+import {reviewRecord,applyReviewEvent} from './learning.mjs?v=20261002-quality4&mobile=20261002-quality4-r1';
+import { practiceProgress, typingCoach, practiceAdvice } from "./practice.mjs?v=20261001-world-r2&mobile=20261002-quality4-r1&quality4=20261002-story-r1";
+import { Journey, STEP } from "./sim.mjs?v=20261001-world-r2&mobile=20261002-quality4-r1&quality4=20261002-story-r1";
 import {
   makeLexicon,
   safeReview,
   RELICS,
-} from "./content.mjs?v=20260918-play-r1";
-import { TypingInput } from "./input.mjs?v=20260918-play-r1&mobile=20261001-quality3-r1";
-import { Stage } from "./render.mjs?v=20261001-painted-r3&mobile=20261001-quality3-r1";
-import { practiceMetrics } from "./focus-render.mjs?v=20261001-world-r2";
-import { TypeAudio } from "./audio.mjs?v=20260918-play-r1&mobile=20261001-quality2-r1";
-const VERSION = "20261001-painted-r3";
+} from "./content.mjs?v=20260918-play-r1&quality4=20261002-story-r1&mobile=20261002-quality4-r1";
+import { TypingInput } from "./input.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { Stage } from "./render.mjs?v=20261001-painted-r3&mobile=20261002-quality4-r1&quality4=20261002-story-r1&compact=20261002-r1";
+import { practiceMetrics } from "./focus-render.mjs?v=20261001-world-r2&mobile=20261002-quality4-r1";
+import { TypeAudio } from "./audio.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+const VERSION = "20261002-story-r1";
 const $ = (id) => document.getElementById(id);
 const read = (k, fallback) => {
   try {
@@ -42,7 +43,7 @@ let prefs = read("typebound-prefs-v1", {});
 if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) prefs = {};
 let review = new Map(
   safeReview(read("typebound-review-v1", []))
-    .filter((w) => w.clean < 2)
+    .map(reviewRecord).filter(w=>w.retrievalStreak<2)
     .map((w) => [w.en, w]),
 );
 let records = read("typebound-records-v1", []);
@@ -148,7 +149,7 @@ function sizeWord() {
   if (!journey?.word || menuMode) return;
   const width = $("word").parentElement.clientWidth - 45;
   $("word").style.fontSize =
-    `${Math.max(14, Math.min(innerWidth <= 580 ? 38 : innerHeight < 480 ? 30 : 52, width / (journey.word.en.length * 0.67)))}px`;
+    `${Math.max(14, Math.min(innerWidth <= 580 ? 38 : innerHeight < 480 ? 30 : 52, width / ((journey.isRecall?Math.max(4,journey.recallText.length):journey.word.en.length) * 0.67)))}px`;
 }
 function begin(modeOverride) {
   stop();
@@ -228,7 +229,7 @@ function stop() {
     .forEach((e) => e.classList.remove("pressed"));
 }
 function togglePause() {
-  if (!journey || menuMode || !["combat", "victory"].includes(journey.phase))
+  if (!journey || menuMode || !["combat", "victory", "lectern"].includes(journey.phase))
     return;
   paused = !paused;
   if (paused) stop();
@@ -288,25 +289,20 @@ function persist(record = false) {
   countWords();
 }
 function updateReview(e) {
-  if (e.type === "wrong") {
-    const w = journey.word,
-      current = review.get(w.en) || { ...w, misses: 0, clean: 0 };
-    current.misses++;
-    current.clean = 0;
-    review.set(w.en, current);
-    if (review.size > 300) review.delete(review.keys().next().value);
-  }
-  if (e.type === "word" && e.clean && review.has(e.en)) {
-    const current = review.get(e.en);
-    current.clean++;
-    if (current.clean >= 2) review.delete(e.en);
-  }
+  applyReviewEvent(review,e,journey.word);
 }
+
 function processEvents() {
   for (const e of journey.drain()) {
     stage.event(e, journey);
     audio.event(e);
     updateReview(e);
+    if(e.type==='study-prompt'){set('learned-line','');}
+    if(e.type==='lectern')note('这一页暂时安静下来 · 没有伤害，也不计字速');
+    if(e.type==='studyComplete'){
+      const label={model:'跟打完成',hinted:'提示后完成',retrieved:'独立回忆完成','self-corrected':'自主修正完成'}[e.kind];
+      set('learned-line',label||'书页已修复');persist();
+    }
     if (e.type === "letter") {
       animateUI(
         $("word").children[e.cursor - 1],
@@ -377,7 +373,7 @@ function keyErase() {
   updateWord();
 }
 function guard() {
-  if (paused || menuMode || journey?.mode !== "journey") return;
+  if (paused || menuMode || journey?.isQuiet) return;
   if (!journey.guard())
     notify("3 格能量展开护盾；敌人即将攻击时，1 格即可反制。");
   processEvents();
@@ -439,7 +435,7 @@ function createKeyboard() {
               : `输入字母 ${key}`,
       );
       const send = () => {
-        if (!journey || paused || menuMode || journey.phase !== "combat")
+        if (!journey || paused || menuMode || !["combat","lectern"].includes(journey.phase))
           return;
         if (key === "Backspace") keyErase();
         else if (key === "Enter") guard();
@@ -471,7 +467,7 @@ function renderMap() {
   set(
     "map-story",
     g.mode === "review"
-      ? "把错过的单词慢慢打准。每个词连续两次无错完成，会从错词本移除。"
+      ? "先看一次示范，再隔两个不同词回忆。两次隔词独立答对，会移出本轮待复习；跟打和提示完成另记。"
       : g.chapter.story,
   );
   $("route-map").replaceChildren();
@@ -511,6 +507,23 @@ function renderMap() {
 }
 function updateWord(force = false) {
   if (!journey?.word || menuMode) return;
+  const recall=journey.isRecall;
+  $('recall-reveal').hidden=!recall||journey.prompt.revealed;
+  $('spell-meter').setAttribute('aria-hidden',String(recall));
+  if(recall){
+    const g=journey,signature=`recall/${g.wordId}/${g.recallText}/${g.prompt.revealed}/${g.errorAge>0}`;
+    if(signature===wordSignature&&!force)return;wordSignature=signature;
+    const container=$('word');container.dataset.wordKey=`recall/${g.wordId}`;
+    container.replaceChildren(el('span',g.recallText||'____','recall-buffer'));
+    container.setAttribute('aria-label',g.recallText?`你的输入 ${g.recallText}`:'回忆输入，尚未输入');
+    $('spell-progress').style.transform='scaleX(0)';$('spell-meter').setAttribute('aria-valuenow','0');$('spell-meter').setAttribute('aria-valuemax','0');
+    set('spell-count','');$('space-mark').classList.toggle('ready',g.recallText.length>0);
+    set('meaning',g.prompt.revealed?`示范：${g.word.en} · ${g.word.zh}`:g.word.zh);
+    set('word-feedback',g.errorAge>0?'整词还未对，请自行检查':g.prompt.revealed?'此次记为提示完成':'自由输入 · Space提交');
+    $('upcoming').replaceChildren();$('passage').hidden=false;$('passage').textContent=g.prompt.context;
+    document.querySelectorAll('.key.next').forEach(k=>k.classList.remove('next'));
+    sizeWord();return;
+  }
   const g = journey,
     signature = `${g.roomId}/${g.wordId}/${g.cursor}/${g.errorAge > 0}/${$("meaning-toggle").checked}`;
   if (signature === wordSignature && !force) return;
@@ -554,7 +567,8 @@ function updateWord(force = false) {
   );
   $("space-mark").classList.toggle("ready", g.cursor === g.word.en.length);
   $("upcoming").replaceChildren(...g.upcoming.map((w) => el("span", w)));
-  $("passage").hidden = !g.passage;
+  $("passage").hidden = !g.passage && !(g.mode==='journey'&&g.phase==='combat'&&g.page);
+  if(!g.passage&&g.mode==='journey'&&g.phase==='combat')$('passage').textContent=g.page.zh;
   if (g.passage) {
     $("passage").replaceChildren();
     g.passage.words.forEach((w, i) => {
@@ -592,17 +606,17 @@ function updateHUD() {
     );
   set(
     "typing-label",
-    g.mode !== "journey" ? "逐字书写 · 点亮书页" : { ember: "星火 · 强攻", frost: "霜环 · 控场", bloom: "生息 · 回复" }[g.spell],
+    g.isRecall ? (g.prompt.revealed?'提示后的补词':'隔词回忆 · 不计字速') : g.phase==='lectern' ? '修复书页 · 间隔跟打' : g.mode==='review' ? (g.prompt.role==='model'?'示范一次 · 看准再写':'间隔跟打 · 之后再回忆') : g.mode !== "journey" ? "逐字书写 · 点亮书页" : { ember: "星火 · 强攻", frost: "霜环 · 控场", bloom: "生息 · 回复" }[g.spell],
   );
   const progress = practiceProgress(g);
   set("practice-goal-label", progress.label);
   $("practice-goal-fill").style.transform = `scaleX(${progress.fraction})`;
-  set("typing-coach", typingCoach(g));
+  set("typing-coach", g.isRecall?'记得就写 · 可退格修改，按Space核对整词':g.phase==='lectern'?'先写两个间隔词，再补回刚才书页里的词':typingCoach(g));
   const metrics = practiceMetrics(g);
   set('wpm', metrics.wpm ?? '—');
   set('session-time', timeText(metrics.seconds));
   set('practice-words', metrics.words);
-  set('pulse-caption', !g.roomStarted ? '第一键开始计时 · 每次正确落键，向前一束光' : g.errorAge > 0 ? '错键已记录 · 直接重打正确字母' : g.cursor === g.word.en.length ? '单词已就绪 · 空格释放回响' : `${g.combo} 连词 · 光轨跟随当前单词进度`);
+  set('pulse-caption', g.isRecall?'回忆阶段不显示正确字母，也不计字速': !g.roomStarted ? '第一键开始计时 · 每次正确落键，向前一束光' : g.errorAge > 0 ? '错键已记录 · 直接重打正确字母' : g.cursor === g.word.en.length ? '单词已就绪 · 空格释放回响' : `${g.combo} 连词 · 光轨跟随当前单词进度`);
   set("accuracy", g.accuracy);
   set("score", g.score.toLocaleString());
   set("hero-hp", `${Math.ceil(g.hp)} / ${g.maxHp}`);
@@ -746,8 +760,9 @@ function claim(id) {
   if (!journey.claim(id)) return;
   processEvents();
   persist();
-  if (journey.phase !== "victory") stop();
-  syncView();
+  if(!['victory','lectern'].includes(journey.phase))stop();
+  syncView();if(journey.phase==='lectern')requestFrame();
+  if(journey.phase==='lectern'&&(native||!matchMedia('(pointer:coarse)').matches))$('typing-input').focus({preventScroll:true});
 }
 function renderResult() {
   const g = journey,
@@ -757,7 +772,7 @@ function renderResult() {
   const progress = practiceProgress(g);
   const earnedStars = progress.stars;
   $("mastery-medal").hidden = earnedStars === 0;
-  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp`;
+  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp?mobile=20261002-quality4-r1`;
   $("mastery-medal").alt = `${earnedStars} 星完成奖章`;
   $("practice-stars").hidden = !g.focusGoal;
   set("practice-stars", "★".repeat(progress.stars) + "☆".repeat(3 - progress.stars));
@@ -778,9 +793,9 @@ function renderResult() {
   set(
     "result-title",
     g.focusGoal && win
-      ? `这 ${g.focusGoal} 个词，写进记忆了。`
+      ? `完成 ${g.focusGoal} 个词的跟打热身`
       : reviewDone
-      ? "遗落的字，重新记住了。"
+      ? "本轮隔词回练完成"
       : win
         ? "九道书页，已被点亮。"
         : endedReason === "defeat"
@@ -789,7 +804,7 @@ function renderResult() {
   );
   set(
     "result-copy",
-    `完成 ${g.stats.words} 个单词，其中 ${g.stats.perfect} 个全程无错；最高 ${g.stats.bestCombo} 连词。${review.size ? `${review.size} 个错词已留在本机，随时回来复习。` : "没有待复习错词，带着这份节奏继续吧。"}`,
+    `本轮跟打 ${g.stats.copied} 次，提示后完成 ${g.stats.hinted} 次，独立回忆 ${g.stats.retrieved} 次${g.stats.selfCorrected?`，自主修正 ${g.stats.selfCorrected} 次`:''}。${review.size?`${review.size} 个词仍在本轮待复习中。`:'本轮待复习已清空；以后仍可再次检验。'}`,
   );
   statsView("result-stats");
   $("result-words").replaceChildren();
@@ -824,10 +839,13 @@ function syncView() {
   const viewChanged = $("app").dataset.view !== view;
   $("app").dataset.view = view;
   $("app").dataset.practiceTarget = journey?.focusGoal ? "true" : "false";
-  const practice = !!journey && journey.mode !== "journey";
+  const recallChanged=$('app').dataset.recall!==String(!!journey?.isRecall);
+  $('app').dataset.recall=String(!!journey?.isRecall);
+  $('app').dataset.study=String(!!journey&&(journey.mode==='review'||journey.phase==='lectern'||journey.mode==='journey'));
+  const practice = !!journey && journey.isQuiet;
   $("app").dataset.practice = String(practice);
   $("battle").setAttribute("aria-label", practice ? "逐字英语练习" : "打字冒险战斗");
-  $("stage").setAttribute("aria-label", practice ? "书页花园：正确字母点亮路径，完成单词唤醒书灵" : "冒险场景：旅人、敌人和跟随输入飞行的字母法术");
+  $("stage").setAttribute("aria-label", practice ? "书页花园：正确字母点亮路径，完成单词唤醒书灵" : "冒险场景：书页蓄字、旅人释放折纸法术、敌人受击与反击");
   $("guard").hidden = practice;
   const guardKey = document.querySelector('[data-key="Enter"]');
   if (guardKey) { guardKey.hidden = practice; guardKey.disabled = practice; }
@@ -837,7 +855,7 @@ function syncView() {
     spaceKey.textContent = practice ? "SPACE · 完成单词" : "SPACE · 施法";
     spaceKey.setAttribute("aria-label", practice ? "空格，完成单词" : "空格，施法");
   }
-  set("input-help", practice ? "英文逐字输入 · 空格完成单词 · Esc 暂停" : "英文输入 · 空格施法 · Enter 护盾 · Esc 暂停");
+  set("input-help", journey?.isRecall?'自由写出整词 · 退格修改 · Space提交 · 可主动看示范':practice ? "英文逐字输入 · 空格完成单词 · Esc 暂停" : "英文输入 · 空格施法 · Enter 护盾 · Esc 暂停");
   $("app").dataset.chapter = menuMode
     ? "0"
     : String(Math.floor((journey?.depth || 0) / 3) % 3);
@@ -848,10 +866,10 @@ function syncView() {
   $("result").hidden = !showingResult;
   $("victory").hidden =
     menuMode || paused || phase !== "victory" || journey.victoryAge < 1.25;
-  $("pause").hidden = menuMode || !["combat", "victory"].includes(phase);
+  $("pause").hidden = menuMode || !["combat", "victory", "lectern"].includes(phase);
   set("pause", paused ? "继续" : "暂停");
   $("exit").hidden = menuMode;
-  $("native-keyboard").hidden = menuMode || !["combat", "victory"].includes(phase);
+  $("native-keyboard").hidden = menuMode || !["combat", "victory", "lectern"].includes(phase);
   if (!menuMode && phase === "map") renderMap();
   if (!menuMode && phase === "victory") renderVictory();
   if (showingResult) renderResult();
@@ -861,7 +879,7 @@ function syncView() {
     updateHUD();
     resize();
     if (["defeat", "complete", "ended", "map"].includes(phase)) stop();
-  } else if (viewChanged) resize();
+  } else if (viewChanged||recallChanged) resize();
 }
 function frame(now) {
   raf = 0;
@@ -899,7 +917,7 @@ function frame(now) {
   perf.work.push(performance.now() - beginWork);
   if (perf.work.length > 600) perf.work.shift();
   if (
-    journey.phase === "combat" ||
+    ['combat','lectern'].includes(journey.phase) ||
     (journey.phase === "victory" && journey.victoryAge < 3.8)
   )
     raf = requestAnimationFrame(frame);
@@ -938,7 +956,7 @@ try {
   input = new TypingInput({
     input: $("typing-input"),
     active: () =>
-      !destroyed && !menuMode && !paused && journey?.phase === "combat",
+      !destroyed && !menuMode && !paused && ['combat','lectern'].includes(journey?.phase),
     text: keyText,
     erase: keyErase,
     guard,
@@ -953,6 +971,7 @@ try {
   on($("warmup-start"), "click", () => { $("focus-goal").value = "8"; begin("focus"); });
   on($("focus-goal"), "change", savePrefs);
   on($("start"), "click", () => begin());
+  on($("recall-reveal"),'click',()=>{if(journey?.revealRecall()){processEvents();updateWord(true);updateHUD();if(native||!matchMedia('(pointer:coarse)').matches)$('typing-input').focus({preventScroll:true});}});
   on($("review-start"), "click", () => begin("review"));
   on($("brand"), "click", (e) => {
     e.preventDefault();
@@ -1013,7 +1032,7 @@ try {
     on(visualViewport, "scroll", resize);
   }
   on(window, "blur", () => {
-    if (!menuMode && !paused && ["combat", "victory"].includes(journey?.phase))
+    if (!menuMode && !paused && ["combat", "victory", "lectern"].includes(journey?.phase))
       togglePause();
   });
   on(document, "visibilitychange", () => {
@@ -1021,7 +1040,7 @@ try {
       document.hidden &&
       !menuMode &&
       !paused &&
-      ["combat", "victory"].includes(journey?.phase)
+      ["combat", "victory", "lectern"].includes(journey?.phase)
     )
       togglePause();
   });
@@ -1048,7 +1067,7 @@ try {
   });
   on(window, "pagehide", (e) => {
     if (e.persisted) {
-      if (!menuMode && !paused && ["combat", "victory"].includes(journey?.phase)) togglePause();
+      if (!menuMode && !paused && ["combat", "victory", "lectern"].includes(journey?.phase)) togglePause();
       else stop();
       input.reset();
       return;
@@ -1057,7 +1076,7 @@ try {
   });
   window.addEventListener("pageshow", (e) => {
     if (!e.persisted || destroyed) return;
-    if (!menuMode && ["combat", "victory"].includes(journey?.phase)) paused = true;
+    if (!menuMode && ["combat", "victory", "lectern"].includes(journey?.phase)) paused = true;
     stop();
     syncView();
     resize();

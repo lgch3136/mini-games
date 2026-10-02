@@ -1167,3 +1167,12 @@ body:not([data-race-mode="items"]) .touch-right {
   #hud > #countdown:not(:empty) { position: static; grid-column: 1 / -1; grid-row: 3; transform: none; margin: 0; font-size: 56px; line-height: 1; text-align: center; }
   #hud:has(#countdown:not(:empty)) :is(#driver-contract, #item-dock, #input-strip, #notice, #incoming, #toast, #technique, #drift-gauge, #word-hud) { display: none; }
 }
+
+/* A taller top inset uses the existing small-phone gaps, not the space reserved
+   for steering and items. Keep route payoff, danger and drift text readable. */
+@media(max-width:699px) and (orientation:portrait) and (max-height:650px){
+ #hud{gap:clamp(2px,calc(6.8px - var(--safe-top) * .1),6px);}
+ #hud #drift-fill{height:6px;}
+ #hud #drift-label{margin-top:2px;padding:1px 6px;}
+ #hud > #word-hud{padding:1px 6px;}
+}

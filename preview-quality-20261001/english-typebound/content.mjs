@@ -257,5 +257,10 @@ export function safeReview(raw) {
       zh: v.zh.slice(0, 100),
       misses: Math.min(999, Math.max(1, Number(v.misses) || 1)),
       clean: Math.min(2, Math.max(0, Number(v.clean) || 0)),
+      evidenceVersion:v.evidenceVersion===2?2:1,
+      modelCompletions:Math.min(99999,Math.max(0,Number(v.modelCompletions)||Number(v.clean)||0)),
+      hintedCompletions:Math.min(99999,Math.max(0,Number(v.hintedCompletions)||0)),
+      retrievalStreak:v.evidenceVersion===2?Math.min(2,Math.max(0,Number(v.retrievalStreak)||0)):0,
+      independentRetrievals:v.evidenceVersion===2?Math.min(99999,Math.max(0,Number(v.independentRetrievals)||0)):0,
     }));
 }

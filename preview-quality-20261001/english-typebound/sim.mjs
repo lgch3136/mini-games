@@ -1,10 +1,11 @@
+import { chapterPage, pageEntries, reviewPlan, interveningWords, recallClassification, reviewRecord } from './learning.mjs?v=20261002-quality4&mobile=20261002-quality4-r1';
 import {
   CHAPTERS,
   PASSAGES,
   RELICS,
   ENEMIES,
   PASSAGE_GLOSS,
-} from "./content.mjs?v=20260918-play-r1";
+} from "./content.mjs?v=20260918-play-r1&quality4=20261002-story-r1&mobile=20261002-quality4-r1";
 export const STEP = 1 / 120;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export class RNG {
@@ -87,7 +88,13 @@ export class Journey {
       parries: 0,
       bursts: 0,
       rooms: 0,
+      copied: 0, hinted: 0, retrieved: 0, selfCorrected: 0, recallErrors: 0,
     };
+    this.studySequence=[];this.learningHistory=[];
+    this.reviewEvidence=new Map(review.map(w=>[w.en,reviewRecord(w)]));
+    this.reviewPlan=mode==='review'?reviewPlan(review,this.lexicon[this.level],this.lookup):[];
+    this.reviewPlanIndex=0;this.prompt={kind:'model',revealed:false};
+    this.recallText='';this.recallKeys=[];this.lecternPlan=[];this.lecternIndex=0;
     this.combo = 0;
     this.score = 0;
     this.samples = [];
@@ -95,7 +102,7 @@ export class Journey {
     this.routeHistory = [];
     this.wordId = 0;
     this.roomId = 0;
-    this.reviewTarget = Math.min(20, Math.max(6, this.pool.length * 2));
+    this.reviewTarget = this.reviewPlan.length;
     this.routes = this.makeRoutes();
   }
   get chapter() {
@@ -114,8 +121,10 @@ export class Journey {
     );
   }
   get expected() {
-    return this.word?.en[this.cursor] ?? " ";
+    return this.isRecall ? null : this.word?.en[this.cursor] ?? " ";
   }
+  get isRecall(){return this.prompt?.kind==='recall';}
+  get isQuiet(){return this.phase==='lectern'||this.mode!=='journey';}
   event(type, extra = {}) {
     this.events.push({ type, time: this.visualTime, ...extra });
     if (this.events.length > 80) this.events.shift();
@@ -210,6 +219,9 @@ export class Journey {
     this.roomWords = 0;
     this.passage = null;
     this.passageIndex = 0;
+    this.page=chapterPage(this.level,this.depth);
+    this.roomPool=pageEntries(this.page,this.lookup);this.contextCursor=(this.depth%3)*2;
+    this.roomStudy=[];
     this.newWord();
     this.event("enter", { kind: route.kind });
     return true;
@@ -226,11 +238,16 @@ export class Journey {
     return entry;
   }
   newWord() {
-    if (this.enemy.kind === "boss") {
+    if(this.phase==='lectern'){
+      this.setPrompt(this.lecternPlan[this.lecternIndex]);return;
+    }
+    if(this.mode==='review'){
+      this.setPrompt(this.reviewPlan[this.reviewPlanIndex]);return;
+    }
+    this.prompt={kind:'model',revealed:false};
+    if (this.enemy.kind === "boss" && this.mode==='journey') {
       if (!this.passage || this.passageIndex >= this.passage.words.length) {
-        const passage = this.rng.pick(
-          PASSAGES.filter((p) => p.level === this.level),
-        );
+        const passage = this.page;
         this.passage = { ...passage, words: passage.en.split(" ") };
         this.passageIndex = 0;
       }
@@ -243,6 +260,9 @@ export class Journey {
         this.passageIndex + 1,
         this.passageIndex + 4,
       );
+    } else if(this.mode==='journey'){
+      this.word=this.roomPool[this.contextCursor++%this.roomPool.length];
+      this.upcoming=Array.from({length:3},(_,i)=>this.roomPool[(this.contextCursor+i)%this.roomPool.length].en);
     } else {
       if (!this.queue?.length)
         this.queue = Array.from({ length: 4 }, () => this.nextEntry());
@@ -258,15 +278,113 @@ export class Journey {
     this.errorAge = 0;
     this.lastWrong = "";
   }
+  setPrompt(item) {
+    this.word={...item.word};
+    this.prompt={kind:item.kind,role:item.role||item.kind,revealed:false,failedSubmission:false,context:item.context||'',spacers:item.kind==='recall'?interveningWords(this.studySequence,item.word.en):[]};
+    this.cursor=0;this.highWater=0;this.cleanWord=true;this.wordErrors=0;
+    this.recallText='';this.recallKeys=[];this.errorAge=0;this.lastWrong='';
+    this.upcoming=[];this.passage=null;this.wordId++;
+    this.event('study-prompt',{kind:item.kind,quiet:this.isQuiet});
+  }
+  recordLearning(kind,en,zh,extra={}) {
+    const record={en,zh,kind,revealed:kind==='hinted',independent:kind==='retrieved',...extra};
+    this.learningHistory.push(record);if(this.learningHistory.length>120)this.learningHistory.shift();
+    this.studySequence.push({en,kind});if(this.studySequence.length>120)this.studySequence.shift();
+    if(kind==='model')this.stats.copied++;
+    if(kind==='hinted')this.stats.hinted++;
+    if(kind==='retrieved')this.stats.retrieved++;
+    if(kind==='self-corrected')this.stats.selfCorrected++;
+    if(this.mode==='journey'&&this.phase==='combat')this.roomStudy.push({en,zh});
+    return record;
+  }
+  revealRecall() {
+    if(!this.isRecall||!['combat','lectern'].includes(this.phase)||this.prompt.revealed)return false;
+    this.prompt.revealed=true;this.event('reveal',{en:this.word.en});return true;
+  }
+  typeRecall(key) {
+    if(key!==' '){
+      if(this.recallText.length>=24)return false;
+      this.recallKeys.push({key,index:this.recallText.length});
+      this.recallText+=key;this.cursor=this.recallText.length;this.errorAge=0;
+      this.event('recallInput',{length:this.cursor});return true;
+    }
+    if(!this.recallText.length)return false;
+    const correct=this.recallText===this.word.en;
+    const keyHits=this.recallKeys.filter(v=>this.word.en[v.index]===v.key).length;
+    this.stats.attempts+=this.recallKeys.length+1;
+    this.stats.correct+=keyHits+(correct?1:0);
+    this.stats.errors+=this.recallKeys.length-keyHits+(correct?0:1);
+    this.recallKeys=[];
+    if(!correct){
+      this.prompt.failedSubmission=true;this.stats.recallErrors++;
+      this.learningHistory.push({en:this.word.en,zh:this.word.zh,kind:'recall-error',revealed:this.prompt.revealed,independent:false,typingError:true});if(this.learningHistory.length>120)this.learningHistory.shift();
+      this.errorAge=.65;this.wordErrors++;this.cleanWord=false;
+      const evidence=this.reviewEvidence.get(this.word.en);if(evidence)evidence.retrievalStreak=0;
+      this.event('recallFailed',{en:this.word.en,zh:this.word.zh});return false;
+    }
+    this.completeRecall();return true;
+  }
+  completeRecall() {
+    const {en,zh}=this.word,spacers=interveningWords(this.studySequence,en);
+    let kind=recallClassification(this.prompt);
+    if(kind==='retrieved'&&spacers.length<2)kind='self-corrected';
+    const record=this.recordLearning(kind,en,zh,{typingError:this.prompt.failedSubmission,spacers});
+    this.stats.words++;
+    const evidence=this.reviewEvidence.get(en);
+    if(evidence){
+      if(kind==='retrieved'){evidence.retrievalStreak=Math.min(2,evidence.retrievalStreak+1);evidence.independentRetrievals++;}
+      else if(kind==='hinted')evidence.hintedCompletions++;
+    }
+    this.history.unshift({en,zh,clean:kind==='retrieved',errors:this.wordErrors,studyKind:kind});if(this.history.length>60)this.history.pop();
+    this.event('studyComplete',{...record,retrievalStreak:evidence?.retrievalStreak||0});
+    this.advanceQuiet();
+  }
+  completeQuietModel() {
+    const {en,zh}=this.word;
+    this.recordLearning('model',en,zh,{typingError:!this.cleanWord});this.stats.words++;
+    this.event('studyComplete',{en,zh,kind:'model',independent:false,revealed:false});
+    this.advanceQuiet();
+  }
+  advanceQuiet() {
+    if(this.phase==='lectern'){
+      this.lecternIndex++;
+      if(this.lecternIndex>=this.lecternPlan.length){this.finishPage();this.event('page-restored');}
+      else this.newWord();
+    }else if(this.mode==='review'){
+      this.reviewPlanIndex++;
+      if(this.reviewPlanIndex>=this.reviewPlan.length){this.phase='complete';this.offer=[];this.rewardRemaining=0;this.event('practiceComplete',{words:this.stats.words,mode:'review'});}
+      else this.newWord();
+    }
+  }
+  openLectern() {
+    const candidates=this.roomStudy.filter(w=>this.roomPool.some(v=>v.en===w.en));
+    const target=candidates[0]||this.roomStudy[0];
+    if(!target)return this.finishPage();
+    const spacers=this.roomPool.filter(w=>w.en!==target.en).slice(0,2);
+    // The battle may have shown a full passage or upcoming words. Always put
+    // two fresh, different model words after that exposure before recall.
+    this.lecternPlan=[...spacers.map(word=>({word,kind:'model',role:'spacer',context:'修复书页 · 先写两个间隔词'})),{
+      word:target,kind:'recall',context:this.page.words.map(w=>w===target.en?'_____':w).join(' '),
+    }];
+    this.lecternIndex=0;this.phase='lectern';this.roomStarted=false;
+    this.prompt={kind:'model'};this.newWord();this.event('lectern');return true;
+  }
+  finishPage() {
+    if(this.mode==='review'||this.depth%9===8)this.phase='complete';
+    else{this.depth++;this.phase='map';this.routes=this.makeRoutes();}
+    return true;
+  }
+
   type(raw) {
     if (
-      this.phase !== "combat" ||
+      !["combat","lectern"].includes(this.phase) ||
       typeof raw !== "string" ||
       raw.length !== 1 ||
       !/^[a-zA-Z ]$/.test(raw)
     )
       return false;
     const key = raw.toLowerCase();
+    if(this.isRecall)return this.typeRecall(key);
     if (key === " " && !this.roomStarted && this.cursor === 0) return false;
     this.roomStarted = true;
     this.stats.attempts++;
@@ -284,6 +402,7 @@ export class Journey {
       };
       m.misses++;
       m.clean = 0;
+      const evidence=this.reviewEvidence.get(this.word.en);if(evidence)evidence.retrievalStreak=0;
       this.mistakes.set(this.word.en, m);
       if (this.mistakes.size > 300)
         this.mistakes.delete(this.mistakes.keys().next().value);
@@ -301,12 +420,14 @@ export class Journey {
     this.highWater = Math.max(this.highWater, this.cursor);
     this.heroCast = Math.max(this.heroCast, 0.18);
     // Re-typing erased letters is allowed, but cannot farm damage or resources.
-    if (fresh) this.damage(1.3 * (1 + (this.relics.quill || 0) * 0.15), false);
+    // Correct letters gather on the page. Only an explicitly released word hits.
+    // Their old damage contribution is carried into completeWord below.
     this.event("letter", { char: key, cursor: this.cursor, fresh });
     return true;
   }
   backspace() {
-    if (this.phase !== "combat" || this.cursor === 0) return false;
+    if(!['combat','lectern'].includes(this.phase)||this.cursor===0)return false;
+    if(this.isRecall){this.recallText=this.recallText.slice(0,-1);this.cursor=this.recallText.length;this.event('recallInput',{length:this.cursor});return true;}
     this.cursor--;
     this.errorAge = 0;
     this.event("erase");
@@ -315,6 +436,8 @@ export class Journey {
   completeWord() {
     const { en, zh } = this.word,
       clean = this.cleanWord;
+    if(this.phase==='lectern'){this.completeQuietModel();return;}
+    this.recordLearning('model',en,zh,{typingError:!clean});
     this.stats.words++;
     this.roomWords++;
     this.stats.committed += en.length + 1;
@@ -339,6 +462,7 @@ export class Journey {
       if (clean) this.hp = Math.min(this.maxHp, this.hp + 4);
     }
     if (this.enemy.kind === "sentinel") damage *= clean ? 1.4 : 0.75;
+    damage += en.length*1.3*multiplier;
     if (clean && this.enemy.kind === "moth")
       this.enemy.charge = Math.max(0, this.enemy.charge - 0.11);
     const burst = this.combo > 0 && this.combo % 3 === 0,
@@ -362,17 +486,18 @@ export class Journey {
       spell: this.spell,
       burst,
       burstDamage,
+      studyKind:'model',independent:false,
     });
     this.history.unshift({ en, zh, clean, errors: this.wordErrors });
     if (this.history.length > 60) this.history.pop();
-    const m = this.mistakes.get(en);
-    if (m && clean) m.clean = Math.min(2, m.clean + 1);
+    const evidence=this.reviewEvidence.get(en);
+    if(evidence)evidence.modelCompletions++;
     this.damage(
       damage,
-      this.mode !== "review" && (this.enemy.kind !== "boss" ||
+      this.mode !== "review" && (this.mode !== 'journey' || this.enemy.kind !== "boss" ||
         this.passageIndex === this.passage.words.length - 1),
     );
-    if (this.enemy.kind === "boss") {
+    if (this.enemy.kind === "boss" && this.mode==='journey') {
       this.passageIndex++;
       if (this.passageIndex === this.passage.words.length) {
         if (this.phase === "combat") this.damage(34, true);
@@ -387,10 +512,11 @@ export class Journey {
       this.rewardRemaining = 0;
       this.event("practiceComplete", { words: this.stats.words, mode: this.mode });
     }
+    if(this.mode==='review')this.reviewPlanIndex++;
     if (this.phase === "combat") this.newWord();
   }
   damage(amount, canFinish) {
-    if (this.phase !== "combat") return;
+    if (this.phase !== "combat" || this.mode==='review') return;
     const before = this.enemy.hp;
     this.enemy.hp = Math.max(canFinish ? 0 : 1, before - amount);
     this.stats.damage += before - this.enemy.hp;
@@ -453,7 +579,7 @@ export class Journey {
     }
   }
   step(dt) {
-    if (this.phase !== "combat" && this.phase !== "victory") return;
+    if(!['combat','victory','lectern'].includes(this.phase))return;
     dt = clamp(dt, 0, 0.05);
     this.visualTime += dt;
     if (this.phase === "victory") {
@@ -467,7 +593,7 @@ export class Journey {
     this.enemy.hit = Math.max(0, this.enemy.hit - dt);
     this.enemy.attack = Math.max(0, this.enemy.attack - dt);
     this.enemy.chill = Math.max(0, this.enemy.chill - dt);
-    if (!this.roomStarted) return;
+    if(!this.roomStarted||this.phase==='lectern'||this.isRecall)return;
     this.time += dt;
     if (this.time >= this.sampleAt) {
       this.samples.push({ t: Math.round(this.time * 10) / 10, wpm: this.wpm });
@@ -526,14 +652,8 @@ export class Journey {
       this.offer = this.makeOffer();
       return true;
     }
-    if (this.mode === "review" || this.depth % 9 === 8) {
-      this.phase = "complete";
-      return true;
-    }
-    this.depth++;
-    this.phase = "map";
-    this.routes = this.makeRoutes();
-    return true;
+    if(this.mode==='journey'){this.openLectern();return true;}
+    return this.finishPage();
   }
   continue() {
     if (this.phase !== "complete" || this.mode === "review" || this.focusGoal) return false;
@@ -584,6 +704,9 @@ export class Journey {
         victoryAge: this.victoryAge,
         rewardRemaining: this.rewardRemaining,
         reviewTarget: this.reviewTarget,
+        page:this.page,prompt:this.prompt,recallText:this.recallText,isRecall:this.isRecall,isQuiet:this.isQuiet,
+        learningHistory:this.learningHistory,studySequence:this.studySequence,
+        reviewEvidence:[...this.reviewEvidence.values()],
       }),
     );
   }

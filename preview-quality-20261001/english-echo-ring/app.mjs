@@ -1,10 +1,10 @@
-import { trialProgress, coachTip } from "./trial.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
-import { advanceAfterglow } from "./afterglow.mjs?v=20260930-polish-r1&mobile=20261001-quality2-r1";
-import { Game, STEP, TAU, clamp } from "./sim.mjs?v=20260930-quality-r1&mobile=20261001-quality2-r1";
-import { Controls } from "./input.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r2";
-import { Renderer } from "./render.mjs?v=20260930-polish-r1&mobile=20261001-quality2-r1";
-import { EchoAudio } from "./audio.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
-const VERSION = "20260930-quality-r1";
+import { trialProgress, coachTip } from "./trial.mjs?v=20260930-quality-r1&mobile=20261002-quality4-r1";
+import { advanceAfterglow } from "./afterglow.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
+import { Game, STEP, TAU, clamp } from "./sim.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { Controls } from "./input.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
+import { Renderer } from "./render.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { EchoAudio } from "./audio.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+const VERSION = "20261002-quality4-r1";
 const $ = (id) => document.getElementById(id);
 const phases = ["01 / 涟漪", "02 / 回流", "03 / 共振", "04 / 深潮"];
 const timeText = (t) =>
@@ -65,8 +65,9 @@ function showState() {
   $("play-space").hidden = mode === "menu";
   $("pause-screen").hidden = mode !== "paused";
   $("result").hidden = mode !== "result";
-  $("pause").hidden = !["playing", "paused"].includes(mode);
-  set("pause", mode === "paused" ? "继续" : "暂停");
+  $("pause").hidden = !["playing", "paused", "lesson-review"].includes(mode);
+  set("pause", mode === "lesson-review" ? "重练" : mode === "paused" ? "继续" : "暂停");
+  set("exit", game?.lesson && mode !== "menu" ? (game.lesson.completed ? ($("session").value === "trial" ? "进试炼" : "进生存") : "跳过首课") : "退出");
   $("exit").hidden = mode === "menu";
   $("touch").hidden =
     mode !== "playing" || !matchMedia("(pointer:coarse)").matches;
@@ -115,7 +116,9 @@ function notify(text, duration = 2) {
 }
 function start(options = {}) {
   const retry = options.sameSeed === true && game;
-  previousAttempt = retry ? { seed: game.seed, damage: game.damageTaken, armor: game.armorBreaks, returns: game.returns, time: game.time } : null;
+  previousAttempt = retry && !game.lesson && options.lesson !== true ? { seed: game.seed, damage: game.damageTaken, armor: game.armorBreaks, returns: game.returns, time: game.time } : null;
+  const useLesson = options.lesson ?? $("lesson-start").checked === true;
+  const lessonSetup = options.lessonSetup || null;
   const runSeed = retry ? game.seed : crypto.getRandomValues(new Uint32Array(1))[0];
   stop();
   renderer.clear();
@@ -123,6 +126,7 @@ function start(options = {}) {
     seed: runSeed,
     mode: selected(),
     duration: $("session").value === "trial" ? 90 : 0,
+    lesson:useLesson, lessonSetup,
   });
   mode = "playing";
   hudAt = -1;
@@ -138,6 +142,16 @@ function start(options = {}) {
   $("game").focus({ preventScroll: true });
   audio.start();
   requestFrame();
+}
+function leaveLesson() {
+  prefs.lessonSeen = true;
+  saveStore("echo-ring-prefs-v1", prefs);
+  $("lesson-start").checked = false;
+  start({sameSeed:true,lesson:false});
+}
+function retryLesson() {
+  const setup=game.lesson?.failedFrom==="armor"?game.lesson.setup:null;
+  start({sameSeed:true,lesson:true,lessonSetup:setup});
 }
 function pause() {
   if (mode === "playing") {
@@ -182,7 +196,7 @@ function finish() {
   const trial = trialProgress(game);
   const earnedStars = trial.stars;
   $("mastery-medal").hidden = earnedStars === 0;
-  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp`;
+  $("mastery-medal").src = `../shared/mobile-art/medal-${["bronze", "bronze", "silver", "gold"][earnedStars]}.webp?mobile=20261002-quality4-r1`;
   $("mastery-medal").alt = `${earnedStars} 星完成奖章`;
   $("trial-result").hidden = !trial.timed;
   $("trial-result").replaceChildren();
@@ -261,6 +275,22 @@ function updateHUD(force = false) {
     "aria-label",
     game.p.dashCooldown > 0 ? "穿行冷却中" : "穿行，短暂无敌",
   );
+  if(game.lesson) {
+    const descriptions={
+      fire:["01 / 发射", "点按一次 J / 射击 · 位置决定向心弹道"],
+      watch:["01 / 看返程", "白弹正向膜面飞行 · 金线预告折返方向"],
+      evade:["02 / 横移让路", "金色回弹会伤自己 · 松开射击，普通横移让开"],
+      armor:["03 / 找径向位置", "让自己、圆心与金甲排成一线，再点按一次射击"],
+      retry:[game.lastThreat?.source?.kind==="self"?"这颗回弹还没让开":"碰到了目标的装甲", game.lastThreat?.source?.kind==="self" ? "金线保留刚才自己的返程 · 右上重练，改变横移时机" : "来袭方向已留下 · 右上重练这段布置"],
+      complete:["三拍已体验", game.lesson.directArmor ? "白弹穿甲，同一颗金弹破甲 · 共鸣实际增加" : "金色返程确实击破装甲 · 共鸣实际增加，可进入正式挑战"],
+    };
+    const [label,tip]=descriptions[game.lesson.stage];
+    set("phase",label);set("clock","首课");set("trial-label","独立练习 · 正式挑战尚未开始");set("trial-clock","");
+    $("trial-fill").style.transform=`scaleX(${game.lesson.completed?1:game.lesson.stage==='armor'?2/3:game.lesson.stage==='evade'?1/3:0})`;
+    set("hint",tip);$("hint").style.opacity="1";
+    $("notice").style.opacity="0";
+    return;
+  }
   const tip = game.time > noticeUntil ? coachTip(game) : "";
   set("hint", tip);
   $("hint").style.opacity = tip ? "1" : "0";
@@ -284,9 +314,13 @@ function frame(timestamp) {
       for (const e of game.drainEvents()) {
         renderer.event(e);
         audio.event(e);
-        if (e.type === "clear") notify("试炼完成 · 你的回响，成为星光", 2);
+        if (e.type === "lesson") {
+          if(e.stage === "complete"){prefs.lessonSeen=true;saveStore("echo-ring-prefs-v1",prefs);$("lesson-start").checked=false;}
+          updateHUD(true);
+        }
+        else if (e.type === "clear") notify("试炼完成 · 你的回响，成为星光", 2);
         else if (e.type === "section") notify(e.instruction, e.recovery ? 4 : 3.8);
-        else if (e.type === "armor") notify("青光穿过装甲 · 让金色回弹折返击中它", 2.4);
+        else if (e.type === "armor") notify("白弹穿过装甲 · 让金色回弹折返击中它", 2.4);
         else if (e.type === "resonance") notify("共鸣 · 回弹清除，得分翻倍", 2.2);
         else if (e.type === "phase" && !game.duration)
           notify(
@@ -302,6 +336,9 @@ function frame(timestamp) {
           notify("护盾受损 · 1.8 秒保护", 1.6);
       }
       accumulator -= STEP;
+      if(game.lessonFrozen) {
+        mode="lesson-review";dying=.65;controls.clear();showState();updateHUD(true);break;
+      }
       if (game.over) {
         mode = "dying";
         dying = 0.58;
@@ -312,6 +349,11 @@ function frame(timestamp) {
     }
     updateHUD();
     renderer.draw(game, accumulator / STEP);
+  } else if (mode === "lesson-review" && dying > 0) {
+    dying-=dt;
+    accumulator=advanceAfterglow(renderer,game,accumulator,dt);
+    renderer.draw(game,accumulator/STEP);
+    if(dying<=0)audio.pause();
   } else if (mode === "dying") {
     dying -= dt;
     accumulator = advanceAfterglow(renderer, game, accumulator, dt);
@@ -333,6 +375,7 @@ function frame(timestamp) {
   if (
     mode === "playing" ||
     mode === "dying" ||
+    (mode === "lesson-review" && dying > 0) ||
     (mode === "menu" && timestamp < previewUntil)
   )
     requestFrame();
@@ -378,13 +421,15 @@ try {
     onPause: pause,
     active: () => mode === "playing",
   });
+  $("lesson-start").checked = !prefs.lessonSeen;
   on($("session"), "change", refreshBest);
   on($("start"), "click", start);
-  on($("retry"), "click", () => start({ sameSeed: true }));
+  on($("retry"), "click", () => start({ sameSeed: true, lesson:false }));
   on($("new-route"), "click", () => start());
-  on($("pause"), "click", pause);
+  on($("pause"), "click", () => mode === "lesson-review" ? retryLesson() : pause());
   on($("resume"), "click", resume);
-  for (const id of ["exit", "pause-menu", "result-menu"])
+  on($("exit"), "click", () => game?.lesson && mode !== "menu" ? leaveLesson() : menu());
+  for (const id of ["pause-menu", "result-menu"])
     on($(id), "click", menu);
   on($("sound"), "click", async () => {
     await audio.setMuted(!audio.muted);
@@ -400,11 +445,12 @@ try {
     on($(id), "change", () => {
       renderer.reduced = $("reduced").checked;
       renderer.setFieldEnabled($("field").checked);
-      saveStore("echo-ring-prefs-v1", {
+      Object.assign(prefs, {
         reduced: renderer.reduced,
         quality: $("quality").value,
         field: renderer.fieldEnabled,
       });
+      saveStore("echo-ring-prefs-v1",prefs);
       resize();
     });
   on(window, "keydown", (e) => {

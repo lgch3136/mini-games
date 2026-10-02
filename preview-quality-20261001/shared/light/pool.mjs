@@ -1,4 +1,4 @@
-import { T } from '../first-person/scene.mjs?v=20260918-play-r1';
+import { T } from '../first-person/scene.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1';
 // One instanced, depth-tested additive pass. No extra shadow lights or bloom pass.
 export class LightPool {
   constructor(kit, texture, capacity = 48) {
@@ -59,7 +59,7 @@ export class LightPool {
 export async function loadLightTexture(kit) {
   let texture;
   try {
-    texture = await new T.TextureLoader().loadAsync(new URL('./assets/halo-20260928.webp',import.meta.url).href);
+    texture = await new T.TextureLoader().loadAsync(new URL('./assets/halo-20260928.webp?mobile=20261002-quality4-r1',import.meta.url).href);
   } catch {
     // The game must still launch if an optional visual asset is unavailable.
     const c=document.createElement('canvas'); c.width=c.height=64;

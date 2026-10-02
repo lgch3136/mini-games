@@ -1,9 +1,10 @@
 import {
   solvePose,
   interpolatePose,
-} from "../english-word-fury/motion.mjs?v=20260918-play-r1&mobile=20261001-quality3-r8";
-import { lerp, clamp } from "./world.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { gait, strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";
+} from "../english-word-fury/motion.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { lerp, clamp } from "./world.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { gait, strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { slashControls } from "./slash-pose.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
 export { interpolatePose };
 const mix = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
 const smooth = (t) => {
@@ -26,6 +27,8 @@ function controlsPose(b, time = 0, weights = {}) {
     footAngleF: 0,
     footAngleB: 0,
     swordAngle: -1.0,
+    chestTwist: -.1,
+    hipTwist: -.04,
   };
   const blend = (to, t) => {
     for (const [k, v] of Object.entries(to))
@@ -72,8 +75,9 @@ function controlsPose(b, time = 0, weights = {}) {
         : 1);
     // Reach for the floor before contact. Upper-body air blending may settle
     // after landing, but planted feet must not hover while that blend decays.
-    p.footF = mix(p.footF, [0.68, 0.45, 0.18], feetAir);
-    p.footB = mix(p.footB, [-0.48, 0.58, -0.18], feetAir);
+    const rising=b.vy>1;
+    p.footF = mix(p.footF, [rising?.74:.64, rising?.22:.38, .18], feetAir);
+    p.footB = mix(p.footB, [rising?-.42:-.66, rising?.64:.18, -.18], feetAir);
     blend(
       {
         hip: [0, 1.45, 0],
@@ -166,24 +170,9 @@ function controlsPose(b, time = 0, weights = {}) {
       );
       p.swordAngle = Math.PI;
     } else {
-      const start = [3, 4, 6][a.chain],
-        t = q < start ? smooth(q / start) : 1 - smooth((q - start - 6) / 12),
-        swing = smooth((q - start + 1) / (b.kind ? 6 : 4));
-      const rising = a.chain === 1;
-      blend(
-        {
-          chest: [lerp(-0.09, a.chain === 2 ? 0.5 : 0.38, swing), 2.35, 0],
-          head: [lerp(-0.04, a.chain === 2 ? 0.58 : 0.47, swing), 2.65, 0],
-          handF: rising ? mix([0.35, 1.68, 0.41], [0.78, 2.95, 0.34], swing) : mix([-0.3, 2.99, 0.41], [1.11, 1.94, 0.34], swing),
-          handB: [0.15, 1.98, -0.22],
-        },
-        t,
-      );
-      p.swordAngle = lerp(
-        p.swordAngle,
-        rising ? lerp(-2.3, 0.35, swing) : lerp(0.72, a.chain === 2 ? -2.55 : -1.86, swing),
-        t,
-      );
+      const authored=slashControls(a,b.kind?(b.kind==='boss'?16:12):null);
+      if(!b.ground){delete authored.pose.footF;delete authored.pose.footB;}
+      blend(authored.pose,authored.weight);
     }
   }
   const hurt = weights.hurt ?? Number(b.stun > 0);
@@ -197,7 +186,7 @@ function controlsPose(b, time = 0, weights = {}) {
       },
       0.7 * hurt,
     );
-  const compress = (weights.land || 0) * 0.13;
+  const compress = (weights.land || 0) * 0.34;
   for (const k of ["hip", "chest", "head"]) p[k][1] -= compress;
   for (const s of ["F", "B"])
     p["footAngle" + s] = -0.15 * smooth(p["foot" + s][1]);

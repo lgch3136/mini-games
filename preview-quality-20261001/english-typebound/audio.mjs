@@ -1,5 +1,5 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1&mobile=20260930-quality-r2";
-import { FLIGHT } from "./presentation.mjs?v=20260918-play-r1&mobile=20261001-quality2-r1";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { FLIGHT } from "./presentation.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
 const hz = (n) => 440 * 2 ** ((n - 69) / 12);
 const MOTIFS = [
   [0, 4, 7, 12, 9, 7, 4, 2, 0, 7, 9, 12, 7, 4, 2, null],

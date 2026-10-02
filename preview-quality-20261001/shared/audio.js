@@ -9,7 +9,7 @@
     laser: 'laser.ogg',
   };
   const key = 'mini-games-muted';
-  const music = new Audio(new URL('platformer-theme.ogg', base));
+  const music = new Audio(new URL('platformer-theme.ogg?mobile=20261002-quality4-r1', base));
   const pools = {};
   let muted = false;
   const voices = new Set();
@@ -42,7 +42,7 @@
   function soundPool(name) {
     if (!pools[name]) {
       pools[name] = Array.from({ length: name === 'laser' ? 5 : 3 }, () => {
-        const audio = new Audio(new URL(files[name], base));
+        const audio = new Audio(new URL(files[name] + '?mobile=20261002-quality4-r1', base));
         audio.preload = 'auto';
         return audio;
       });

@@ -113,7 +113,7 @@ a {
   aspect-ratio: 16/9;
   width: min(100%, calc((100dvh - 78px) * 16 / 9));
   overflow: hidden;
-  background: #122637 url(assets/moon-city.webp) center/cover;
+  background: #122637 url(assets/moon-city.webp?mobile=20261002-quality4-r1) center/cover;
   isolation: isolate;
 }
 canvas {
@@ -922,6 +922,12 @@ dialog > p:last-child {
    lines when the menu is taller than the available landscape viewport. */
 #menu .menu-copy { margin-block: auto; }
 #menu #start-btn { margin-bottom: 14px; min-height: 44px; }
+/* On a short landscape screen, use the available play row. Reserving two
+   122px side columns shrank a 568px phone's actual action view to 324px. */
+@media (max-height:480px) and (orientation:landscape) {
+  body.playing .play-row { padding-inline:0; }
+  body.playing #arena { width:100%; height:100%; aspect-ratio:auto; }
+}
 @media (max-width: 700px) and (orientation: portrait) {
   #menu { align-items: flex-start; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
   #menu .menu-copy { width: 100%; max-width: 500px; margin-inline: auto; }

@@ -1,11 +1,11 @@
-import { bindGameplayFocus } from "../shared/gameplay-focus.mjs?mobile=20261001-quality3-r8";
-import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { View } from "./view.mjs?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r8";
-import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2&quality2=20261001-action-r1";
-import { InputBuffer } from "./input.mjs?v=20260918-play-r1&quality2=20261001-action-r1";
-import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1";
-import { FrameSnapshot } from "./render-state.mjs?v=20260930-polish-r1&quality2=20261001-action-r1";
+import { bindGameplayFocus } from "../shared/gameplay-focus.mjs?mobile=20261002-quality4-r1";
+import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { View } from "./view.mjs?v=20261002-quality4-r1&mobile=20261002-quality4-r1";
+import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20261002-quality4-r1&quality2=20261001-action-r1";
+import { InputBuffer } from "./input.mjs?v=20260918-play-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { FrameSnapshot } from "./render-state.mjs?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
 const frameSnapshot = new FrameSnapshot();
 let lastHudFrame = -Infinity;
 const $ = (id) => document.getElementById(id),
@@ -167,6 +167,7 @@ function event(e) {
   if (e.type === "deflect") toast(e.focusGranted ? `刀锋截弹${e.energyGain ? " · 忍力 +1" : ""} · 月息反击就绪` : "刀锋截弹", 1.1);
   if (e.type === "riposte") toast("月息反击 · 伤害 +1", .9);
   if (e.type === "bossClear") toast("月印已夺回 · 前往寺门", 3);
+  if (e.type === "intro" && e.beat === "counter") toast("看清起手 → 让开刀路 → 收招反击", 1.6);
 }
 function hud() {
   lastHudFrame = world.frame;
@@ -275,7 +276,7 @@ function finish() {
       mode === "won" ? "再走一程" : "进入下一章",
     );
     $("chapter-medal").hidden = !report.stars;
-    if (report.stars) $("chapter-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+    if (report.stars) $("chapter-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp?mobile=20261002-quality4-r1`;
   }
 }
 function menu() {

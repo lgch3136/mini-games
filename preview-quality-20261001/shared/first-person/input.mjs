@@ -1,4 +1,4 @@
-import { clamp } from "./math.mjs";
+import { clamp } from "./math.mjs?mobile=20261002-quality4-r1";
 export class Controls {
   constructor(
     canvas,

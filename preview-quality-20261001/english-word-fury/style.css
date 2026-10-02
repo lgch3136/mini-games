@@ -1,4 +1,8 @@
 :root {
+  --fury-safe-top:env(safe-area-inset-top,0px);
+  --fury-safe-right:env(safe-area-inset-right,0px);
+  --fury-safe-bottom:env(safe-area-inset-bottom,0px);
+  --fury-safe-left:env(safe-area-inset-left,0px);
   color-scheme: dark;
   --paper: #f4e6ce;
   --gold: #e7b778;
@@ -65,8 +69,8 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: var(--fury-safe-top) var(--fury-safe-right)
+    var(--fury-safe-bottom) var(--fury-safe-left);
   background: radial-gradient(ellipse at 50% 40%, #2e4247, #0e1b22 80%);
 }
 .topbar {
@@ -119,7 +123,7 @@ a {
   aspect-ratio: 16/9;
   position: relative;
   overflow: hidden;
-  background: #6a747f url("assets/harbor-dusk-v2.webp") center/100% 100%
+  background: #6a747f url("assets/harbor-dusk-v2.webp?mobile=20261002-quality4-r1") center/100% 100%
     no-repeat;
   isolation: isolate;
   box-shadow: 0 10px 70px #0005;
@@ -1177,7 +1181,7 @@ kbd {
 
 #loading a { display: inline-block; padding: 12px; color: #e9cb94; text-decoration: underline; }
 
-#loading[role="alert"] { position: fixed; z-index: 100; inset: 0; width: auto; padding: max(24px, env(safe-area-inset-top)); display: grid; place-content: center; background: #10232af5; color: #f2dfb9; line-height: 1.7; }
+#loading[role="alert"] { position: fixed; z-index: 100; inset: 0; width: auto; padding: max(24px, var(--fury-safe-top)); display: grid; place-content: center; background: #10232af5; color: #f2dfb9; line-height: 1.7; }
 .panel-screen .panel { max-height: calc(100% - 18px); overflow-y: auto; overscroll-behavior: contain; }
 
 #dojo-tip { white-space: pre-line; }
@@ -1185,9 +1189,9 @@ kbd {
 /* Keep the viewport-anchored action pads clear of landscape notches. */
 @media (max-height: 550px) and (min-width: 600px) {
   #touch { left: 0; right: 0; width: auto; box-sizing: border-box;
-    bottom: max(18px, env(safe-area-inset-bottom, 0px));
-    padding-left: max(24px, env(safe-area-inset-left, 0px));
-    padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+    bottom: max(18px, var(--fury-safe-bottom));
+    padding-left: max(24px, var(--fury-safe-left));
+    padding-right: max(24px, var(--fury-safe-right)); }
 }
 
 /* Portrait keeps the same 16:9 combat world. Spare vertical space belongs to
@@ -1246,4 +1250,32 @@ kbd {
   .four-keys { gap: 7px; }
   .four-keys button { width: 44px; height: 44px; }
   .utility button { padding: 6px; }
+}
+
+/* Quality4 gives portrait fights a real taller viewport. Camera projection uses
+   the measured canvas aspect; fighters and attack distances are never stretched. */
+@media (max-width: 680px) and (orientation: portrait) and (min-height: 700px) {
+  body.playing .arena-frame { padding-top: 56px; }
+  body.playing .arena { aspect-ratio: 6 / 5; margin-bottom: 50px; }
+  body.playing .fighter-hud { top: -49px; }
+  body.playing .timer { top: -50px; }
+  body.playing .power-hud { bottom: -43px; }
+  body.playing #word-line { bottom: -42px; }
+  body.playing.training #statusbar { display: none; }
+}
+
+/* Guided touch play budgets the viewport for the existing lesson and pads.
+   Shorter phones keep the same world projection rather than hiding controls. */
+@media (pointer: coarse) and (max-width: 680px) and (orientation: portrait) and (min-height: 700px) {
+  body.playing.training .arena {
+    aspect-ratio: auto;
+    height: min(calc(100vw * 5 / 6), calc(100dvh - 518px - var(--fury-safe-top) - var(--fury-safe-bottom)));
+    min-height: 0;
+  }
+}
+@media (pointer: coarse) and (max-width: 680px) and (orientation: portrait) and (min-height: 700px) and (max-height: 820px),
+       (pointer: coarse) and (max-width: 360px) and (orientation: portrait) and (min-height: 700px) {
+  body.playing.training #dojo-coach { margin: 6px 6px 0; padding: 6px; font-size: 11px; line-height: 1.4; }
+  body.playing.training #dojo-coach span { font-size: 10px; line-height: 1.4; }
+  body.playing.training .arena { height: min(calc(100vw * 5 / 6), calc(100dvh - 476px - var(--fury-safe-top) - var(--fury-safe-bottom))); }
 }

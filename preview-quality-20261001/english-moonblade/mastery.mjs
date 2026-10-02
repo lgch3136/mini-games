@@ -24,6 +24,7 @@ export function moonCoach(world) {
   if (p.focus > 0) return `月息 ${p.focus.toFixed(1)}s · 下一次刀击 +1`;
   if (p.wall && !p.ground) return '贴墙中 · 松开再点跳，蹬向另一侧';
   const threat = world.enemies.find(e => !e.dead && Math.abs(e.x - p.x) < 6 && e.state === 'tell');
+  if(threat && world.intro?.guardId === threat.id) return '抬刀预兆 · 退开刀尖或越身，收刀时按 J 反击';
   if (threat) return threat.kind === 'boss'
     ? ['突刺预兆 · 离开箭头方向，等收招', threat.enraged ? '交叉地波 · 跳起或截弹，落地再反击' : '低位横扫 · 跳起再下落斩', '落点已锁定 · 离开地面标记'][threat.choice]
     : threat.armored ? '铁面正面有甲 · 截弹后的月息刀击可直接破防' : '敌人起手 · 疾步避开，收招再斩';

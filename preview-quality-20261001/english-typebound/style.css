@@ -94,7 +94,7 @@ p {
   position: absolute;
   z-index: -2;
   inset: 0;
-  background: url("assets/letterwood.webp") center center/cover no-repeat;
+  background: url("assets/letterwood.webp?mobile=20261002-quality4-r1") center center/cover no-repeat;
   pointer-events: none;
 }
 .landscape:after {
@@ -579,7 +579,7 @@ h2 {
 .routes:has(> .route-choice:only-child) {
   grid-template-columns: 1fr;
 }
-#app[data-view="combat"],
+#app:is([data-view="combat"],[data-view="lectern"]),
 #app[data-view="victory"],
 #app[data-view="paused"],
 #app[data-view="result"] {
@@ -1872,7 +1872,7 @@ kbd {
   }
 }
 @media (max-height: 670px) and (max-width: 580px) {
-  #app[data-view="combat"],
+  #app:is([data-view="combat"],[data-view="lectern"]),
   #app[data-view="victory"],
   #app[data-view="paused"],
   #app[data-view="result"] {
@@ -1980,7 +1980,7 @@ kbd {
   }
 }
 @media (max-height: 480px) and (min-width: 581px) {
-  #app[data-view="combat"],
+  #app:is([data-view="combat"],[data-view="lectern"]),
   #app[data-view="victory"],
   #app[data-view="paused"],
   #app[data-view="result"] {

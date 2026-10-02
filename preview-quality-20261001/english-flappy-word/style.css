@@ -225,3 +225,9 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 3px; }
 .guided-choice { display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin:12px 0;color:#c7e6df;font-size:13px;min-height:44px; }
 .guided-choice input { width:22px;height:22px;accent-color:#66d8b3; }
 .guided-choice small { flex-basis:100%;font-size:11px;color:#95b8ad; }
+
+/* Expedition options retain native keyboard semantics. */
+#flight-select { min-height:44px; max-width:170px; border:1px solid #b6c1a4; border-radius:10px; padding:6px 12px; background:#edf0dc; color:#243c32; font:inherit; }
+#arrived { background:rgba(17,36,32,.88); gap:12px; }
+#arrival-words { max-width:30em; line-height:1.9; color:#f6dfad; }
+#arrival-summary { max-width:28em; font-size:14px; line-height:1.7; }

@@ -1,4 +1,4 @@
-import { clamp, lerp, total } from "./combat.mjs?v=20260918-play-r1&mobile=20261001-quality3-r8";
+import { clamp, lerp, total } from "./combat.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
 const PI = Math.PI;
 const smooth = (t) => {
   t = clamp(t, 0, 1);
@@ -6,7 +6,7 @@ const smooth = (t) => {
 };
 const mix = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
 const add = (a, b) => a.map((v, i) => v + b[i]);
-export function ik(a, b, l1, l2, bend = 1) {
+export function ik(a, b, l1, l2, bend = 1, swivel = 0) {
   const delta = b.map((v, i) => v - a[i]),
     actual = Math.hypot(...delta),
     d = clamp(actual, Math.abs(l1 - l2) + 0.00001, l1 + l2 - 0.001);
@@ -15,7 +15,9 @@ export function ik(a, b, l1, l2, bend = 1) {
     height = Math.sqrt(Math.max(0, l1 * l1 - along * along));
   const n = Math.hypot(u[0], u[1]),
     perp = n > 0.00001 ? [-u[1] / n, u[0] / n, 0] : [1, 0, 0];
-  return a.map((v, i) => v + u[i] * along + perp[i] * height * bend);
+  const cross = [u[1]*perp[2]-u[2]*perp[1],u[2]*perp[0]-u[0]*perp[2],u[0]*perp[1]-u[1]*perp[0]];
+  const plane = perp.map((v,i)=>v*Math.cos(swivel)+cross[i]*Math.sin(swivel));
+  return a.map((v, i) => v + u[i] * along + plane[i] * height * bend);
 }
 function reach(a, b, length, minimum = 0) {
   const d = Math.hypot(...b.map((v, i) => v - a[i]));
@@ -24,28 +26,29 @@ function reach(a, b, length, minimum = 0) {
   return b.map((v, i) => a[i] + ((v - a[i]) * constrained) / d);
 }
 function stance(f, t) {
-  const bob = Math.sin(t * 3.4) * 0.025;
+  const id = f.id ?? 0, heavy = id === 2, quick = id === 1;
+  const bob = Math.sin(t * (heavy ? 2.45 : quick ? 3.9 : 3.15)) * (heavy ? .017 : .023);
   return {
-    hip: [-0.05, 1.55 + bob, 0],
-    chest: [0.05, 2.52 + bob, 0],
-    head: [0.09, 2.81 + bob, 0],
-    handF: [0.68, 2.39 + bob, 0.38],
-    handB: [0.1, 2.47 + bob, -0.15],
-    footF: [0.48, 0, 0.19],
-    footB: [-0.57, 0, -0.19],
-    elbowF: -1,
-    elbowB: -1,
-    kneeF: 1,
-    kneeB: 1,
-    footAngleF: 0,
-    footAngleB: 0,
-    lean: 0,
+    hip: [heavy ? -.04 : quick ? -.10 : -.075, (heavy ? 1.38 : quick ? 1.45 : 1.51) + bob, 0],
+    chest: [heavy ? .04 : quick ? .12 : .025, (heavy ? 2.32 : quick ? 2.43 : 2.49) + bob, 0],
+    head: [heavy ? .055 : quick ? .18 : .09, (heavy ? 2.66 : quick ? 2.77 : 2.82) + bob, 0],
+    handF: [heavy ? .71 : quick ? .76 : .66, (heavy ? 2.12 : quick ? 2.15 : 2.30) + bob, .39],
+    handB: [heavy ? .24 : quick ? -.02 : .08, (heavy ? 2.38 : quick ? 2.52 : 2.56) + bob, -.16],
+    footF: [heavy ? .60 : quick ? .26 : .50, 0, .19],
+    footB: [heavy ? -.63 : quick ? -.61 : -.56, 0, -.19],
+    chestTwist: quick ? -.18 : heavy ? -.06 : -.13,
+    hipTwist: quick ? -.10 : heavy ? .03 : -.06,
+    elbowF: -1, elbowB: -1, kneeF: 1, kneeB: 1,
+    kneeSwivelF: quick ? .42 : .08, kneeSwivelB: quick ? -.22 : -.06,
+    footAngleF: 0, footAngleB: 0, lean: 0,
   };
 }
 function blendPose(a, b, t) {
   const p = { ...a };
   for (const k of ["hip", "chest", "head", "handF", "handB", "footF", "footB"])
     if (b[k]) p[k] = mix(a[k], b[k], t);
+  for (const k of ["chestTwist", "hipTwist"])
+    if (b[k] !== undefined) p[k] = lerp(a[k] || 0, b[k], t);
   return p;
 }
 export function pose(f, alpha = 1) {
@@ -87,8 +90,10 @@ export function pose(f, alpha = 1) {
     p.footF = [ff[0], ff[1], 0.19];
     p.footB = [fb[0], fb[1], -0.19];
     p.hip = [running ? 0.1 : 0, (running ? 1.47 : 1.52) + bob, 0];
-    p.chest = [running ? 0.34 : 0.08, (running ? 2.45 : 2.5) + bob, 0];
-    p.head = [running ? 0.41 : 0.13, (running ? 2.74 : 2.79) + bob, 0];
+    p.chest = [running ? 0.34 : f.id === 2 ? .02 : .08, (running ? 2.45 : f.id === 2 ? 2.43 : 2.5) + bob, 0];
+    p.head = [running ? 0.41 : f.id === 2 ? .06 : .13, (running ? 2.74 : f.id === 2 ? 2.71 : 2.79) + bob, 0];
+    p.chestTwist += Math.sin(f.walkPhase) * (f.id === 2 ? .035 : .075);
+    p.hipTwist -= Math.sin(f.walkPhase) * .055;
     if (running) {
       const swing = Math.sin(f.walkPhase);
       p.handF = [0.15 + swing * 0.55, 2.04, 0.35];
@@ -133,21 +138,35 @@ export function pose(f, alpha = 1) {
         : af < peak
           ? 1
           : 1 - smooth((af - peak) / (total(m) - peak));
-    // Shoulder/hip rotation begins before extension, then eases out during recovery.
-    const prep =
-      af < strike ? Math.sin(clamp(af / strike, 0, 1) * PI) * 0.16 : 0;
-    p.chest[0] -= prep;
-    p.head[0] -= prep;
-    p.handF[0] -= prep * 2;
+    // Wind the whole body before extension. Hips and chest turn into contact;
+    // the guarding hand stays separated from the striking hand and face.
+    const heavyPunch = m.pose === "punch", kicking = /kick|sweep|rush/i.test(m.pose);
+    const prep = af < strike ? Math.sin(clamp(af / strike, 0, 1) * PI) * (heavyPunch ? .27 : kicking ? .14 : .075) : 0;
+    p.hip[0] -= prep * .48; p.hip[1] -= prep * .20;
+    p.chest[0] -= prep; p.head[0] -= prep * .55;
+    p.handF[0] -= prep * (heavyPunch ? 3.0 : 1.35);
+    p.handF[1] += prep * (heavyPunch ? -.75 : .22);
+    p.handB[1] += prep * .30;
+    p.chestTwist -= prep * 1.65; p.hipTwist -= prep * .95;
+    if (kicking && af < strike && m.pose !== "sweep" && m.pose !== "airKick") {
+      const chamber = Math.sin(clamp(af / strike, 0, 1) * PI);
+      p.footF = mix(p.footF, [.18, .75, .34], chamber * .72);
+      p.hip[0] -= chamber * .055;
+    }
+    const resting = p;
     const y = m.y,
       reach = m.range || 1.25;
     let hit = {};
     if (["jab", "punch", "lowPunch", "airPunch"].includes(m.pose)) {
       hit = {
-        chest: add(p.chest, [0.14, 0, 0.04]),
-        head: add(p.head, [0.16, 0, 0]),
+        hip: add(p.hip, [heavyPunch ? .14 : .045, heavyPunch ? -.04 : 0, 0]),
+        footF: heavyPunch ? [.34,0,.27] : p.footF,
+        footB: heavyPunch ? [-.70,0,-.25] : p.footB,
+        chest: add(p.chest, [heavyPunch ? .25 : .12, heavyPunch ? -.025 : 0, .025]),
+        head: add(p.head, [heavyPunch ? .13 : .07, -.015, 0]),
+        chestTwist: heavyPunch ? .39 : .15, hipTwist: heavyPunch ? .25 : .08,
         handF: [reach - 0.12, y, 0.36],
-        handB: add(p.handB, [-0.1, -0.2, 0]),
+        handB: add(p.handB, [heavyPunch ? -.16 : -.06, .035, 0]),
       };
     } else if (
       ["kick", "highKick", "lowKick", "sweep", "airKick", "rush"].includes(
@@ -155,13 +174,14 @@ export function pose(f, alpha = 1) {
       )
     ) {
       hit = {
-        hip: [0.28, m.pose === "sweep" ? 0.66 : 1.49, 0],
-        chest: [-0.1, m.pose === "sweep" ? 1.56 : 2.35, 0],
-        head: [-0.14, m.pose === "sweep" ? 1.86 : 2.64, 0],
-        footF: [reach - 0.3, y - 0.16, 0.22],
+        hip: [m.pose === "sweep" ? .28 : -.04, m.pose === "sweep" ? 0.66 : 1.49, 0],
+        chest: [-0.26, m.pose === "sweep" ? 1.56 : 2.35, 0],
+        head: [-0.31, m.pose === "sweep" ? 1.86 : 2.67, 0],
+        chestTwist: -.28, hipTwist: .24,
+        footF: [reach - 0.40, y - 0.16, 0.46],
         footB: [-0.45, 0, -0.2],
-        handF: [0.33, m.pose === "sweep" ? 1.42 : 2.14, 0.34],
-        handB: [-0.65, m.pose === "sweep" ? 1.4 : 2.04, -0.2],
+        handF: [0.30, m.pose === "sweep" ? 1.42 : 2.57, 0.34],
+        handB: [-0.47, m.pose === "sweep" ? 1.4 : 2.24, -0.2],
       };
       if (m.pose === "airKick") {
         hit.footB = [-0.66, 0.54, -0.2];
@@ -217,6 +237,11 @@ export function pose(f, alpha = 1) {
         head: [0.33, 2.75, 0],
       };
     p = blendPose(p, hit, weight);
+    if (af > peak && hit.handF && !kicking) {
+      // The fist returns to guard before the torso settles, exposing a readable recovery.
+      const recoil = 1 - smooth((af - peak) / (total(m) - peak) * 1.45);
+      p.handF = mix(resting.handF, hit.handF, recoil);
+    }
   }
   if (f.state === "hurt" && !f.down) {
     const w = Math.exp(-f.stateFrame * 0.07);
@@ -228,6 +253,7 @@ export function pose(f, alpha = 1) {
         head: [-0.65, 2.6, 0],
         handF: [0.08, 2.0, 0.4],
         handB: [-0.48, 2.12, -0.2],
+        footF: [.05,.03,.31], footB: [-.78,0,-.27],
       },
       0.6 + w * 0.4,
     );
@@ -238,8 +264,10 @@ export function pose(f, alpha = 1) {
       // Load the planted back foot and compress the striking shoulder at contact.
       p.chest[0] -= .045 * strength;
       p.handF[0] -= .035 * strength;
-      p.hip[1] -= .025 * strength;
+      p.hip[1] -= .045 * strength;
+      p.chestTwist += .035 * strength;
     } else if (f.contact.kind === 'hit') {
+      p.chestTwist -= .16 * strength; p.hipTwist -= .06 * strength;
       if (f.contact.y < 1) { p.hip[0] -= .16 * strength; p.chest[0] += .1 * strength; }
       else if (f.contact.y > 2) { p.head[0] -= .18 * strength; p.chest[0] -= .07 * strength; }
       else { p.chest[0] -= .18 * strength; p.head[1] -= .07 * strength; }
@@ -326,10 +354,11 @@ export function solvePose(p) {
     x * Math.sin(rot) + y * Math.cos(rot),
     z,
   ];
-  p.shoulderF = add(p.chest, rotate([0.08, 0, 0.25]));
-  p.shoulderB = add(p.chest, rotate([-0.15, 0.01, -0.25]));
-  p.hipF = add(p.hip, rotate([0.05, 0, 0.18]));
-  p.hipB = add(p.hip, rotate([-0.05, 0, -0.18]));
+  const twist = ([x,y,z], angle = 0) => [x*Math.cos(angle)+z*Math.sin(angle), y, z*Math.cos(angle)-x*Math.sin(angle)];
+  p.shoulderF = add(p.chest, rotate(twist([0.08, 0, 0.25], p.chestTwist)));
+  p.shoulderB = add(p.chest, rotate(twist([-.15, .01, -.25], p.chestTwist)));
+  p.hipF = add(p.hip, rotate(twist([.05, 0, .18], p.hipTwist)));
+  p.hipB = add(p.hip, rotate(twist([-.05, 0, -.18], p.hipTwist)));
   p.handF = reach(p.shoulderF, p.handF, 1.139, 0.04001);
   p.handB = reach(p.shoulderB, p.handB, 1.139, 0.04001);
   for (const s of ["F", "B"]) {
@@ -342,8 +371,8 @@ export function solvePose(p) {
   }
   p.elbowFront = ik(p.shoulderF, p.handF, 0.59, 0.55, p.elbowF);
   p.elbowBack = ik(p.shoulderB, p.handB, 0.59, 0.55, p.elbowB);
-  p.kneeFront = ik(p.hipF, ankle(p, "F"), 0.77, 0.77, p.kneeF);
-  p.kneeBack = ik(p.hipB, ankle(p, "B"), 0.77, 0.77, p.kneeB);
+  p.kneeFront = ik(p.hipF, ankle(p, "F"), 0.77, 0.77, p.kneeF, p.kneeSwivelF);
+  p.kneeBack = ik(p.hipB, ankle(p, "B"), 0.77, 0.77, p.kneeB, p.kneeSwivelB);
   return p;
 }
 
@@ -351,6 +380,7 @@ export function interpolatePose(old, current, alpha) {
   const p = { ...current };
   for (const k of ["hip", "chest", "head", "handF", "handB", "footF", "footB"])
     p[k] = mix(old[k], current[k], alpha);
+  for (const k of ["chestTwist", "hipTwist"]) p[k] = lerp(old[k] || 0, current[k] || 0, alpha);
   for (const s of ["F", "B"]) {
     const k = "footAngle" + s,
       a = old[k] || 0,

@@ -1,4 +1,4 @@
-import { orchardRoute, gateAllows } from "./routes.mjs?mobile=20261001-quality2-r1";
+import { orchardRoute, gateAllows } from "./routes.mjs?mobile=20261002-quality4-r1";
 // Grid decisions, continuous travel. No DOM, wall-clock, audio, or rendering state.
 export const VERSION = "20260930-quality-r1";
 export const STEP = 1 / 120;
@@ -62,6 +62,8 @@ export class SnakeGame {
     wordGoal = 0,
     assistance = "guided",
     routes = false,
+    reviewWords = [],
+    vocabularyKey = "",
   } = {}) {
     this.cols = clamp(Math.floor(cols), 12, 40);
     this.rows = clamp(Math.floor(rows), 8, 40);
@@ -82,6 +84,13 @@ export class SnakeGame {
     this.speedSetting = clamp(Math.round(Number(speed) || 0), 0, 4);
     this.speed = SPEEDS[this.speedSetting];
     this.wordGoal = [5, 10].includes(Number(wordGoal)) ? Number(wordGoal) : 0;
+    this.forkGates=[];this.seenWords=[];this.reviewWords=[];this.wordReward=100;this.vocabularyKey=vocabularyKey;
+    for(const saved of (Array.isArray(reviewWords)?reviewWords:[]).slice(0,40)){
+      const word=this.words.find(w=>w.en===saved?.word?.en);if(!word||this.reviewWords.some(r=>r.word.en===word.en))continue;
+      const otherWords=[...new Set((Array.isArray(saved.otherWords)?saved.otherWords:[]).filter(w=>typeof w==='string'&&/^[a-z]{3,12}$/.test(w)&&w!==word.en))].slice(0,2);
+      this.reviewWords.push({word:{...word},otherWords,after:Math.max(0,2-otherWords.length)});
+    }
+    this.forkRoutes=this.authoredRoutes&&this.mode==='spell'&&this.wordGoal>0;
     this.won = false;
     this.hints = 0;
     this.time = 0;
@@ -127,7 +136,7 @@ export class SnakeGame {
     this.hintAge = 0;
     this.turnLatency = [];
     this.maxQueue = 0;
-    this.nextWord();
+    this.nextWord(this.reviewWords.find(r=>r.otherWords.length>=2)?.word||null);
   }
   emit(type, data = {}) {
     this.events.push({
@@ -221,8 +230,15 @@ export class SnakeGame {
         if (!occupied.has(`${x},${y}`)) cells.push({ x, y });
     return cells;
   }
-  nextWord() {
-    this.word = this.pick();
+  nextWord(selected = null) {
+    if(selected)this.word={...selected};
+    else if(this.forkRoutes&&this.completed===0){
+      const pending=this.reviewWords.filter(r=>r.otherWords.length<2).map(r=>r.word.en);
+      const available=this.words.filter(w=>!pending.includes(w.en));const bank=available.length?available:this.words;
+      const shortest=Math.min(...bank.map(w=>w.en.length));
+      const pool=bank.filter(w=>w.en.length===shortest);this.word={...pool[Math.floor(this.rng()*pool.length)]};this.lastWord=this.word.en;
+    }else this.word = this.pick();
+    this.wordReviewing=this.reviewWords.some(r=>r.word.en===this.word.en&&r.otherWords.length>=2);
     this.route = this.authoredRoutes ? orchardRoute(this.completed, this.cols, this.rows) : null;
     if (this.route && this.arena === "classic") {
       this.route.rule = [
@@ -240,7 +256,7 @@ export class SnakeGame {
     this.wordHinted = false;
     this.emit("route", { name: this.route?.name, rule: this.route?.rule });
     this.cursor = 0;
-    this.wordClean = true;
+    this.wordClean = true;this.wordKnowledgeClean=true;
     this.tiles = [];
     this.hintAge = 0;
     const labels =
@@ -284,14 +300,15 @@ export class SnakeGame {
     this.emit("word", { word: this.word.en || this.word.prompt });
   }
   hint() {
-    if (this.phase !== "playing") return;
+    if (this.phase !== "playing"||this.forkGates.length) return false;
     this.hints++;
     this.wordHinted = true;
     this.hintAge = 4;
     this.score = Math.max(0, this.score - 15);
-    this.emit("hint");
+    this.emit("hint");return true;
   }
   target() {
+    if(this.forkGates.length)return this.forkGates[0];
     return this.mode === "spell"
       ? this.tiles.find((t) => t.label === this.word.en[this.cursor])
       : this.tiles.find((t) => t.correct);
@@ -303,7 +320,7 @@ export class SnakeGame {
     if (this.phase !== "playing" || !tile) return;
     if (this.mode === "spell" && tile.label !== this.word.en[this.cursor]) {
       if (this.assistance === "recall") {
-        this.mistakes++; this.wordClean = false; this.combo = 0;
+        this.mistakes++; this.wordClean = false;this.wordKnowledgeClean=false; this.combo = 0;
         this.emit("wrong", { spelling: true, chosen: tile.label });
       }
       return; // Preserve every needed fruit, including after an incorrect choice.
@@ -311,7 +328,7 @@ export class SnakeGame {
     if (!tile.correct) {
       this.tiles = this.tiles.filter((t) => t !== tile);
       this.mistakes++;
-      this.wordClean = false;
+      this.wordClean = false;this.wordKnowledgeClean=false;
       this.combo = 0;
       this.score = Math.max(0, this.score - 30);
       this.emit("wrong", { answer: this.word.answer });
@@ -336,10 +353,20 @@ export class SnakeGame {
   }
   complete() {
     this.completed++;
-    if (this.assistance === "recall" && !this.wordHinted && this.wordClean) this.recalledWords++;
+    if (this.assistance === "recall" && !this.wordHinted && this.wordKnowledgeClean) this.recalledWords++;
     else this.guidedWords++;
     if (this.wordClean) this.perfectWords++;
-    this.score += 100 * this.multiplier();
+    const reward=this.wordReward*this.multiplier();this.score+=reward;
+    if(this.mode==='spell'){
+      const seen=this.seenWords.find(w=>w.en===this.word.en);
+      if(seen)seen.lastCompletedAt=this.completed;else this.seenWords.push({...this.word,lastCompletedAt:this.completed});
+      for(const review of this.reviewWords)if(review.word.en!==this.word.en&&!review.otherWords.includes(this.word.en))review.otherWords.push(this.word.en);
+      let review=this.reviewWords.find(w=>w.word.en===this.word.en);
+      if(!this.wordKnowledgeClean){
+        if(!review){review={word:{...this.word},otherWords:[],after:this.completed+2};this.reviewWords.push(review);}
+        else{review.otherWords=[];review.after=this.completed+2;}
+      }else if(this.assistance==='recall'&&!this.wordHinted&&review?.otherWords.length>=2)this.reviewWords=this.reviewWords.filter(w=>w!==review);
+    }
     // Completing a word opens breathing room, without freezing the simulation.
     this.length = Math.max(5, this.length - 3);
     if (this.perfectWords > 0 && this.wordClean && this.perfectWords % 3 === 0)
@@ -347,7 +374,7 @@ export class SnakeGame {
     this.emit("complete", {
       label: this.word.en || this.word.answer,
       meaning: this.word.zh || this.word.prompt,
-      clean: this.wordClean,
+      clean: this.wordClean, reward,
     });
     if (this.wordGoal && this.completed >= this.wordGoal) {
       this.won = true;
@@ -356,12 +383,52 @@ export class SnakeGame {
       this.emit("expedition", { goal: this.wordGoal });
       return;
     }
-    if (this.completed % 3 === 0) this.startBonus();
+    if(this.forkRoutes){this.prepareFork();return;}
     this.nextWord();
+    if (this.completed % 3 === 0) this.startBonus();
+  }
+  reachableForkCells() {
+    const start=this.cell(this.head),dist=new Map([[`${start.x},${start.y}`,0]]),queue=[start];
+    const blocked=new Set([...this.obstacles,...this.trail.slice(1,this.length)].map(p=>{const q=this.cell(p);return `${q.x},${q.y}`;}));
+    for(let i=0;i<queue.length;i++)for(const d of DIRS){
+      const from=queue[i],raw={x:from.x+d.x,y:from.y+d.y};
+      if(this.arena==='classic'&&(raw.x<0||raw.y<0||raw.x>=this.cols||raw.y>=this.rows))continue;
+      if(!gateAllows(this.route,from,raw,this.cols,this.rows))continue;
+      const to=this.cell(raw),key=`${to.x},${to.y}`;
+      if(blocked.has(key)||dist.has(key))continue;dist.set(key,dist.get(`${from.x},${from.y}`)+1);queue.push(to);
+    }
+    return this.freeCells(this.bonus).filter(p=>(dist.get(`${p.x},${p.y}`)||0)>=3)
+      .map(p=>({...p,steps:dist.get(`${p.x},${p.y}`)})).sort((a,b)=>a.steps-b.steps||a.y-b.y||a.x-b.x);
+  }
+  prepareFork() {
+    this.clearInput();this.progress=0;this.reading=true;this.tiles=[];
+    const due=this.reviewWords.find(r=>r.otherWords.length>=2);
+    const spaced=[...this.seenWords].filter(w=>w.lastCompletedAt<=this.completed-2).sort((a,b)=>a.en.length-b.en.length||a.lastCompletedAt-b.lastCompletedAt);
+    const shortLimit=Math.max(4,Math.min(...this.words.map(w=>w.en.length)));
+    const freshShort=this.words.filter(w=>w.en.length<=shortLimit&&!this.seenWords.some(k=>k.en===w.en));
+    const familiar=due?.word||spaced[0]||(freshShort.length?freshShort[Math.floor(this.rng()*freshShort.length)]:[...this.seenWords].sort((a,b)=>a.en.length-b.en.length)[0])||this.word;
+    const safeLabel=due?'回访小径':spaced.length?'熟悉小径':freshShort.length?'短词稳妥':'重复练习';
+    const unseen=this.words.filter(w=>!this.seenWords.some(k=>k.en===w.en)&&w.en.length>familiar.en.length);
+    const varied=this.words.filter(w=>w.en!==familiar.en);
+    const pool=unseen.length?unseen:varied;
+    const longer=pool.length?pool[Math.floor(this.rng()*pool.length)]:null;
+    const cells=this.reachableForkCells(),first=cells[0];
+    const second=first&&cells.find(c=>Math.abs(c.x-first.x)+Math.abs(c.y-first.y)>=4);
+    if(!first){this.wordReward=100;this.nextWord(familiar);this.reading=true;this.emit('fork-fallback');return;}
+    this.forkGates=[{...first,id:0,kind:'route-gate',label:'A',word:{...familiar},reward:100,routeLabel:safeLabel}];
+    if(second&&longer)this.forkGates.push({...second,id:1,kind:'route-gate',label:'B',word:{...longer},reward:longer.en.length>familiar.en.length?180:100,routeLabel:longer.en.length>familiar.en.length?'新词长径':'另一条小径'});
+    this.emit('fork',{choices:this.forkGates.map(g=>({label:g.label,meaning:g.word.zh,length:g.word.en.length,reward:g.reward}))});
+  }
+  chooseFork(gate) {
+    if(this.phase!=='playing'||!this.forkGates.includes(gate))return false;
+    const departing=this.forkGates.map(g=>({x:g.x,y:g.y,label:g.label,selected:g===gate}));
+    const word=gate.word;this.wordReward=gate.reward;this.forkGates=[];
+    this.clearInput();this.progress=0;this.nextWord(word);this.reading=true;if(this.completed%3===0)this.startBonus();
+    this.emit('fork-chosen',{label:gate.label,meaning:word.zh,reward:gate.reward,gates:departing});return true;
   }
   startBonus() {
     this.bonus = [];
-    const cells = this.freeCells();
+    const cells = this.freeCells(this.tiles);
     const anchor = this.cell(this.head);
     cells.sort(
       (a, b) =>
@@ -439,6 +506,7 @@ export class SnakeGame {
       return;
     }
     if (outside && this.route?.kind === "gates") this.emit("portal", { x:normalized.x, y:normalized.y });
+    const fork=this.forkGates.find(g=>this.same(g,next));
     const tile = this.tiles.find((t) => this.same(t, next));
     const willGrow =
       tile &&
@@ -454,6 +522,7 @@ export class SnakeGame {
     this.steps++;
     if (this.phase === "over") return;
     if (tile) this.collect(tile);
+    if(fork)this.chooseFork(fork);
     const fruit = this.bonus.find((p) => this.same(p, next));
     if (fruit) {
       this.bonus = this.bonus.filter((p) => p !== fruit);
@@ -592,6 +661,7 @@ export class SnakeGame {
       length: this.length,
       turns: this.turns.map((t) => t.d),
       tiles: this.tiles.map((t) => ({ ...t })),
+      forkGates:this.forkGates.map(g=>({...g,word:{...g.word}})),wordReward:this.wordReward,reviewWords:this.reviewWords.length,
       target: this.target() ? { ...this.target() } : null,
       word: {
         ...this.word,

@@ -1,8 +1,9 @@
+import {routeSceneryBase} from './route-landforms.mjs?v=20261001-quality4-r1&mobile=20261002-quality4-r1';
 // Authored roadside places. Every piece is real, sector-culled geometry, with
 // vertex colours sharing one matte material. Nothing here changes driving data.
 import * as T from '../shared/vendor/three-0.185.1/three.module.min.js';
-import {roundedBox} from './mochi-kart.mjs?v=20260918-play-r1&mobile=20261001-quality2-r1';
-import {random} from '../shared/first-person/math.mjs';
+import {roundedBox} from './mochi-kart.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1';
+import {random} from '../shared/first-person/math.mjs?mobile=20261002-quality4-r1';
 
 const P = {
   cream: 0xffefd3, stone: 0xc5baa0, coral: 0xe99887, peach: 0xf0bc98,
@@ -49,12 +50,17 @@ export function buildCircuitEnvironment(kit, batch, track) {
   function frame(s, offset, faceRoad = false, baseY) {
     const q = track.at(s, offset), yaw = q.yaw + (faceRoad ? -Math.sign(offset) * Math.PI / 2 : 0);
     rotation.setFromAxisAngle(axis, yaw);
-    matrix.compose(new T.Vector3(q.x, baseY ?? q.y - .2, q.z), rotation, new T.Vector3(1, 1, 1));
+    matrix.compose(new T.Vector3(q.x, baseY ?? routeSceneryBase(track,q), q.z), rotation, new T.Vector3(1, 1, 1));
     const m = matrix.clone();
     const geo = (g, color, x, y, z, turn = 0) => {
       point.set(x, y, z).applyMatrix4(m); emit(g, color, point.x, point.y, point.z, yaw + turn);
     };
     return {
+      ground(x,z){const p=new T.Vector3(x,0,z).applyMatrix4(m);return routeSceneryBase(track,{x:p.x,y:q.y,z:p.z})-p.y;},
+      footing(w,d,top=0,color=P.stone){
+        let bottom=Infinity;for(const x of [-w/2,0,w/2])for(const z of [-d/2,0,d/2])bottom=Math.min(bottom,this.ground(x,z));
+        const h=Math.max(.5,top-bottom+.3);this.box(0,top-h/2,0,w,h,d,color,.12);
+      },
       box(x, y, z, w, h, d, color, round = 0) {
         geo(round ? roundedBox(w, h, d, round, 3) : new T.BoxGeometry(w, h, d), color, x, y, z);
       },
@@ -115,6 +121,7 @@ export function buildCircuitEnvironment(kit, batch, track) {
     for (const dx of [-1.05,1.05]) f.cylinder(x+dx,.43,z,.35,.65,P.wood,8);
   }
   function cafe(f, width, height, color) {
+    f.footing(width+6,15,-.12);
     f.box(0,-.1,0,width+6,.35,15,P.stone,.22);
     f.box(0,.27,0,width+2,.55,10.8,P.cream,.3);
     f.box(0,height/2+.5,-1,width,height,8,color,.5);
@@ -153,17 +160,20 @@ export function buildCircuitEnvironment(kit, batch, track) {
     bench(f,width/2-1,6.1);
   }
   function fir(f,x,z,h,color=P.pine,base=0) {
+    base+=f.ground(x,z)-.22;
     f.cylinder(x,base+h*.22,z,.22,h*.45,P.wood,7);
     f.cone(x,base+h*.43,z,h*.28,h*.57,color,9);
     f.cone(x,base+h*.66,z,h*.22,h*.55,color===P.pine?P.mint:P.pine,9);
     f.cone(x,base+h*.86,z,h*.145,h*.43,color,9);
   }
   function broadleaf(f,x,z,h,color=P.mint) {
-    f.cylinder(x,h*.34,z,.2,h*.69,P.wood,7);
-    f.ellipsoid(x,h*.79,z,h*.31,h*.29,h*.28,color);
-    f.ellipsoid(x-h*.2,h*.65,z+h*.12,h*.24,h*.26,h*.25,color);
+    const base=f.ground(x,z)-.25;
+    f.cylinder(x,base+h*.34,z,.2,h*.69,P.wood,7);
+    f.ellipsoid(x,base+h*.79,z,h*.31,h*.29,h*.28,color);
+    f.ellipsoid(x-h*.2,base+h*.65,z+h*.12,h*.24,h*.26,h*.25,color);
   }
   function lodge(f,w=19) {
+    f.footing(w+2,16,.15);
     f.box(0,.5,0,w+2,1,12,P.slate,.35);
     f.box(0,3.5,0,w,6,10,P.wood,.3);
     for(const side of [-1,1]){
@@ -190,6 +200,7 @@ export function buildCircuitEnvironment(kit, batch, track) {
     bench(f,-w*.3,7.5); planter(f,w*.33,8.5,3,P.pine);
   }
   function lookout(f) {
+    f.footing(12,10,.1);
     f.box(0,.25,0,12,.5,10,P.stone,.25);
     for(const x of [-3,3])for(const z of [-2.5,2.5])f.box(x,4,z,.42,8,.42,P.wood);
     f.box(0,7,0,8,.5,7,P.wood);
@@ -205,6 +216,7 @@ export function buildCircuitEnvironment(kit, batch, track) {
     for(let i=0;i<10;i++)f.box(-5.15,.35+i*.68,3-i*.55,2.6,.2,.75,P.wood);
   }
   function warehouse(f,w=22,color=P.peach) {
+    f.footing(w+2,13,.15);
     f.box(0,.3,0,w+2,.6,13,P.stone,.15);
     f.box(0,4,0,w,7.5,11,color,.3);
     f.roof(0,7.7,0,w+1.4,2.6,12.4,P.teal);
@@ -264,14 +276,14 @@ export function buildCircuitEnvironment(kit, batch, track) {
       [.39,-1,15,8.5,P.peach],[.414,-1,11,6.6,P.cream],
       [.61,1,18,9.3,P.cream],[.632,1,12,6,P.coral],
       [.82,-1,16,7.8,P.peach],[.844,-1,12,10.8,P.cream],
-    ]) cafe(place('seafront-cafe',fraction,side,29),width,height,color);
-    for (const [fraction,side] of [[.045,-1],[.078,-1],[.18,1],[.4,1],[.62,-1],[.84,1]]) {
+    ]) if(fraction>.31)cafe(place('seafront-cafe',fraction,side,29),width,height,color);
+    for (const [fraction,side] of [[.4,1],[.62,-1],[.84,1]]) {
       const f=place('promenade-court',fraction,side,23);
       f.box(0,-.08,0,17,.22,13,P.sand,.4);
       for(const x of [-5.2,5.2]){parasol(f,x,-1,x<0?P.coral:P.teal);planter(f,x,5.8,3);}
       bench(f,0,4.2); lamp(f,-7.4,3.8); lamp(f,7.4,3.8);
     }
-    for(const [a,b,side]of[[.015,.092,1],[.025,.098,-1],[.143,.22,1],[.376,.433,-1],[.598,.65,1],[.8,.86,-1]]){
+    for(const [a,b,side]of[[.376,.433,-1],[.598,.65,1],[.8,.86,-1]]){
       for(let s=a*track.length;s<b*track.length;s+=8){
         const f=frame(s,side*17.2);
         f.box(0,-.13,0,4,.28,7.85,P.cream);
@@ -286,6 +298,7 @@ export function buildCircuitEnvironment(kit, batch, track) {
     // broad gaps on either side of the physical challenge gates.
     for(const [fraction,side]of[[.027,1],[.06,1],[.085,1],[.033,-1],[.083,-1],
       [.155,1],[.214,1],[.392,-1],[.632,1],[.845,-1]]){
+      if(fraction<.31)continue;
       const f=frame(track.length*fraction,side*20.5);broadleaf(f,0,0,6.4,P.mint);
       f.box(0,.18,0,3,.45,3,P.cream,.15);
     }
@@ -293,7 +306,7 @@ export function buildCircuitEnvironment(kit, batch, track) {
     for (const [fraction,side,w] of [[.04,1,21],[.063,-1,15],[.183,1,18],[.405,-1,22],[.61,1,19],[.825,-1,16]])
       lodge(place('pine-lodge',fraction,side,32),w);
     for(const [fraction,side]of[[.162,-1],[.437,1],[.742,1]]){
-      const f=place('ridge-lookout',fraction,side,26);lookout(f);bench(f,8,4);planter(f,-8,4,3,P.pine);
+      const f=place('ridge-lookout',fraction,side,23);lookout(f);bench(f,8,4);planter(f,-8,4,3,P.pine);
     }
     for(const [fraction,side]of[[.027,-1],[.17,1],[.42,1],[.635,-1],[.83,1]]){
       const f=place('trailhead',fraction,side,20);
@@ -307,15 +320,13 @@ export function buildCircuitEnvironment(kit, batch, track) {
     // Broad low ridges stay well outside road geometry. Fir silhouettes break
     // their crests; near trees still leave turn exits completely open.
     for(const [fraction,side,h]of[[.08,-1,32],[.205,1,39],[.35,1,30],[.54,-1,36],[.73,1,42],[.91,-1,31]]){
-      const f=place('forested-ridge',fraction,side,107);
-      f.ellipsoid(0,-h*.3,0,45,h*.65,38,P.ridge,12);
-      f.ellipsoid(26,-h*.35,-17,37,h*.59,33,P.mint,10);
+      const f=place('forested-ridge',fraction,side,54);
       const crest=[[-30,-5,9],[-19,3,14],[-10,-8,11],[0,5,15],[12,-1,10],[23,8,13],[30,0,8]];
       for(let i=0;i<crest.length;i++){
         const [x,z,height]=crest[i];
         // Low-poly hill facets lie inside their analytic ellipsoid: root the
         // trunks below that surface instead of balancing them on its envelope.
-        const base=Math.max(0,-h*.3+h*.65*Math.sqrt(1-(x/45)**2-(z/38)**2)-2);
+        const base=-2;
         fir(f,x,z,height,i%2?P.pine:P.mint,base);
       }
     }
@@ -331,7 +342,7 @@ export function buildCircuitEnvironment(kit, batch, track) {
   } else {
     for(const [fraction,side,width,color]of[[.035,1,24,P.peach],[.067,1,18,P.cream],[.163,1,22,P.peach],
       [.19,1,17,P.coral],[.41,-1,26,P.cream],[.62,1,24,P.peach],[.655,1,17,P.coral],[.86,-1,21,P.peach]])
-      warehouse(place('harbor-workshop',fraction,side,32),width,color);
+      if(!((fraction<.32)||(fraction>.54&&fraction<.78)))warehouse(place('harbor-workshop',fraction,side,32),width,color);
     for(const [fraction,side]of[[.073,-1],[.18,-1],[.615,-1],[.875,1]]){
       const f=place('cargo-crane',fraction,side,34);
       if(side<0&&fraction<.31){
@@ -373,8 +384,8 @@ export function buildCircuitEnvironment(kit, batch, track) {
   for(let i=0;i<clusters;i++){
     const fraction=(.014+i/clusters+(rng()-.5)*.026)%1;
     const side=i%3===0?-1:1, s=track.length*fraction;
-    if(track.id===0&&side<0&&fraction>.125&&fraction<.29)continue;
-    if(track.id===2&&side<0&&fraction<.31)continue;
+    if(track.id===0&&(fraction<.31||side<0))continue;
+    if(track.id===2&&side<0)continue;
     const f=frame(s,side*(track.id===1?35:44));
     const count=track.id===1?7:4;
     for(let j=0;j<count;j++){

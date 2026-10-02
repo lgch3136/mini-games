@@ -1,14 +1,17 @@
 import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { ankle } from "./motion.mjs?v=20260918-play-r1&mobile=20261001-quality3-r8";
+import { presentContactPose } from "./contact-pose.mjs?v=20261001-quality4-r1&mobile=20261002-quality4-r1";
+import { ArenaFraming } from "./framing.mjs?v=20261001-quality4-r1&mobile=20261002-quality4-r1";
+import { buildCrosswindStage } from "./stage.mjs?v=20261001-quality4-r1&mobile=20261002-quality4-r1";
+import { ankle } from "./motion.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
 import {
   ROSTER,
   lerp,
   clamp,
   hurtbox,
   attackBox,
-} from "./combat.mjs?v=20260918-play-r1&mobile=20261001-quality3-r8";
-import { PosePair } from "./render-state.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r8";
+} from "./combat.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { PosePair } from "./render-state.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
 const Y = new THREE.Vector3(0, 1, 0),
   Z = new THREE.Vector3(0, 0, 1),
   v = new THREE.Vector3(),
@@ -34,17 +37,18 @@ export class ArenaView {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
-    this.camera = new THREE.OrthographicCamera(-8, 8, 7.2, -1.8, 0.1, 60);
-    this.camera.position.set(0, 0, 20);
-    this.camera.lookAt(0, 0, 0);
-    this.scene.add(new THREE.HemisphereLight(0xc7dced, 0x49372d, 1.05));
-    const key = new THREE.DirectionalLight(0xffdbb2, 2.6);
+    this.framing = new ArenaFraming();
+    this.camera = new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0.1, 90);
+    this.camera.position.set(0, 7.5, 24);
+    this.camera.lookAt(0, 1.7, 0);
+    this.scene.add(new THREE.HemisphereLight(0xd3dfde, 0x52605c, 0.9));
+    const key = new THREE.DirectionalLight(0xffe4c4, 1.8);
     key.position.set(-4, 6, 5);
     this.scene.add(key);
-    const rim = new THREE.DirectionalLight(0xffb875, 3.1);
+    const rim = new THREE.DirectionalLight(0xe5c6a2, 1.25);
     rim.position.set(3, 4, -3);
     this.scene.add(rim);
-    const fill = new THREE.DirectionalLight(0x91cddd, 0.7);
+    const fill = new THREE.DirectionalLight(0xaedbd5, 0.6);
     fill.position.set(3, 2, 7);
     this.scene.add(fill);
     this.ambient = true;
@@ -73,20 +77,21 @@ export class ArenaView {
     this.shadowTexture = new THREE.CanvasTexture(shadowCanvas);
     this.shadows = [0, 1].map(() => {
       const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.2, 0.38),
+        new THREE.PlaneGeometry(2.0, 0.95),
         new THREE.MeshBasicMaterial({
           map: this.shadowTexture,
           transparent: true,
           depthWrite: false,
         }),
       );
-      m.position.z = -0.12;
+      m.rotation.x = -Math.PI / 2;
+      m.position.y = .012;
       this.scene.add(m);
       return m;
     });
     this.footShadows = [0, 1, 2, 3].map(() => {
       const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.74, 0.13),
+        new THREE.PlaneGeometry(0.68, 0.42),
         new THREE.MeshBasicMaterial({
           map: this.shadowTexture,
           transparent: true,
@@ -94,60 +99,46 @@ export class ArenaView {
           opacity: 0.6,
         }),
       );
-      m.position.z = 0.02;
+      m.rotation.x = -Math.PI / 2;
+      m.position.y = .016;
       this.scene.add(m);
       return m;
     });
   }
   async preload() {
     const textureLoader = new THREE.TextureLoader();
-    [this.clothTexture, this.backdropTexture] = await Promise.all([
-      textureLoader.loadAsync(
-        new URL("./assets/wind-jacquard-v3.jpg", import.meta.url).href,
-      ),
-      textureLoader.loadAsync(
-        new URL("./assets/harbor-dusk-v2.webp", import.meta.url).href,
-      ),
+    [this.backdropTexture,this.floorTexture] = await Promise.all([
+      textureLoader.loadAsync(new URL("./assets/harbor-dusk-v2.webp?mobile=20261002-quality4-r1", import.meta.url).href),
+      textureLoader.loadAsync(new URL("./assets/terrace-slate-v4.webp?mobile=20261002-quality4-r1", import.meta.url).href),
     ]);
-    this.clothTexture.colorSpace = THREE.SRGBColorSpace;
-    this.clothTexture.wrapS = this.clothTexture.wrapT = THREE.RepeatWrapping;
-    this.clothTexture.flipY = false;
-    this.clothTexture.anisotropy = Math.min(
-      4,
-      this.renderer.capabilities.getMaxAnisotropy(),
-    );
+    this.floorTexture.colorSpace = THREE.SRGBColorSpace;
+    this.floorTexture.wrapS = this.floorTexture.wrapT = THREE.RepeatWrapping;
+    this.floorTexture.repeat.set(3.2,1.44);
+    this.floorTexture.anisotropy = Math.min(2,this.renderer.capabilities.getMaxAnisotropy());
     this.backdropTexture.colorSpace = THREE.SRGBColorSpace;
     this.backdrop = new THREE.Mesh(
       new THREE.PlaneGeometry(16, 9),
       new THREE.MeshBasicMaterial({
         map: this.backdropTexture,
+        color: 0xa4b6b4,
         toneMapped: false,
       }),
     );
-    this.backdrop.position.set(0, 2.7, -1);
+    this.placeBackdrop();
     this.scene.add(this.backdrop);
+    this.stage = buildCrosswindStage(this.scene,this.floorTexture);
     await Promise.all(
       ROSTER.map(async (c) => {
         const model = await this.loader.loadAsync(
-          new URL(`./assets/${c.id}-rig-v3.glb`, import.meta.url).href,
+          new URL(`./assets/${c.id}-rig-v4.glb?mobile=20261002-quality4-r1`, import.meta.url).href,
         );
-        model.scene.traverse((o) => {
-          if (!o.isMesh) return;
-          for (const m of Array.isArray(o.material) ? o.material : [o.material])
-            if (/_jacket|_trousers/.test(m.name)) {
-              m.map = this.clothTexture;
-              m.bumpMap = this.clothTexture;
-              m.bumpScale = 0.018;
-              m.roughness = 0.84;
-              m.needsUpdate = true;
-            }
-        });
         this.cache.set(c.id, model.scene);
       }),
     );
     this.ready = true;
   }
   select(ids) {
+    this.framing.reset();
     for (const m of this.models) this.scene.remove(m.root);
     this.models = [];
     ids.forEach((id, i) => {
@@ -178,7 +169,7 @@ export class ArenaView {
     this.w = rect.width;
     this.h = rect.height;
     this.dpr = dpr;
-    this.makeAtmosphere();
+    this.placeBackdrop();
   }
   event(e) {
     if (
@@ -198,7 +189,7 @@ export class ArenaView {
       this.effects.push({
         ...e,
         age: 0,
-        duration: e.type === "hit" ? 0.32 : e.type === "land" ? 0.22 : 0.35,
+        duration: e.type === "hit" ? 0.22 : e.type === "land" ? 0.22 : 0.35,
       });
       if (this.effects.length > 36) this.effects.shift();
     }
@@ -212,16 +203,18 @@ export class ArenaView {
     o.quaternion.copy(q);
     o.scale.set(1, 1, 1);
   }
-  actor(model, f, prev, alpha, tick) {
-    const p = model.posePair.sample(f, prev, alpha, tick);
+  actor(model, f, prev, alpha, tick, target, targetPose) {
+    const p = presentContactPose(model.pose, f, target, targetPose, alpha);
     const { root, parts } = model;
     model.pose = p;
     root.position.set(lerp(f.px, f.x, alpha), lerp(f.py, f.y, alpha), 0.7);
     root.scale.set(f.c.size * f.facing, f.c.size, f.c.size);
     this.setSegment(parts, "torso", p.hip, p.chest, 0.95);
+    parts.torso.quaternion.multiply(q.setFromAxisAngle(Y, p.chestTwist || 0));
     if (parts.pelvis) {
       parts.pelvis.position.set(...p.hip);
-      parts.pelvis.quaternion.copy(parts.torso.quaternion);
+      v.set(p.chest[0]-p.hip[0],p.chest[1]-p.hip[1],p.chest[2]-p.hip[2]);
+      parts.pelvis.quaternion.setFromUnitVectors(Y,v.normalize()).multiply(q.setFromAxisAngle(Y,p.hipTwist||0));
     }
     if (parts.head) {
       parts.head.position.set(...p.head);
@@ -261,8 +254,8 @@ export class ArenaView {
         lift = root.position.y + p["foot" + s][1] * f.c.size;
       contact.position.set(
         root.position.x + (p["foot" + s][0] + 0.12) * f.facing * f.c.size,
-        -0.025,
-        0.02,
+        .016,
+        root.position.z + p["foot" + s][2] * f.c.size,
       );
       contact.material.opacity = 0.65 * clamp(1 - lift * 3, 0, 1);
       contact.scale.setScalar(f.c.size);
@@ -276,19 +269,33 @@ export class ArenaView {
       );
     }
     const shadow = this.shadows[f.side];
-    shadow.position.set(root.position.x, -0.01, -0.12);
-    shadow.scale.setScalar(clamp(1 - f.y * 0.12, 0.65, 1));
+    shadow.position.set(root.position.x, .012, root.position.z);
+    shadow.scale.setScalar(clamp(1 + f.y * 0.09, 1, 1.35));
     shadow.material.opacity = 0.42 * clamp(1 - f.y * 0.15, 0.3, 1);
   }
-  screen(x, y) {
-    return [
-      (0.5 + (x * this.camera.zoom) / 16) * this.w,
-      (0.5 + ((2.7 - y) * this.camera.zoom) / 9) * this.h,
-    ];
+  placeBackdrop() {
+    if (!this.backdrop) return;
+    this.camera.updateMatrixWorld(true);
+    this.camera.getWorldDirection(v);
+    this.backdrop.position.copy(this.camera.position).addScaledVector(v, 65);
+    this.backdrop.quaternion.copy(this.camera.quaternion);
+    this.backdrop.translateY((this.camera.top+this.camera.bottom)/2);
+    this.backdrop.translateX((this.camera.left+this.camera.right)/2);
+    this.backdrop.scale.setScalar(Math.max((this.camera.right-this.camera.left)/16,(this.camera.top-this.camera.bottom)/9));
+  }
+  screen(x, y, z = 1) {
+    v.set(x, y, z).project(this.camera);
+    return [(v.x + 1) * this.w / 2, (1 - v.y) * this.h / 2];
   }
   render(fight, previous, alpha, dt = 0) {
     if (!this.ready || !this.w) return;
     this.elapsed += dt;
+    const frame = this.framing.update(fight,this.w/this.h,dt,this.w<=680);
+    this.camera.left=-frame.width/2;this.camera.right=frame.width/2;
+    this.camera.top=frame.height/2;this.camera.bottom=-frame.height/2;
+    this.camera.position.set(frame.x,frame.y+5.8,24);this.camera.lookAt(frame.x,frame.y,0);
+    this.camera.updateProjectionMatrix();this.camera.updateMatrixWorld(true);
+    this.placeBackdrop();
     const intro =
       this.cinematic && !this.reducedMotion && fight.state === "intro"
         ? clamp((fight.intro - 28) / 47, 0, 1)
@@ -308,9 +315,9 @@ export class ArenaView {
         );
       light.intensity = this.ambient
         ? shot
-          ? 3.4
+          ? 1.2
           : flash
-            ? 4 * (1 - flash.age / 0.12)
+            ? (flash.type === "wave" ? .55 : 0) * (1 - flash.age / 0.12)
             : 0
         : 0;
       light.position.set(
@@ -319,17 +326,18 @@ export class ArenaView {
         1.5,
       );
     });
-    fight.f.forEach((f, i) => {
-      if (this.models[i]) this.actor(this.models[i], f, previous?.[i], alpha, dt > 0 ? fight.frame : undefined);
+    fight.f.forEach((f,i)=>{
+      const model=this.models[i];
+      if(model)model.pose=model.posePair.sample(f,previous?.[i],alpha,dt>0?fight.frame:undefined);
     });
-    this.backdrop.material.map = this.ambient
-      ? this.atmosphereTexture
-      : this.backdropTexture;
+    fight.f.forEach((f, i) => {
+      if (this.models[i]) this.actor(this.models[i], f, previous?.[i], alpha, dt > 0 ? fight.frame : undefined, fight.f[1-i], this.models[1-i]?.pose);
+    });
     this.renderer.render(this.scene, this.camera);
     const c = this.ctx;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, this.w, this.h);
-    const scale = (this.w / 16) * this.camera.zoom;
+    const scale = (this.w / (this.camera.right-this.camera.left)) * this.camera.zoom;
     this.drawAtmosphere(c);
     this.drawTrails(fight, c, scale);
     for (const f of fight.f)
@@ -384,7 +392,7 @@ export class ArenaView {
       if (t >= 1) continue;
       const f = fight.f[e.side ?? 0],
         [x, y] = this.screen(e.x ?? f.x, e.y ?? 0.06),
-        r = (e.heavy ? 0.68 : 0.42) * scale;
+        r = (e.heavy ? 0.40 : 0.27) * scale;
       c.save();
       c.globalAlpha = 1 - t;
       c.translate(x, y);
@@ -425,7 +433,7 @@ export class ArenaView {
         c.stroke();
       } else if (e.type === "hit" || e.type === "clash") {
         const glow = c.createRadialGradient(0, 0, 0, 0, 0, r * 1.7);
-        glow.addColorStop(0, "rgba(255,222,143,.38)");
+        glow.addColorStop(0, "rgba(255,222,143,.12)");
         glow.addColorStop(1, "rgba(255,172,90,0)");
         c.fillStyle = glow;
         c.fillRect(-r * 1.7, -r * 1.7, r * 3.4, r * 3.4);
@@ -460,51 +468,14 @@ export class ArenaView {
           [attackBox(f), "#ff6687"],
         ]) {
           if (!box) continue;
-          const [x, y] = this.screen(box.x, box.y + box.h);
+          const [x, y] = this.screen(box.x, box.y + box.h, .7);
+          const [right, bottom] = this.screen(box.x + box.w, box.y, .7);
           c.strokeStyle = color;
           c.lineWidth = 1.5;
-          c.strokeRect(x, y, box.w * scale, box.h * scale);
+          c.strokeRect(x, y, right - x, bottom - y);
         }
       }
     }
-  }
-  makeAtmosphere() {
-    if (this.atmosphereTexture || !this.backdropTexture) return;
-    const layer = document.createElement("canvas");
-    layer.width = this.backdropTexture.image.width;
-    layer.height = this.backdropTexture.image.height;
-    const c = layer.getContext("2d"),
-      w = layer.width,
-      h = layer.height;
-    // Bake only static atmosphere once. Dynamic FX canvas stays mostly empty,
-    // instead of blending another full-screen translucent image every frame.
-    c.drawImage(this.backdropTexture.image, 0, 0, w, h);
-    const edge = c.createRadialGradient(
-      w * 0.5,
-      h * 0.53,
-      w * 0.2,
-      w * 0.5,
-      h * 0.5,
-      w * 0.69,
-    );
-    edge.addColorStop(0, "rgba(13,24,38,0)");
-    edge.addColorStop(0.7, "rgba(13,24,38,.035)");
-    edge.addColorStop(1, "rgba(13,24,38,.3)");
-    c.fillStyle = edge;
-    c.fillRect(0, 0, w, h);
-    for (const [x, y, r] of [
-      [0.13, 0.23, 0.11],
-      [0.9, 0.23, 0.09],
-      [0.49, 0.45, 0.22],
-    ]) {
-      const g = c.createRadialGradient(w * x, h * y, 0, w * x, h * y, w * r);
-      g.addColorStop(0, "rgba(255,181,86,.055)");
-      g.addColorStop(1, "rgba(255,181,86,0)");
-      c.fillStyle = g;
-      c.fillRect(0, 0, w, h);
-    }
-    this.atmosphereTexture = new THREE.CanvasTexture(layer);
-    this.atmosphereTexture.colorSpace = THREE.SRGBColorSpace;
   }
   drawAtmosphere(c) {
     if (!this.ambient) return;
@@ -553,6 +524,7 @@ export class ArenaView {
       const point = [
         model.root.position.x + p[0] * f.facing * f.c.size,
         model.root.position.y + p[1] * f.c.size,
+        model.root.position.z + p[2] * f.c.size,
       ];
       const tail = model.trail.at(-1);
       if (!tail || Math.hypot(tail[0] - point[0], tail[1] - point[1]) > 0.015)
@@ -588,8 +560,10 @@ export class ArenaView {
       textures: this.renderer.info.memory.textures,
       effects: this.effects.length,
       models: this.models.length,
-      modelVersion: 3,
+      modelVersion: 4,
+      stage: this.stage?.stats,
       cameraZoom: this.camera.zoom,
+      framing: {width:this.framing.width,x:this.framing.x,y:this.framing.y},
       activeLights: this.pulseLights.filter((l) => l.intensity > 0).length,
       ambient: this.ambient,
     };
@@ -609,11 +583,12 @@ export class ArenaView {
       o.material.dispose();
     });
     this.shadowTexture.dispose();
-    this.clothTexture?.dispose();
+    this.floorTexture?.dispose();
     this.backdropTexture?.dispose();
     this.atmosphereTexture?.dispose();
     this.backdrop?.geometry.dispose();
     this.backdrop?.material.dispose();
+    this.stage?.dispose();
     this.renderer.dispose();
     this.cache.clear();
   }

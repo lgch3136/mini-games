@@ -1,15 +1,16 @@
-import { SPACE, GAIT_RATE, clamp, lerp } from "./engine.mjs?v=20260905-sonic&mobile=20261001-quality2-r1";
+import { SPACE, GAIT_RATE, clamp, lerp } from "./engine.mjs?v=20260905-sonic&mobile=20261002-quality4-r1";
 export { GAIT_RATE };
 
 // One stride is tied to road travel, not wall-clock animation frames. During
 // stance the sole and road have exactly the same velocity (no skating).
 export const STRIDE = (Math.PI * SPACE.depth) / GAIT_RATE;
-export function runnerPose(gait, jump = 0, slide = 0, cart = 0) {
+export function runnerPose(gait, jump = 0, slide = 0, cart = 0, landing = 0) {
   const airborne = clamp(jump / 0.5, 0, 1);
   const bounce =
     (1 - slide) * (1 - cart) * (1 - airborne) * Math.cos(gait * 2) * 0.025;
-  const hip = lerp(1.06, 0.37, slide) + bounce + cart * 0.2;
-  const torso = lerp(1.51, 0.38, slide) + bounce + cart * 0.18 * (1 - slide);
+  const compression=clamp(landing,0,1)*.17*(1-slide)*(1-cart)*(1-airborne);
+  const hip = lerp(1.06, 0.37, slide) + bounce + cart * 0.2-compression;
+  const torso = lerp(1.51, 0.38, slide) + bounce + cart * 0.18 * (1 - slide)-compression;
   return { airborne, hip, torso, head: torso + 0.64 - slide * 0.38 };
 }
 export function footPose(gait, side, jump = 0, slide = 0, cart = 0) {

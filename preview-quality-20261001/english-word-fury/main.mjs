@@ -1,15 +1,15 @@
-import { bindGameplayFocus } from "../shared/gameplay-focus.mjs?mobile=20261001-quality3-r8";
-import { rememberCombat, storedMedal, formatDojoText, P1_KEYS } from "./dojo.mjs?v=20261001-quality3-r3&mobile=20261001-quality3-r8";
+import { bindGameplayFocus } from "../shared/gameplay-focus.mjs?mobile=20261002-quality4-r1";
+import { rememberCombat, storedMedal, formatDojoText, P1_KEYS } from "./dojo.mjs?v=20261001-quality3-r3&mobile=20261002-quality4-r1";
 import {
   Fight,
   ROSTER,
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20260918-play-r1&mobile=20261001-quality3-r8";
-import { ArenaView } from "./view.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r8";
-import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
-import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20261001-quality3-r8";
+} from "./combat.mjs?v=20260918-play-r1&mobile=20261002-quality4-r1";
+import { ArenaView } from "./view.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
+import { FuryAudio } from "./sound.mjs?mobile=20261002-quality4-r1";
+import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
 const fighterSnapshots = new FighterSnapshots();
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
@@ -390,7 +390,7 @@ function finish() {
   const p = game.f[0];
   const report = rememberCombat(game);
   $("fight-medal").hidden = !report.stars || versus;
-  if (report.stars) $("fight-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+  if (report.stars) $("fight-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp?mobile=20261002-quality4-r1`;
   setText("fight-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip);
   $("result-stats").innerHTML =
     `<div><b>${p.stats.hits}</b><small>有效命中</small></div><div><b>${p.best}</b><small>最高连击</small></div><div><b>${wordsDone}</b><small>接触词条</small></div>`;

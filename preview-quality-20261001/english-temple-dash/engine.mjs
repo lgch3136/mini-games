@@ -83,8 +83,8 @@ const WORDS = [
 export const SPACE = Object.freeze({
   lane: 2.1,
   depth: 0.17,
-  sin: 0.6,
-  cos: 0.8,
+  sin: 5 / 13,
+  cos: 12 / 13,
 });
 export const HAZARDS = Object.freeze({
   "#": { depth: 5, height: 2.35 },
@@ -96,9 +96,10 @@ export const rowDepth = (layout) =>
   Math.max(0, ...[...layout].map((k) => HAZARDS[k]?.depth || 0));
 export function cameraSpec(width, height) {
   const aspect = width / height;
-  const worldHeight = Math.max(11.5, 8.8 / aspect);
+  const worldHeight = Math.max(11.5, 10.8 / aspect);
   const foot = width < height ? 0.735 : 0.79;
   return {
+    viewPosition: [0, 25, 60],
     worldHeight,
     worldWidth: worldHeight * aspect,
     foot,
@@ -226,6 +227,7 @@ export class World {
       stumble: 0,
       gait: 0,
       previousGait: 0,
+      landAt: -10,
       jumpBuffer: 0,
       dive: false,
     };
@@ -361,6 +363,7 @@ export class World {
       if (p.h <= 0) {
         p.h = 0;
         p.vy = 0;
+        p.landAt=this.time;
         this.emit("land");
         if (p.dive) this.slide();
         else if (p.jumpBuffer > 0) this.jump();

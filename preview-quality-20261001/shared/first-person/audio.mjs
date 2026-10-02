@@ -1,4 +1,4 @@
-import { Soundtrack } from "../../english-word-ranger/sound.js?v=20260905-dawn&mobile=20260930-quality-r2";
+import { Soundtrack } from "../../english-word-ranger/sound.js?v=20260905-dawn&mobile=20261002-quality4-r1";
 export class Audio extends Soundtrack {
   constructor(kind) {
     super();

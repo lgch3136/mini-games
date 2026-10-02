@@ -51,7 +51,7 @@ export function fieldCoach(world) {
   if (world.boss.active && world.boss.hp > 0 && world.boss.attack === 'furnace' && world.boss.phase === 'telegraph') return '热阀蓄能 · 移至带圆环的安全踏板，或跳开火柱';
   if (world.boss.active && world.boss.hp > 0) return world.boss.exposed ? '核心暴露 · 集中开火' : '看清首领预兆，翻滚避弹，跳过地波';
   const enemy = world.enemies.find(e => !e.dead && e.active && Math.abs(e.x - p.x) < 360 && e.type === 'shield');
-  if (enemy) return '盾兵在前 · 正面射击会被挡住，绕后或使用手雷';
+  if (enemy) return p.weapon === 'pulse' ? 'PIERCE 脉冲可穿盾 · 对准盾面，看命中闪光与生命变化' : '盾兵在前 · 普通弹不能穿盾；上层绕后、等收盾或用手雷';
   if (p.hp <= 2) return '体力偏低 · 词核和补给点可以恢复';
   return world.contract.goals().find(g => !world.contract.claimed.has(g.id))?.tip || '战术目标已完成 · 保持节奏，向撤离点前进';
 }

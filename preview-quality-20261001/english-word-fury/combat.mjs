@@ -1,5 +1,5 @@
-import { styleDecision, armorActive } from "./styles.mjs?mobile=20261001-quality2-r1";
-import { DojoCourse } from "./dojo.mjs?v=20261001-quality3-r3&mobile=20261001-quality3-r8";
+import { styleDecision, armorActive } from "./styles.mjs?mobile=20261002-quality4-r1";
+import { DojoCourse } from "./dojo.mjs?v=20261001-quality3-r3&mobile=20261002-quality4-r1";
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
 export const VERSION = "20260918-play-r1";
 export const clamp = (x, a, b) => Math.max(a, Math.min(b, x));

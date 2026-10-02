@@ -191,10 +191,10 @@
   }
 }
 /* Light, motion and geometry carry the combat; no illustrated backdrop. */
-#app:is([data-view="combat"], [data-view="victory"], [data-view="paused"]) {
+#app:is([data-view="combat"],[data-view="lectern"], [data-view="victory"], [data-view="paused"]) {
   background: #091b25;
 }
-#app:is([data-view="combat"], [data-view="victory"], [data-view="paused"])
+#app:is([data-view="combat"],[data-view="lectern"], [data-view="victory"], [data-view="paused"])
   .landscape {
   display: none;
 }

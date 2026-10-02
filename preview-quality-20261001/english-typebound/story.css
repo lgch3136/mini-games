@@ -27,7 +27,7 @@ select:focus-visible {
   outline-color: #ffd58a;
 }
 .landscape {
-  background-image: url("assets/letterwood-story.webp");
+  background-image: url("assets/letterwood-story.webp?mobile=20261002-quality4-r1");
 }
 .landscape:after {
   background:
@@ -150,19 +150,19 @@ select:focus-visible {
   background: linear-gradient(0deg, #153b44f7, #153b44c9 50%, #153b445a);
 }
 #app[data-chapter="1"] .landscape {
-  background-image: url("assets/tide-library-story.webp");
+  background-image: url("assets/tide-library-story.webp?mobile=20261002-quality4-r1");
 }
 #app[data-chapter="2"] .landscape {
-  background-image: url("assets/sunrise-observatory-story.webp");
+  background-image: url("assets/sunrise-observatory-story.webp?mobile=20261002-quality4-r1");
 }
-#app[data-view="combat"] .landscape,
+#app:is([data-view="combat"],[data-view="lectern"]) .landscape,
 #app[data-view="victory"] .landscape,
 #app[data-view="paused"] .landscape,
 #app[data-view="result"] .landscape {
   background-image: none;
   background-color: #163b43;
 }
-#app[data-view="combat"] .landscape:after,
+#app:is([data-view="combat"],[data-view="lectern"]) .landscape:after,
 #app[data-view="victory"] .landscape:after,
 #app[data-view="paused"] .landscape:after,
 #app[data-view="result"] .landscape:after {

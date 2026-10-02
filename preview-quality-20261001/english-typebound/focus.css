@@ -17,7 +17,7 @@
 .arena .enemy-intent > span { font-size:10px; }
 .arena .flow-badge, #arena-note { display:none; }
 #battle .run-metrics { font-size:10px; }
-.menu-scene { background:linear-gradient(0deg,#081923 0%,transparent 62%),url('assets/cover-light-20260928.webp') center/cover; border:1px solid #a3d2c222; border-radius:24px; overflow:hidden; }
+.menu-scene { background:linear-gradient(0deg,#081923 0%,transparent 62%),url('assets/cover-light-20260928.webp?mobile=20261002-quality4-r1') center/cover; border:1px solid #a3d2c222; border-radius:24px; overflow:hidden; }
 #traveller-preview { display:none; }
 .menu-scene .scene-kicker { margin-bottom:auto; padding:24px 0; }
 .menu-scene > p { margin-top:290px; }

@@ -1,4 +1,4 @@
-import { P1_KEYS } from './input-map.mjs?v=20261001-quality3-r1&mobile=20261001-quality3-r8';
+import { P1_KEYS } from './input-map.mjs?v=20261001-quality3-r1&mobile=20261002-quality4-r1';
 // Re-export the map so the runtime and instruction formatter share one source.
 export { P1_KEYS };
 const touchLabels = Object.freeze({ A: 'A', B: 'B', C: 'C', D: 'D', guard: '「防」', wave: '「气波」' });

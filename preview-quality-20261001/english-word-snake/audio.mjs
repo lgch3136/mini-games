@@ -1,4 +1,4 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?mobile=20260930-quality-r2";
+import { Soundtrack } from "../english-word-ranger/sound.js?mobile=20261002-quality4-r1";
 
 // Original, quiet pentatonic garden arrangement. One context and bounded voices.
 export class GardenAudio extends Soundtrack {

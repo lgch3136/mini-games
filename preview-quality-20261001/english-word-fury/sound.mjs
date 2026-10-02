@@ -1,4 +1,4 @@
-import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1&mobile=20260930-quality-r2";
+import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1&mobile=20261002-quality4-r1";
 // Original 32-bar broken-beat arrangement; bounded audio engine shared with Ranger.
 export class FuryAudio extends Soundtrack {
   schedule() {

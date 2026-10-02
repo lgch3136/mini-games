@@ -35,13 +35,18 @@ const DIFFS = {
 };
 
 const MineheadWork = new Image();
-MineheadWork.src='../shared/gameplay-art/minehead-work.webp';
 const Minehead = new Image();
-Minehead.src='../shared/gameplay-art/minehead.webp';
 const MineDepth = new Image();
-MineDepth.src='assets/mine-depth-quality2.webp';
+MineDepth.src='assets/quality4/mine-cutaway.webp?mobile=20261002-quality4-r1';
+const MineWide = new Image();
+MineWide.src='assets/quality4/mine-cutaway-wide.webp?mobile=20261002-quality4-r1';
+const MineralAtlas = new Image();
+MineralAtlas.src='assets/quality4/minerals.webp?mobile=20261002-quality4-r1';
+const MineEffort = new Image();
+MineEffort.src='assets/quality4/operator-effort.webp?mobile=20261002-quality4-r1';
 const GameplayAtlas = new Image();
-GameplayAtlas.src = 'assets/gameplay-atlas-v3.webp';
+// Old vector/atlas branches remain safe fallbacks, but the old game-wide art
+// sheets are no longer downloaded alongside the coherent mineral assets.
 
 const ATLAS_RECTS = {
   '0:0': [64, 0, 157, 268], '0:1': [309, 2, 217, 266], '0:2': [572, 43, 165, 226], '0:3': [776, 41, 155, 229],
@@ -74,8 +79,10 @@ const Game = {
   score: 0, lives: 3, level: 1,
   wordsDone: 0, wallet: 0, precision: 0, bestPrecision: 0, launches: 0, catches: 0,
   contractName: '晨光矿脉',
+  nextVein: 'shallow',
   timeLeft: 0, time: 0, shake: 0,
   items: [], particles: [], floaters: [],
+  excavations: [], deliveries: [], binStock: [], binCount: 0,
   word: null, lastWord: '',
   quota: 0, treasureEarned: 0, contracts: 0,
   strength: 0, luck: 0,
@@ -267,37 +274,62 @@ function repairContract() {
 }
 
 function buildLevel(initial) {
-  const bank = wordBank();
+  const fullBank = wordBank();
+  const lesson = Game.difficulty === 'easy' && Game.level <= 2;
+  const shortBank = fullBank.filter(item => item.en.length === (Game.level === 1 ? 3 : 4));
+  const bank = lesson && shortBank.length ? shortBank : fullBank;
   let item;
   do { item = bank[Math.floor(Math.random() * bank.length)]; }
   while (item.en === Game.lastWord && bank.length > 1);
   Game.lastWord = item.en;
-  if (!initial) { Game.score += 200; Game.wallet += 200; }
   Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
   Game.treasureEarned = 0;
   Game.contractTimer = 0;
-  Game.quota = 420 + Math.min(480, Game.level * 60);
+  const spec=contractSpec(Game.level,Game.nextVein);
+  Game.quota = spec.quota;
+  Game.excavations = []; Game.deliveries = []; Game.binStock=[];Game.binCount=0;
   spawnItems();
-  repairContract();
-  Game.contractRule=(Game.level-1)%3;
-  for(const ore of Game.items.filter(i=>i.kind==='gold'||i.kind==='diamond')) {
-    if(Game.contractRule===1) {ore.weight*=1.45;ore.value=Math.round(ore.value*1.5);}
-    if(Game.contractRule===2) {ore.weight*=.72;ore.precisionBonus=Math.round(ore.value*.35);}
+  if(Game.assisted===false) {
+    const letters=Game.items.filter(i=>i.kind==='letter'),positions=letters.map(i=>({x:i.x,y:i.y}));
+    for(let i=positions.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[positions[i],positions[j]]=[positions[j],positions[i]];}
+    letters.forEach((it,i)=>{it.x=positions[i].x;it.y=positions[i].y;});
   }
-  Game.contractName = ['晨光矿脉','琥珀阶地','星钻深井'][(Game.level-1)%3];
+  Game.contractRule=Game.level>1&&Game.nextVein==='rich'?1:0;
+  if(Game.level>1) for(const ore of Game.items.filter(i=>i.kind==='gold'||i.kind==='diamond')) {
+    ore.weight*=spec.weightScale;
+    ore.value=Math.round(ore.value*(ore.kind==='diamond'?spec.crystalScale:spec.valueScale));
+    if(ore.kind==='gold')ore.y=clamp(ore.y+(Game.nextVein==='rich'?32:-28),180,mineFloor());
+  }
+  // Recheck after the selected depth/value rules, not before scaling treasure.
+  repairContract();
+  if(Game.level>1)for(const ore of Game.items)if(ore.reserve)ore.weight*=spec.weightScale;
+  Game.contractName = Game.level===1?'晨光试采':spec.name;
   Game.launches = 0; Game.catches = 0; Game.precision = 0;
   Game.hook = newHook();
-  if (initial) Game.timeLeft = DIFFS[Game.difficulty].time;
-  else Game.timeLeft = DIFFS[Game.difficulty].time + Math.min(15, Math.floor(Game.timeLeft * .2));
+  Game.timeLeft=spec.seconds;
   updateHud();
   updateHudTimer();
-  showFeedback([`${Game.contractName} · 先字母，再选轻快或高值矿石`,`${Game.contractName} · 富矿更重、价值 ×1.5；炸药可脱困`,`${Game.contractName} · 轻矿快收，精准命中额外收入 35%`][Game.contractRule]);
+  showFeedback(Game.level===1?'看准矿物与回收时间 · 先完成短词，再凑齐额度':`${spec.name} · ${Game.nextVein==='rich'?'重矿更深、收入更高；留意回收秒数':'浅矿轻快、额度较低；先拿稳妥的一块'}`);
+}
+
+function contractSpec(level,route='shallow') {
+  const easy=Game.difficulty==='easy',base=easy&&level<=2?(level===1?180:300):420+Math.min(480,level*60);
+  const rich=route==='rich',active=level>1;
+  return {name:rich?'重脉金晶':'浅层碎金',quota:Math.round(base*(active?(rich?1.25:level>2?.85:1):1)),
+    seconds:DIFFS[Game.difficulty].time+(level>1?Math.min(15,Math.floor(Math.max(0,Game.timeLeft)*.2)):0),
+    weightScale:active?(rich?1.45:.7):1,valueScale:active?(rich?1.6:.9):1,crystalScale:active?(rich?1.25:.9):1};
+}
+
+function chooseVein(route) {
+  if(Game.state!=='shop'||!['shallow','rich'].includes(route))return;
+  Game.nextVein=route;renderShop();
 }
 
 function startGame() {
   Game.assisted=$id('letter-assist').checked !== false;
   Game.wallet = 0; Game.precision = 0; Game.bestPrecision = 0;
   Game.score = 0; Game.lives = 1; Game.level = 1; Game.contracts = 0;
+  Game.nextVein='shallow';
   Game.strength = 0; Game.luck = 0; dynamiteCount = 1;
   Game.wordsDone = 0; Game.time = 0; Game.shake = 0;
   Game.contractTimer = 0;
@@ -377,6 +409,14 @@ function update(dt) {
 }
 
 function updateEffects(dt) {
+  for (let i=Game.deliveries.length-1;i>=0;i--) {
+    Game.deliveries[i].age += dt;
+    if(Game.deliveries[i].age >= .65) {
+      Game.binStock=Game.binStock.filter(s=>s.slot!==Game.deliveries[i].slot);
+      Game.binStock.push(Game.deliveries[i]);if(Game.binStock.length>4)Game.binStock.shift();
+      Game.deliveries.splice(i,1);
+    }
+  }
   for (let i = Game.particles.length - 1; i >= 0; i--) {
     const pt = Game.particles[i];
     pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 260 * dt;
@@ -409,6 +449,9 @@ function updateHook(dt) {
         it.precise = cross <= it.r*.4;
         it.grabbed = true;
         h.grabbed = it;
+        it.breakTime = .14 + Math.min(.18,it.weight*.045);
+        it.breakDuration = it.breakTime;
+        it.gripOffset={x:it.x-tipX,y:it.y-tipY};it.pullAge=0;
         h.state = 'retract';
         updateDynamiteButton();
         if (window.ArcadeAudio) ArcadeAudio.play('click', .12, 1.2);
@@ -417,11 +460,23 @@ function updateHook(dt) {
     }
     if (h.len >= h.maxLen || tipX < 8 || tipX > W - 8 || tipY > H - 6) h.state = 'retract';
   } else if (h.state === 'retract') {
+    if(h.grabbed?.breakTime > 0) {
+      const it=h.grabbed;it.breakTime=Math.max(0,it.breakTime-dt);
+      if(!it.breakTime) {
+        Game.excavations=Game.excavations.filter(p=>Math.hypot(p.x-it.homeX,p.y-it.homeY)>3);
+        Game.excavations.push({x:it.homeX,y:it.homeY,r:it.r,kind:it.kind});
+        if(Game.excavations.length>40)Game.excavations.shift();
+        burst(it.homeX,it.homeY,'#b49260',7);
+      }
+      return;
+    }
     const mul = h.grabbed ? (1 / h.grabbed.weight) * DIFFS[Game.difficulty].retractMul * (1 + Game.strength * .2) : 1.6;
     h.len -= h.speed * mul * dt;
     if (h.grabbed) {
-      h.grabbed.x = h.x + Math.cos(h.angle) * h.len;
-      h.grabbed.y = h.y + Math.sin(h.angle) * h.len;
+      h.grabbed.pullAge=(h.grabbed.pullAge||0)+dt;
+      const settle=Math.max(0,1-h.grabbed.pullAge/.16);
+      h.grabbed.x = h.x + Math.cos(h.angle) * h.len+(h.grabbed.gripOffset?.x||0)*settle;
+      h.grabbed.y = h.y + Math.sin(h.angle) * h.len+(h.grabbed.gripOffset?.y||0)*settle;
     }
     if (h.len <= 46) {
       h.len = 46;
@@ -450,17 +505,21 @@ function deliverItem(it) {
     }
     it.index=Game.word.progress;
   }
-  const beforeScore = Game.score;
+  const beforeTreasure = Game.treasureEarned;
   if(it.precise && it.precisionBonus) {Game.score+=it.precisionBonus;Game.treasureEarned+=it.precisionBonus;floatText('精准矿脉 +'+it.precisionBonus,it.x,it.y-22,'#d5f6d2');}
   const useful = it.kind === 'gold' || it.kind === 'diamond' || (it.kind === 'letter' && it.index === Game.word.progress);
+  if(useful) {
+    Game.deliveries.push({kind:it.kind,letter:it.letter,index:it.index,x:it.x,y:it.y,r:Math.min(it.r,16),age:0,slot:Game.binCount++%4});
+    if(Game.deliveries.length>5)Game.deliveries.shift();
+  }
   Game.catches++;
   if (useful && it.precise) {
     Game.precision++; Game.bestPrecision = Math.max(Game.bestPrecision,Game.precision);
     Game.timeLeft += Math.min(3, 1 + Game.precision*.5);
-    floatText('精准 +' + Math.min(3,1+Game.precision*.5) + ' 秒', W/2, 150, '#67e8f9');
+    floatText('精准 +' + Math.min(3,1+Game.precision*.5) + ' 秒', W/2, 178, '#67e8f9');
   } else if (!useful) Game.precision = 0;
   Game.items = Game.items.filter((x) => x !== it);
-  const x = it.x, y = it.y;
+  const x = it.homeX??it.x, y = it.homeY??it.y;
   if (it.kind === 'letter') {
     const w = Game.word;
     if (it.index === w.progress) {
@@ -490,13 +549,13 @@ function deliverItem(it) {
   } else if (it.kind === 'gold') {
     Game.score += it.value;
     Game.treasureEarned += it.value;
-    floatText('💰 +' + it.value, x, y, '#fde047');
+    floatText('金矿 +' + it.value, x, y, '#eac06f');
     burst(x, y, '#fde047', 16);
     if (window.ArcadeAudio) ArcadeAudio.play('confirm', .24, 1.35);
   } else if (it.kind === 'diamond') {
     Game.score += it.value;
     Game.treasureEarned += it.value;
-    floatText('💎 +' + it.value, x, y, '#67e8f9');
+    floatText('晶簇 +' + it.value, x, y, '#97d4cc');
     burst(x, y, '#67e8f9', 20);
     if (window.ArcadeAudio) ArcadeAudio.play('confirm', .26, 1.4);
   } else {
@@ -506,7 +565,9 @@ function deliverItem(it) {
     floatText('+石头', x, y, '#a8a29e');
     if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .7);
   }
-  Game.wallet += Math.max(0, Game.score-beforeScore);
+  // Spelling is scored, while actual extracted treasure funds the expedition.
+  // This keeps the first short lesson from buying the entire strength tree.
+  Game.wallet += Math.max(0, Game.treasureEarned-beforeTreasure);
   updateHud();
   if (Game.state === 'playing' && levelReady()) queueShop();
 }
@@ -538,7 +599,7 @@ function openShop() {
   if (Game.state !== 'playing' || !levelReady()) return;
   Game.state = 'shop';
   Game.contracts++;
-  Game.score += 300; Game.wallet += 300;
+  Game.score += 300; Game.wallet += 120;
   Game.hook = newHook();
   $id('word-bar').classList.add('hidden');
   $id('shop').classList.remove('hidden');
@@ -549,18 +610,29 @@ function openShop() {
 }
 
 function renderShop() {
-  const prices = { dynamite: 250, strength: 400, luck: 500 };
   document.querySelectorAll('.shop-buy').forEach((button) => {
     const item = button.dataset.item;
     const capped = (item === 'dynamite' && dynamiteCount >= 5) || (item === 'strength' && Game.strength >= 3) || (item === 'luck' && Game.luck >= 2);
-    button.disabled = capped || Game.wallet < prices[item];
+    const price=upgradePrice(item);button.disabled = capped || Game.wallet < price;
+    button.querySelector('em').textContent=capped?'已满级':String(price);
   });
-  $id('shop-summary').textContent = `第 ${Game.level} 关完成 · 余额 ${Game.wallet} · 雷管 ${dynamiteCount}/5 · 力量 ${Game.strength}/3 · 幸运 ${Game.luck}/2`;
+  $id('shop-summary').textContent = `第 ${Game.level} 关完成 · 矿币 ${Game.wallet}（含工钱120） · 雷管 ${dynamiteCount}/5 · 绞盘 ${Game.strength}/3`;
+  for(const route of ['shallow','rich']) {
+    const spec=contractSpec(Game.level+1,route),button=$id('route-'+route);
+    button.setAttribute('aria-pressed',String(Game.nextVein===route));
+    button.classList.toggle('selected',Game.nextVein===route);
+    $id('route-'+route+'-detail').textContent=`额度 ${spec.quota} · ${spec.seconds}秒 · 小金矿 ${Math.round(150*spec.valueScale)} / 重 ${(1.4*spec.weightScale).toFixed(1)}`;
+  }
+  $id('next-level-btn').textContent='前往'+contractSpec(Game.level+1,Game.nextVein).name;
+}
+
+function upgradePrice(item) {
+  return item==='dynamite'?250:item==='strength'?300*(Game.strength+1):item==='luck'?500*(Game.luck+1):Infinity;
 }
 
 function buyUpgrade(item) {
   if (Game.state !== 'shop') return false;
-  const price = item === 'dynamite' ? 250 : item === 'strength' ? 400 : item === 'luck' ? 500 : Infinity;
+  const price=upgradePrice(item);
   if (Game.wallet < price || (item === 'dynamite' && dynamiteCount >= 5) || (item === 'strength' && Game.strength >= 3) || (item === 'luck' && Game.luck >= 2)) return false;
   Game.wallet -= price;
   if (item === 'dynamite') dynamiteCount++;
@@ -572,20 +644,21 @@ function buyUpgrade(item) {
 }
 
 function continueFromShop() {
-  if (Game.state !== 'shop') return;
+  if (Game.state !== 'shop' || document.hidden) return;
   Game.level++;
   Game.state = 'playing';
   $id('shop').classList.add('hidden');
   $id('word-bar').classList.remove('hidden');
   buildLevel(false);
   accumulator = 0;
+  if(window.ChipMusic)ChipMusic.resume();
   ensureLoop();
 }
 
 function gameOver() {
   const medalPoints=Game.contracts*3;
   $id('run-medal').hidden = medalPoints<=0;
-  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp?mobile=20261002-quality4-r1';
   Game.state = 'over';
   if (window.ChipMusic) ChipMusic.stop();
   $id('word-bar').classList.add('hidden');
@@ -627,6 +700,7 @@ $id('cast-btn').addEventListener('click', event => { if (event.detail === 0 && G
 $id('dynamite-btn').addEventListener('click', event => { if (event.detail === 0) useDynamite(); });
 document.querySelectorAll('.shop-buy').forEach((button) => button.addEventListener('click', () => buyUpgrade(button.dataset.item)));
 $id('next-level-btn').addEventListener('click', continueFromShop);
+for(const route of ['shallow','rich'])$id('route-'+route).addEventListener('click',()=>chooseVein(route));
 
 function togglePause() {
   if (Game.state === 'playing') { Game.state = 'paused'; if (window.ChipMusic) ChipMusic.pause(); $id('paused').classList.remove('hidden'); }
@@ -702,6 +776,7 @@ function updateDynamiteButton() {
 
 /* ---------------- 渲染 ---------------- */
 const mineLayer = document.createElement('canvas');
+let cavityStamp=null;
 let mineKey = '';
 function drawMineEnvironment() {
   const key = [canvas.width, canvas.height, W, H].join(':');
@@ -716,11 +791,20 @@ function drawMineEnvironment() {
 }
 function paintMineEnvironment(ctx) {
   if(MineDepth.complete && MineDepth.naturalWidth) {
-    ctx.fillStyle='#142724';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#30372f';ctx.fillRect(0,0,W,H);
     // Keep both authored walls. A full-width fit preserves the playable cutaway.
-    ctx.drawImage(MineDepth,0,0,MineDepth.naturalWidth,MineDepth.naturalHeight,0,90,W,H-90);
-    ctx.fillStyle='#0d222b';ctx.fillRect(0,0,W,90);
-    ctx.fillStyle='#06171418';ctx.fillRect(W*.18,135,W*.64,Math.max(1,mineFloor()-130));
+    const background=W>=600&&MineWide.complete&&MineWide.naturalWidth?MineWide:MineDepth;
+    const bw=background.naturalWidth,bh=background.naturalHeight,edge=Math.floor(bh*.24),dh=edge*W/bw;
+    // Preserve the authored lantern/cart proportions. Only the broad middle
+    // rock strata extend to fit a tall phone; props are never stretched.
+    ctx.drawImage(background,0,0,bw,edge,0,90,W,dh);
+    ctx.drawImage(background,0,edge,bw,bh-edge*2,0,90+dh,W,Math.max(1,H-90-dh*2));
+    ctx.drawImage(background,0,bh-edge,bw,edge,0,H-dh,W,dh);
+    const workshop=ctx.createLinearGradient(0,0,0,104);
+    workshop.addColorStop(0,'#202c2c');workshop.addColorStop(1,'#62533a');
+    ctx.fillStyle=workshop;ctx.fillRect(0,0,W,105);
+    ctx.strokeStyle='#a68b5630';ctx.lineWidth=2;
+    for(let x=18;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,105);ctx.stroke();}
     return;
   }
   const bg = ctx.createLinearGradient(0, 90, 0, H);
@@ -793,8 +877,18 @@ function render() {
   ctx.save();
   ctx.translate(sx, !reducedMotion.matches && Game.shake > 0 ? rand(-3, 3) * Game.shake : 0);
 
+  // Mineral pockets belong to the rock face. Excavated cavities remain behind;
+  // intact pieces only leave that plane after the real hook has made contact.
+  for(const pit of Game.excavations) drawMineralPocket(pit,true);
+  for(const it of Game.items) if(!it.grabbed || it.breakTime>0) drawMineralPocket(it,false);
+
   // A seated operator, gantry feet and a physical spool share the rope origin.
-  if(Minehead.complete && Minehead.naturalWidth) {
+  if(MineEffort.complete&&MineEffort.naturalWidth) {
+    ctx.fillStyle='#705739';ctx.fillRect(0,110,W,10);ctx.fillStyle='#b79354';ctx.fillRect(0,108,W,3);
+    const hauling=Game.hook?.state==='retract',weight=Game.hook?.grabbed?.weight||1;
+    const cycle=reducedMotion.matches?0:Math.floor(Game.time*Math.max(3,10/Math.sqrt(weight)))%8;
+    ctx.drawImage(MineEffort,(hauling?cycle:0)*384+27,19,330,196,W/2-96,12,192,108);
+  } else if(Minehead.complete && Minehead.naturalWidth) {
     ctx.fillStyle='#705739';ctx.fillRect(0,110,W,10);ctx.fillStyle='#b79354';ctx.fillRect(0,108,W,3);
     const working=Game.hook?.state==='retract' && MineheadWork.complete && MineheadWork.naturalWidth;
     if(working) {
@@ -808,8 +902,11 @@ function render() {
   const h = Game.hook;
   if (h) {
     if (h.state === 'swing') drawAimGuide(h);
-    const tipX = h.x + Math.cos(h.angle) * h.len;
-    const tipY = h.y + Math.sin(h.angle) * h.len;
+    const gripAngle=h.grabbed?Math.atan2(h.grabbed.y-h.y,h.grabbed.x-h.x):h.angle;
+    // A grazing capture pivots the visual chain onto the gripping jaw while
+    // the mineral is still embedded. Collision angle/length remain untouched.
+    const tipX = h.grabbed?h.grabbed.x-Math.cos(gripAngle)*(h.grabbed.r+10):h.x + Math.cos(h.angle) * h.len;
+    const tipY = h.grabbed?h.grabbed.y-Math.sin(gripAngle)*(h.grabbed.r+10):h.y + Math.sin(h.angle) * h.len;
     // 原版式分节链条: 沿绳每隔14px画椭圆链环
     const dx = tipX - h.x, dy = tipY - h.y;
     const len = Math.hypot(dx, dy);
@@ -841,7 +938,8 @@ function render() {
       ctx.stroke();
       linkFlip = !linkFlip;
     }
-    drawClaw(tipX, tipY, h.angle, h.state === 'retract' && h.grabbed);
+    if(h.grabbed) drawLoadedClaw(h.grabbed,gripAngle,false);
+    else drawClaw(tipX,tipY,h.angle,false);
   }
 
   // 物品
@@ -850,6 +948,10 @@ function render() {
     drawItem(it);
   }
   if (h && h.grabbed) drawItem(h.grabbed);
+  if (h?.grabbed) drawLoadedClaw(h.grabbed,Math.atan2(h.grabbed.y-h.y,h.grabbed.x-h.x),true);
+  if (h?.state==='swing') drawAimLabel(h);
+
+  drawCollectionBin();
 
   drawParticles();
   ctx.restore();
@@ -864,15 +966,22 @@ function render() {
 }
 
 function aimTarget(h) {
-  const dx=Math.cos(h.angle), dy=Math.sin(h.angle);
-  let target=null, nearest=Infinity;
-  for (const it of Game.items) {
-    if(it.grabbed) continue;
-    const along=(it.x-h.x)*dx+(it.y-h.y)*dy;
-    const off=Math.abs((it.x-h.x)*dy-(it.y-h.y)*dx);
-    if(along>46 && off<it.r+10 && along<nearest) { nearest=along; target=it; }
+  return predictedContact(h)?.item || null;
+}
+function predictedContact(h) {
+  const dx=Math.cos(h.angle),dy=Math.sin(h.angle),step=h.speed*FIXED_STEP;
+  let best=null;
+  for(const item of Game.items) {
+    if(item.grabbed)continue;
+    const x=item.x-h.x,y=item.y-h.y,along=x*dx+y*dy,off=Math.abs(x*dy-y*dx),radius=item.r+10;
+    if(off>=radius||along+radius<=46)continue;
+    const half=Math.sqrt(radius*radius-off*off),tick=Math.max(1,Math.floor((along-half-46)/step)+1),len=46+tick*step;
+    if(len>=along+half)continue;
+    const maxLen=Math.min(h.maxLen,(H-6-h.y)/dy,dx>0?(W-8-h.x)/dx:(8-h.x)/dx);
+    if(tick>Math.ceil((maxLen-46)/step))continue;
+    if(!best||tick<best.tick)best={item,tick,len};
   }
-  return target;
+  return best;
 }
 function drawAimGuide(h) {
   const target=aimTarget(h);
@@ -881,7 +990,104 @@ function drawAimGuide(h) {
   ctx.strokeStyle=target ? '#e2d19d' : 'rgba(253,230,138,.35)';
   ctx.beginPath(); ctx.moveTo(h.x+Math.cos(h.angle)*50,h.y+Math.sin(h.angle)*50);
   ctx.lineTo(h.x+Math.cos(h.angle)*length,h.y+Math.sin(h.angle)*length); ctx.stroke(); ctx.setLineDash([]);
-  if(target) { ctx.beginPath(); ctx.arc(target.x,target.y,target.r+6,0,TAU); ctx.stroke(); }
+  if(target) {
+    const r=target.r+7;ctx.strokeStyle='#ead2a0';ctx.lineWidth=2;
+    for(const [dx,dy] of [[-1,-1],[1,-1],[-1,1],[1,1]]) {
+      ctx.beginPath();ctx.moveTo(target.x+dx*(r-5),target.y+dy*r);ctx.lineTo(target.x+dx*r,target.y+dy*r);ctx.lineTo(target.x+dx*r,target.y+dy*(r-5));ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawAimLabel(h) {
+  const target=aimTarget(h);if(!target)return;
+  const info=orePreview(target,h),label=info.name+' · '+info.value+' · '+info.seconds.toFixed(1)+'秒';
+  ctx.save();ctx.font='600 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+  const bw=Math.min(W-24,Math.max(125,ctx.measureText(label).width+20)),bh=24;
+  const candidates=[[target.x-bw/2,target.y-target.r-34],[target.x-bw/2,target.y+target.r+12],[target.x+target.r+12,target.y-12],[target.x-target.r-bw-12,target.y-12],[W-bw-12,126],[12,126]];
+  let best=null;
+  for(const [x,y] of candidates) {
+    const bx=clamp(x,12,W-bw-12),by=clamp(y,126,Math.max(126,mineFloor()-bh));
+    const overlaps=Game.items.filter(it=>!it.grabbed&&Math.hypot(it.x-clamp(it.x,bx,bx+bw),it.y-clamp(it.y,by,by+bh))<it.r+7).length;
+    if(!best||overlaps<best.overlaps)best={bx,by,overlaps};
+    if(!overlaps)break;
+  }
+  ctx.fillStyle='#182e2eeb';ctx.beginPath();ctx.roundRect(best.bx,best.by,bw,bh,6);ctx.fill();
+  ctx.fillStyle='#f5e1b4';ctx.fillText(label,best.bx+bw/2,best.by+12);ctx.restore();
+}
+
+function orePreview(it,h=Game.hook) {
+  const weight=it.weight,contact=predictedContact(h),travel=Math.max(0,(contact?.item===it?contact.len:Math.hypot(it.x-h.x,it.y-h.y))-46);
+  const speed=h.speed*DIFFS[Game.difficulty].retractMul*(1+Game.strength*.2)/weight;
+  const seconds=(Math.ceil(travel/(h.speed*FIXED_STEP))+Math.ceil(travel/(speed*FIXED_STEP))+Math.ceil((.14+Math.min(.18,weight*.045))/FIXED_STEP))*FIXED_STEP;
+  const name=it.kind==='letter'?'字矿 '+it.letter:({gold:'金矿',diamond:'晶簇',rock:'废石',bomb:'危险雷包'}[it.kind]);
+  const value=it.kind==='letter'?'拼词':it.kind==='bomb'?'−100分':String(it.kind==='rock'?Math.round(300/weight):it.value);
+  return {name,value,seconds,weight};
+}
+
+function drawMineralPocket(it,empty) {
+  const x=empty?it.x:(it.homeX??it.x),y=empty?it.y:(it.homeY??it.y),r=it.r;
+  if(empty) {
+    if(!cavityStamp) {
+      cavityStamp=document.createElement('canvas');cavityStamp.width=cavityStamp.height=96;
+      const c=cavityStamp.getContext('2d');c.translate(48,48);
+      c.beginPath();c.moveTo(-38,-18);c.lineTo(-9,-36);c.lineTo(31,-21);c.lineTo(43,7);c.lineTo(18,35);c.lineTo(-27,30);c.closePath();
+      c.save();c.clip();const g=c.createRadialGradient(1,7,3,0,0,46);g.addColorStop(0,'#102323c9');g.addColorStop(.65,'#14272399');g.addColorStop(1,'#16292300');c.fillStyle=g;c.fillRect(-48,-48,96,96);c.restore();
+      c.strokeStyle='#c5a57399';c.lineWidth=2;c.beginPath();c.moveTo(41,8);c.lineTo(18,34);c.lineTo(-25,29);c.stroke();
+      c.strokeStyle='#85754b99';c.lineWidth=3;c.beginPath();c.moveTo(-37,-17);c.lineTo(-9,-35);c.lineTo(17,-28);c.stroke();
+    }
+    ctx.drawImage(cavityStamp,x-r*1.14,y-r*.96,r*2.28,r*1.92);return;
+  }
+  ctx.save();ctx.translate(x,y);
+  ctx.fillStyle=empty?'#142525b8':'#19272166';ctx.beginPath();
+  ctx.moveTo(-r*.83,-r*.43);ctx.lineTo(-r*.22,-r*.77);ctx.lineTo(r*.72,-r*.41);ctx.lineTo(r*.95,r*.21);ctx.lineTo(r*.39,r*.78);ctx.lineTo(-r*.66,r*.67);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#c7a87555';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(r*.94,r*.24);ctx.lineTo(r*.40,r*.79);ctx.lineTo(-r*.65,r*.68);ctx.stroke();
+  for(let i=0;i<4;i++) {const a=i*1.7+.35;ctx.strokeStyle=empty?'#142323aa':'#20302888';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(Math.cos(a)*r*.9,Math.sin(a)*r*.75);ctx.lineTo(Math.cos(a)*r*1.36,Math.sin(a)*r);ctx.stroke();}
+  ctx.restore();
+}
+
+function drawMineralSprite(it,x,y,r) {
+  if(!MineralAtlas.complete||!MineralAtlas.naturalWidth)return false;
+  const column=it.kind==='letter'?[0,4,5][(it.index??0)%3]:{gold:1,rock:2,diamond:3}[it.kind];if(column==null)return false;
+  const scale=it.kind==='letter'?1.36:1.53;
+  if(it.kind!=='letter') {
+    ctx.save();ctx.translate(x,y);ctx.lineWidth=2;ctx.strokeStyle='#202a25c9';
+    ctx.beginPath();ctx.moveTo(-r*.85,-r*.35);ctx.lineTo(-r*.65,r*.56);ctx.lineTo(r*.44,r*.77);ctx.lineTo(r*.92,r*.15);ctx.stroke();
+    ctx.strokeStyle=it.kind==='gold'?'#d5a555b0':'#b9b09275';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-r*.8,-r*.35);ctx.lineTo(-r*.17,-r*.76);ctx.lineTo(r*.49,-r*.53);ctx.stroke();ctx.restore();
+  }
+  ctx.drawImage(MineralAtlas,column*256,0,256,256,x-r*scale,y-r*scale,r*2*scale,r*2*scale);
+  if(it.kind==='letter' && r>=11) {
+    ctx.font='800 '+Math.max(15,r*.92)+'px Arial, "Nimbus Sans", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#102d29';ctx.fillText(it.letter,x,y+.8);ctx.fillStyle='#f1e4ba';ctx.fillText(it.letter,x,y-.8);
+  }
+  return true;
+}
+
+function drawCollectionBin() {
+  const x=W/2+88,y=105;
+  ctx.fillStyle='#352e25';ctx.fillRect(x-21,y-18,42,18);
+  for(const stock of Game.binStock)drawMineralSprite(stock,x-12+stock.slot*8,y-10,8);
+  for(const d of Game.deliveries) {
+    const t=Math.min(1,d.age/.65),e=t*t*(3-2*t),px=d.x+(x-12+d.slot*8-d.x)*e,py=d.y+(y-10-d.y)*e-Math.sin(t*Math.PI)*35;
+    drawMineralSprite(d,px,py,d.r+(8-d.r)*t);
+  }
+  // The front lip occludes a delivered piece naturally; the collected mineral
+  // remains visible behind it after the motion completes.
+  ctx.fillStyle='#8d6540';ctx.fillRect(x-24,y-5,48,13);ctx.fillStyle='#c5a470';ctx.fillRect(x-25,y-8,50,5);
+  ctx.strokeStyle='#473f32';ctx.lineWidth=3;ctx.strokeRect(x-23,y-7,46,16);
+}
+
+function drawLoadedClaw(it,angle,front) {
+  ctx.save();ctx.translate(it.x,it.y);ctx.rotate(angle-Math.PI/2);
+  const r=it.r;
+  if(!front) {
+    ctx.fillStyle='#26373b';ctx.beginPath();ctx.roundRect(-5,-r-10,10,16,3);ctx.fill();
+    ctx.strokeStyle='#25383d';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-3,-r-4);ctx.lineTo(-r*1.04,-r*.2);ctx.moveTo(3,-r-4);ctx.lineTo(r*1.04,-r*.2);ctx.stroke();
+  } else for(const side of [-1,1]) {
+    ctx.beginPath();ctx.moveTo(side*r*.8,-r*.63);ctx.quadraticCurveTo(side*r*1.18,r*.08,side*r*.54,r*.45);
+    ctx.strokeStyle='#20343b';ctx.lineWidth=5;ctx.stroke();ctx.strokeStyle='#b2bdb4';ctx.lineWidth=2.6;ctx.stroke();
+    ctx.fillStyle='#c29b54';ctx.beginPath();ctx.arc(side*r*.8,-r*.63,2.7,0,TAU);ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -961,7 +1167,9 @@ function drawClaw(x, y, angle, gripping) {
 
 function drawItem(it) {
   ctx.save();
-  ctx.translate(it.x, it.y + Math.sin(Game.time * 1.6 + it.wobble) * 2.5);
+  const strain=it.breakTime>0&&!reducedMotion.matches?Math.sin(Game.time*44)*(1-it.breakTime/it.breakDuration)*1.6:0;
+  ctx.translate(it.x+strain,it.y);
+  if(drawMineralSprite(it,0,0,it.r)) {ctx.restore();return;}
   const physical = {gold:'ore',diamond:'crystal',bomb:'bomb',rock:'rock'}[it.kind];
   if(physical && window.GameplayArt?.draw(ctx,physical,0,0,it.r*2.4,it.r*2.4)) {ctx.restore();return;}
   if(it.kind==='letter' && window.GameplayArt?.draw(ctx,'letter',0,0,it.r*2.4,it.r*2.4)) {
@@ -1138,6 +1346,7 @@ function resize() {
   if (nextW !== W || nextH !== H || oldFooter !== mobileFooterReserve) {
     const sx = nextW / W, sy = nextH / H;
     for (const item of [...Game.items, ...Game.particles, ...Game.floaters]) { item.x *= sx; item.y *= sy; if(item.homeX!=null) { item.homeX*=sx; item.homeY*=sy; } }
+    for(const item of [...Game.excavations,...Game.deliveries]) {item.x*=sx;item.y*=sy;}
     if (Game.hook) {
       Game.hook.x = nextW/2; Game.hook.y = 96;
       Game.hook.len *= Math.min(sx, sy);
@@ -1264,6 +1473,9 @@ GameplayAtlas.addEventListener('load', () => { if (Game.state !== 'playing') ren
 window.addEventListener('gameplay-art-ready',render);
 
 MineDepth.addEventListener('load',()=>{mineKey='';render();});
+MineWide.addEventListener('load',()=>{mineKey='';render();});
+MineralAtlas.addEventListener('load',()=>{if(Game.state!=='playing')render();});
+MineEffort.addEventListener('load',()=>{if(Game.state!=='playing')render();});
 
 Minehead.addEventListener('load',render);
 

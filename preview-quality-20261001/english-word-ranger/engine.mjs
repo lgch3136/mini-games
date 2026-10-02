@@ -1,4 +1,4 @@
-import { FieldContract } from "./contracts.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
+import { FieldContract } from "./contracts.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
 // All positions use world pixels; actor y is ALWAYS the sole of the feet.
 // This module deliberately has no DOM, audio, wall clock, or rendering dependency.
 export const STEP = 1 / 120;
@@ -331,12 +331,12 @@ function buildLevel(stage) {
   floor(0, 1320);
   deck(340, 354, 220);
   cover(435);
-  enemy("grunt", 710);
+  enemy(operation === 0 ? "shield" : "grunt", 710, 454, operation === 0 ? { guardHeight: 53 } : {});
   deck(920, 348, 230);
   cover(1060, 454, "barrel");
   enemy("grunt", 1200);
   enemy("runner", 880);
-  supply(450, 320, "spread");
+  supply(operation === 0 ? 940 : 450, operation === 0 ? 314 : 320, "spread");
   enemy("turret", 1110, 348);
   floor(1500, 1030);
   deck(1300, 380, 160);
@@ -700,7 +700,7 @@ export class World {
     for (const e of this.enemies) this.updateEnemy(e, dt);
     this.updateBoss(dt);
     this.updateBullets(dt);
-    this.updatePickups(dt);
+    this.updatePickups(dt, input);
     for (const prop of this.props) prop.flash = Math.max(0, prop.flash - dt);
     for (const p of this.particles) {
       p.x += p.vx * dt;
@@ -995,6 +995,7 @@ export class World {
     e.shotTimer -= dt;
     e.flash = Math.max(0, e.flash - dt);
     e.recoil = Math.max(0, (e.recoil || 0) - dt);
+    e.pierced = Math.max(0, (e.pierced || 0) - dt);
     e.face = p.x < e.x ? -1 : 1;
     if (e.type === "drone") {
       e.vx = clamp(p.x + e.face * -190 - e.x, -75, 75);
@@ -1280,7 +1281,7 @@ export class World {
       b.y += dy * Math.min(best, 1);
       if (target) {
         if (category === "enemy")
-          this.hitEnemy(target, b.damage, b.vx, b.kind === "pulse", b.y);
+          this.hitEnemy(target, b.damage, b.vx, b.kind === "pulse", b.y, b.kind);
         else if (category === "player")
           this.hurtPlayer(b.damage, Math.sign(b.vx));
         else if (category === "boss") this.hitBoss(b.damage, b.x, b.y);
@@ -1307,24 +1308,29 @@ export class World {
     this.bullets = this.bullets.filter((b) => !b.dead);
   }
 
-  hitEnemy(e, damage, vx, pierce = false, hitY = e.y - 30) {
+  hitEnemy(e, damage, vx, pierce = false, hitY = e.y - 30, weapon = null) {
     if (e.dead) return;
     if (
       e.type === "shield" &&
       !pierce &&
       Math.sign(vx) !== e.face &&
-      hitY > e.y - 43 &&
+      hitY > e.y - (e.guardHeight || 43) &&
       e.phase !== "recover"
     ) {
       this.particle(e.x + e.face * 17, hitY, "#bddbdc", 4, 120);
-      this.emit("block");
+      this.emit("block", { enemyId: e.id, x: e.x, weapon });
       return;
+    }
+    if (e.type === "shield" && pierce && vx !== 0 && Math.sign(vx) !== e.face && hitY > e.y - (e.guardHeight || 43) && e.phase !== "recover") {
+      e.pierced = 0.3;
+      this.ring(e.x + e.face * 17, hitY, 23, "#9ef5e7");
+      this.emit("shieldPierced", { enemyId: e.id, x: e.x, hpBefore: e.hp, damage });
     }
     e.hp -= damage;
     e.flash = 0.12;
     this.metrics.hits++;
     this.particle(e.x, hitY, "#ffe1a0", 5, 110);
-    this.emit("hit");
+    this.emit("hit", { enemyId: e.id, x: e.x, weapon, damage, hp: e.hp });
     if (e.hp <= 0) {
       e.dead = true;
       this.kills++;
@@ -1476,19 +1482,44 @@ export class World {
     });
   }
 
-  updatePickups(dt) {
+  weaponOffer(range = 135) {
     const p = this.player;
+    let nearest = null;
     for (const item of this.pickups) {
+      if (item.dead || !["spread", "pulse"].includes(item.type)) continue;
+      const distance = Math.hypot(p.x - item.x, p.y - 31 - item.y);
+      if (distance <= range && (!nearest || distance < nearest.distance))
+        nearest = { item, distance, canSwap: distance <= 74 };
+    }
+    return nearest;
+  }
+
+  updatePickups(dt, input = {}) {
+    const p = this.player;
+    // A fresh, explicit choice is required. Walking, jumping or holding an old
+    // interaction press into the next cache never replaces a selected weapon.
+    const swapPressed = input.swapPressed || (input.swap && !this.previousInput.swap);
+    const offer = this.weaponOffer();
+    if (swapPressed && offer?.canSwap && (input.swapTarget === undefined || input.swapTarget === offer.item.id)) {
+      const previous = p.weapon;
+      p.weapon = offer.item.type;
+      p.weaponTime = 35;
+      offer.item.dead = true;
+      this.emit("weapon", { weapon: p.weapon, previous });
+    }
+    for (const item of this.pickups) {
+      if (item.dead) continue;
       item.age += dt;
+      const isWeapon = item.type === "spread" || item.type === "pulse";
       const dx = p.x - item.x,
         dy = p.y - 31 - item.y,
         distance = Math.hypot(dx, dy);
       const magnet =
         item.type === "intel" ? 165 : item.type === "energy" ? 110 : 52;
       if (
-        item.attracted ||
+        !isWeapon && (item.attracted ||
         distance < magnet ||
-        (item.type === "intel" && (item.x < this.camera + 16 || item.y > 530))
+        (item.type === "intel" && (item.x < this.camera + 16 || item.y > 530)))
       ) {
         item.attracted = true;
         const travel = Math.min(distance, 780 * dt) / Math.max(1, distance);
@@ -1512,7 +1543,7 @@ export class World {
             item.fixed = true;
           }
       }
-      if (distance < 23) {
+      if (!isWeapon && distance < 23) {
         item.dead = true;
         if (item.type === "intel") {
           const letter = this.word.en[this.word.progress++];
@@ -1530,10 +1561,6 @@ export class World {
         } else if (item.type === "health") {
           p.hp = Math.min(this.maxHp, p.hp + 2);
           this.emit("health");
-        } else if (item.type === "spread" || item.type === "pulse") {
-          p.weapon = item.type;
-          p.weaponTime = 35;
-          this.emit("weapon", { weapon: item.type });
         } else {
           this.score += 25;
           if (this.kills % 4 === 0) p.grenades = Math.min(5, p.grenades + 1);

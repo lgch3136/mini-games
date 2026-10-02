@@ -1,6 +1,6 @@
-import { bindGameplayFocus } from "../gameplay-focus.mjs?mobile=20261001-quality3-r8";
-import { Controls } from "./input.mjs?v=20260908-mochi-r1&mobile=20261001-quality3-r1";
-import { Audio } from "./audio.mjs?v=20260908-mochi-r1&mobile=20260930-quality-r2";
+import { bindGameplayFocus } from "../gameplay-focus.mjs?mobile=20261002-quality4-r1";
+import { Controls } from "./input.mjs?v=20260908-mochi-r1&mobile=20261002-quality4-r1";
+import { Audio } from "./audio.mjs?v=20260908-mochi-r1&mobile=20261002-quality4-r1";
 export const $ = (id) => document.getElementById(id);
 export const text = (id, v) => {
   const e = $(id),
@@ -192,6 +192,7 @@ export class Shell {
   }
   async start() {
     this.stop();
+    this.clearTransientHUD();
     this.world = this.create(this.retryCheckpoint || 0);
     this.retryCheckpoint = 0;
     this.frames.length = this.work.length = 0;
@@ -235,6 +236,10 @@ export class Shell {
     this.mode = "menu";
     this.applyMode();
     this.view.render(this.world, 1, 0);
+    this.clearTransientHUD();
+  }
+  clearTransientHUD() {
+    this.toastClock = this.hitClock = 0;
     text("toast", "");
     text("countdown", "");
     $("damage").style.opacity = 0;

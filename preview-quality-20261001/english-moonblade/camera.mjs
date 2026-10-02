@@ -10,12 +10,13 @@ function spring(s, target, omega, dt) {
 // Critically damped and time-based: no frame-count lerp, oscillating zoom or
 // ordinary-hit random shake. Look-ahead follows movement in either direction.
 export class FollowCamera {
-  constructor({ halfWidth = 12, elevation = 3.4 } = {}) {
+  constructor({ halfWidth = 12, elevation = 3.4, leftMargin = 0 } = {}) {
     this.halfWidth = halfWidth;
     this.elevation = elevation;
+    this.leftMargin = leftMargin;
   }
   reset(p, length) {
-    this.x = { value: clamp(p.x, this.halfWidth, length - this.halfWidth), velocity: 0 };
+    this.x = { value: clamp(p.x, this.halfWidth-this.leftMargin, length - this.halfWidth), velocity: 0 };
     this.y = { value: p.y + this.elevation, velocity: 0 };
     this.lead = { value: 0, velocity: 0 };
     this.leadGoal = 0;
@@ -64,7 +65,7 @@ export class FollowCamera {
     const dead = 1.15;
     if (focus > this.anchor + dead) this.anchor = focus - dead;
     else if (focus < this.anchor - dead) this.anchor = focus + dead;
-    const tx = bossLocked ? length - 14 : clamp(this.anchor, this.halfWidth, length - this.halfWidth);
+    const tx = bossLocked ? length - 14 : clamp(this.anchor, this.halfWidth-this.leftMargin, length - this.halfWidth);
     let ty = clamp(this.floor + this.elevation, this.elevation, 10.3);
     if (p.y > ty + 4.3) ty = clamp(p.y - 0.9, this.elevation, 10.3);
     // A descent from a raised ledge must not leave the next landing surface
@@ -74,7 +75,7 @@ export class FollowCamera {
     if (bossLocked) ty = this.elevation;
     spring(this.x, tx, bossLocked ? 4 : 9, dt);
     spring(this.y, ty, 6.5, dt);
-    const bounded = clamp(this.x.value, this.halfWidth, length - this.halfWidth);
+    const bounded = clamp(this.x.value, this.halfWidth-this.leftMargin, length - this.halfWidth);
     if (bounded !== this.x.value) {
       this.x.value = bounded;
       this.x.velocity = 0;

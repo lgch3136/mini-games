@@ -1,15 +1,16 @@
-import { SupplyBriefing, SUPPLIES } from "./supply.mjs?v=20261001-action-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { fieldCoach, rememberRanger, storedMedal } from "./contracts.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
+import { canvasWorldPoint } from "./camera.mjs?v=20261001-quality4-ranger-r1&mobile=20261002-quality4-r1";
+import { SupplyBriefing, SUPPLIES } from "./supply.mjs?v=20261001-action-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
+import { fieldCoach, rememberRanger, storedMedal } from "./contracts.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&teaching=20261001-r1";
 import {
   World,
   STEP,
   HEIGHT,
   OPERATIONS,
   clamp,
-} from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
-import { Renderer } from "./render.js?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261001-quality3-r1";
-import { Soundtrack } from "./sound.js?v=20260930-controls-r1&mobile=20260930-quality-r2&quality2=20261001-action-r1";
-import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261001-quality2-r1";
+} from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&teaching=20261001-r1";
+import { Renderer } from "./render.js?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&quality4=20261001-ranger-r1&teaching=20261001-r1";
+import { Soundtrack } from "./sound.js?v=20260930-controls-r1&mobile=20261002-quality4-r1&quality2=20261001-action-r1";
+import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&teaching=20261001-r1";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game"),
@@ -30,7 +31,9 @@ let noticeUntil = 0,
   lastWordKey = "",
   lastHealth = "",
   lastCombo = 0,
-  audioEndTimer = null;
+  audioEndTimer = null,
+  offerItemId = null,
+  lastPierceNotice = -10;
 const keys = new Set(),
   touch = {
     x: 0,
@@ -39,6 +42,8 @@ const keys = new Set(),
     fire: false,
     grenade: false,
     roll: false,
+    swap: false,
+    swapTarget: undefined,
     aim: null,
   };
 const actionPointers = new Map(),
@@ -58,6 +63,8 @@ function setText(id, text) {
 }
 function cleanInput() {
   keys.clear();
+  offerItemId = null;
+  $("weapon-offer").hidden = true;
   Object.assign(touch, {
     x: 0,
     y: 0,
@@ -65,6 +72,8 @@ function cleanInput() {
     fire: false,
     grenade: false,
     roll: false,
+    swap: false,
+    swapTarget: undefined,
     aim: null,
   });
   mouse.down = false;
@@ -90,6 +99,8 @@ function inputState() {
     fire: has("KeyJ", "KeyX") || touch.fire || mouse.down,
     grenade: has("KeyL", "KeyC") || touch.grenade,
     roll: has("ShiftLeft", "ShiftRight") || touch.roll,
+    swap: has("KeyE") || touch.swap,
+    swapTarget: touch.swap ? touch.swapTarget : undefined,
   };
   if (Number.isFinite(touch.aim)) input.aim = touch.aim;
   else if (mouse.down) input.aim = pointerAim(world.player, mouse, world.camera);
@@ -100,6 +111,7 @@ function recordActionEdges() {
 }
 function showScreen(name) {
   screen = name;
+  if (name !== "playing") { $("weapon-offer").hidden = true; offerItemId = null; }
   $("menu").hidden = name !== "menu";
   $("pause-screen").hidden = name !== "paused";
   $("result-screen").hidden = name !== "result";
@@ -132,6 +144,7 @@ function begin(nextWorld = null) {
   clearTimeout(audioEndTimer);
   sound.pause();
   cleanInput();
+  lastPierceNotice = -10;
   world =
     nextWorld ||
     new World({
@@ -213,12 +226,12 @@ function echo(text) {
   const el = $("word-echo");
   el.textContent = text;
   const x = clamp(
-    ((world.player.x - world.camera) / renderer.width) * 100,
+    ((world.player.x - (renderer.frame?.x ?? world.camera)) / (renderer.frameWidth || renderer.width)) * 100,
     6,
     80,
   );
   el.style.left = x + "%";
-  el.style.top = clamp(((world.player.y - 105) / HEIGHT) * 100, 19, 74) + "%";
+  el.style.top = clamp(((world.player.y - 105 - (renderer.frame?.y ?? 0)) / (renderer.frame?.height || HEIGHT)) * 100, 19, 74) + "%";
   el.getAnimations().forEach((a) => a.cancel());
   el.animate(
     [
@@ -235,6 +248,10 @@ function handleEvents() {
     sound.sound(e.type, e);
     if (e.type === "contract") notice("战术目标达成 · " + e.reward, e.label, 3);
     else if (e.type === "patch") notice("应急贴片已使用", "战前辨认获得的补给 · 生命 +2", 2);
+    else if (e.type === "shieldPierced" && world.time > lastPierceNotice + 3) {
+      lastPierceNotice = world.time;
+      notice("PIERCE · 已穿盾命中", "脉冲能穿盾；木箱与墙仍会挡住弹丸", 2.3);
+    }
     else if (e.type === "evade") echo("EVADE");
     else if (e.type === "letter") echo(e.letter);
     else if (e.type === "word") {
@@ -244,8 +261,8 @@ function handleEvents() {
       notice(
         "武器补给 · 35 秒",
         e.weapon === "spread"
-          ? "S 散射弹 · 覆盖更宽的角度"
-          : "P 脉冲弹 · 可以穿透盾牌",
+          ? "S 散射 · 三发扇形，不能穿盾"
+          : "P 脉冲 · 单线速射，可以穿盾",
         3,
       );
     else if (e.type === "checkpoint")
@@ -283,7 +300,7 @@ function updateHUD() {
     $("health").setAttribute("aria-label", `生命 ${p.hp} / ${world.maxHp}`);
     lastHealth = healthKey;
   }
-  setText("weapon-name", labels[p.weapon]);
+  setText("weapon-name", labels[p.weapon] + (p.weapon === "rifle" ? "" : ` ${Math.ceil(p.weaponTime)}s`));
   setText("grenades", `手雷 × ${p.grenades}`);
   setText("score-text", String(world.score).padStart(6, "0"));
   setText("run-number", String(world.stage + 1).padStart(2, "0"));
@@ -343,6 +360,32 @@ function updateHUD() {
     );
   }
   if (world.time > noticeUntil) $("notice").hidden = true;
+  const offer = screen === "playing" ? world.weaponOffer() : null;
+  $("weapon-offer").hidden = !offer;
+  offerItemId = offer?.item.id ?? null;
+  if (offer) {
+    const effects = { rifle: "单线 · 不能穿盾", pulse: "单线 · 可穿盾", spread: "三发扇形 · 不能穿盾" };
+    setText("weapon-current", `保留 ${labels[p.weapon]}${p.weapon === "rifle" ? "" : ` · ${Math.ceil(p.weaponTime)}s`} · ${effects[p.weapon]}`);
+    setText("weapon-next", `${labels[offer.item.type]} · 35s · ${effects[offer.item.type]}`);
+    setText("weapon-swap", offer.canSwap ? "E / 点按换装" : "靠近换装 · 离开保留");
+    $("weapon-swap").disabled = !offer.canSwap;
+    $("weapon-swap").setAttribute("aria-label", `替换当前${labels[p.weapon]}为${labels[offer.item.type]}，35秒，${effects[offer.item.type]}`);
+    $("field-contract").hidden = $("notice").hidden = true;
+  }
+  // Measure the actual visible production HUD, including translated/reflowed copy.
+  // Supplementary portrait records sit outside the canvas and are excluded.
+  const field = canvas.getBoundingClientRect();
+  if (field.height > 0) {
+    let bottom = field.top;
+    for (const id of ["hud", "field-contract", "boss-hud", "notice", "weapon-offer"]) {
+      const node = $(id);
+      if (node.hidden) continue;
+      const box = node.getBoundingClientRect();
+      if (box.height > 0 && box.top >= field.top - 2 && box.top < field.top + field.height * .5)
+        bottom = Math.max(bottom, box.top + box.height);
+    }
+    renderer.safeTop = clamp((bottom - field.top + 8) / field.height, 0, .46);
+  }
 }
 function finish() {
   cancelAnimationFrame(raf);
@@ -353,7 +396,7 @@ function finish() {
   const won = world.status === "won";
   const report = rememberRanger(world);
   $("field-medal").hidden = !report.stars;
-  if (report.stars) $("field-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+  if (report.stars) $("field-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp?mobile=20261002-quality4-r1`;
   setText("field-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip + (report.improved ? "\n行动勋章已升级" : ""));
   setText(
     "result-label",
@@ -437,11 +480,11 @@ function frame(now) {
     handleEvents();
     accumulator -= STEP;
   }
-  renderer.render(world, clamp(accumulator / STEP, 0, 1));
   if (now - hudTime > 65) {
     updateHUD();
     hudTime = now;
   }
+  renderer.render(world, clamp(accumulator / STEP, 0, 1));
   workTimes.push(performance.now() - started);
   if (workTimes.length > 1200) workTimes.shift();
   totalFrames++;
@@ -468,6 +511,7 @@ const codes = new Set([
   "KeyX",
   "KeyL",
   "KeyC",
+  "KeyE",
   "ShiftLeft",
   "ShiftRight",
 ]);
@@ -555,12 +599,20 @@ resetSupply();
 const portrait = matchMedia("(max-width: 720px) and (orientation: portrait)");
 function placeFieldMessages() {
   const destination = portrait.matches ? $("field-briefing") : $("field-messages");
-  for (const id of ["field-contract", "notice"]) destination.append($(id));
+  for (const id of ["field-contract", "notice", "weapon-offer"]) destination.append($(id));
   if (portrait.matches) $("field-briefing").append($("word-strip"));
   else $("viewport").append($("word-strip"));
 }
 portrait.addEventListener("change", placeFieldMessages);
 placeFieldMessages();
+$("weapon-swap").addEventListener("click", () => {
+  if (screen !== "playing" || offerItemId === null || $("weapon-swap").disabled) return;
+  touch.swapTarget = offerItemId;
+  touch.swap = true; recordActionEdges();
+  touch.swap = false; recordActionEdges();
+  touch.swapTarget = undefined;
+  canvas.focus({ preventScroll: true });
+});
 $("audio-btn").addEventListener("click", toggleSound);
 $("pause-btn").addEventListener("click", pause);
 $("resume-btn").addEventListener("click", resume);
@@ -607,10 +659,10 @@ document.querySelectorAll("#difficulty-select button").forEach((el) =>
 
 function canvasPoint(e) {
   const r = canvas.getBoundingClientRect();
-  return {
-    x: ((e.clientX - r.left) / r.width) * renderer.width,
-    y: ((e.clientY - r.top) / r.height) * HEIGHT,
-  };
+  const frame = renderer.frame || {x:world.camera,y:0,width:renderer.width,height:HEIGHT};
+  const point = canvasWorldPoint(e.clientX, e.clientY, r, frame);
+  // pointerAim adds the simulation camera; return its expected local x coordinate.
+  return {x:point.x-world.camera,y:point.y};
 }
 function capturePointer(element, event) {
   // Capture can be lost between a system gesture and this callback. Global releases
@@ -805,6 +857,7 @@ window.rangerDiagnostics = () => ({
     width: canvas.width,
     height: canvas.height,
     worldWidth: renderer.width,
+    actionFrame: renderer.frame ? {...renderer.frame} : null,
     frames: totalFrames,
     p50FrameMs: percentile(frameTimes, 0.5),
     p95FrameMs: percentile(frameTimes, 0.95),

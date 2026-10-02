@@ -1,0 +1,17 @@
+{
+  "source": "Original Blender sculpt",
+  "renderer": "Blender 4.3 Cycles CPU 80 samples, denoise disabled",
+  "components": [
+    "ceramic",
+    "letter",
+    "armor",
+    "switch",
+    "gate",
+    "paddle",
+    "core",
+    "backplate"
+  ],
+  "camera": "Orthographic, common mild top view",
+  "textures": "Procedural fine surface only; no downloaded art",
+  "procedural_geometry": "Cast octagonal rim, recessed bearing bed, ceramic slabs, bronze clamps, retracting gate panels and engraved core spindle"
+}
