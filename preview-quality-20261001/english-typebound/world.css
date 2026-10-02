@@ -191,6 +191,14 @@
   #battle > .typing-dock { padding:5px 8px; }
   .word-line { height:38px; }
   .word-meaning { min-height:20px; }
+  #victory {padding:8px max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));}
+  #victory .victory-panel h2 {margin:6px 0;}
+  #victory .victory-word {font-size:26px;}
+  #victory .victory-word > span,#victory .relic > i {display:none;}
+  #victory .relic-intro {margin:8px 0;}
+  #victory .relic-options {gap:6px;}
+  #victory .relic {min-height:72px;padding:8px 7px;}
+  #victory .relic > span {font-size:10px;line-height:1.5;margin-top:5px;}
 }
 @media (prefers-reduced-motion:reduce) { .hp-track i,#word > .active:after { animation:none; transition:none; } }
 

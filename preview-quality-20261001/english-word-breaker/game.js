@@ -344,9 +344,9 @@ function update(dt) {
       Game.balls.splice(bi, 1);
       if (!Game.balls.length) {
         Game.lives--;
+        if (Game.lives <= 0) { updateHud(); gameOver(); return; }
+        Game.balls = [Object.assign(newBall(p.x + p.w / 2, p.y - 12), { stuck: true })];
         updateHud();
-        if (Game.lives <= 0) { gameOver(); return; }
-        Game.balls = [Object.assign(newBall(W / 2, p.y - 12), { stuck: true })];
         showFeedback(`剩余 ${Game.lives} 条命`);
       }
       continue;

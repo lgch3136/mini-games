@@ -671,6 +671,16 @@ function gameOver() {
   } catch (e) { /* ignore */ }
   $id('over-kicker').textContent = `第 ${Game.level} 关`;
   $id('over-title').textContent = Game.score >= high ? '新纪录！' : '再来一局？';
+  const miningDone = Game.treasureEarned >= Game.quota;
+  const spellingDone = !!Game.word && Game.word.progress >= Game.word.en.length;
+  const goldLeft = Math.max(0, Game.quota - Game.treasureEarned);
+  $id('over-guidance').textContent = miningDone && !spellingDone
+    ? '采矿额度已达标，单词尚未拼齐。下一次把更多抓钩留给字矿。'
+    : spellingDone && !miningDone
+      ? `单词已拼齐，采矿额度还差 ${goldLeft} 金币。下一次留意高价值矿物与回收时间。`
+      : !miningDone && !spellingDone
+        ? `时间用完了，单词尚未拼齐，采矿额度还差 ${goldLeft} 金币。下次在字矿与财物之间分配抓钩时间。`
+        : '拼写与采矿目标均已达成。再下一次矿，试试另一条矿脉。';
   $id('over-stats').innerHTML =
     `<div><span>本局得分</span><b>${Game.score}</b></div>` +
     `<div><span>最高纪录</span><b>${high}</b></div>` +
