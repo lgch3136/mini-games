@@ -560,9 +560,9 @@ function updateWord(force = false) {
     g.errorAge > 0
       ? `需要 ${g.expected === " " ? "空格" : g.expected.toUpperCase()} · 直接重打`
       : g.cursor === g.word.en.length
-        ? (g.mode === "journey" ? "按空格施法" : "按空格完成这一词")
+        ? (g.isQuiet ? "按空格完成这一词" : "按空格施法")
         : !g.roomStarted
-          ? (g.mode === "journey" ? "第一键落下时，战斗才开始" : "跟随亮键 · 第一键开始计时")
+          ? (g.phase === "lectern" ? "静台练习 · 没有战斗伤害" : g.mode === "journey" ? "第一键落下时，战斗才开始" : "跟随亮键 · 第一键开始计时")
           : "",
   );
   $("space-mark").classList.toggle("ready", g.cursor === g.word.en.length);
@@ -616,7 +616,7 @@ function updateHUD() {
   set('wpm', metrics.wpm ?? '—');
   set('session-time', timeText(metrics.seconds));
   set('practice-words', metrics.words);
-  set('pulse-caption', g.isRecall?'回忆阶段不显示正确字母，也不计字速': !g.roomStarted ? '第一键开始计时 · 每次正确落键，向前一束光' : g.errorAge > 0 ? '错键已记录 · 直接重打正确字母' : g.cursor === g.word.en.length ? '单词已就绪 · 空格释放回响' : `${g.combo} 连词 · 光轨跟随当前单词进度`);
+  set('pulse-caption', g.isRecall?'回忆阶段不显示正确字母，也不计字速': g.phase==='lectern'?'间隔跟打 · 不计字速、不受伤害': !g.roomStarted ? '第一键开始计时 · 每次正确落键，向前一束光' : g.errorAge > 0 ? '错键已记录 · 直接重打正确字母' : g.cursor === g.word.en.length ? (g.isQuiet?'单词已就绪 · 空格完成这一词':'单词已就绪 · 空格释放回响') : `${g.combo} 连词 · 光轨跟随当前单词进度`);
   set("accuracy", g.accuracy);
   set("score", g.score.toLocaleString());
   set("hero-hp", `${Math.ceil(g.hp)} / ${g.maxHp}`);

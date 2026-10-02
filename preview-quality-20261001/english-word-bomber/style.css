@@ -136,7 +136,7 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
 }
 
 /* 封面横幅 */
-.menu-cover { width: min(420px, 86%); border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
+.menu-cover { width: auto; max-width: min(420px, 86%); max-height:180px; object-fit:contain; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.45); }
 
 /* Keep the held direction readable without moving its touch target. */
 #up-btn, #down-btn, #left-btn, #right-btn, #bomb-btn { touch-action: none; -webkit-tap-highlight-color: transparent; }
@@ -163,7 +163,7 @@ button { min-height:44px; touch-action:manipulation; } .overlay { overflow-y:aut
   #up-btn { left:62px; } #left-btn { top:60px; } #right-btn { left:124px;top:60px; } #down-btn { left:62px;top:88px; }
   #bomb-btn { width:86px;height:86px;margin-bottom:12px; }
   #feedback { top:auto; bottom:174px; white-space:normal; text-align:center; }
-  .panel { width:100%; margin:auto; padding:24px 16px; } .menu-cover { max-height:23dvh; object-fit:cover; }
+  .panel { width:100%; margin:auto; padding:24px 16px; } .menu-cover { max-height:23dvh; object-fit:contain; }
   .panel p.sub { font-size:13px; } .btn-main { min-height:50px; }
 }
 @media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } }
@@ -189,7 +189,7 @@ button { min-height:44px; touch-action:manipulation; } .overlay { overflow-y:aut
   .tc-pad { width:148px;height:136px; } #down-btn { top:84px; }
   #bomb-btn { flex:none; }
   .overlay { align-items:flex-start; } .panel { margin:auto; }
-  .menu-cover { max-height:25dvh;object-fit:cover; }
+  .menu-cover { max-height:25dvh;object-fit:contain; }
 }
 
 /* 2026-10: one board, one HUD. Crop old desktop margins from the phone canvas. */

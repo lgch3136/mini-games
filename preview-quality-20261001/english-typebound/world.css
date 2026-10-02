@@ -14,6 +14,8 @@
 .arena .hero-health { left:12px; }
 .arena .enemy-health { right:12px; }
 .arena .health > span { font-size:11px; margin:0; }
+.arena .hero-label-short {display:none;}
+.arena #hero-hp,.arena #enemy-hp {white-space:nowrap;flex-shrink:0;}
 .arena .health b,.arena .health em { display:inline; font-size:11px; }
 .arena .hp-track { height:6px; margin-top:6px; }
 .arena .enemy-intent { display:block; top:auto; bottom:10px; left:50%; transform:translateX(-50%); width:max-content; max-width:90%; padding:6px 12px; border:1px solid #ebdeb04a; border-radius:12px; background:#183741e8; }
@@ -177,6 +179,10 @@
   .arena .enemy-health { left:auto; right:7px; }
   .arena .health > span,.arena .health b,.arena .health em { font-size:10px; }
   .arena .enemy-intent { display:block; }
+  .arena .hero-label-long {display:none;}
+  .arena .hero-label-short {display:inline;}
+  .arena .health > span {gap:3px;white-space:nowrap;}
+  .arena #enemy-name {min-width:0;overflow:hidden;text-overflow:ellipsis;}
 }
 @media (max-height:350px) and (orientation:landscape) {
   /* Keep the actual word, correction/Space feedback and all four key rows

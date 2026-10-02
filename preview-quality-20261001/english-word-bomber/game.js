@@ -488,7 +488,7 @@ function explodeBomb(bomb) {
 function breakBrick(c, r) {
   Game.grid[r][c] = 0;
   Game.debris.push({col:c,row:r,life:1.15});
-  if(Game.lesson && c===4 && r===1 && !Game.lesson.cPicked) {Game.lesson.phase='collect';showFeedback('木箱碎了！等火焰退去，再拾起 C');}
+  if(Game.lesson && c===4 && r===1 && !Game.lesson.cPicked) {Game.lesson.phase='collect';showFeedback(Game.assisted===false?'木箱碎了！等火焰退去，再拾起露出的字母':'木箱碎了！等火焰退去，再拾起 C');}
   Game.score += 10;
   const x = OX + c * CELL + CELL / 2, y = OY + r * CELL + CELL / 2;
   for (let i = 0; i < 8; i++) {
@@ -768,7 +768,7 @@ function updateLetters(dt) {
       if (L.index !== w.progress) {
         // 顺序错误提示
         if (Game.time > (L.lastWrongAt || 0)) {
-          showFeedback(`先找字母「${w.en[w.progress]}」`);
+          showFeedback(Game.assisted===false?'这枚字母还不符合当前拼写顺序':`先找字母「${w.en[w.progress]}」`);
           L.lastWrongAt = Game.time + 1;
           if (window.ArcadeAudio) ArcadeAudio.play('click', .14, .6);
         }
@@ -778,7 +778,7 @@ function updateLetters(dt) {
       w.progress++;
       if(Game.lesson && !Game.lesson.cPicked && w.progress===1) {
         Game.lesson.cPicked=true;Game.lesson.phase='done';Game.lesson.pressureAt=Game.time+1.2;
-        showFeedback('C 收到了！花芽守卫醒来，继续寻找 A 和 T');
+        showFeedback(Game.assisted===false?'首字收到了！花芽守卫醒来，继续拼齐单词':'C 收到了！花芽守卫醒来，继续寻找 A 和 T');
       }
       Game.score += 60;
       const x = OX + L.col * CELL + CELL / 2, y = OY + L.row * CELL + CELL / 2;
@@ -1230,7 +1230,7 @@ function updateHud() {
   $id('round').textContent = Game.round;
   const w = Game.word;
   if (w) {
-    $id('mission').textContent = Game.lesson && !Game.lesson.cPicked ? ({walk:'先向右走两格，到脚印处',place:'放一枚炸弹，再向左退进拐角',retreat:Game.lesson.directedRetreat===false?'离开橙色预警，躲进拐角':'向左两格，再向下躲进拐角',collect:'等火焰退去，拾起木箱中的 C'}[Game.lesson.phase]) : `${Game.roundNames[(Game.round - 1) % 4]} · 找字母 → 清敌 → 进星门`;
+    $id('mission').textContent = Game.lesson && !Game.lesson.cPicked ? ({walk:'先向右走两格，到脚印处',place:'放一枚炸弹，再向左退进拐角',retreat:Game.lesson.directedRetreat===false?'离开橙色预警，躲进拐角':'向左两格，再向下躲进拐角',collect:Game.assisted===false?'等火焰退去，拾起木箱中的字母':'等火焰退去，拾起木箱中的 C'}[Game.lesson.phase]) : `${Game.roundNames[(Game.round - 1) % 4]} · 找字母 → 清敌 → 进星门`;
     $id('build-status').textContent = `火力 ${Game.build.bombPower} · 容量 ${Game.build.bombMax} · 徽章 ${Game.medals}★`;
     const html = [...w.en].map((ch, i) => {
       if (i < w.progress) return `<span class="got">${ch}</span>`;
