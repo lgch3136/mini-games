@@ -71,6 +71,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   transition: transform .12s, background .12s;
 }
 #fire-btn.active, #fire-btn:active { transform: scale(.94); background: rgba(132,72,14,0.96); }
+#fire-btn[hidden], #dash-btn[hidden] { display:none !important; }
 
 #hp-wrap {
   position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);

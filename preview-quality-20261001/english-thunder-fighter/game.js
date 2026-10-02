@@ -299,7 +299,7 @@ canvas.addEventListener('pointerdown', (ev) => {
   SFX.ensure();
   if (ev.pointerType !== 'touch') { ownFire('mouse:'+ev.pointerId,true); return; }
   const r = canvas.getBoundingClientRect();
-  if ((!Game.autoFire && ev.clientX - r.left > r.width * 0.68) || movePointerId !== null) return;
+  if ((!Game.autoFire && !missionReading() && ev.clientX - r.left > r.width * 0.68) || movePointerId !== null) return;
   Game.touchMode = true;
   movePointerId = ev.pointerId;
   moveStart = { x: ev.clientX, y: ev.clientY, px: Game.player.x, py: Game.player.y };
@@ -1946,10 +1946,21 @@ function drawEnemies() {
         const plates=Math.ceil(e.armor),yy=spriteH*.19;
         for(let part=0;part<4;part++) {
           const x=(part-1.5)*13;
-          if(part>=plates){ctx.fillStyle='#1f2b36';ctx.fillRect(x-5,yy,10,7);continue;}
-          ctx.fillStyle=e.armorFlash>0?'#f2d2a1':'#a8b0b3';
-          ctx.fillRect(x-6,yy-8,12,21);ctx.fillStyle='#454f5b';ctx.fillRect(x-4,yy-3,8,12);
-          ctx.fillStyle='#d9b768';ctx.fillRect(x-5,yy+10,10,3);
+          if(part>=plates){
+            ctx.fillStyle='#211a2d';ctx.beginPath();ctx.moveTo(x-5,yy);ctx.lineTo(x+5,yy);ctx.lineTo(x+3,yy+7);ctx.lineTo(x-3,yy+7);ctx.closePath();ctx.fill();
+            ctx.fillStyle='#79623e';ctx.fillRect(x-4,yy,2,2);ctx.fillRect(x+2,yy,2,2);continue;
+          }
+          const metal=ctx.createLinearGradient(x-6,yy-9,x+6,yy+12);
+          metal.addColorStop(0,e.armorFlash>0?'#dfbe82':'#6b5876');
+          metal.addColorStop(.32,e.armorFlash>0?'#a47d55':'#41324e');
+          metal.addColorStop(1,'#211a2d');ctx.fillStyle=metal;
+          ctx.beginPath();ctx.moveTo(x-6,yy-4);ctx.lineTo(x-3,yy-9);ctx.lineTo(x+3,yy-9);ctx.lineTo(x+6,yy-5);ctx.lineTo(x+6,yy+8);ctx.lineTo(x+3,yy+12);ctx.lineTo(x-4,yy+10);ctx.lineTo(x-6,yy+6);ctx.closePath();ctx.fill();
+          ctx.strokeStyle='#997844';ctx.lineWidth=.8;ctx.stroke();
+          // A lit sloping shoulder and a narrow fastening strip share the ship's
+          // purple metal and warm hardware, while each removable plate stays distinct.
+          ctx.fillStyle=e.armorFlash>0?'#edce91':'#89708d';ctx.beginPath();ctx.moveTo(x-5,yy-4);ctx.lineTo(x-2.5,yy-8);ctx.lineTo(x+2.5,yy-8);ctx.lineTo(x+4,yy-5);ctx.lineTo(x-3,yy-3);ctx.closePath();ctx.fill();
+          ctx.fillStyle='#191521';ctx.fillRect(x-2.5,yy,1,6);ctx.fillStyle='#7f633d';ctx.fillRect(x+3,yy-3,1,10);
+          ctx.fillStyle='#c6a369';ctx.fillRect(x+2.6,yy-3,1.8,1.5);ctx.fillRect(x+2.6,yy+6,1.8,1.5);
         }
       }
       if (e.option || e.supply) {
@@ -2218,6 +2229,11 @@ function updateQuestionBar() {
 
 function updateHud() {
   updateDashHud();
+  // Quiet equipment bays reserve the lower corners for readable choices.
+  // Movement stays available across the whole canvas until combat resumes.
+  const readingBay = missionReading();
+  els.fireBtn.hidden = readingBay;
+  $id('dash-btn').hidden = readingBay;
   $id('sector-progress').textContent = Game.mission ? `${THUNDER_MISSION[Game.mission.index].label} · ${Math.floor(Game.time)}s${missionReading() ? ` · 整备 ${Math.max(0,Math.ceil(Game.mission.bayUntil-Game.time))}s` : ''}` : Game.phase==='boss' ? '核心守卫 · 读懂预警再穿行' : `航段 ${Game.sectors+1} · 数据 ${Game.stats.correct%8}/8 · 冲刺可穿过弹幕`;
   els.score.textContent = Game.score;
   els.level.textContent = Game.level;
