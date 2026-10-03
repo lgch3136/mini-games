@@ -462,6 +462,7 @@ function finish() {
     );
   } catch {}
   audioEndTimer = setTimeout(() => sound.pause(), 700);
+  $("result-report").scrollTop = 0;
   $("result-primary").focus({ preventScroll: true });
 }
 function frame(now) {

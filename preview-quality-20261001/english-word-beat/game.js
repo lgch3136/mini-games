@@ -1149,7 +1149,8 @@ function gameOver() {
     $id('over-kicker').textContent='基础乐句 · 24秒';$id('over-title').textContent=Game.recovery?'漏拍短句结束':'基础乐句结束';$id('result-stars').textContent='';$id('result-star-rule').textContent='基础练习，不计整曲纪录';$id('result-advice').textContent=Game.missedSources.length?'可以进入完整曲练习，也可以先补刚才漏掉的拍点。':'基础拍点都已接上，可以进入完整曲练习。';$id('retry-btn').textContent='进入完整曲练习';
     if(Game.completed){Game.lessonSeen=true;try{localStorage.setItem('word-beat-first-phrase-v1','seen');}catch{}}updateQuickEntry();
   }
-  $id('retry-btn').focus?.({ preventScroll: true });
+  $id('over').scrollTop = 0;
+  $id($id('retry-word').hidden ? 'retry-btn' : 'retry-word').focus?.({ preventScroll: true });
 }
 function performanceRecap() {
   const notes = totalNotes(), accuracy = notes ? (Game.counts.perfect + Game.counts.great * .7 + Game.counts.good * .35) / notes * 100 : 0;

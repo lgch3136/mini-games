@@ -234,6 +234,7 @@ h2 {
   font-size: 13px;
   font-weight: 700;
   min-width: 175px;
+  min-height: 44px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1589,4 +1590,66 @@ kbd {
   #weapon-offer small { font-size: 10px; }
   #weapon-next { font-size: 10px; }
   #weapon-swap { padding: 5px 7px; max-width: 114px; }
+}
+
+/* Results live beside #app so the short, clipped gameplay viewport cannot hide
+   recovery. Only the report scrolls; its two actions always stay in view. */
+#result-screen {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  z-index: 30;
+  overflow: hidden;
+  padding: max(16px, env(safe-area-inset-top, 0px))
+    max(16px, env(safe-area-inset-right, 0px))
+    max(16px, env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+}
+#result-screen .result-dialog {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 14px;
+  width: min(480px, 100%);
+  min-height: 0;
+  max-width: none;
+  max-height: 100%;
+  margin: 0;
+  padding: 20px;
+  overflow: hidden;
+}
+.result-heading .edition { margin: 0 0 8px; }
+.result-heading h2 { margin: 0; }
+.result-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+#result-screen .result-actions button {
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+}
+#result-screen .result-actions .primary {
+  padding: 10px 44px 10px 12px;
+  gap: 0;
+}
+#result-screen .result-actions .text-button {
+  padding: 10px 8px;
+  border: 1px solid #a7c5a54d;
+  border-radius: 5px;
+  color: #c8d8b7;
+}
+#result-report {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 4px;
+}
+#result-report:focus-visible { outline: 2px solid #fbe9aa; outline-offset: -2px; }
+#result-report > #result-description { margin-top: 0; }
+#result-report #word-recap { max-height: none; overflow: visible; }
+@media (max-width: 440px) {
+  .result-actions { grid-template-columns: minmax(0, 1fr); }
 }
