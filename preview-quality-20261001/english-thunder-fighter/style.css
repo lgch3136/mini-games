@@ -194,7 +194,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
     overflow-y: auto; backdrop-filter: none; -webkit-backdrop-filter: none;
   }
   .overlay::before, .overlay::after { display: none; }
-  #over, #paused { justify-content: center; }
+  #paused { justify-content: center; }
   #logo-img { width: auto; max-width: min(290px, 78vw); max-height: 96px; margin: 0; object-fit: contain; }
   #menu h1 { font-size: 30px; letter-spacing: 4px; }
   #menu h2 { font-size: 17px; letter-spacing: 7px; margin-top: -3px; }
@@ -241,4 +241,27 @@ button:focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }
   #menu h2 { font-size:14px; letter-spacing:5px; }
   #menu .sub { font-size:11px; margin:0; }
   #menu #start-btn { min-height:48px; padding:10px 28px; margin:0; }
+}
+
+/* Recovery controls stay above a separately scrollable score/review region. */
+#over { justify-content:flex-start; gap:12px; overflow:hidden; }
+#over::before, #over::after { display:none; }
+#over .result-heading {
+  display:flex; align-items:center; justify-content:center; gap:12px;
+  flex:0 0 auto; width:min(100%,420px);
+}
+#over h1 { font-size:clamp(26px,4vw,32px); line-height:1.25; letter-spacing:2px; }
+#over .mastery-medal { width:48px; flex:0 0 48px; }
+#over .btn-row {
+  display:grid; grid-template-columns:minmax(0,1fr); gap:10px;
+  flex:0 0 auto; width:min(100%,420px);
+}
+#over .btn { width:100%; min-width:0; min-height:48px; padding:12px 14px; letter-spacing:1px; }
+#over-stats {
+  flex:0 1 auto; min-height:0; width:min(420px,100%); padding:12px 18px;
+  overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; touch-action:pan-y;
+}
+#over-stats > * { flex-shrink:0; }
+@media (min-width:460px) {
+  #over .btn-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }

@@ -638,12 +638,25 @@ function updatePlayer(dt) {
     const k = Game.pickups[i];
     const kx = OX + k.col * CELL + CELL / 2, ky = OY + k.row * CELL + CELL / 2;
     if (Math.hypot(p.px - kx, p.py - ky) < CELL * .62) {
-      if (k.kind === 'bomb+') { p.bombMax = Math.min(6, p.bombMax + 1); showFeedback('💣 炸弹容量 +1（当前 ' + p.bombMax + '）'); }
-      else if (k.kind === 'fire+') { p.bombPower = Math.min(8, p.bombPower + 1); showFeedback('🔥 火力 +1（当前 ' + p.bombPower + '）'); }
-      else { p.speed = Math.min(224, p.speed + 14); showFeedback('👟 移速提升！'); }
+      let feedback;
+      if (k.kind === 'bomb+') {
+        const wasFull = p.bombMax >= 6;
+        p.bombMax = Math.min(6, p.bombMax + 1);
+        feedback = wasFull ? '💣 容量已满 · +80分' : '💣 炸弹容量 +1（当前 ' + p.bombMax + '）';
+      } else if (k.kind === 'fire+') {
+        const wasFull = p.bombPower >= 8;
+        p.bombPower = Math.min(8, p.bombPower + 1);
+        feedback = wasFull ? '🔥 火力已满 · +80分' : '🔥 火力 +1（当前 ' + p.bombPower + '）';
+      } else {
+        const wasFull = p.speed >= 224;
+        p.speed = Math.min(224, p.speed + 14);
+        feedback = wasFull ? '👟 移速已满 · +80分' : p.speed === 224 ? '👟 移速提升！（已达上限）' : '👟 移速提升！';
+      }
       Game.build = { speed: p.speed, bombPower: p.bombPower, bombMax: p.bombMax };
       Game.score += 80;
       Game.pickups.splice(i, 1);
+      // Feedback also refreshes the HUD, so publish it after the full pickup is committed.
+      showFeedback(feedback);
       if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1.15);
     }
   }

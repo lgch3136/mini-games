@@ -2,6 +2,7 @@
 
 function usesNativeKeyboard(event) {
   const target = event.target;
+  if (Game.state === 'over' && target?.closest?.('#over-stats')) return true;
   if (!event.isComposing && (event.code === 'Escape' || event.code === 'KeyP') && (/^(BUTTON|A)$/.test(target?.tagName || '') || target?.closest?.('button,a'))) return false;
   return !!(target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A|SUMMARY)$/.test(target.tagName || '') || target.closest?.('input,select,textarea,button,a,summary,[contenteditable="true"]')));
 }
@@ -415,6 +416,7 @@ function openTacticalBay(mode, target, duration = 6) {
     vy: 0, t: 0, expires: m.bayUntil, color: '#91dfd5' }));
   missionRecord('bay', { mode, target, event: m.event, until: m.bayUntil, review: !!due });
   updateQuestionBar();
+  updateHud(); // Boss-triggered bays can open after this second's regular HUD refresh.
 }
 function advanceMissionPhase(index) {
   const m = Game.mission, phase = THUNDER_MISSION[index];
@@ -470,6 +472,7 @@ function updateMissionDirector() {
     Game.powerups = Game.powerups.filter(u => !u.tactical);
     els.qKind.textContent = phase.label.split(' / ')[0] + ' 航段'; els.qPrompt.textContent = phase.objective;
     els.qHint.textContent = m.chosen ? '装备已装载，准备进入下一段' : '未选择 · 保留现装，任务继续';
+    updateHud(); // Restore controls as soon as the reading interval ends.
   }
   m.peakBullets = Math.max(m.peakBullets, Game.enemyBullets.length);
   if (missionReading()) m.readingSteps++;
@@ -1499,6 +1502,7 @@ function updatePowerups(dt) {
 
 /* ---------------- 渲染 ---------------- */
 function render(dt) {
+  const readingCards = missionReading() && Game.powerups.some(u => u.tactical);
   if (!drawStageBackground()) {
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, '#0a1230');
@@ -1535,10 +1539,21 @@ function render(dt) {
   }
   drawEnemyBullets();
   drawBullets();
-  drawPlayer();   // 任何状态都绘制战机：死亡后以残骸态保留在爆炸位置
+  if (!readingCards) drawPlayer(); // 死亡后以残骸态保留在爆炸位置
   drawParticles();
   drawShockwaves();
   drawFloaters();
+  ctx.restore(); // End world shake before drawing reading UI and its player cue.
+  ctx.save();
+  if (readingCards) {
+    // Keep the frozen world visible but secondary to the moving player's approach.
+    ctx.fillStyle='rgba(2,8,19,.42)';ctx.fillRect(0,0,W,H);
+    drawPlayer();
+    drawMissionApproachMarker();
+  }
+  // Opaque cartridges are the final canvas layer: no hull, effect or player
+  // sprite may paint over the words. Their world centres and pickup rules stay unchanged.
+  drawMissionTacticalCores();
   ctx.restore();
 }
 
@@ -1836,6 +1851,29 @@ function drawMissionTacticalCore(core) {
   ctx.fillStyle='#9ab5cf';ctx.font='12px "Noto Sans CJK SC","PingFang SC",sans-serif';
   ctx.fillText(core.mode==='free'?core.zh:'指令核验',0,10);
 }
+function drawMissionApproachMarker() {
+  ctx.save();ctx.translate(Game.player.x,Game.player.y);
+  ctx.scale(W/Math.max(1,lastW),H/Math.max(1,lastH));
+  ctx.strokeStyle='#91e9fa';ctx.lineWidth=2;
+  // Four short brackets mark the player's position without pointing at an answer.
+  for(const x of [-1,1])for(const y of [-1,1]){
+    ctx.beginPath();ctx.moveTo(x*23,y*34);ctx.lineTo(x*32,y*34);ctx.lineTo(x*32,y*25);ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawMissionTacticalCores() {
+  // Draw every reading shelter first, then every label, so neighbouring rings
+  // cannot cross the words either. These are the existing 58-world-unit shelters.
+  for(const u of Game.powerups) if(u.tactical) {
+    ctx.fillStyle='#438ec008';ctx.strokeStyle='#719bb63d';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(u.x,u.y,58,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.strokeStyle='#74bde17a';ctx.lineWidth=1.5;
+    const scan=Game.time*.6;for(let arm=0;arm<3;arm++){ctx.beginPath();ctx.arc(u.x,u.y,58,scan+arm*Math.PI*2/3,scan+arm*Math.PI*2/3+.3);ctx.stroke();}
+  }
+  for(const u of Game.powerups) if(u.tactical) {
+    ctx.save();ctx.translate(u.x,u.y);drawMissionTacticalCore(u);ctx.restore();
+  }
+}
 
 function drawEnemies() {
   for (const e of Game.enemies) {
@@ -2037,18 +2075,14 @@ function drawEnemyBullets() {
 }
 
 function drawPowerups() {
-  for(const u of Game.powerups) if(u.kind==='answer' && u.y>90 && u.y<H-40) {
-    ctx.fillStyle=u.tactical?'#438ec008':'#7de6cd0b';ctx.strokeStyle=u.tactical?'#719bb63d':'#a6edda77';ctx.lineWidth=1;
+  for(const u of Game.powerups) if(!u.tactical && u.kind==='answer' && u.y>90 && u.y<H-40) {
+    ctx.fillStyle='#7de6cd0b';ctx.strokeStyle='#a6edda77';ctx.lineWidth=1;
     ctx.beginPath();ctx.arc(u.x,u.y,58,0,Math.PI*2);ctx.fill();ctx.stroke();
-    if(u.tactical){
-      ctx.strokeStyle='#74bde17a';ctx.lineWidth=1.5;
-      const scan=Game.time*.6;for(let arm=0;arm<3;arm++){ctx.beginPath();ctx.arc(u.x,u.y,58,scan+arm*Math.PI*2/3,scan+arm*Math.PI*2/3+.3);ctx.stroke();}
-    }
   }
   for (const u of Game.powerups) {
+    if(u.tactical)continue;
     ctx.save();
     ctx.translate(u.x, u.y);
-    if(u.tactical){drawMissionTacticalCore(u);ctx.restore();continue;}
     const pulse = 1 + Math.sin(Game.time * 6 + u.t * 4) * 0.12;
     ctx.scale(pulse, pulse);
     if (u.kind === 'answer') {
@@ -2378,6 +2412,8 @@ function gameOver(completed = false) {
   if(Game.review.length) { const review=document.createElement('p');review.className='review-recap';review.textContent='回看数据 · '+[...new Set(Game.review)].join(' / ');els.overStats.appendChild(review); }
   els.hud.classList.add('hidden');
   els.over.classList.remove('hidden');
+  els.over.scrollTop = 0;
+  els.overStats.scrollTop = 0;
   updateHighScore();
 }
 

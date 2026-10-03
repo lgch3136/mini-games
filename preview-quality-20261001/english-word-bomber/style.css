@@ -236,3 +236,22 @@ button { min-height:44px; touch-action:manipulation; } .overlay { overflow-y:aut
 }
 
 #over .btn-row button { white-space:nowrap; padding:12px; font-size:15px; min-height:50px; }
+
+/* Keep every expedition choice visible together on short landscape screens. */
+@media (orientation:landscape) and (max-height:600px) {
+  #supply { align-items:flex-start; }
+  #supply .panel {
+    flex:none; width:100%; max-width:720px; min-width:0; margin:auto; padding:8px;
+    display:grid; grid-template-columns:48px minmax(0,1fr);
+    grid-template-areas:"medal kicker" "medal title" "summary summary" "choices choices";
+    gap:4px 12px; align-items:center; text-align:left;
+  }
+  #supply-kicker { grid-area:kicker; margin:0; font-size:11px; line-height:1.35; letter-spacing:2px; }
+  #supply-title { grid-area:title; font-size:26px; line-height:1.15; letter-spacing:1px; }
+  #supply-medal { grid-area:medal; display:block; width:48px; height:48px; }
+  #supply #supply-summary { grid-area:summary; max-width:none; margin:4px 0 0; font-size:13px; line-height:1.4; text-align:center; }
+  #supply .supply-grid { grid-area:choices; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:6px; }
+  #supply .supply-grid button { min-width:0; min-height:78px; padding:10px 12px; border-radius:12px; font-family:inherit; overflow-wrap:anywhere; }
+  #supply .supply-grid b { font-size:16px; line-height:1.25; }
+  #supply .supply-grid span { margin-top:6px; font-size:12px; line-height:1.45; }
+}
