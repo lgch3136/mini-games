@@ -94,11 +94,16 @@ function newBall(x, y, angleDeg) {
 
 /* ---------------- 关卡生成 ---------------- */
 const LESSONS = [
-  { en:'CAT', zh:'猫', name:'I · 陶瓷花冠', hint:'先瞄准 C · 左右键调角，空格发射' },
+  { en:'CAT', zh:'猫', name:'I · 陶瓷花冠' },
   { en:'MAP', zh:'地图', name:'II · 转轴闸门', hint:'先击左侧黄铜开关 · 闸门后才是字母' },
   { en:'SUN', zh:'太阳', name:'III · 折射装甲', hint:'先借侧墙折返 · 同形折箭可以破甲' },
 ];
 function roomKind() { return ((Game.level-1)%3)+1; }
+function roomHint() {
+  if(Game.assisted===false)return '按词义自选字母 · 瞄准线只显示球路';
+  if(roomKind()===1)return `先瞄准 ${Game.word.en[Game.word.progress]} · 左右键调角，空格发射`;
+  return LESSONS[roomKind()-1].hint;
+}
 function recordEvent(type, data={}) {
   Game.eventLog.push({type, frame:Game.logicFrame, time:Game.time, level:Game.level, ...data});
   if(Game.eventLog.length>240) Game.eventLog.shift();
@@ -151,7 +156,7 @@ function buildLevel() {
     add('gate',.715,.91,.35,.1,{gateSide:1});
   }
   updateHud();
-  showFeedback(Game.assisted===false?'按词义自选字母 · 瞄准线只显示球路':LESSONS[roomKind()-1].hint);
+  showFeedback(roomHint());
   recordEvent('room-start',{word:Game.word.en});
 }
 

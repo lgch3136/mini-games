@@ -523,6 +523,7 @@ function step(dt) {
   if(gliding) Game.glideEnergy=Math.max(0,Game.glideEnergy-dt);
   else if(Game.gliding) resetGlideInput();
   const wind=activeWind();
+  updateFlightStatus(wind);
   const lift=wind ? 150 : 0;
   b.vy = Math.min(b.vy + ((gliding?GRAVITY*.26:GRAVITY)-lift) * dt, gliding?(wind?58:125):MAX_FALL);
   setHud('glide-charge',Game.glideEnergy.toFixed(1)+'s');
@@ -909,13 +910,17 @@ function setHud(id, value, html = false) {
   hudValues.set(id, text);
   $id(id)[html ? 'innerHTML' : 'textContent'] = text;
 }
+function updateFlightStatus(wind = activeWind()) {
+  setHud('glide-label', Game.landing ? '正在靠岸' : wind ? '顺风 · 滑翔' : Game.featherShield ? '羽盾 · 滑翔' : '按住滑翔');
+}
 function updateHUD() {
   setHud('score', Game.score);
   setHud('combo', Game.combo);
   if (Game.combo >= 2) $id('combo-box').classList.remove('hidden'); else $id('combo-box').classList.add('hidden');
   setHud('level', Game.level);
-  setHud('route-status',`${ISLANDS[(Game.island-1)%3]} · 送达 ${Game.journeyWords.length}/3 · ${Game.landing?'正在靠岸':activeWind()?'顺风廊 · 按住滑翔':Game.featherShield?'羽盾就绪':'找字 → 风廊 → 精飞'}`);
-  setHud('glide-charge',Game.glideEnergy.toFixed(1)+'s');
+  setHud('route-status',`${ISLANDS[(Game.island-1)%3]} · 送达 ${Game.journeyWords.length}/3`);
+  updateFlightStatus();
+  setHud('glide-charge',Game.landing ? '' : Game.glideEnergy.toFixed(1)+'s');
   setHud('hearts', '❤️'.repeat(Math.max(0, Game.lives)) + '🖤'.repeat(MAX_LIVES - Math.max(0, Game.lives)));
 
   if (Game.mode === 'spell' && Game.word) {

@@ -107,6 +107,14 @@ button.difficulty.selected { background: linear-gradient(135deg,#0ea5e9,#2563eb)
   color: #dbeafe; border-radius: 999px; padding: 9px 26px; font-size: 14px; font-weight: 700; font-family: inherit;
 }
 .btn-sub:hover { border-color: #38bdf8; }
+/* Compact labels also keep the existing single action row in landscape. */
+#over .panel { width: 100%; }
+#over .btn-row > button { min-width: 0; width: 100%; min-height: 48px; margin-top: 0; padding: 11px 12px; white-space: nowrap; }
+/* Portrait gives Continue its own row above the retry/menu pair. */
+@media (orientation: portrait) {
+  #over .btn-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #continue-btn { grid-column: 1 / -1; }
+}
 button:focus-visible { outline: 3px solid #bae6fd; outline-offset: 2px; }
 @media (max-width: 600px) {
   .overlay { align-items: flex-start; overflow-y: auto; overscroll-behavior: contain; }

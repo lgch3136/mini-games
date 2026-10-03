@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta name="arcade-build" content="20261002-quality4-r6">
+<meta name="arcade-build" content="20261003-quality4-r8">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>英语节奏大师 · WORD BEAT</title>
 <meta name="description" content="七键古典旋律音游：公开 MIDI 逐事件谱面、独立键音与自动伴奏轨。">
-<link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20261002-quality4-r6">
-<link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20261002-quality4-r6&quality4=20261002-instrument-r1">
-<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261002-quality4-r6">
+<link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20261003-quality4-r8">
+<link rel="stylesheet" href="mobile-quality.css?v=20260930-quality-r1&mobile=20261003-quality4-r8&quality4=20261002-instrument-r1">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261003-quality4-r8">
 </head>
 <body>
 <div id="game-wrap">
@@ -39,12 +39,12 @@
 
   <div class="overlay" id="menu">
     <div class="panel">
-      <img class="menu-cover" src="assets/cover-mobile.webp?mobile=20261002-quality4-r6" alt="七轨木质琴架、黄铜长按弦与象牙琴键的游戏画面">
+      <img class="menu-cover" src="assets/cover-mobile.webp?mobile=20261003-quality4-r8" alt="七轨木质琴架、黄铜长按弦与象牙琴键的游戏画面">
 
       <h1>英语节奏大师<small>WORD BEAT</small></h1>
       <p class="sub">跟着发光判定线，弹出一首完整旋律。手机先试 4K，双指可同时按；长条按住，直到尾端经过金线。</p>
       <button class="btn-main" id="quick-start">即刻练习 · 4K 宽判定</button>
-      <p class="quick-note">先轻点，再长按，最后双指和弦 · 之后可选完整曲目</p>
+      <p class="quick-note" id="quick-note">先轻点，再长按，最后双指和弦 · 之后可选完整曲目</p>
       <details class="advanced-play"><summary>选曲、键数与演出设置</summary>
       <div class="companion-choice"><label><input id="companion-toggle" type="checkbox"> 随曲伴读字卡</label><span>可选接触与收集，不计语言回忆成绩</span><button class="btn-sub" id="lesson-start">重练24秒基础乐句</button></div>
       <div class="scale-map" aria-label="七条键音输入轨">
@@ -118,7 +118,7 @@
         <button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
         <button class="btn-sub" id="menu-btn">回主菜单</button>
       </div>
-      <img id="mastery-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp?mobile=20261002-quality4-r6" alt="完成奖章" hidden>
+      <img id="mastery-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp?mobile=20261003-quality4-r8" alt="完成奖章" hidden>
       <div class="result-achievement"><div id="result-stars" class="result-stars"></div><small id="result-star-rule"></small></div>
       <div id="over-stats"></div>
       <p id="result-timing" class="result-timing"></p><p id="result-advice" class="result-advice"></p>
@@ -126,12 +126,12 @@
   </div>
 </div>
 
-<script src="../shared/vocabulary.js?mobile=20261002-quality4-r6"></script>
-<script src="score-data.js?v=20260826c&mobile=20261002-quality4-r6"></script>
-<script src="source-scores.js?v=20260826c&mobile=20261002-quality4-r6"></script>
-<script src="fast-scores.js?v=20260826c&mobile=20261002-quality4-r6"></script>
-<script src="library-scores.js?v=20260826c&mobile=20261002-quality4-r6"></script>
-<script src="extended-scores.js?v=20260826c&mobile=20261002-quality4-r6"></script>
-<script src="game.js?v=20260930-quality-r1&mobile=20261002-quality4-r6&quality4=20261002-instrument-r1"></script>
+<script src="../shared/vocabulary.js?mobile=20261003-quality4-r8"></script>
+<script src="score-data.js?v=20260826c&mobile=20261003-quality4-r8"></script>
+<script src="source-scores.js?v=20260826c&mobile=20261003-quality4-r8"></script>
+<script src="fast-scores.js?v=20260826c&mobile=20261003-quality4-r8"></script>
+<script src="library-scores.js?v=20260826c&mobile=20261003-quality4-r8"></script>
+<script src="extended-scores.js?v=20260826c&mobile=20261003-quality4-r8"></script>
+<script src="game.js?v=20260930-quality-r1&mobile=20261003-quality4-r8&quality4=20261002-instrument-r1"></script>
 </body>
 </html>

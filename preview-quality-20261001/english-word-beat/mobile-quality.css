@@ -97,9 +97,9 @@ button,select,input { touch-action:manipulation; }
 .companion-choice input {width:20px;height:20px;accent-color:#bfa36d;}
 .companion-choice .btn-sub {min-height:44px;justify-self:start;font-size:12px;padding:8px 12px;}
 
-/* Menu and pause use the same instrument materials without changing the live HUD. */
-body:has(#menu:not(.hidden)),body:has(#paused:not(.hidden)) {background:radial-gradient(ellipse at 30% 0,#244342,#102b2e 60%,#081b20);}
-#game-wrap:has(#menu:not(.hidden)),#game-wrap:has(#paused:not(.hidden)) {border-color:#ad986852;background:#102128;box-shadow:0 12px 42px #07191b66;}
+/* All resting screens share the instrument materials without changing the live HUD. */
+body:has(#menu:not(.hidden)),body:has(#paused:not(.hidden)),body:has(#over:not(.hidden)) {background:radial-gradient(ellipse at 30% 0,#244342,#102b2e 60%,#081b20);}
+#game-wrap:has(#menu:not(.hidden)),#game-wrap:has(#paused:not(.hidden)),#game-wrap:has(#over:not(.hidden)) {border-color:#ad986852;background:#102128;box-shadow:0 12px 42px #07191b66;}
 #menu,#paused {background:radial-gradient(ellipse at 50% 15%,#244342 0%,#102b2e 58%,#081b20 100%);color:#f0e5ca;color-scheme:dark;scrollbar-color:#526f68 #102b2e;}
 #menu .panel h1,#paused .panel h1 {color:#f0e5ca;text-shadow:0 2px 0 #081b2066;}
 #menu .panel h1 small,#menu .panel::before {color:#c9b584;}

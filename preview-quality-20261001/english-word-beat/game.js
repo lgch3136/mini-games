@@ -1513,7 +1513,10 @@ try {
 LANES = Game.keyMode;
 $id('companion-toggle').checked=Game.companion;
 $id('companion-toggle').addEventListener('change',e=>{Game.companion=e.target.checked;savePlayPrefs();});
-function updateQuickEntry(){$id('quick-start').textContent=Game.lessonSeen?'即刻练习 · 完整一曲':'24秒基础乐句 · 先试手感';}
+function updateQuickEntry(){
+  $id('quick-start').textContent=Game.lessonSeen?'即刻练习 · 完整一曲':'24秒基础乐句 · 先试手感';
+  $id('quick-note').textContent=Game.lessonSeen?'用4K宽判定练习完整曲目 · 也可展开设置选择其他曲目':'先轻点，再长按，最后双指和弦 · 之后可选完整曲目';
+}
 updateQuickEntry();
 $id('session-select').value = Game.session;
 $id('timing-offset').value = Math.round(Game.timingOffset * 1000);
