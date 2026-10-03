@@ -234,3 +234,5 @@ button { min-height:44px; touch-action:manipulation; } .overlay { overflow-y:aut
   #up-btn { left:44px; } #left-btn { top:44px; } #right-btn { left:88px;top:44px; } #down-btn { left:44px;top:88px; }
   #bomb-btn { width:48px; height:48px; }
 }
+
+#over .btn-row button { white-space:nowrap; padding:12px; font-size:15px; min-height:50px; }

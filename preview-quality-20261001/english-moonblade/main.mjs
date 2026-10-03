@@ -504,9 +504,23 @@ try {
   text("sound-btn", audio.muted ? "声音 关" : "声音 开");
   preview();
 } catch (e) {
-  text("loading", "3D 画面未能启动。需要 WebGL 2 与完整角色资源，可刷新重试或返回合集。 ");
-  $("loading").setAttribute("role", "alert");
-  const back = document.createElement("a"); back.href = "../"; back.textContent = "返回游戏合集"; $("loading").append(back);
+  mode = "error";
+  stop();
+  $("menu").hidden = true;
+  $("hud").hidden = true;
+  $("touch").hidden = true;
+  document.querySelector(".topbar").hidden = true;
+  const failure = $("loading");
+  // Escape the arena's isolated stacking context so the startup failure owns
+  // one opaque screen instead of showing through the still-loading menu.
+  $("shell").append(failure);
+  failure.hidden = false;
+  failure.setAttribute("role", "alert");
+  const title = document.createElement("h2"); title.textContent = "3D 画面未能启动";
+  const copy = document.createElement("p"); copy.textContent = "需要支持 WebGL 2 的浏览器和完整角色资源。可刷新页面重试，或返回合集选择其他游戏。";
+  const back = document.createElement("a"); back.href = "../"; back.textContent = "返回游戏合集";
+  failure.replaceChildren(title, copy, back);
+  back.focus({ preventScroll: true });
   text("status", e.message);
   console.error(e);
 }

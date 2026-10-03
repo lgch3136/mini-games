@@ -825,6 +825,7 @@ function startGame(lesson=false) {
   stopVoices();
   ensureAudioClock(); initSfx();
   LANES = Game.keyMode || 7;
+  canvas.setAttribute('aria-label',`英语节奏大师 ${LANES} 键轨道`);
   Game.scrollMul = Game.scrollMul || 1.25;
   Game.score = 0; Game.lives = 100; Game.combo = 0; Game.maxCombo = 0; Game.comboAt = -Infinity;
   Game.capsules = 0; Game.recovery = false;
@@ -1145,7 +1146,7 @@ function gameOver() {
     $id('retry-word').hidden=!Game.missedSources.length;$id('retry-word').textContent='只练漏掉的短句';
   }else $id('word-recap').textContent+=' · 随曲伴读只记录字卡接触与收集';
   if(Game.lesson){
-    $id('over-kicker').textContent='基础乐句 · 24秒';$id('over-title').textContent=Game.recovery?'漏拍短句结束':'基础乐句结束';$id('result-stars').textContent='';$id('result-star-rule').textContent='基础练习，不计整曲纪录';$id('result-advice').textContent='可以进入完整曲练习，也可以先补刚才漏掉的拍点。';$id('retry-btn').textContent='进入完整曲练习';
+    $id('over-kicker').textContent='基础乐句 · 24秒';$id('over-title').textContent=Game.recovery?'漏拍短句结束':'基础乐句结束';$id('result-stars').textContent='';$id('result-star-rule').textContent='基础练习，不计整曲纪录';$id('result-advice').textContent=Game.missedSources.length?'可以进入完整曲练习，也可以先补刚才漏掉的拍点。':'基础拍点都已接上，可以进入完整曲练习。';$id('retry-btn').textContent='进入完整曲练习';
     if(Game.completed){Game.lessonSeen=true;try{localStorage.setItem('word-beat-first-phrase-v1','seen');}catch{}}updateQuickEntry();
   }
   $id('retry-btn').focus?.({ preventScroll: true });

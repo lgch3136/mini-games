@@ -1013,17 +1013,22 @@ function drawAimLabel(h) {
   const target=aimTarget(h);if(!target)return;
   const info=orePreview(target,h),label=info.name+' · '+info.value+' · '+info.seconds.toFixed(1)+'秒';
   ctx.save();ctx.font='600 12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-  const bw=Math.min(W-24,Math.max(125,ctx.measureText(label).width+20)),bh=24;
-  const candidates=[[target.x-bw/2,target.y-target.r-34],[target.x-bw/2,target.y+target.r+12],[target.x+target.r+12,target.y-12],[target.x-target.r-bw-12,target.y-12],[W-bw-12,126],[12,126]];
+  // The mine is scaled into a smaller landscape canvas. Keep this decision
+  // text at least 12 CSS px using both CSS axes, never the DPR backbuffer.
+  const ux=Math.max(1,W/Math.max(1,lastW||W)),uy=Math.max(1,H/Math.max(1,lastH||H));
+  const marginX=12*ux,gapY=12*uy;
+  const bw=Math.min(W-marginX*2,Math.max(125,ctx.measureText(label).width+20)*ux),bh=24*uy;
+  const candidates=[[target.x-bw/2,target.y-target.r-bh-gapY],[target.x-bw/2,target.y+target.r+gapY],[target.x+target.r+marginX,target.y-bh/2],[target.x-target.r-bw-marginX,target.y-bh/2],[W-bw-marginX,126],[marginX,126]];
   let best=null;
   for(const [x,y] of candidates) {
-    const bx=clamp(x,12,W-bw-12),by=clamp(y,126,Math.max(126,mineFloor()-bh));
+    const bx=clamp(x,marginX,W-bw-marginX),by=clamp(y,126,Math.max(126,mineFloor()-bh));
     const overlaps=Game.items.filter(it=>!it.grabbed&&Math.hypot(it.x-clamp(it.x,bx,bx+bw),it.y-clamp(it.y,by,by+bh))<it.r+7).length;
     if(!best||overlaps<best.overlaps)best={bx,by,overlaps};
     if(!overlaps)break;
   }
-  ctx.fillStyle='#182e2eeb';ctx.beginPath();ctx.roundRect(best.bx,best.by,bw,bh,6);ctx.fill();
-  ctx.fillStyle='#f5e1b4';ctx.fillText(label,best.bx+bw/2,best.by+12);ctx.restore();
+  ctx.translate(best.bx,best.by);ctx.scale(ux,uy);
+  ctx.fillStyle='#182e2eeb';ctx.beginPath();ctx.roundRect(0,0,bw/ux,bh/uy,6);ctx.fill();
+  ctx.fillStyle='#f5e1b4';ctx.fillText(label,bw/ux/2,12);ctx.restore();
 }
 
 function orePreview(it,h=Game.hook) {

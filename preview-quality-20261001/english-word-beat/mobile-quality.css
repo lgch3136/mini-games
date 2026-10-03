@@ -96,6 +96,21 @@ button,select,input { touch-action:manipulation; }
 .companion-choice label {display:flex;align-items:center;gap:8px;min-height:44px;}
 .companion-choice input {width:20px;height:20px;accent-color:#bfa36d;}
 .companion-choice .btn-sub {min-height:44px;justify-self:start;font-size:12px;padding:8px 12px;}
+
+/* The final note settles into the same teal, ivory and brass as the instrument. */
+#over {background:radial-gradient(ellipse at 50% 15%,#244342 0%,#102b2e 58%,#081b20 100%);color:#f0e5ca;color-scheme:dark;scrollbar-color:#526f68 #102b2e;}
+#over-kicker {color:#bca16c;letter-spacing:4px;font-size:12px;margin-bottom:6px;}
+#over-title {font-size:32px;color:#f0e5ca;text-shadow:0 2px 0 #081b2066;}
+#over #over-stats > div {background:#132f30;border-color:#af94654d;box-shadow:inset 0 1px 0 #ead8a610;}
+#over #over-stats span,#over #result-star-rule,#over .result-timing {color:#b2c9be;}
+#over #over-stats b {color:#f0e5ca;}
+#over .result-stars {color:#d5b879;}
+#over .word-recap {color:#f0e5ca;border-left-color:#c4a369;background:#dfc68b0c;}
+#over .result-advice {color:#cfddd2;background:#203e3b;border-color:#a88d5c45;}
+#over .btn-main {color:#173135;background:linear-gradient(180deg,#eadcb7,#c1a66c);border:1px solid #f0dfb4;box-shadow:inset 0 1px 0 #fff5d9,0 4px 0 #6d5b3738,0 7px 16px #07191b55;}
+#over .btn-main:hover {box-shadow:inset 0 1px 0 #fff5d9,0 5px 0 #6d5b3738,0 9px 18px #07191b66;}
+#over .btn-sub {color:#e9ddbf;background:#244441;border-color:#9d875e;}
+#over button:focus-visible {outline:2px solid #ead59a;outline-offset:3px;}
 #hud .chip {border-color:#9cae9c40;color:#d7dfcf;background:#12272dd9;}
 #hud button {border-color:#a497734d;background:#152b32;color:#dce4d5;}
 #word-bar {border-color:#b9aa7a55;background:#182f35e8;color:#e1d8bc;}

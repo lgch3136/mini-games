@@ -882,7 +882,10 @@ dialog > p:last-child {
 
 #loading a { display: inline-block; padding: 12px; color: #e9cb94; text-decoration: underline; }
 
-#loading[role="alert"] { position: fixed; z-index: 100; inset: 0; width: auto; padding: max(24px, env(safe-area-inset-top)); display: grid; place-content: center; background: #10232af5; color: #f2dfb9; line-height: 1.7; }
+#loading[role="alert"] { position: fixed; z-index: 100; inset: 0; width: auto; padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); display:grid; place-content:center; gap:12px; background:#10232a; color:#f2dfb9; line-height:1.7; overflow-y:auto; }
+#loading[role="alert"] h2 {font-size:24px;line-height:1.3;margin:0;}
+#loading[role="alert"] p {max-width:38em;margin:0;font-size:14px;color:#d0dde0;}
+#loading[role="alert"] a {justify-self:center;display:inline-flex;align-items:center;justify-content:center;min-height:48px;margin-top:4px;padding:10px 22px;border:1px solid #d5bd8c;border-radius:8px;background:#ead8ae;color:#18313a;font-weight:700;text-decoration:none;}
 /* Short screens scroll the result copy, keeping both choices fully readable. */
 @media (max-height: 480px) {
   .vitals { width: 40%; }

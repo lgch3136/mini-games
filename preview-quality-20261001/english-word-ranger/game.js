@@ -448,7 +448,7 @@ function finish() {
   $("word-recap").prepend(recognition);
   setText(
     "result-primary",
-    won ? (endless ? "下一行动 →" : "再次挑战 →") : "从补给点继续 →",
+    won ? (endless ? "下一行动" : "再次挑战") : "从补给点继续",
   );
   try {
     const best = Math.max(
