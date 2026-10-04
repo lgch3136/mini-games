@@ -1,5 +1,5 @@
 import {reviewRecord,applyReviewEvent} from './learning.mjs?v=20261002-quality4&mobile=20261002-quality4-r1';
-import { practiceProgress, typingCoach, practiceAdvice, resultWords } from "./practice.mjs?v=20261001-world-r2&mobile=20261004-quality4-r10&quality4=20261002-story-r1";
+import { practiceProgress, typingCoach, practiceAdvice, resultWords } from "./practice.mjs?v=20261001-world-r2&mobile=20261004-quality4-r11&quality4=20261002-story-r1";
 import { Journey, STEP } from "./sim.mjs?v=20261001-world-r2&mobile=20261002-quality4-r1&quality4=20261002-story-r1";
 import {
   makeLexicon,

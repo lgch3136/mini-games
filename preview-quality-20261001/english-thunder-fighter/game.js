@@ -28,6 +28,8 @@ const MAX_FLOATERS = 48;
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const wrap = document.getElementById('game-wrap');
+const flightPlane = document.getElementById('flight-plane');
+let effectsReady = false;
 
 const $id = (id) => document.getElementById(id);
 const els = {
@@ -242,13 +244,13 @@ const KEYMAP = {
 window.addEventListener('keydown', (ev) => {
   if (usesNativeKeyboard(ev)) return;
   if (ev.code === 'Space' || ev.code.startsWith('Arrow')) ev.preventDefault();
-  if (KEYMAP[ev.code]) { ownKey(ev.code,KEYMAP[ev.code],true); Game.player.pointer = false; }
-  if (ev.code === 'Space' || ev.code === 'KeyJ') { SFX.ensure(); ownFire('key:'+ev.code,true); }
+  if (KEYMAP[ev.code] && Game.state==='playing' && (!ev.repeat||keySources.has(ev.code))) { ownKey(ev.code,KEYMAP[ev.code],true); Game.player.pointer = false; }
+  if ((ev.code === 'Space' || ev.code === 'KeyJ') && Game.state==='playing' && (!ev.repeat||fireSources.has('key:'+ev.code))) { SFX.ensure(); ownFire('key:'+ev.code,true); }
   if (!ev.repeat && (ev.code === 'ShiftLeft' || ev.code === 'ShiftRight')) dashPlayer();
   if (!ev.repeat && (ev.code === 'KeyB' || ev.code === 'KeyX')) { SFX.ensure(); useBomb(); }
   if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
   if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
-  if (ev.code === 'Enter') {
+  if (ev.code === 'Enter' && !ev.repeat) {
     SFX.ensure();
     if (Game.state === 'menu' || Game.state === 'over') startGame();
     else if (Game.state === 'paused') resumeGame();
@@ -261,14 +263,14 @@ window.addEventListener('keyup', (ev) => {
 
 /* 计算题目栏下方的最小飞行高度（逻辑坐标），避免战机躲进 HUD */
 function hudClearanceY() {
-  const scale = wrap.clientHeight / H || 1;
+  const field = canvas.getBoundingClientRect();
+  const scale = field.height / H || 1;
   const qb = $id('question-bar');
-  const wrapTop = wrap.getBoundingClientRect().top;
-  let barBottom = qb.getBoundingClientRect().bottom - wrapTop;
-  for(const id of ['hud-top','hp-wrap','sector-progress']) {
+  let barBottom = qb.getBoundingClientRect().bottom - field.top;
+  for(const id of ['hud-top','sector-progress']) {
     const box=$id(id).getBoundingClientRect();
-    if(box.height>0&&box.height<wrap.clientHeight*.4&&box.bottom-wrapTop<wrap.clientHeight*.6)
-      barBottom=Math.max(barBottom,box.bottom-wrapTop);
+    if(box.height>0)
+      barBottom=Math.max(barBottom,box.bottom-field.top);
   }
   return Math.max(120, (barBottom + 16) / scale + 30);
 }
@@ -299,8 +301,8 @@ canvas.addEventListener('pointerdown', (ev) => {
   if (Game.state !== 'playing') return;
   SFX.ensure();
   if (ev.pointerType !== 'touch') { ownFire('mouse:'+ev.pointerId,true); return; }
-  const r = canvas.getBoundingClientRect();
-  if ((!Game.autoFire && !missionReading() && ev.clientX - r.left > r.width * 0.68) || movePointerId !== null) return;
+  // Fire now has its own cockpit, so every visible flight position can start a drag.
+  if (movePointerId !== null) return;
   Game.touchMode = true;
   movePointerId = ev.pointerId;
   moveStart = { x: ev.clientX, y: ev.clientY, px: Game.player.x, py: Game.player.y };
@@ -389,6 +391,26 @@ function missionRecord(type, detail = {}) {
 function missionReading() {
   return !!(Game.mission && Game.time < Game.mission.bayUntil);
 }
+function compactBossBayRows(origin) {
+  // Choose once, before the words are assigned. Cards never follow the player.
+  // Keep the starting ship and every direct approach clear of other pickups.
+  const xs=[W*.18,W*.5,W*.82],base=[H-90,H-160,H-90];
+  function distanceToApproach(point,target) {
+    const dx=target.x-origin.x,dy=target.y-origin.y,length=dx*dx+dy*dy;
+    const t=length?clamp(((point.x-origin.x)*dx+(point.y-origin.y)*dy)/length,0,1):0;
+    return Math.hypot(point.x-origin.x-t*dx,point.y-origin.y-t*dy);
+  }
+  let best=null,bestCost=Infinity;
+  for(const left of [H-90,H-160,H-230])for(const middle of [H-160,H-66])for(const right of [H-90,H-160,H-230]) {
+    const ys=[left,middle,right],points=ys.map((y,i)=>({x:xs[i],y}));
+    let clearance=Math.min(...points.map(p=>Math.hypot(p.x-origin.x,p.y-origin.y)));
+    for(let i=0;i<3;i++)for(let j=0;j<3;j++)if(i!==j)clearance=Math.min(clearance,distanceToApproach(points[j],points[i]));
+    const cost=ys.reduce((sum,y,i)=>sum+Math.abs(y-base[i]),0);
+    if(clearance>=45&&cost<bestCost){best=ys;bestCost=cost;}
+  }
+  // The supported world sizes have a valid plan throughout their legal domains.
+  return best||base;
+}
 function openTacticalBay(mode, target, duration = 6) {
   const m = Game.mission;
   m.bayUntil = Game.time + duration; m.baySerial++; m.chosen = null;
@@ -411,8 +433,10 @@ function openTacticalBay(mode, target, duration = 6) {
   Game.questionIndex++;
   if (mode === 'dispatch') Game.stats.questions++;
   const y = clamp(H * .58, Game._minY + 72, H - 145);
+  const compactBoss=W>=900&&Math.min(lastW/W,lastH/H)<.5&&Game.enemies.some(enemy=>enemy.boss&&!enemy.dead);
+  const rows=compactBoss?compactBossBayRows(m.bayOrigin):null;
   arranged.forEach((option, index) => Game.powerups.push({ ...option, kind: 'answer',
-    tactical: true, bayId: m.baySerial, mode, x: W * (.18 + index * .32), y,
+    tactical: true, bayId: m.baySerial, mode, x: W * (.18 + index * .32), y:rows?rows[index]:y,
     vy: 0, t: 0, expires: m.bayUntil, color: '#91dfd5' }));
   missionRecord('bay', { mode, target, event: m.event, until: m.bayUntil, review: !!due });
   updateQuestionBar();
@@ -1346,7 +1370,8 @@ function updateEnemies(dt) {
     if (e.missionBoss) {
       updateMissionBoss(e, dt);
       const p=Game.player;
-      if(Math.hypot(e.x-p.x,e.y-p.y)<e.r+p.r){damagePlayer(28);p.y=clamp(e.y+e.r+62,Game._minY,H-46);p.py=p.y;}
+      // Reading contact must not damage or shove the player into an answer.
+      if(!missionReading()&&Math.hypot(e.x-p.x,e.y-p.y)<e.r+p.r){damagePlayer(28);p.y=clamp(e.y+e.r+62,Game._minY,H-46);p.py=p.y;}
       continue;
     }
 
@@ -1837,16 +1862,17 @@ function drawMissionTacticalCore(core) {
   // Its centre remains the real near-approach pickup; this is not a tap button.
   const cssScaleX=Math.max(.001,lastW/W),cssScaleY=Math.max(.001,lastH/H);
   ctx.scale(1/cssScaleX,1/cssScaleY);
-  const width=lastW<360?80:88,hh=27;
+  const compact=W>=900&&Math.min(cssScaleX,cssScaleY)<.5;
+  const width=compact?68:lastW<275?74:lastW<360?80:88,hh=compact?20:27;
   // A metal data cartridge: clipped corners, connector pins and a dark display.
   ctx.beginPath();ctx.moveTo(-width/2+8,-hh);ctx.lineTo(width/2-8,-hh);ctx.lineTo(width/2,-hh+8);ctx.lineTo(width/2,hh-8);ctx.lineTo(width/2-8,hh);ctx.lineTo(-width/2+8,hh);ctx.lineTo(-width/2,hh-8);ctx.lineTo(-width/2,-hh+8);ctx.closePath();
   ctx.fillStyle='#314866';ctx.fill();ctx.strokeStyle='#91aac6';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='#6687ad';ctx.fillRect(-width/2+10,-hh+2,width-20,3);
-  ctx.fillStyle='#101b31';ctx.fillRect(-width/2+7,-18,width-14,36);
+  ctx.fillStyle='#6687ad';ctx.fillRect(-width/2+10,-hh+2,width-20,compact?2:3);
+  ctx.fillStyle='#101b31';ctx.fillRect(-width/2+7,compact?-15:-18,width-14,compact?32:36);
   ctx.fillStyle='#8c9ba9';
   for(const side of [-1,1])for(const y of [-12,-3,6])ctx.fillRect(side<0?-width/2-4:width/2-1,y,5,5);
-  ctx.fillStyle='#76bcec';ctx.fillRect(-width/2+9,18,width-18,3);
-  ctx.fillStyle='#e2e9ef';ctx.font='800 14px ui-monospace,monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#76bcec';ctx.fillRect(-width/2+9,18,width-18,compact?1:3);
+  ctx.fillStyle='#e2e9ef';ctx.font='800 14px "SFMono-Regular",Consolas,"DejaVu Sans Mono",monospace';ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText(core.word,0,-6);
   ctx.fillStyle='#9ab5cf';ctx.font='12px "Noto Sans CJK SC","PingFang SC",sans-serif';
   ctx.fillText(core.mode==='free'?core.zh:'指令核验',0,10);
@@ -1854,10 +1880,13 @@ function drawMissionTacticalCore(core) {
 function drawMissionApproachMarker() {
   ctx.save();ctx.translate(Game.player.x,Game.player.y);
   ctx.scale(W/Math.max(1,lastW),H/Math.max(1,lastH));
+  const scale=Math.min(lastW/W,lastH/H);
+  const halfX=Math.max(20,Math.min(32,44*scale+6));
+  const halfY=Math.max(19,Math.min(34,35*scale+8));
   ctx.strokeStyle='#91e9fa';ctx.lineWidth=2;
   // Four short brackets mark the player's position without pointing at an answer.
   for(const x of [-1,1])for(const y of [-1,1]){
-    ctx.beginPath();ctx.moveTo(x*23,y*34);ctx.lineTo(x*32,y*34);ctx.lineTo(x*32,y*25);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x*(halfX-9),y*halfY);ctx.lineTo(x*halfX,y*halfY);ctx.lineTo(x*halfX,y*(halfY-9));ctx.stroke();
   }
   ctx.restore();
 }
@@ -2174,7 +2203,8 @@ function drawFloaters() {
 
 
 function updateDashHud() {
-  $id('dash-btn').textContent=Game.dashCooldown>0 ? `冲刺 ${Math.ceil(Game.dashCooldown)}s` : '冲刺 · SHIFT';
+  $id('dash-btn').textContent=Game.dashCooldown>0 ? `冲刺 ${Math.ceil(Game.dashCooldown)}s` : '冲刺';
+  $id('dash-btn').setAttribute('aria-label',Game.dashCooldown>0 ? `冲刺冷却，还剩 ${Math.ceil(Game.dashCooldown)} 秒` : '冲刺，七秒冷却');
   $id('dash-btn').disabled=Game.dashCooldown>0;
 }
 function dashPlayer() {
@@ -2247,6 +2277,7 @@ function drawThreats() {
   ctx.strokeStyle=Game.dashCooldown<=0?'#67e8f9':'rgba(170,199,220,.5)';ctx.setLineDash([]);ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.stroke();ctx.restore();
 }
 $id('dash-btn').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();dashPlayer();});
+$id('dash-btn').addEventListener('click',e=>{if(e.detail===0)dashPlayer();});
 for(const kind of ['reactor','repair','weapon']) $id('refit-'+kind).addEventListener('click',()=>chooseRefit(kind));
 
 /* ---------------- HUD ---------------- */
@@ -2263,16 +2294,18 @@ function updateQuestionBar() {
 
 function updateHud() {
   updateDashHud();
-  // Quiet equipment bays reserve the lower corners for readable choices.
-  // Movement stays available across the whole canvas until combat resumes.
+  // The fixed cockpit never changes the flight viewport during a run.
+  // Quiet bays hide combat-only actions; auto fire needs no duplicate trigger.
   const readingBay = missionReading();
-  els.fireBtn.hidden = readingBay;
+  els.fireBtn.hidden = readingBay || Game.autoFire;
   $id('dash-btn').hidden = readingBay;
   $id('sector-progress').textContent = Game.mission ? `${THUNDER_MISSION[Game.mission.index].label} · ${Math.floor(Game.time)}s${missionReading() ? ` · 整备 ${Math.max(0,Math.ceil(Game.mission.bayUntil-Game.time))}s` : ''}` : Game.phase==='boss' ? '核心守卫 · 读懂预警再穿行' : `航段 ${Game.sectors+1} · 数据 ${Game.stats.correct%8}/8 · 冲刺可穿过弹幕`;
   els.score.textContent = Game.score;
   els.level.textContent = Game.level;
   els.bombs.textContent = Game.bombs;
   els.bombTouch.textContent = Game.bombs;
+  els.bombBtn.setAttribute('aria-label',`使用爆弹清屏，剩余 ${Game.bombs} 枚`);
+  els.comboBox.setAttribute('aria-label',`连击 ${Game.combo}`);
   const weaponNames = { spread: '散射', laser: '雷光', homing: '追踪' };
   els.weapon.textContent = weaponNames[Game.player.weapon] + ' ' + 'I'.repeat(Game.player.weaponLevel);
   if (Game.player.berserk > 0) els.weapon.textContent += ' · 暴走';
@@ -2282,6 +2315,7 @@ function updateHud() {
   els.medalChain.textContent = Game.medalChain;
   els.hpBar.style.width = Game.hp + '%';
   els.hpText.textContent = Math.round(Game.hp);
+  $id('hp-wrap').setAttribute('aria-valuenow',Math.round(Game.hp));
   els.hpBar.style.background = Game.hp > 50 ? 'linear-gradient(90deg,#3dff8a,#a8ff3d)'
     : Game.hp > 25 ? 'linear-gradient(90deg,#ffd166,#ff9f43)'
     : 'linear-gradient(90deg,#ff6b6b,#ff4757)';
@@ -2307,7 +2341,10 @@ function updateHighScore() {
 /* ---------------- 流程控制 ---------------- */
 function startGame() {
   Game.autoFire = $id('auto-fire').checked !== false;Game.touchMode=false;
-  els.fireBtn.textContent=Game.autoFire?'自动开火':'开火';
+  els.fireBtn.textContent='开火';
+  $id('fire-mode').textContent=Game.autoFire?'单指自动':'手动开火';
+  $id('fire-mode').title='触屏拖动移动；键盘空格 / J 或鼠标按住场地开火';
+  canvas.setAttribute('aria-label',Game.autoFire?'游戏场地：触屏拖动移动并自动开火；键盘方向键移动，空格或 J 开火；鼠标按住场地开火':'游戏场地：触屏拖动移动，另一手按住开火；键盘方向键移动，空格或 J 开火；鼠标按住场地开火');
   Game.state = 'playing';
   Game.dashCooldown=0;Game.dashCount=0;Game.reactor=0;Game.sectors=0;Game.refitPending=false;Game.review=[];
   $id('refit').classList.add('hidden');
@@ -2349,6 +2386,7 @@ function startGame() {
 
 function togglePause() {
   if (Game.state === 'playing') {
+    $id('pause-hint').textContent='按 P 或 Esc 继续';
     releaseTouchControls();
     Game.state = 'paused'; if (window.ChipMusic) ChipMusic.pause();
     els.paused.classList.remove('hidden');
@@ -2421,37 +2459,82 @@ function toggleMute() {
   SFX.muted = window.ArcadeAudio ? ArcadeAudio.toggle() : !SFX.muted;
   saveSetting('thunder-muted', SFX.muted ? '1' : '0');
   els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
+  els.muteBtn.setAttribute('aria-label',SFX.muted ? '开启声音' : '静音');
 }
 
 /* ---------------- 画布尺寸 ---------------- */
 let lastW = 0, lastH = 0, lastDpr = 0;
+let lastLayout = '';
+let lastProjection = '';
 function canvasDpr(width, height) {
   return Math.max(.5, Math.min(window.devicePixelRatio || 1, 1.25, Math.sqrt(MAX_CANVAS_PIXELS / Math.max(1, width * height))));
 }
+function flightViewport(width, height, worldW, worldH, insets, sideRails) {
+  // Fit the entire existing world, never crop it or add a new movement bound.
+  const rail = sideRails ? 68 : 0;
+  const left = insets.left + rail;
+  const top = sideRails ? insets.top : 0;
+  const availableW = Math.max(1,width-left-insets.right-rail);
+  const availableH = Math.max(1,height-insets.bottom-(sideRails?top:70));
+  const scale = Math.min(availableW/worldW,availableH/worldH);
+  const w=worldW*scale,h=worldH*scale;
+  return {x:left+(availableW-w)/2,y:top+(availableH-h)/2,width:w,height:h,scale};
+}
+function reflowReadingAfterResize() {
+  const m=Game.mission;
+  if(!['playing','paused'].includes(Game.state)||!m||m.chosen||!missionReading())return;
+  const cores=Game.powerups.filter(core=>core.tactical&&core.bayId===m.baySerial).sort((a,b)=>a.x-b.x);
+  if(cores.length!==3)return;
+  const p=Game.player;
+  if(Game.enemies.some(enemy=>enemy.boss&&!enemy.dead)) {
+    const rows=compactBossBayRows(p);
+    cores.forEach((core,index)=>{core.y=rows[index];});
+  }
+  releaseTouchControls();p.px=p.x;p.py=p.y;
+  m.bayOrigin={x:p.x,y:p.y}; // A changed layout needs a fresh, deliberate approach.
+  if(Game.state==='playing')togglePause();
+  $id('pause-hint').textContent='画幅已调整，继续后接着选择';
+}
 function resize() {
-  const w = Math.max(1, wrap.clientWidth), h = Math.max(1, wrap.clientHeight);
-  const dpr = canvasDpr(w, h);
-  if (w === lastW && h === lastH && dpr === lastDpr) return;
-  Game._nextLayoutCheck = 0;
+  const wrapW = Math.max(1,wrap.clientWidth),wrapH = Math.max(1,wrap.clientHeight);
   const portrait = matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
-  const nextW = portrait ? w : 900;
-  const nextH = portrait ? h : 640;
+  const sideRails = matchMedia('(orientation:landscape) and (max-height:440px)').matches;
+  const safe = getComputedStyle($id('viewport-insets'));
+  const insets = {top:parseFloat(safe.paddingTop)||0,right:parseFloat(safe.paddingRight)||0,bottom:parseFloat(safe.paddingBottom)||0,left:parseFloat(safe.paddingLeft)||0};
+  // World dimensions and resize remapping remain exactly as before the dock.
+  const nextW = portrait ? wrapW : 900;
+  const nextH = portrait ? wrapH : 640;
+  const field = flightViewport(wrapW,wrapH,nextW,nextH,insets,sideRails);
+  const projection=JSON.stringify([wrapW,wrapH,nextW,nextH,field,insets,portrait,sideRails]);
+  const projectionChanged=lastProjection!==''&&projection!==lastProjection;
+  const layout = JSON.stringify([projection,window.devicePixelRatio]);
+  if(layout===lastLayout)return;
+  lastLayout=layout;
+  lastProjection=projection;
+  Game._nextLayoutCheck = 0;
   if (nextW !== W || nextH !== H) {
     const sx = nextW / W, sy = nextH / H;
     const p = Game.player;
     p.x *= sx; p.px *= sx; p.y *= sy; p.py *= sy;
+    if(Game.mission?.bayOrigin){Game.mission.bayOrigin.x*=sx;Game.mission.bayOrigin.y*=sy;}
     [Game.stars, Game.bullets, Game.enemyBullets, Game.enemies, Game.powerups, Game.particles, Game.shockwaves, Game.floaters]
       .forEach((items) => items.forEach((item) => { item.x *= sx; item.y *= sy; }));
     W = nextW; H = nextH;
     Game._nextLayoutCheck = 0;
   }
-  canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
-  // 分别按实际宽高缩放：任何窗口比例下世界都完整可见（不会裁掉底部）
+  flightPlane.style.left=field.x+'px';flightPlane.style.top=field.y+'px';
+  flightPlane.style.width=field.width+'px';flightPlane.style.height=field.height+'px';
+  const rect=canvas.getBoundingClientRect(),w=rect.width,h=rect.height;
+  const dpr=canvasDpr(w,h);
+  canvas.width = Math.round(w*dpr);
+  canvas.height = Math.round(h*dpr);
+  // One CSS scale preserves every ship's aspect ratio and all world timings.
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   lastW = w; lastH = h; lastDpr = dpr;
+  if(projectionChanged)reflowReadingAfterResize();
+  if(effectsReady)FX.resize?.();
 }
 window.addEventListener('resize', () => { resize(); if (Game.state !== 'playing') render(0); });
 new ResizeObserver(() => { resize(); if (Game.state !== 'playing') render(0); }).observe(wrap);
@@ -2487,6 +2570,7 @@ function frame(now) {
 }
 /* WebGL增效层: 远景发光星尘(垫在游戏画面下) */
 const FX = window.FXLayer ? FXLayer.attach(canvas) : { available: false, frame(){}, emit(){}, setStarfield(){} };
+effectsReady = true;
 if (FX.available) FX.setStarfield({ count: FX_STAR_COUNT, speed: 42, tint: [0.55, 0.72, 1] });
 
 render(0);
@@ -2494,6 +2578,7 @@ if (FX.available) FX.frame(0, 0);
 
 updateHighScore();
 els.muteBtn.textContent = SFX.muted ? '🔇' : '🔊';
+els.muteBtn.setAttribute('aria-label',SFX.muted ? '开启声音' : '静音');
 
 /* ---------------- 自检（仅 ?selftest 触发，供无头测试） ---------------- */
 if (/[?&]selftest/.test(location.search)) {

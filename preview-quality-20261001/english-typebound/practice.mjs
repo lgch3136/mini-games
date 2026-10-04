@@ -1,7 +1,9 @@
 export function practiceProgress(g) {
   const goal = g.focusGoal || 0, words = g.stats.words;
   const page = g.depth % 9 + 1, expedition = Math.floor(g.depth / 9) + 1;
-  return { goal, words, fraction: goal ? Math.min(1, words / goal) : Math.min(1, (page - 1 + (g.phase === 'complete' ? 1 : 0)) / 9),
+  const reviewFraction = Number.isFinite(words) && Number.isFinite(g.reviewTarget) && g.reviewTarget > 0
+    ? Math.max(0, Math.min(1, words / g.reviewTarget)) : 0;
+  return { goal, words, fraction: goal ? Math.min(1, words / goal) : g.mode === 'review' ? reviewFraction : Math.min(1, (page - 1 + (g.phase === 'complete' ? 1 : 0)) / 9),
     label: goal ? `静心练习 · ${words}/${goal} 词` : g.mode === 'review' ? `隔词回练 · ${words}/${g.reviewTarget} 次` : `第 ${expedition} 轮旅程 · ${page} / 9 页`,
     stars: g.phase === 'complete' && goal ? 1 + Number(g.accuracy >= 95) + Number(g.stats.perfect === goal) : 0 };
 }

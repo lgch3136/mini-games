@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta name="arcade-build" content="20261004-quality4-r10">
+<meta name="arcade-build" content="20261004-quality4-r11">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#05070f">
 <title>雷霆战机 · 英语风暴</title>
-<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20261004-quality4-r10">
-<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261004-quality4-r10">
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20261004-quality4-r11">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261004-quality4-r11">
 </head>
 <body>
 <div id="game-wrap">
-  <canvas id="game" tabindex="0" aria-label="游戏场地"></canvas>
+  <div id="viewport-insets" aria-hidden="true"></div>
+  <div id="flight-plane"><canvas id="game" tabindex="0" aria-label="游戏场地"></canvas></div>
 
   <!-- 游戏 HUD -->
   <div id="hud" class="hidden">
@@ -28,26 +29,25 @@
     <div id="hud-top">
       <div class="left">
         <div class="stat-chip">⭐ <span id="score">0</span></div>
-        <div class="stat-chip hidden" id="combo-box">🔥 连击 x<span id="combo">0</span></div>
-        <div class="stat-chip weapon-chip">🔫 <span id="weapon">散射 I</span></div>
+        <div class="stat-chip hidden" id="combo-box" title="连击">×<span id="combo">0</span></div>
+        <div class="stat-chip weapon-chip"><span id="weapon">散射 I</span></div>
         <div class="stat-chip medal-chip">🏅 x<span id="medal-chain">0</span></div>
         <div class="stat-chip">关卡 <span id="level">1</span></div>
       </div>
-      <div class="right">
-        <div class="stat-chip">💣 <span id="bombs">1</span><span class="key">[B]</span></div>
-        <button class="hud-btn touch-only" id="bomb-btn" title="放炸弹清屏">💣<span id="bomb-touch">1</span></button>
-        <button class="hud-btn" id="mute-btn" title="静音 (M)">🔊</button>
-        <button class="hud-btn" id="pause-btn" title="暂停 (P)">⏸</button>
-      </div>
     </div>
-    <div id="hp-wrap"><div id="hp-bar"></div><span id="hp-text">100</span></div>
-    <div id="sector-progress"></div><button id="dash-btn" type="button">冲刺 · SHIFT</button>
-    <button id="fire-btn" type="button" aria-label="按住开火">开火</button>
+    <div id="sector-progress"></div>
+    <div id="flight-controls" role="group" aria-label="战斗操控">
+      <button id="dash-btn" type="button" title="冲刺 (Shift)" aria-label="冲刺，七秒冷却">冲刺</button>
+      <button class="hud-btn" id="bomb-btn" type="button" title="放炸弹清屏 (B)" aria-label="使用爆弹清屏">💣<span id="bomb-touch">1</span><span id="bombs" hidden>1</span></button>
+      <div id="flight-status"><span id="fire-mode">单指自动</span><div id="hp-wrap" role="meter" aria-label="生命" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="hp-bar"></div><span id="hp-text">100</span></div></div>
+      <button id="fire-btn" type="button" aria-label="按住开火">开火</button>
+      <button class="hud-btn" id="pause-btn" type="button" title="暂停 (P)" aria-label="暂停战斗">⏸</button>
+    </div>
   </div>
 
   <!-- 主菜单 -->
   <div id="menu" class="overlay">
-    <img id="logo-img" class="menu-cover" src="assets/cover-mobile.webp?mobile=20261004-quality4-r10" alt="雷霆战机">
+    <img id="logo-img" class="menu-cover" src="assets/cover-mobile.webp?mobile=20261004-quality4-r11" alt="雷霆战机">
     <h1>雷霆战机</h1>
     <h2>英语风暴</h2>
     <p class="sub">穿过装甲与夹击 · 选择战术指令 · 击破核心守卫</p>
@@ -58,16 +58,16 @@
       <button class="diff-btn" data-diff="hard">🔴 高级<br><small>更快弹速 · 更强首领</small></button>
     </div>
     <label class="auto-fire-choice"><input id="auto-fire" type="checkbox" checked> 单指自动开火 <small>关闭后可双手手动射击</small></label>
-    <div id="howto" class="quick-start"><p><b>单指拖动，自动开火</b> · 手指不用挡住飞机</p><p><b>六秒整备，飞向战术芯片</b> · 自由选装显示释义；指令核验才计英语对错</p><p><b>橙线是锁定预警</b> · 拆炮架、让过弹墙，抓住开舱窗口</p><details><summary>更多规则与键盘操作</summary><p>WASD / 方向键移动 · 空格 / J 开火 · Shift 冲刺（7 秒）· B 爆弹 · P 暂停</p><p>PIERCE 快速穿甲；SHIELD 抵挡两次；HEAL 修复30，满血会保留。六秒不选会保留现装；首领按任务进度抵达。错误指令稍后在相似情境再出现。</p></details></div>
+    <div id="howto" class="quick-start"><p><b>单指拖动，自动开火</b> · 手指不用挡住飞机</p><p><b>键盘或鼠标</b> · 方向键 / WASD 移动；空格 / J 或鼠标按住场地开火</p><p><b>六秒整备，飞向战术芯片</b> · 自由选装显示释义；指令核验才计英语对错</p><p><b>橙线是锁定预警</b> · 拆炮架、让过弹墙，抓住开舱窗口</p><details><summary>更多规则与键盘操作</summary><p>WASD / 方向键移动 · 空格 / J 开火 · Shift 冲刺（7 秒）· B 爆弹 · P 暂停</p><p>PIERCE 快速穿甲；SHIELD 抵挡两次；HEAL 修复30，满血会保留。六秒不选会保留现装；首领按任务进度抵达。错误指令稍后在相似情境再出现。</p></details></div>
     <div id="highscore">🏆 最高分 <span id="hs-value">0</span></div>
-    <a class="arcade-menu-home" href="../index.html?mobile=20261004-quality4-r10">← 返回游戏合集</a>
+    <a class="arcade-menu-home" href="../index.html?mobile=20261004-quality4-r11">← 返回游戏合集</a>
   </div>
 
   <!-- 游戏结束 -->
   <div id="over" class="overlay hidden">
     <div class="result-heading">
       <h1>任务结算</h1>
-      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp?mobile=20261004-quality4-r10" alt="本局徽章">
+      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp?mobile=20261004-quality4-r11" alt="本局徽章">
     </div>
     <div class="btn-row">
       <button class="btn" id="retry-btn">🔁 再来一局</button>
@@ -84,7 +84,8 @@
   <!-- 暂停 -->
   <div id="paused" class="overlay hidden">
     <h1>⏸ 已暂停</h1>
-    <p class="sub">按 P 或 Esc 继续</p>
+    <p class="sub" id="pause-hint">按 P 或 Esc 继续</p>
+    <button class="hud-btn" id="mute-btn" type="button" title="静音 (M)" aria-label="静音">🔊</button>
     <div class="btn-row">
       <button class="btn" id="resume-btn">▶️ 继续战斗</button>
       <button class="btn secondary" id="pause-menu-btn">🏠 返回主菜单</button>
@@ -92,11 +93,11 @@
   </div>
 </div>
 
-<script src="../shared/audio.js?v=20260930-mobile-r2&mobile=20261004-quality4-r10"></script>
-<script src="../shared/chip-music.js?v=20260930-mobile-r2&mobile=20261004-quality4-r10"></script>
-<script src="data.js?v=20261002-quality4-mission-r1&mobile=20261004-quality4-r10"></script>
-<script src="../shared/vocabulary.js?v=20260820a&mobile=20261004-quality4-r10"></script>
-<script src="../shared/fx-layer.js?v=20260930-mobile-r2&mobile=20261004-quality4-r10"></script>
-  <script src="game.js?v=20261002-quality4-mission-r3&mobile=20261004-quality4-r10"></script>
+<script src="../shared/audio.js?v=20260930-mobile-r2&mobile=20261004-quality4-r11"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2&mobile=20261004-quality4-r11"></script>
+<script src="data.js?v=20261002-quality4-mission-r1&mobile=20261004-quality4-r11"></script>
+<script src="../shared/vocabulary.js?v=20260820a&mobile=20261004-quality4-r11"></script>
+<script src="../shared/fx-layer.js?v=20260930-mobile-r2&mobile=20261004-quality4-r11"></script>
+  <script src="game.js?v=20261002-quality4-mission-r3&mobile=20261004-quality4-r11"></script>
 </body>
 </html>

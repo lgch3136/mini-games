@@ -265,3 +265,56 @@ button:focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }
 @media (min-width:460px) {
   #over .btn-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* A fixed cockpit lives outside the uniformly fitted flight canvas. */
+#viewport-insets {
+  position:absolute; visibility:hidden; pointer-events:none;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#flight-plane {
+  position:absolute; overflow:hidden;
+  outline:1px solid rgba(123,168,198,.2); background:#05070f;
+}
+#hud-top { padding:0 max(8px,env(safe-area-inset-right)) 0 max(8px,env(safe-area-inset-left)); min-height:16px; }
+#hud-top .left { justify-content:center; gap:4px; width:100%; }
+#hud-top .stat-chip { padding:0 4px; font-size:10px; line-height:14px; border-radius:5px; }
+#hud-top .medal-chip { display:none; }
+#sector-progress { font-size:10px; line-height:12px; }
+@media (max-width:600px) and (orientation:portrait) {
+  #question-bar { padding-top:4px; padding-bottom:4px; }
+  #q-bottom { margin-top:2px; }
+}
+#flight-controls {
+  position:absolute; left:0; right:0; bottom:0;
+  height:calc(70px + env(safe-area-inset-bottom));
+  display:flex; align-items:flex-start; gap:8px;
+  padding:8px max(8px,env(safe-area-inset-right)) calc(9px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  border-top:1px solid #36526b; background:#0b1725;
+}
+#flight-controls button {
+  position:static; flex:0 0 52px; width:52px; height:52px;
+  min-width:52px; min-height:52px; display:flex;
+  align-items:center; justify-content:center; border-radius:14px;
+}
+#dash-btn { font-size:12px; line-height:1.2; }
+#fire-btn { font-size:14px; letter-spacing:0; }
+#bomb-btn { gap:1px; font-size:18px; }
+#bomb-touch { font-size:11px; font-variant-numeric:tabular-nums; }
+#flight-status { flex:1 1 auto; min-width:40px; height:52px; display:flex; flex-direction:column; justify-content:center; gap:7px; }
+#fire-mode { font-size:10px; line-height:12px; text-align:center; color:#aac6d4; white-space:nowrap; }
+#hp-wrap { position:relative; left:auto; bottom:auto; transform:none; width:100%; height:13px; }
+#paused #mute-btn { width:52px; height:44px; flex:0 0 44px; }
+@media (orientation:landscape) and (max-height:440px) {
+  #game-wrap { width:100vw; height:100dvh; aspect-ratio:auto; border:0; border-radius:0; box-shadow:none; }
+  #question-bar { margin-top:max(8px,env(safe-area-inset-top)); padding-top:6px; padding-bottom:6px; max-width:calc(100% - max(16px,env(safe-area-inset-left)) - max(16px,env(safe-area-inset-right))); }
+  #q-bottom { margin-top:2px; }
+  #hud-top, #sector-progress { width:calc(100% - env(safe-area-inset-left) - env(safe-area-inset-right) - 136px); max-width:none; padding:0; margin-left:calc(env(safe-area-inset-left) + 68px); align-self:flex-start; }
+  #flight-controls { inset:0; height:auto; display:block; padding:0; border:0; background:none; }
+  #flight-controls button, #flight-status { position:absolute; }
+  #dash-btn, #bomb-btn, #flight-status { left:calc(env(safe-area-inset-left) + 8px); }
+  #dash-btn { bottom:calc(env(safe-area-inset-bottom) + 120px); }
+  #bomb-btn, #pause-btn { bottom:calc(env(safe-area-inset-bottom) + 12px); }
+  #fire-btn, #pause-btn { right:calc(env(safe-area-inset-right) + 8px); }
+  #fire-btn { bottom:calc(env(safe-area-inset-bottom) + 72px); }
+  #flight-status { bottom:calc(env(safe-area-inset-bottom) + 68px); width:52px; height:44px; }
+}
