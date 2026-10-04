@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta name="arcade-build" content="20261004-quality4-r13">
+<meta name="arcade-build" content="20261004-quality4-r14">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a1a2f">
 <title>飞鸟背单词 · FLAPPY WORDS</title>
-<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20261004-quality4-r13">
-<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261004-quality4-r13">
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20261004-quality4-r14">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20261004-quality4-r14">
 </head>
 <body>
 <div id="game-wrap">
@@ -15,7 +15,7 @@
 
   <!-- 游戏 HUD -->
   <div id="hud" class="hidden">
-    <div id="question-bar">
+    <div id="question-bar" role="region" aria-label="当前题目和反馈" tabindex="0" data-native-scroll>
       <div id="q-top">
         <span id="q-kind">拼单词</span>
         <span id="q-target">?</span>
@@ -46,7 +46,7 @@
 
   <!-- 主菜单 -->
   <div id="menu" class="overlay">
-    <img id="logo-img" class="menu-cover" src="assets/quality4/courier-4.png?mobile=20261004-quality4-r13" alt="林间信使">
+    <img id="logo-img" class="menu-cover" src="assets/quality4/courier-4.png?mobile=20261004-quality4-r14" alt="林间信使">
     <h1>飞鸟背单词</h1>
     <h2>FLAPPY WORDS</h2>
     <p class="sub">一座岛，三封词信 · 穿林、借风、减速靠岸</p>
@@ -64,7 +64,7 @@
     <label class="guided-choice"><input id="guided-mode" type="checkbox" checked> 显示下一字母 <small>关闭后，看中文回忆拼写</small></label>
     <div id="howto" class="quick-start"><p><b>点一下，扇一下</b> · 不用按住屏幕</p><p><b>认准木根缺口</b> · 金羽门中心有奖励，边缘也能安全通过</p><p><b>风向旗旁按住滑翔</b> · 完美穿越补充能量</p><details><summary>更多规则与键盘操作</summary><p>拼词：每组两个字母，选择正确的一个。错字不扣生命，下一组重试；错过的词会再次出现。每个完整单词补充滑翔。选择：穿过正确答案门洞。送达三封词信后自动安全靠岸，可选择继续下一座岛。词汇级别与飞行节奏分别选择。</p><p>空格 / ↑ 扇翅 · G 滑翔 · H 提示（15 分）· P 暂停 · M 静音</p></details></div>
     <div id="highscore">🏆 最高分 <span id="hs-value">0</span></div>
-    <a id="hub-link" class="arcade-menu-home" href="../index.html?mobile=20261004-quality4-r13">🎮 返回游戏合集 →</a>
+    <a id="hub-link" class="arcade-menu-home" href="../index.html?mobile=20261004-quality4-r14">🎮 返回游戏合集 →</a>
   </div>
 
   <!-- 游戏结束 -->
@@ -79,7 +79,7 @@
       <button class="btn" id="retry-btn">🔁 再来一局</button>
       <button class="btn secondary" id="menu-btn">🏠 返回主菜单</button>
     </div>
-    <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp?mobile=20261004-quality4-r13" alt="本局徽章">
+    <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp?mobile=20261004-quality4-r14" alt="本局徽章">
     <div id="over-stats"></div>
   </div>
 
@@ -99,10 +99,10 @@
   </div>
 </div>
 
-<script src="../shared/audio.js?v=20260930-mobile-r2&mobile=20261004-quality4-r13"></script>
-<script src="../shared/chip-music.js?v=20260930-mobile-r2&mobile=20261004-quality4-r13"></script>
-<script src="data.js?v=20260814c&mobile=20261004-quality4-r13"></script>
-<script src="../shared/vocabulary.js?v=20260820a&mobile=20261004-quality4-r13"></script>
-<script src="game.js?v=20260930-mobile-r2&mobile=20261004-quality4-r13"></script>
+<script src="../shared/audio.js?v=20260930-mobile-r2&mobile=20261004-quality4-r14"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2&mobile=20261004-quality4-r14"></script>
+<script src="data.js?v=20260814c&mobile=20261004-quality4-r14"></script>
+<script src="../shared/vocabulary.js?v=20260820a&mobile=20261004-quality4-r14"></script>
+<script src="game.js?v=20260930-mobile-r2&mobile=20261004-quality4-r14"></script>
 </body>
 </html>

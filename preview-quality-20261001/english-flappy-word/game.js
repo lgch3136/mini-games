@@ -2,6 +2,9 @@
 
 function usesNativeKeyboard(event) {
   const target = event.target;
+  if (target?.closest?.('[data-native-scroll]')) {
+    return event.isComposing || !['Escape','KeyP'].includes(event.code);
+  }
   if (!event.isComposing && (event.code === 'Escape' || event.code === 'KeyP') && (/^(BUTTON|A)$/.test(target?.tagName || '') || target?.closest?.('button,a'))) return false;
   return !!(target && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON|A|SUMMARY)$/.test(target.tagName || '') || target.closest?.('input,select,textarea,button,a,summary,[contenteditable="true"]')));
 }
@@ -166,6 +169,7 @@ function pickVocab() {
 }
 
 function newWord() {
+  $id('question-bar').scrollTop = 0;
   const due = Game.reviewWords.findIndex(v => v.after <= Game.wordsDone);
   const v = due >= 0 ? Game.reviewWords.splice(due, 1)[0] : pickVocab();
   Game.word = { en: v.en.toLowerCase(), zh: v.zh, index: 0, reviewing: due >= 0 };
@@ -173,6 +177,7 @@ function newWord() {
 }
 
 function newQuestion() {
+  $id('question-bar').scrollTop = 0;
   let q;
   const due=Game.reviewQuestions.findIndex(v=>v.after<=Game.wordsDone);
   const grammar=GRAMMAR[Game.difficulty].filter(g=>!Game.askedQuestions.includes(g.prompt+'|'+g.answer)&&!Game.askedAnswers.includes(g.answer));
@@ -999,12 +1004,14 @@ function setHud(id, value, html = false) {
   if (hudValues.get(id) === text) return;
   hudValues.set(id, text);
   if(id.startsWith('q-'))choiceLabelLayout.dirty=true;
+  if(id==='q-feedback')$id('question-bar').classList[text?'add':'remove']('has-question-feedback');
   $id(id)[html ? 'innerHTML' : 'textContent'] = text;
 }
 function updateFlightStatus(wind = activeWind()) {
   setHud('glide-label', Game.landing ? '正在靠岸' : wind ? '顺风 · 滑翔' : Game.featherShield ? '羽盾 · 滑翔' : '按住滑翔');
 }
 function updateHUD() {
+  $id('question-bar').classList[Game.mode==='choose'?'add':'remove']('choice-question');
   setHud('score', Game.score);
   setHud('combo', Game.combo);
   if (Game.combo >= 2) $id('combo-box').classList.remove('hidden'); else $id('combo-box').classList.add('hidden');
@@ -1027,9 +1034,9 @@ function updateHUD() {
     }
     setHud('q-progress', html, true);
   } else if (Game.mode === 'choose' && Game.question) {
-    setHud('q-kind',Game.question.reviewing?'↻ 再选一次':'门洞选择');
+    setHud('q-kind',Game.question.reviewing?'↻ 再选一次':'');
     setHud('q-target', Game.question.prompt);
-    setHud('q-progress', 'A / B 选项挂在门洞上，穿过<b>正确答案</b>的门洞', true);
+    setHud('q-progress', '');
   }
   if (now() >= Game.feedbackUntil) setHud('q-feedback', '');
 }

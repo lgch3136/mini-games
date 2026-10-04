@@ -291,3 +291,17 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 3px; }
   #hint-bar { bottom:max(12px, env(safe-area-inset-bottom));max-height:108px;overflow-y:auto; }
   #hud-top { top:max(16px, env(safe-area-inset-top));max-height:calc(100dvh - max(20px, env(safe-area-inset-bottom)) - max(16px, env(safe-area-inset-top)) - 66px);overflow-y:auto; }
 }
+
+/* The question owns native scrolling. Touching/reading it is not a flap. */
+#question-bar { pointer-events:auto;overflow-x:hidden;overflow-y:auto;touch-action:pan-y pinch-zoom;overscroll-behavior:contain; }
+#question-bar:focus-visible { outline:2px solid #eddfab;outline-offset:2px; }
+/* Choice instructions already live in the menu. Give the complete prompt and
+   current correction this space; keep spelling's guided/recall UI unchanged. */
+#question-bar.choice-question #q-top { display:block; }
+#question-bar.choice-question #q-kind:empty { display:none; }
+#question-bar.choice-question #q-kind:not(:empty) { display:inline-block;margin-bottom:4px; }
+#question-bar.choice-question #q-target { display:block;width:100%;max-width:100%;overflow:visible;text-overflow:clip;overflow-wrap:anywhere; }
+#question-bar.choice-question #q-progress { display:none; }
+#question-bar.choice-question #q-bottom { display:none; }
+#question-bar.choice-question.has-question-feedback #q-bottom { display:block;margin-top:6px; }
+#question-bar.choice-question #q-feedback { display:block;line-height:1.4;overflow-wrap:anywhere; }
