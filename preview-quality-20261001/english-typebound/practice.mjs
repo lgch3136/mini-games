@@ -1,7 +1,8 @@
 export function practiceProgress(g) {
   const goal = g.focusGoal || 0, words = g.stats.words;
-  return { goal, words, fraction: goal ? Math.min(1, words / goal) : Math.min(1, (g.depth + (g.phase === 'complete' ? 1 : 0)) / 9),
-    label: goal ? `静心练习 · ${words}/${goal} 词` : g.mode === 'review' ? `隔词回练 · ${words}/${g.reviewTarget} 次` : `旅程 · 第 ${Math.min(9, g.depth + 1)} / 9 页`,
+  const page = g.depth % 9 + 1, expedition = Math.floor(g.depth / 9) + 1;
+  return { goal, words, fraction: goal ? Math.min(1, words / goal) : Math.min(1, (page - 1 + (g.phase === 'complete' ? 1 : 0)) / 9),
+    label: goal ? `静心练习 · ${words}/${goal} 词` : g.mode === 'review' ? `隔词回练 · ${words}/${g.reviewTarget} 次` : `第 ${expedition} 轮旅程 · ${page} / 9 页`,
     stars: g.phase === 'complete' && goal ? 1 + Number(g.accuracy >= 95) + Number(g.stats.perfect === goal) : 0 };
 }
 export function typingCoach(g) {
@@ -15,15 +16,38 @@ export function typingCoach(g) {
   if (g.focusGoal) return `还差 ${Math.max(0, g.focusGoal - g.stats.words)} 词 · 不着急，先准确，再提速`;
   return '';
 }
-export function practiceAdvice(g) {
+export function resultWords(g, pendingReview = []) {
+  const words = [], seen = new Set();
+  for (const [entries, pending] of [[pendingReview, true], [g.mistakes.values(), false], [g.history, false]]) {
+    for (const w of entries) {
+      if (seen.has(w.en)) continue;
+      seen.add(w.en);
+      // Stored misses may predate this run; only the run's mistakes count as its wrong keys.
+      words.push({ ...w, pending, runMisses: g.mistakes.get(w.en)?.misses || 0 });
+      if (words.length === 8) return words;
+    }
+  }
+  return words;
+}
+export function practiceAdvice(g, pendingReview) {
   if (g.mode === 'review' && g.phase === 'complete') {
     const unresolved=[...g.reviewEvidence.values()].filter(w=>w.retrievalStreak<2);
     return unresolved.length
       ? `这一轮回练已完成。${unresolved.slice(0,3).map(w=>w.en).join('、')} 还需要隔词独立取回；可在另一轮继续检验。`
       : '这一轮回练已完成。独立取回两次的词已移出本轮待复习。';
   }
-  const errors = [...g.mistakes.values()].sort((a, b) => (b.misses || 0) - (a.misses || 0));
-  if (errors.length) return `下一步：回练 ${errors.slice(0, 3).map((w) => w.en).join('、')}。先看示范，再隔两个不同词做独立回忆。`;
+  const pending = pendingReview == null
+    ? [...g.mistakes.values()].sort((a, b) => (b.misses || 0) - (a.misses || 0))
+    : [...pendingReview];
+  if (g.mode === 'journey' && g.phase === 'complete') {
+    return `第 ${Math.floor(g.depth / 9) + 1} 轮远征已完成。${pending.length
+      ? `可回练 ${pending.slice(0, 3).map(w => w.en).join('、')}，或带着现有遗物继续远征。`
+      : '可带着现有遗物继续远征，或回到开始界面挑战更长词库。'}`;
+  }
+  if (pending.length) return `下一步：回练待复习的 ${pending.slice(0, 3).map(w => w.en).join('、')}。先看示范，再隔两个不同词做独立回忆。`;
+  if (g.mode === 'journey') return g.phase === 'defeat'
+    ? '下一步：再启一程；先准确完成单词，留意敌人蓄力，用护盾保护自己。'
+    : '下一次：再启一程，继续用完整单词施法，逐页修复故事。';
   if (g.stats.words >= 8 && g.accuracy >= 95) return '这一页写得很稳。下一次可挑战更长词库，或进入带有法术与首领的冒险旅程。';
   return '下一步：先完成八词热身，每个词写完记得按空格完成，再慢慢提高字速。';
 }

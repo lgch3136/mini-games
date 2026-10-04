@@ -10,6 +10,9 @@
 .practice-ribbon em { display:block; height:100%; background:linear-gradient(90deg,#a8e8cd,#e8d49c); transform-origin:left; transition:transform .2s }
 .typing-coach { min-height:20px; margin:5px 0 8px; color:#416759; font-size:12px; line-height:1.5 }
 .practice-stars { color:#dac27f; font-size:34px; letter-spacing:.15em }
+/* Keep every result action reachable; the tighter rows preserve the short-screen stack height. */
+.result-actions { row-gap:5px; }
+.result-actions > button { min-height:44px; }
 .practice-advice { padding:12px 15px; color:#bfdbcc; font-size:13px; line-height:1.8; border:1px solid #a4dfc328; border-radius:13px; background:#b1dca308; text-align:left }
 #result { overflow-y:auto; max-height:100dvh; overscroll-behavior:contain }
 @media (max-width:580px) {

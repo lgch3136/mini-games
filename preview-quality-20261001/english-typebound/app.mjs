@@ -1,5 +1,5 @@
 import {reviewRecord,applyReviewEvent} from './learning.mjs?v=20261002-quality4&mobile=20261002-quality4-r1';
-import { practiceProgress, typingCoach, practiceAdvice } from "./practice.mjs?v=20261001-world-r2&mobile=20261002-quality4-r1&quality4=20261002-story-r1";
+import { practiceProgress, typingCoach, practiceAdvice, resultWords } from "./practice.mjs?v=20261001-world-r2&mobile=20261004-quality4-r10&quality4=20261002-story-r1";
 import { Journey, STEP } from "./sim.mjs?v=20261001-world-r2&mobile=20261002-quality4-r1&quality4=20261002-story-r1";
 import {
   makeLexicon,
@@ -766,7 +766,7 @@ function claim(id) {
 }
 function renderResult() {
   const g = journey,
-    signature = `${g.depth}/${g.phase}/${g.stats.words}/${endedReason}`;
+    signature = `${g.depth}/${g.phase}/${g.stats.words}/${endedReason}/${[...review.keys()].join(',')}`;
   if (signature === resultSignature) return;
   resultSignature = signature;
   const progress = practiceProgress(g);
@@ -777,7 +777,7 @@ function renderResult() {
   $("practice-stars").hidden = !g.focusGoal;
   set("practice-stars", "★".repeat(progress.stars) + "☆".repeat(3 - progress.stars));
   $("practice-stars").setAttribute("aria-label", `${progress.stars} 星：完成目标、95%准确率、全程无错各一星`);
-  set("practice-advice", practiceAdvice(g));
+  set("practice-advice", practiceAdvice(g, review.values()));
   const win = g.phase === "complete",
     reviewDone = g.mode === "review" && win;
   set(
@@ -804,22 +804,19 @@ function renderResult() {
   );
   set(
     "result-copy",
-    `本轮跟打 ${g.stats.copied} 次，提示后完成 ${g.stats.hinted} 次，独立回忆 ${g.stats.retrieved} 次${g.stats.selfCorrected?`，自主修正 ${g.stats.selfCorrected} 次`:''}。${review.size?`${review.size} 个词仍在本轮待复习中。`:'本轮待复习已清空；以后仍可再次检验。'}`,
+    `本次跟打 ${g.stats.copied} 次，提示后完成 ${g.stats.hinted} 次，独立回忆 ${g.stats.retrieved} 次${g.stats.selfCorrected?`，自主修正 ${g.stats.selfCorrected} 次`:''}。${review.size?`待复习列表还有 ${review.size} 个词。`:'待复习列表已清空；以后仍可再次检验。'}`,
   );
   statsView("result-stats");
   $("result-words").replaceChildren();
-  const words = [...g.mistakes.values(), ...g.history],
-    seen = new Set();
+  const words = resultWords(g, review.values());
   for (const w of words) {
-    if (seen.has(w.en)) continue;
-    seen.add(w.en);
     const d = el("div", null, "review-word");
     d.append(el("b", w.en), el("span", w.zh));
-    if (w.misses) d.append(el("small", `${w.misses} 次错键`));
+    if (w.pending) d.append(el("small", "待复习"));
+    if (w.runMisses) d.append(el("small", `本次 ${w.runMisses} 次错键`));
     $("result-words").append(d);
-    if (seen.size >= 8) break;
   }
-  if (!seen.size)
+  if (!words.length)
     $("result-words").append(el("p", "下一次，从第一个字母开始。"));
   $("continue").hidden = !win || g.mode === "review" || !!g.focusGoal;
   $("result-review").disabled = !review.size;

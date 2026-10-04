@@ -44,6 +44,12 @@ function drawCourtyardSprite(c,name,x,y,worldScale=48){
   const r=COURTYARD_SPRITES[name];if(!r)return false;
   const k=worldScale/(256/2.25);c.drawImage(CourtyardCast,r[0],r[1],r[2],r[3],x-r[4]*k,y-r[5]*k,r[2]*k,r[3]*k);return true;
 }
+function drawCourtyardActor(c,name,x,y,worldScale){
+  // A crisp lower-right ink edge belongs to the existing matte sprite, not a halo.
+  c.save();c.shadowColor='#182f27b8';c.shadowBlur=0;c.shadowOffsetX=1.2;c.shadowOffsetY=1.8;
+  const drawn=drawCourtyardSprite(c,name,x,y,worldScale);
+  c.restore();return drawn;
+}
 /* ---------------- 工具 ---------------- */
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -942,8 +948,8 @@ function paintGrid(c) {
     const x=OX+col*CELL,y=OY+r*CELL;
     if(!Game.grid[r][col] && (r%4===1||col%6===1)){
       const shift=(col+r)%2===0?2:-2;
-      gardenPoly(c,[[x+5,y+7],[x+39,y+5+shift],[x+43,y+32],[x+37,y+40],[x+7,y+39],[x+4,y+27]],'#7e8b73');
-      gardenLine(c,[[x+7,y+8],[x+37,y+7+shift]],'#8d997f',1.1);
+      gardenPoly(c,[[x+5,y+7],[x+39,y+5+shift],[x+43,y+32],[x+37,y+40],[x+7,y+39],[x+4,y+27]],'#748169');
+      gardenLine(c,[[x+7,y+8],[x+37,y+7+shift]],'#879278',1.1);
       gardenLine(c,[[x+7,y+40],[x+37,y+41],[x+43,y+34]],'#5e725f',1.1);
     }
   }
@@ -1008,8 +1014,8 @@ function drawPlayer(){
   if(CourtyardCast.complete&&CourtyardCast.naturalWidth){
     const pose=p.layTimer>0?'lay':p.moving&&!reducedMotion.matches?Math.floor((p.walkPhase||0)/TAU*4)%4:0;
     ctx.save();if(p.inv>0&&Game.state==='playing')ctx.globalAlpha=.9;
-    gardenOval(ctx,p.px+2,p.py+10,15,5,'#263a2a55');
-    drawCourtyardSprite(ctx,'gardener-'+p.facing+'-'+pose,p.px,p.py+5,38);ctx.restore();return;
+    gardenOval(ctx,p.px+2,p.py+10,18,5,'#1d352873');
+    drawCourtyardActor(ctx,'gardener-'+p.facing+'-'+pose,p.px,p.py+5,44);ctx.restore();return;
   }
   const step=reducedMotion.matches?0:Math.sin(p.walkPhase||0),walk=p.moving?step:0;
   const lay=Math.sin(Math.PI*clamp((p.layTimer||0)/.3,0,1)),side=p.facing==='left'||p.facing==='right';
@@ -1053,8 +1059,8 @@ function drawEnemies(){
     if(e.dead)continue;const brick=Game.grid[e.row]?.[e.col]===2;
     const asleep=!!Game.lesson&&Game.time<Game.lesson.pressureAt,phase=asleep?0:Math.sin(e.phase*8),dx=e.dir?.[0]||0;
     if(CourtyardCast.complete&&CourtyardCast.naturalWidth){
-      ctx.save();if(brick)ctx.globalAlpha=.55;gardenOval(ctx,e.px+1,e.py+10,14,5,'#263a2a44');
-      drawCourtyardSprite(ctx,e.kind+'-'+(asleep||reducedMotion.matches?0:Math.floor(e.phase*5)%2),e.px,e.py+7,e.kind==='ghost'?43:44);
+      ctx.save();if(brick)ctx.globalAlpha=.55;gardenOval(ctx,e.px+1,e.py+10,16,5,'#20352766');
+      drawCourtyardActor(ctx,e.kind+'-'+(asleep||reducedMotion.matches?0:Math.floor(e.phase*5)%2),e.px,e.py+7,e.kind==='ghost'?47:48);
       if(asleep){gardenLine(ctx,[[e.px-7,e.py-6],[e.px-3,e.py-6]],'#4f6543',2);gardenLine(ctx,[[e.px+3,e.py-6],[e.px+7,e.py-6]],'#4f6543',2);}
       ctx.restore();continue;
     }
@@ -1107,14 +1113,14 @@ function drawPortal() {
   const p=Game.portal;if(!p||p.hidden)return;
   const x=OX+(p.col+.5)*CELL,y=OY+(p.row+.5)*CELL;
   gardenOval(ctx,x,y+12,20,7,'#30463955');
-  gardenPoly(ctx,[[x-19,y-9],[x-13,y-17],[x+14,y-17],[x+20,y-9],[x+18,y+15],[x-18,y+15]],'#728365','#435e4b',1.4);
-  gardenPoly(ctx,[[x-17,y-9],[x-11,y-14],[x+12,y-14],[x+17,y-9],[x+15,y+7],[x-15,y+7]],p.open?'#274c3f':'#a5ae90');
+  gardenPoly(ctx,[[x-19,y-9],[x-13,y-17],[x+14,y-17],[x+20,y-9],[x+18,y+15],[x-18,y+15]],'#9aa47b','#314a38',2);
+  gardenPoly(ctx,[[x-17,y-9],[x-11,y-14],[x+12,y-14],[x+17,y-9],[x+15,y+7],[x-15,y+7]],p.open?'#173b31':'#c2c49a');
   if(p.open){
     const opening=reducedMotion.matches?1:clamp((Game.time-(p.openedAt||0))/.45,0,1);
     for(const side of [-1,1]){const xx=x+side*(4+opening*11),wide=8-opening*5;gardenPoly(ctx,[[xx-wide,y-9],[xx+wide,y-9],[xx+wide,y+9],[xx-wide,y+9]],'#98a881','#5f795d',1);}
-    gardenLine(ctx,[[x,y+6],[x,y-7]],'#ecdfb4',3);gardenLine(ctx,[[x-5,y-2],[x,y-7],[x+5,y-2]],'#ecdfb4',3);
+    gardenLine(ctx,[[x,y+8],[x,y-8]],'#ecdfb4',4);gardenLine(ctx,[[x-6,y-2],[x,y-8],[x+6,y-2]],'#ecdfb4',4);
     gardenLeaf(ctx,x-15,y+10,-.9,9,'#b4ba78');gardenLeaf(ctx,x+15,y+10,.9,9,'#b4ba78');
-  }else{gardenLine(ctx,[[x-9,y-6],[x+9,y+6]],'#667754',3);gardenLine(ctx,[[x+9,y-6],[x-9,y+6]],'#667754',3);}
+  }else{gardenLine(ctx,[[x-9,y-6],[x+9,y+6]],'#4c5f40',3);gardenLine(ctx,[[x+9,y-6],[x-9,y+6]],'#4c5f40',3);}
 }
 function drawLetters(){
   for(const L of Game.letters){
@@ -1132,9 +1138,9 @@ function drawLetters(){
 function drawPickups(){
   for(const k of Game.pickups){
     const x=OX+(k.col+.5)*CELL,y=OY+(k.row+.5)*CELL;
-    gardenOval(ctx,x+1,y+13,15,4,'#344c3c40');
-    gardenPoly(ctx,[[x-10,y-13],[x+10,y-13],[x+16,y+10],[x+9,y+15],[x-11,y+14],[x-16,y+8]],'#c5b18a','#8b7853',1.3);
-    gardenLine(ctx,[[x-9,y-10],[x+9,y-10]],'#536954',3);
+    gardenOval(ctx,x+1,y+13,15,4,'#233d2c66');
+    gardenPoly(ctx,[[x-10,y-13],[x+10,y-13],[x+16,y+10],[x+9,y+15],[x-11,y+14],[x-16,y+8]],'#dfcea1','#4b543a',2);
+    gardenLine(ctx,[[x-9,y-10],[x+9,y-10]],'#354c3d',3);
     ctx.fillStyle='#4d604b';
     if(k.kind==='bomb+'){gardenOval(ctx,x-2,y+3,6,6,'#41584a');gardenLine(ctx,[[x+2,y-2],[x+5,y-6]],'#41584a',2);gardenLine(ctx,[[x+7,y+4],[x+13,y+4]],'#41584a',1.6);gardenLine(ctx,[[x+10,y+1],[x+10,y+7]],'#41584a',1.6);}
     else if(k.kind==='fire+')gardenPoly(ctx,[[x,y-5],[x+7,y+6],[x+3,y+10],[x-5,y+10],[x-7,y+5]],'#a85d3f');
