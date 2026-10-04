@@ -1,4 +1,4 @@
-import { PresentationCamera } from "./camera.mjs?v=20261001-quality4-ranger-r1&mobile=20261002-quality4-r1";
+import { PresentationCamera } from "./camera.mjs?v=20261001-quality4-ranger-r1&mobile=20261004-quality4-r16";
 import { buildStageBackdrop, drawStageScenery, drawPlatformSupport, paintDeck, STAGE_PALETTES } from "./stage-art.mjs?v=20261001-quality4-ranger-r1&mobile=20261002-quality4-r1";
 import { canvasBudget } from "../shared/render-budget.mjs?v=20260930-polish-r1&mobile=20261002-quality4-r1";
 import {
@@ -940,7 +940,11 @@ export class Renderer {
         this.rect(vx-47,y-3,94,7,"#25383c",2);
         for (let i=0;i<7;i++) this.rect(vx-40+i*12,y-2,6,3,armed && !vent.safe ? "#f8b77c" : "#718478");
         if (armed) {
-          if (vent.safe) { c.strokeStyle="#c9e3c4";c.lineWidth=3;c.beginPath();c.ellipse(vx,y-5,43,8,0,0,TAU);c.stroke(); }
+          if (vent.safe) {
+            // Keep the full cue, including its stroke, outside adjacent blasts.
+            const safeRadius = Math.max(0, Math.min(43, ...b.vents.filter(v => !v.safe).map(v => Math.abs(v.x - vent.x) - v.radius - 2)));
+            c.strokeStyle="#c9e3c4";c.lineWidth=3;c.beginPath();c.ellipse(vx,y-5,safeRadius,8,0,0,TAU);c.stroke();
+          }
           else {
             c.globalAlpha=.16; this.rect(vx-vent.radius,y-108,vent.radius*2,107,"#ffad78");c.globalAlpha=1;
             this.line([[vx-12,y-35],[vx,y-48],[vx+12,y-35]],"#ffdb9f",3);

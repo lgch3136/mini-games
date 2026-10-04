@@ -1,7 +1,36 @@
 // Presentation-only framing. It reads production state and never changes simulation.
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const mix=(a,b,t)=>a+(b-a)*t;
-export function actionFrame(world,fullWidth,alpha=1,safeTop=0){
+// The furnace tell is a spatial instruction: every safe/harmful zone must be
+// readable immediately, including while the ordinary camera is still easing.
+// These are presentation bounds only; collision geometry and timing stay in World.
+function furnaceFrame(world,frame,fullWidth,alpha,safeTop){
+  const b=world.boss;
+  if(world.stage%6!==5||!b.active||b.hp<=0||b.attack!=='furnace'||!['telegraph','attack'].includes(b.phase)||!b.vents?.length)return frame;
+  const p=world.player,px=mix(p.px,p.x,alpha),py=mix(p.py,p.y,alpha);
+  const bx=mix(b.px??b.x,b.x,alpha),by=mix(b.py??b.y,b.y,alpha);
+  // Actor silhouettes include the hero's gun and the boss's wider feet.
+  let left=Math.min(px-45,bx-b.w/2-22),right=Math.max(px+45,bx+b.w/2+22);
+  let top=Math.min(py-p.h-10,by-b.h),bottom=Math.max(py+12,by+11);
+  for(const vent of b.vents){
+    // Match the renderer's safe ellipse plus its 3px stroke. The harmful bounds
+    // include both the 108px tell column and the eventual circular blast.
+    const radius=vent.safe?Math.max(0,Math.min(43,...b.vents.filter(v=>!v.safe).map(v=>Math.abs(v.x-vent.x)-v.radius-2)))+1.5:vent.radius;
+    left=Math.min(left,vent.x-radius);right=Math.max(right,vent.x+radius);
+    top=Math.min(top,vent.safe?vent.y-14.5:Math.min(vent.y-108,vent.y-6-radius));
+    bottom=Math.max(bottom,vent.safe?vent.y+4.5:vent.y-6+radius);
+  }
+  const pad=18,topRatio=clamp(safeTop,0,.46),aspect=fullWidth/540;
+  left-=pad;right+=pad;top-=pad;bottom+=pad;
+  // Keep the existing actor scale whenever a pan suffices. A narrow viewport can
+  // require more than the ordinary 540-world-pixel height; fit only what is needed.
+  const width=Math.max(frame.width,right-left,(bottom-top)*aspect/(1-topRatio)),height=width/aspect;
+  const preferredX=clamp(frame.x-(width-frame.width)/2,0,Math.max(0,world.level.length-width));
+  const preferredY=clamp(frame.y-(height-frame.height)/2,-120,Math.max(-120,600-height));
+  return {x:clamp(preferredX,right-width,left),y:clamp(preferredY,bottom-height,top-height*topRatio),width,height};
+}
+
+function ordinaryActionFrame(world,fullWidth,alpha=1,safeTop=0){
   const p=world.player,px=mix(p.px,p.x,alpha),py=mix(p.py,p.y,alpha),aspect=fullWidth/540;
   const fullCam=mix(world.prevCamera,world.camera,alpha);
   let target=null,best=Infinity;
@@ -55,6 +84,9 @@ export function actionFrame(world,fullWidth,alpha=1,safeTop=0){
   y=clamp(y,-120,Math.max(0,600-height));
   return{x,y,width,height};
 }
+export function actionFrame(world,fullWidth,alpha=1,safeTop=0){
+  return furnaceFrame(world,ordinaryActionFrame(world,fullWidth,alpha,safeTop),fullWidth,alpha,safeTop);
+}
 export function canvasWorldPoint(clientX,clientY,rect,frame){
   return {x:frame.x+(clientX-rect.left)/rect.width*frame.width,y:frame.y+(clientY-rect.top)/rect.height*frame.height};
 }
@@ -65,9 +97,11 @@ export class PresentationCamera {
   reset(){this.frame=null;this.time=null;this.holdWidth=0;this.holdUntil=0;}
   constructor(){this.reset();}
   update(world,fullWidth,alpha=1,safeTop=0){
-    const target=actionFrame(world,fullWidth,alpha,safeTop),now=world.time;
+    // Keep the ordinary zoom hold unchanged. Furnace-only expansion must not
+    // create a new hold after the tell/attack ends.
+    const target=ordinaryActionFrame(world,fullWidth,alpha,safeTop),now=world.time;
     if(!this.frame||this.fullWidth!==fullWidth||now<(this.time??0)){
-      this.frame={...target};this.time=now;this.fullWidth=fullWidth;
+      this.frame=furnaceFrame(world,{...target},fullWidth,alpha,safeTop);this.time=now;this.fullWidth=fullWidth;
       this.holdWidth=target.width;this.holdUntil=now+.8;return {...this.frame};
     }
     const dt=clamp(now-this.time,0,.1);this.time=now;
@@ -80,6 +114,9 @@ export class PresentationCamera {
     const nextX=cx+clamp((desiredX-cx)*blend,-520*dt,520*dt);
     const nextY=cy+clamp((desiredY-cy)*blend,-220*dt,220*dt);
     this.frame={x:clamp(nextX-width*.5,0,Math.max(0,world.level.length-width)),y:clamp(nextY-height*.5,-120,600-height),width,height};
+    // A hard visibility constraint overrides easing only when it would hide an
+    // essential cue or actor. Release uses the existing camera smoothing above.
+    this.frame=furnaceFrame(world,this.frame,fullWidth,alpha,safeTop);
     return {...this.frame};
   }
 }

@@ -1,4 +1,4 @@
-import { canvasWorldPoint } from "./camera.mjs?v=20261001-quality4-ranger-r1&mobile=20261002-quality4-r1";
+import { canvasWorldPoint } from "./camera.mjs?v=20261001-quality4-ranger-r1&mobile=20261004-quality4-r16";
 import { SupplyBriefing, SUPPLIES } from "./supply.mjs?v=20261001-action-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1";
 import { fieldCoach, rememberRanger, storedMedal } from "./contracts.mjs?v=20260930-quality-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&teaching=20261001-r1";
 import {
@@ -8,7 +8,7 @@ import {
   OPERATIONS,
   clamp,
 } from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261004-quality4-r12&teaching=20261001-r1";
-import { Renderer } from "./render.js?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261004-quality4-r12&quality4=20261001-ranger-r1&teaching=20261001-r1";
+import { Renderer } from "./render.js?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261004-quality4-r16&quality4=20261001-ranger-r1&teaching=20261001-r1";
 import { Soundtrack } from "./sound.js?v=20260930-controls-r1&mobile=20261002-quality4-r1&quality2=20261001-action-r1";
 import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261004-quality4-r12&teaching=20261001-r1";
 
