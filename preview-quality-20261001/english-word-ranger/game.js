@@ -7,10 +7,10 @@ import {
   HEIGHT,
   OPERATIONS,
   clamp,
-} from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&teaching=20261001-r1";
-import { Renderer } from "./render.js?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&quality4=20261001-ranger-r1&teaching=20261001-r1";
+} from "./engine.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261004-quality4-r12&teaching=20261001-r1";
+import { Renderer } from "./render.js?v=20260930-polish-r1&quality2=20261001-action-r1&mobile=20261004-quality4-r12&quality4=20261001-ranger-r1&teaching=20261001-r1";
 import { Soundtrack } from "./sound.js?v=20260930-controls-r1&mobile=20261002-quality4-r1&quality2=20261001-action-r1";
-import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261002-quality4-r1&teaching=20261001-r1";
+import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1&quality2=20261001-action-r1&mobile=20261004-quality4-r12&teaching=20261001-r1";
 
 const $ = (id) => document.getElementById(id);
 const canvas = $("game"),
@@ -342,8 +342,9 @@ function updateHUD() {
   }
   $("boss-hud").hidden = screen === "menu" || !bossActive;
   if (world.boss.active) {
+    // Keep a visible sliver until actual defeat, even below the rounded percentage.
     $("boss-health").style.width =
-      Math.max(0, (world.boss.hp / world.boss.maxHp) * 100).toFixed(1) + "%";
+      Math.max(bossActive ? 1 : 0, (world.boss.hp / world.boss.maxHp) * 100).toFixed(1) + "%";
     $("boss-health").style.background = world.boss.exposed ? "#a6eccb" : "";
     setText(
       "boss-state",

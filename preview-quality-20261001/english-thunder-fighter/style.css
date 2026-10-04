@@ -279,7 +279,13 @@ button:focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }
 #hud-top .left { justify-content:center; gap:4px; width:100%; }
 #hud-top .stat-chip { padding:0 4px; font-size:10px; line-height:14px; border-radius:5px; }
 #hud-top .medal-chip { display:none; }
-#sector-progress { font-size:10px; line-height:12px; }
+#sector-progress { position:relative; font-size:10px; line-height:12px; }
+#hud-top #boss-status { font-size:12px; line-height:14px; color:#d4e1de; border-color:#9a8157; }
+#sector-progress.boss-health::after {
+  content:""; position:absolute; left:50%; top:calc(100% + 4px); transform:translateX(-50%);
+  width:70px; height:3px; border-radius:1px;
+  background:linear-gradient(to right,#ddbb7e 0 var(--boss-health),#0c1421 var(--boss-health) 100%);
+}
 @media (max-width:600px) and (orientation:portrait) {
   #question-bar { padding-top:4px; padding-bottom:4px; }
   #q-bottom { margin-top:2px; }

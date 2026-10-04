@@ -1527,6 +1527,7 @@ function updatePowerups(dt) {
 
 /* ---------------- 渲染 ---------------- */
 function render(dt) {
+  updateBossStatusHud();
   const readingCards = missionReading() && Game.powerups.some(u => u.tactical);
   if (!drawStageBackground()) {
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -1851,10 +1852,6 @@ function drawMissionBoss(boss) {
   }
   if(boss.coreFlash>0){ctx.strokeStyle='#cbefe5';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,17,0,Math.PI*2);ctx.stroke();}
   ctx.restore();
-  ctx.fillStyle='#0c1421';ctx.fillRect(-70,-103,140,6);
-  ctx.fillStyle='#ddbb7e';ctx.fillRect(-70,-103,140*clamp(boss.hp/boss.maxHp,0,1),6);
-  ctx.font='700 11px "Noto Sans CJK SC","PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillStyle='#d4e1de';
-  ctx.fillText((boss.shutter||0)>.65?'核心开启':boss.attackPhase==='tell'?'炮架锁定':'装甲舱盖',0,-111);
 }
 function drawMissionTacticalCore(core) {
   // Combat stays in its existing world coordinates. Only the information
@@ -2292,6 +2289,21 @@ function updateQuestionBar() {
   els.qFeedback.style.color = '#7dffa8';
 }
 
+function updateBossStatusHud() {
+  const boss=Game.enemies.find(enemy=>enemy.missionBoss&&!enemy.dead);
+  const label=$id('boss-status');
+  const line=$id('sector-progress');
+  if(label.classList.contains('hidden')===!!boss)label.classList.toggle('hidden',!boss);
+  if(line.classList.contains('boss-health')!==!!boss)line.classList.toggle('boss-health',!!boss);
+  if(!boss)return;
+  const status=(boss.shutter||0)>.65?'核心开启':boss.attackPhase==='tell'?'炮架锁定':'装甲舱盖';
+  if(label.textContent!==status)label.textContent=status;
+  const health=clamp(boss.hp/boss.maxHp,0,1)*100,fill=health.toFixed(2)+'%';
+  if(line.style.getPropertyValue('--boss-health')!==fill)line.style.setProperty('--boss-health',fill);
+  const description=`首领状态：${status}，生命 ${Math.round(health)}%`;
+  if(label.getAttribute('aria-label')!==description)label.setAttribute('aria-label',description);
+}
+
 function updateHud() {
   updateDashHud();
   // The fixed cockpit never changes the flight viewport during a run.
@@ -2332,6 +2344,7 @@ function updateHud() {
     els.comboBox.classList.add('hidden');
   }
   Game._lastCombo = Game.combo;
+  updateBossStatusHud();
 }
 
 function updateHighScore() {

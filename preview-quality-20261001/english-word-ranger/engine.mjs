@@ -1386,6 +1386,11 @@ export class World {
       b.exposed = false;
       this.emit("coreBreak");
     }
+    // A filled damage window can leave only subtraction roundoff after the final hit.
+    if (
+      dealt > 0 && b.windowDamage >= b.maxHp / 3 &&
+      b.hp > 0 && b.hp <= 16 * Number.EPSILON * b.maxHp
+    ) b.hp = 0;
     if (b.hp <= 0) {
       b.hp = 0;
       b.phase = "dead";
