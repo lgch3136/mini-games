@@ -30,6 +30,8 @@ const ctx = canvas.getContext('2d');
 const TAU = Math.PI * 2;
 const FIXED_STEP = 1 / 60;
 
+let choiceLabelLayout = { dirty:true, obstacles:[], scale:1 };
+
 let W = 420;             // 桌面基准逻辑尺寸，手机按视口重算
 let H = 660;
 const GROUND_H = 88;
@@ -71,7 +73,7 @@ const Game = {
   mode: 'spell',            // spell | choose
   onboardingDone:(()=>{try{return localStorage.getItem('flappy-first-delivery')==='1';}catch{return false;}})(),
   difficulty: 'easy', flight: 'easy', island: 1, journeyStart: 0, journeyWords: [], landing: null, askedQuestions: [], askedAnswers: [], reviewQuestions: [],
-  score: 0, combo: 0, maxCombo: 0, lives: MAX_LIVES, level: 1,
+  score: 0, combo: 0, maxCombo: 0, lives: MAX_LIVES, level: 1, lastDamage: null,
   wordsDone: 0, correctLetters: 0, correctAnswers: 0,
   dist: 0, time: 0, speed: 0,
   bird: { x: BIRD_X, y: H * 0.42, vy: 0, rot: 0, inv: 0 },
@@ -219,7 +221,11 @@ function feedback(msg) { Game.feedback = msg; Game.feedbackUntil = now() + 2.2; 
 function banner(text, color) { Game.texts.push({ x: W / 2, y: H * 0.34, text, color: color || '#fff', t: 1.6, max: 1.6 }); }
 
 /* ---------------- 伤害 / 结束 ---------------- */
-function loseLife(fromWrongAnswer) {
+function loseLife(cause) {
+  // Collision immunity/shields are resolved by hit(); wrong choices deliberately
+  // cost a life even during collision immunity. Record only accepted HP loss.
+  if (Game.state !== 'playing' || Game.lives <= 0) return false;
+  Game.lastDamage = { ...cause };
   Game.lives--;
   Game.combo = 0;
   Game.flash = 1;
@@ -229,16 +235,37 @@ function loseLife(fromWrongAnswer) {
   return false;
 }
 
-function hit() {
+function hit(kind = 'root') {
   if (Game.state !== 'playing' || Game.bird.inv > 0) return;
   if(Game.featherShield>0) {Game.featherShield--;Game.bird.inv=1.4;Game.bird.vy=-180;burst(BIRD_X,Game.bird.y,'#67e8f9',20);feedback('羽盾抵挡 · 完美穿越可补充');updateHUD();return; }
   Game.featherMeter=0;resetGlideInput();
   SFX.hit();
   Game.bird.inv = 1.6;
   Game.bird.vy = -300;
-  loseLife(false);
+  loseLife({kind});
 }
 
+function failureGuidance() {
+  const cause = Game.lastDamage;
+  const copy = {
+    ground: ['落到地面', '靠近草地前轻点拍翼，抬回门洞高度。'],
+    canopy: ['碰到上方树冠', '靠近树冠时先停拍，让鸟落回航道。'],
+    root: ['撞到木根', '提前对准木根之间的空隙，小幅拍翼穿过。'],
+    'choice-frame': ['撞到选词门框', '先选好答案，再对准那一层的空隙中心。'],
+    'wrong-choice': ['选错答案', '先读题认准答案，再飞向对应门洞。'],
+  };
+  const [reason, tip] = copy[cause?.kind] || ['生命用尽', '看准前方空隙，再轻点拍翼。'];
+  const detail = cause?.kind === 'wrong-choice'
+    ? `选了 ${cause.selected}，正确答案是 ${cause.answer}` : '';
+  return {
+    reason: '最后受伤：' + reason + (detail ? ' · ' + detail : ''),
+    tip,
+    objective: `本岛送达 ${Game.journeyWords.length}/3 封词信 · 还差 ${Math.max(0, 3-Game.journeyWords.length)} 封`,
+  };
+}
+function clearFailureGuidance() {
+  for (const id of ['over-cause','over-tip','over-objective']) $id(id).textContent = '';
+}
 function gameOver() {
   const medalPoints=Math.floor(Game.passedPipes/8)+Math.floor(Game.perfectPipes/3);
   $id('run-medal').hidden = medalPoints<=0;
@@ -248,6 +275,10 @@ function gameOver() {
   if (window.ChipMusic) ChipMusic.stop();
   SFX.over();resetGlideInput();
   const isNew = saveHS();
+  const guidance = failureGuidance();
+  $id('over-cause').textContent = guidance.reason;
+  $id('over-tip').textContent = guidance.tip;
+  $id('over-objective').textContent = guidance.objective;
   $id('over-stats').innerHTML =
     '<div class="stat-row"><span>⭐ 得分</span><b>' + Game.score + '</b></div>' +
     '<div class="stat-row"><span>✅ 完成题目</span><b>' + Game.wordsDone + '</b></div>' +
@@ -321,7 +352,7 @@ function answerWall(wall, hole) {
     feedback('❌ 正确答案：' + answer);
     banner('❌ ' + answer, '#ff6b6b');
     Game.bird.inv=Math.max(1,Game.bird.inv);
-    loseLife(false);
+    loseLife({kind:'wrong-choice', selected:hole.label, answer});
     if (Game.state === 'over') { updateHUD(); return; }
   }
   if(Game.journeyWords.length>=3) beginLanding();
@@ -425,11 +456,11 @@ function checkCollisions() {
   // 地面 / 天花板
   if (b.y > GROUND_Y - BIRD_R) {
     b.y = GROUND_Y - BIRD_R;
-    if (b.vy > 0) { if (b.inv <= 0) hit(); else b.vy = 0; }
+    if (b.vy > 0) { if (b.inv <= 0) hit('ground'); else b.vy = 0; }
   }
   if (Game.state !== 'playing') return;
   let canopyContact=0;for(const dx of [-BIRD_R,-BIRD_R*.5,0,BIRD_R*.5,BIRD_R])canopyContact=Math.max(canopyContact,canopyFloor(b.x+dx)+Math.sqrt(Math.max(0,BIRD_R*BIRD_R-dx*dx)));
-  if(b.y<canopyContact){b.y=canopyContact;if(b.inv<=0)hit();b.vy=Math.max(180,b.vy);}
+  if(b.y<canopyContact){b.y=canopyContact;if(b.inv<=0)hit('canopy');b.vy=Math.max(180,b.vy);}
 
   // 管道
   for (const p of Game.pipes) {
@@ -463,14 +494,14 @@ function checkCollisions() {
       const h1 = wl.holes[0], h2 = wl.holes[1];
       if (Math.abs(b.y - h1.cy) <= h1.r + 8) answerWall(wl, h1);
       else if (Math.abs(b.y - h2.cy) <= h2.r + 8) answerWall(wl, h2);
-      else hit();
+      else hit('choice-frame');
       if (Game.state !== 'playing') return;
     }
     if (!wl.done && b.inv <= 0) {
       const h1 = wl.holes[0], h2 = wl.holes[1];
       if (circleRect(b.x, b.y, BIRD_R - 2, sx, 0, wl.w, h1.cy - h1.r) ||
           circleRect(b.x, b.y, BIRD_R - 2, sx, h1.cy + h1.r, wl.w, h2.cy - h2.r - (h1.cy + h1.r)) ||
-          circleRect(b.x, b.y, BIRD_R - 2, sx, h2.cy + h2.r, wl.w, GROUND_Y - h2.cy - h2.r)) hit();
+          circleRect(b.x, b.y, BIRD_R - 2, sx, h2.cy + h2.r, wl.w, GROUND_Y - h2.cy - h2.r)) hit('choice-frame');
       if (Game.state !== 'playing') return;
     }
   }
@@ -725,7 +756,81 @@ function drawPipes() {
   }
 }
 
+// A choice wall has three solid rectangular bands, not circular colliders.
+// Keep every piece of bark, moss and edge shading clipped to those bands.
+// Openings remain real, transparent sky across the whole collision-free width.
+function drawChoiceWood(x, y, w, h, section) {
+  if (h <= 0) return;
+  ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+  const light=ctx.createLinearGradient(x,y,x+w,y);
+  light.addColorStop(0,'#5e4a2c');light.addColorStop(.18,'#c49b56');
+  light.addColorStop(.5,'#96713f');light.addColorStop(1,'#413e29');
+  ctx.fillStyle=light;ctx.fillRect(x,y,w,h);
+  const bark=TreeRoots[1];
+  if(bark.complete&&bark.naturalWidth) {
+    // The opaque heart of the accepted woodland texture avoids transparent
+    // dents that would falsely advertise safe gaps inside the rectangle.
+    const sw=bark.naturalWidth,sh=bark.naturalHeight;
+    if(section===1&&h<52){
+      ctx.save();ctx.translate(x,y+h);ctx.rotate(-Math.PI/2);
+      ctx.drawImage(bark,sw*.25,sh*.3,sw*.48,sh*.35,0,0,h,w);ctx.restore();
+    }else {
+      ctx.drawImage(bark,sw*.24,sh*.2,sw*.52,sh*.72,x,y,w,h);
+    }
+  }
+  // Soft bark seams and the bright cut lip stay on the solid side of each edge.
+  const edge=ctx.createLinearGradient(x,y,x,y+h);
+  edge.addColorStop(0,'rgba(236,202,125,.65)');
+  edge.addColorStop(Math.min(.48,6/h),'rgba(220,175,96,.08)');
+  edge.addColorStop(Math.max(.52,1-8/h),'rgba(47,45,25,0)');
+  edge.addColorStop(1,'rgba(37,32,20,.68)');
+  ctx.fillStyle=edge;ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle='rgba(48,45,27,.65)';ctx.lineWidth=2;
+  ctx.strokeRect(x+1,y+1,w-2,h-2);
+  // Reuse the accepted painted moss rather than adding a flat vector fringe.
+  const bank=ForestBank;
+  if(bank.complete&&bank.naturalWidth) {
+    const mossH=Math.min(10,h*.32),mossY=section===0?y+h-mossH:y;
+    ctx.drawImage(bank,bank.naturalWidth*.18,bank.naturalHeight*.30,bank.naturalWidth*.36,bank.naturalHeight*.13,x,mossY,w,mossH);
+  }
+  ctx.restore();
+}
+function refreshChoiceLabelLayout() {
+  if(choiceLabelLayout.dirty) {
+    choiceLabelLayout.dirty=false;choiceLabelLayout.obstacles=[];choiceLabelLayout.scale=1;
+    const field=canvas.getBoundingClientRect?.();
+    if(field?.width>0&&field.height>0)choiceLabelLayout.scale=Math.min(field.width/W,field.height/H);
+    if(field?.width>0&&field.height>0&&!$id('hud').classList.contains('hidden')) {
+      for(const id of ['question-bar','hud-top']) {
+        const box=$id(id).getBoundingClientRect?.();
+        if(box?.width>0) choiceLabelLayout.obstacles.push({
+          left:(box.left-field.left)*W/field.width,right:(box.right-field.left)*W/field.width,
+          top:(box.top-field.top)*H/field.height,bottom:(box.bottom-field.top)*H/field.height,
+        });
+      }
+    }
+  }
+}
+function choiceLabelY(hole, x, width, ph=24, labels=[]) {
+  refreshChoiceLabelLayout();
+  const normal=hole.cy-hole.r-ph-10;
+  const obstacles=[...choiceLabelLayout.obstacles,...labels].filter(box=>x+width>box.left&&x<box.right);
+  const candidates=[normal,...obstacles.map(box=>box.bottom+4),hole.cy+BIRD_R+2].sort((a,b)=>a-b);
+  for(const y of candidates) {
+    if(y<normal||y+ph>hole.cy+hole.r)continue;
+    if(y+ph>hole.cy-BIRD_R-2&&y<hole.cy+BIRD_R+2)continue;
+    if(obstacles.some(box=>y+ph>box.top-4&&y<box.bottom+4))continue;
+    return y;
+  }
+  // Only extraordinarily obstructed/zoomed layouts reach this fallback. Keep
+  // the badge tied to its own opening rather than relabeling another airway.
+  return normal;
+}
+
 function drawWalls() {
+  if(!Game.walls.length)return;
+  refreshChoiceLabelLayout();
+  const labelScale=Math.max(1,12/(14*choiceLabelLayout.scale)),drawnLabels=[];
   const hintWall = Game.hintUntil > now() && Game.mode === 'choose'
     ? Game.walls.find((w) => !w.done) : null;
   for (const wl of Game.walls) {
@@ -734,49 +839,34 @@ function drawWalls() {
     const h1 = wl.holes[0], h2 = wl.holes[1];
     const secs = [[0, h1.cy - h1.r], [h1.cy + h1.r, h2.cy - h2.r], [h2.cy + h2.r, GROUND_Y]];
     ctx.save();
-    for (const [sy, ey] of secs) {
-      if (ey <= sy) continue;
-      const h = ey - sy;
-      roundRect(sx, sy, wl.w, h, 6);
-      ctx.fillStyle = '#b06a3f'; ctx.fill();
-      ctx.save();
-      roundRect(sx, sy, wl.w, h, 6); ctx.clip();
-      ctx.strokeStyle = 'rgba(90,45,25,0.45)'; ctx.lineWidth = 2;
-      for (let yy = sy + 22; yy < ey; yy += 22) {
-        ctx.beginPath(); ctx.moveTo(sx, yy); ctx.lineTo(sx + wl.w, yy); ctx.stroke();
-      }
-      for (let yy = sy + 11; yy < ey; yy += 22) {
-        ctx.beginPath(); ctx.moveTo(sx + 30, yy); ctx.lineTo(sx + 30, yy + 22); ctx.stroke();
-      }
-      ctx.restore();
-      roundRect(sx, sy, wl.w, h, 6);
-      ctx.strokeStyle = 'rgba(70,35,20,0.9)'; ctx.lineWidth = 4; ctx.stroke();
-    }
+    secs.forEach(([sy,ey],section)=>drawChoiceWood(sx,sy,wl.w,ey-sy,section));
     for (const hole of wl.holes) {
-      ctx.beginPath(); ctx.arc(sx + wl.w / 2, hole.cy, hole.r, 0, TAU);
-      ctx.fillStyle = '#0b2436'; ctx.fill();
-      ctx.lineWidth = 6;
-      ctx.strokeStyle = wl.answered === true && hole.correct ? '#3f9d4f' : (wl.answered === false && hole.correct ? '#3f9d4f' : '#8a5230');
-      ctx.stroke();
-      const glow = hintWall === wl && hole.correct;
-      if (glow) {
-        ctx.beginPath();
-        ctx.arc(sx + wl.w / 2, hole.cy, hole.r + 8 + Math.sin(Game.time * 8) * 3, 0, TAU);
-        ctx.strokeStyle = 'rgba(125,255,168,0.9)'; ctx.lineWidth = 4; ctx.stroke();
-      }
-      // 选项标签
-      const label = shortLabel(hole.label);
-      ctx.font = '700 14px "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
-      const tw = ctx.measureText(label).width;
-      const pw = tw + 18, ph = 24;
-      const px = sx + wl.w / 2 - pw / 2, py = hole.cy - hole.r - 34;
-      roundRect(px, py, pw, ph, 12);
-      ctx.fillStyle = wl.answered === true && hole.correct ? '#c9f7d4' : 'rgba(255,255,255,0.95)';
-      ctx.fill();
-      ctx.strokeStyle = hole.correct && wl.answered !== null ? '#2e9e46' : '#6b4423'; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = '#123a52';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(label, sx + wl.w / 2, py + ph / 2 + 1);
+      const confirmed=wl.answered!==null&&hole.correct;
+      const glow=hintWall===wl&&hole.correct;
+      // Airway marks are fine, broken light, not a solid circular blue plug.
+      // They show the familiar choice center while revealing the real scenery.
+      ctx.strokeStyle=confirmed?'rgba(110,217,138,.9)':glow?'rgba(201,255,180,.95)':'rgba(250,232,166,.68)';
+      ctx.lineWidth=glow?2.4:1.2;ctx.setLineDash([2,7]);
+      ctx.beginPath();ctx.ellipse(sx+wl.w/2,hole.cy,Math.min(wl.w*.42,hole.r-6),hole.r-7,0,0,TAU);ctx.stroke();ctx.setLineDash([]);
+      const label=String(hole.label);
+      ctx.font=`700 ${14*labelScale}px "PingFang SC", "Microsoft YaHei", system-ui, sans-serif`;
+      const pw=ctx.measureText(label).width+18*labelScale,ph=24*labelScale;
+      const anchor=sx+wl.w/2;
+      // Larger plaques extend toward the approach
+      // side, with their right edge tied to the solid band. Their complete
+      // visibility is still governed by the original gate, not the wider text.
+      // Keep the complete answer onscreen until that gate accepts a decision.
+      const attachedX=pw>wl.w?sx+wl.w-pw:anchor-pw/2;
+      const px=!wl.done&&sx+wl.w>0?Math.max(4,attachedX):attachedX;
+      const py=choiceLabelY(hole,px,pw,ph,drawnLabels);
+      drawnLabels.push({left:px,right:px+pw,top:py,bottom:py+ph});
+      // Parchment seed plaques echo the bird's warm belly and forest sunlight.
+      const paper=ctx.createLinearGradient(px,py,px,py+ph);
+      paper.addColorStop(0,confirmed?'#e1f4bd':'#fff0c9');paper.addColorStop(1,confirmed?'#aacd8c':'#ddc58f');
+      roundRect(px,py,pw,ph,7*labelScale);ctx.fillStyle=paper;ctx.fill();
+      ctx.strokeStyle=confirmed?'#557947':'#625336';ctx.lineWidth=1.4;ctx.stroke();
+      ctx.fillStyle='#293d31';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(label,px+pw/2,py+ph/2+labelScale);
     }
     ctx.restore();
   }
@@ -908,6 +998,7 @@ function setHud(id, value, html = false) {
   const text = String(value);
   if (hudValues.get(id) === text) return;
   hudValues.set(id, text);
+  if(id.startsWith('q-'))choiceLabelLayout.dirty=true;
   $id(id)[html ? 'innerHTML' : 'textContent'] = text;
 }
 function updateFlightStatus(wind = activeWind()) {
@@ -959,6 +1050,7 @@ function saveHS() {
 function startGame(continueJourney=false) {
   const onward=continueJourney===true;
   if(!onward){Game.island=1;Game.wordsDone=0;Game.score=0;Game.reviewWords=[];Game.reviewQuestions=[];}else Game.island++;
+  Game.lastDamage=null;clearFailureGuidance();
   Game.journeyWords=[];Game.landing=null;Game.askedQuestions=[];Game.askedAnswers=[];Game.journeyStart=Game.wordsDone;
   const requestedFlight=$id('flight-select').value || Game.flight;Game.flight=DIFFS[requestedFlight]?requestedFlight:'easy';
   $id('arrived').classList.add('hidden');
@@ -981,6 +1073,7 @@ function startGame(continueJourney=false) {
   $id('over').classList.add('hidden');
   $id('paused').classList.add('hidden');
   $id('hud').classList.remove('hidden');
+  choiceLabelLayout.dirty=true;
   updateHUD();
   if (!TEST_MODE) {
     accumulator = 0;
@@ -994,6 +1087,7 @@ function activeWind() {
 function beginLanding() {
   if(Game.landing) return;
   Game.state='landing';resetGlideInput();
+  clearFailureGuidance();$id('over').classList.add('hidden');
   Game.landing={t:0,x:Game.bird.x,y:Game.bird.y,rot:Game.bird.rot};
   Game.bird.inv=0;Game.texts=[];feedback('三封词信齐了 · 减速靠岸');updateHUD();
 }
@@ -1138,6 +1232,7 @@ window.addEventListener('blur', () => {
 
 /* ---------------- 尺寸适配 ---------------- */
 function resize() {
+  choiceLabelLayout.dirty=true;
   const wrap = $id('game-wrap');
   const cw = wrap.clientWidth || 420, ch = wrap.clientHeight || 660;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);

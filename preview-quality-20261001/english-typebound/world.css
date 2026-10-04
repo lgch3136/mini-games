@@ -296,3 +296,27 @@
     .arena .enemy-intent > div {height:3px;margin:0;}
   }
 }
+
+/* The existing heading explains the selected spell without using the word's
+   correction/recall status. Put combo in normal flow so both remain readable. */
+#app[data-practice="false"] #typing-label { letter-spacing:0; white-space:nowrap; }
+#app[data-practice="false"] .typing-heading { gap:8px; }
+#app[data-practice="false"] .typing-heading #combo { position:static; transform:none; margin-left:auto; flex-shrink:0; }
+#app[data-practice="false"] .spell-picker button { min-height:44px; }
+/* Compact layouts already omit the heading. Reuse only the selected button's
+   existing description row; wrong-key and quiet-recall feedback stay separate. */
+@media (max-width:580px) and (max-height:650px), (max-height:350px) and (orientation:landscape) {
+  #app[data-practice="false"] .spell-picker button { padding:4px 3px; column-gap:2px; row-gap:2px; }
+  #app[data-practice="false"] .spell-picker button[aria-pressed="true"] { align-content:center; }
+  #app[data-practice="false"] .spell-picker button[aria-pressed="true"] kbd { grid-column:1; grid-row:1; line-height:14px; }
+  #app[data-practice="false"] .spell-picker button[aria-pressed="true"] b { grid-column:2; grid-row:1; line-height:14px; }
+  #app[data-practice="false"] .spell-picker button[aria-pressed="true"] small { display:block; grid-column:1 / -1; font-size:11px; line-height:13px; letter-spacing:0; white-space:nowrap; }
+}
+/* The public landscape dock border overlapped the first key row by 2–4px.
+   Recover only empty padding; keep scene, word and all keyboard row sizes. */
+@media (max-height:480px) and (orientation:landscape) {
+  #app[data-practice="false"] #battle > .typing-dock { padding-block:5px; }
+}
+@media (max-height:350px) and (orientation:landscape) {
+  #app[data-practice="false"] #battle > .typing-dock { padding-block:2px; }
+}

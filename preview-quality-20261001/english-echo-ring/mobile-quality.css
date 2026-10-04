@@ -140,3 +140,20 @@ button:focus-visible, select:focus-visible { outline:2px solid #d6f7be; outline-
   .resonance-status > span { margin-top:4px; }
   .bottom-strip { display:none; }
 }
+/* Keep the existing cause-specific recovery step beside the decision to retry.
+   Short landscape uses two columns, while DOM/reading order stays cause, tip,
+   Retry, other actions, then the complete recap on the single overlay scroll. */
+.result-panel #reason { margin:0 0 8px; line-height:1.6; }
+.result-panel #result-tip { display:block; margin:0; color:#c8e4d8; font-size:12px; line-height:1.65; }
+.result-summary { min-width:0; }
+@media(max-height:480px) and (orientation:landscape) {
+  .overlay .result-panel { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px 20px; padding:16px; }
+  .result-summary .eyebrow { margin-bottom:6px; }
+  .result-summary h2 { margin-bottom:4px; line-height:1.35; }
+  .result-panel #final-score { font-size:36px; line-height:1.1; margin:4px 0; }
+  .result-panel #reason { margin-bottom:6px; }
+  .result-panel #result-tip { font-size:12px; line-height:1.5; }
+  .result-actions { display:flex; flex-direction:column; align-self:start; gap:8px; margin:0; }
+  .result-actions .primary,.result-actions .secondary { min-height:44px; }
+  .result-details { grid-column:1 / -1; }
+}

@@ -590,18 +590,22 @@ export class Renderer {
         danger = b.bounces > 0;
       const angle=Math.atan2(b.vy,b.vx),speed=Math.hypot(b.vx,b.vy),ux=b.vx/speed,uy=b.vy/speed;
       const color=danger?C.return:"#e2f3ed";
+      // These are CSS-pixel drawing floors only. The simulation owns the
+      // unchanged bullet position, velocity, radius and reflected path.
+      const headScale=Math.max(1,.68/this.scale),tailScale=Math.max(1,.42/this.scale);
       this.glow(danger?"return":"shot",bx,by,danger?25:18,danger?.42:.28);
       if(danger){
         for(let segment=1;segment<=3;segment++){
-          const a=segment*13,bk=a+7;
-          this.line(bx-ux*bk,by-uy*bk,bx-ux*a,by-uy*a,segment===1?"#dcb574b0":"#b58c5160",Math.max(1.5,.7/this.scale));
+          const a=segment*13*tailScale,bk=a+7*tailScale;
+          this.line(bx-ux*bk,by-uy*bk,bx-ux*a,by-uy*a,segment===1?"#edc787d9":"#c29c6385",Math.max(1.5,1.1/this.scale));
         }
-        c.save();c.translate(bx,by);c.rotate(angle);const sz=Math.max(1,2.7/(6*this.scale));c.scale(sz,sz);
-        c.beginPath();c.moveTo(6,0);c.lineTo(-5,-4.2);c.lineTo(-1,0);c.lineTo(-5,4.2);c.closePath();c.fillStyle="#e7bd79";c.fill();
-        this.line(-1.5,0,4,0,"#fff4dc",1);c.restore();
+        c.save();c.translate(bx,by);c.rotate(angle);c.scale(headScale,headScale);
+        c.beginPath();c.moveTo(6,0);c.lineTo(-5,-4.2);c.lineTo(-1,0);c.lineTo(-5,4.2);c.closePath();c.fillStyle="#f6ca80";c.fill();
+        this.line(-1.5,0,4,0,"#fff7e5",Math.max(1,1.55/(this.scale*headScale)));c.restore();
       }else{
-        this.line(bx-ux*18,by-uy*18,bx-ux*6,by-uy*6,"#80bcb344",Math.max(1,.5/this.scale));
-        this.line(bx-ux*5,by-uy*5,bx+ux*3,by+uy*3,color,Math.max(2.4,1.4/this.scale));
+        const bodyScale=Math.max(1,.7/this.scale);
+        this.line(bx-ux*18*bodyScale,by-uy*18*bodyScale,bx-ux*6*bodyScale,by-uy*6*bodyScale,"#9cdbcf91",Math.max(1,1/this.scale));
+        this.line(bx-ux*5*bodyScale,by-uy*5*bodyScale,bx+ux*3*bodyScale,by+uy*3*bodyScale,color,Math.max(2.4,2.1/this.scale));
       }
       if(b.lastBounce&&game.time-b.lastBounce.time<.12){
         const f=1-(game.time-b.lastBounce.time)/.12;c.save();c.translate(b.lastBounce.x,b.lastBounce.y);c.rotate(Math.atan2(b.lastBounce.y,b.lastBounce.x));

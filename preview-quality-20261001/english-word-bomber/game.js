@@ -1011,48 +1011,117 @@ function drawGardenDebris(){
 }
 function drawPlayer(){
   const p=Game.player;if(!p)return;
-  if(CourtyardCast.complete&&CourtyardCast.naturalWidth){
-    const pose=p.layTimer>0?'lay':p.moving&&!reducedMotion.matches?Math.floor((p.walkPhase||0)/TAU*4)%4:0;
-    ctx.save();if(p.inv>0&&Game.state==='playing')ctx.globalAlpha=.9;
-    gardenOval(ctx,p.px+2,p.py+10,18,5,'#1d352873');
-    drawCourtyardActor(ctx,'gardener-'+p.facing+'-'+pose,p.px,p.py+5,44);ctx.restore();return;
-  }
-  const step=reducedMotion.matches?0:Math.sin(p.walkPhase||0),walk=p.moving?step:0;
-  const lay=Math.sin(Math.PI*clamp((p.layTimer||0)/.3,0,1)),side=p.facing==='left'||p.facing==='right';
-  ctx.save();ctx.translate(p.px,p.py);if(p.inv>0&&Game.state==='playing')ctx.globalAlpha=.85;
-  gardenOval(ctx,1,16,15,5,'#384a3d42');
+  // One small, hand-painted gardener: straw crown, sun-warmed shirt and ink-blue
+  // apron. The atlas still supplies the court and its creatures. All pose inputs
+  // are existing simulation values; drawing never advances or stores a pose.
+  const side=p.facing==='left'||p.facing==='right',back=p.facing==='up';
+  const step=p.moving&&!reducedMotion.matches?Math.sin(p.walkPhase||0):0;
+  const hurt=Game.state==='dying';
+  const hurtAge=1.4-clamp(p.dieTimer||0,0,1.4);
+  const recoil=hurt?(reducedMotion.matches?1:Math.max(0,1-hurtAge/.3)):0;
+  const slump=hurt&&!reducedMotion.matches?clamp((hurtAge-.2)/.25,0,1):0;
+  const planting=!hurt&&!p.moving&&(p.layTimer||0)>0;
+  const bend=planting?(reducedMotion.matches?1:Math.sin(Math.PI*clamp(p.layTimer/.3,0,1))):0;
+  const dx=p.facing==='left'?-1:p.facing==='right'?1:0,dy=back?-1:p.facing==='down'?1:0;
+  const retreat=!hurt&&p.moving&&(Game.bombs||[]).some(b=>{
+    const bx=OX+(b.col+.5)*CELL,by=OY+(b.row+.5)*CELL;
+    return (p.px-bx)*dx+(p.py-by)*dy>4&&Math.hypot(p.px-bx,p.py-by)<CELL*2;
+  });
+  const lean=side?(hurt?-1-recoil*3:retreat?2.5:bend*4):hurt?-1-recoil:0;
+  const bob=Math.abs(step)*1.3;
+  ctx.save();ctx.translate(p.px,p.py);
+  if(p.inv>0&&Game.state==='playing')ctx.globalAlpha=.9;
+  gardenOval(ctx,2,10,18,5,'#1d352873');
   if(p.facing==='left')ctx.scale(-1,1);
-  const bob=p.moving?Math.abs(walk)*1.7:0;
-  ctx.translate(0,-bob+lay*4);
-  // Weight alternates over planted boots rather than a global-time bob.
+  const pigment=(x0,y0,x1,y1,light,shade)=>{const g=ctx.createLinearGradient(p.facing==='left'?-x0:x0,y0,p.facing==='left'?-x1:x1,y1);g.addColorStop(0,light);g.addColorStop(1,shade);return g;};
+  const shirt=pigment(-13,-25,15,2,'#e79859','#af492f');
+  const apron=pigment(-8,-18,12,4,'#375769','#203843');
+  const straw=pigment(-14,-54,15,-39,'#f4d780','#bd843d');
+  const skin=pigment(-9,-40,12,-23,'#f1c391','#bd7851');
+  // Boots stay on the walking surface while the knees and apron compress to plant.
   const rear=side?-5:-7,front=side?6:7;
-  gardenLine(ctx,[[rear,6],[rear-walk*2,13+walk*2]],'#384a45',6);
-  gardenLine(ctx,[[front,6],[front+walk*2,13-walk*2]],'#384a45',6);
-  gardenOval(ctx,rear-walk*2+1,15+walk*2,5.5,3.5,'#6f5039');
-  gardenOval(ctx,front+walk*2+1,15-walk*2,5.5,3.5,'#77553d');
-  // Rounded linen smock, leather satchel, terracotta scarf.
-  gardenPoly(ctx,[[-10,-6],[8,-6],[11,8],[6,12],[-8,11],[-11,4]],'#d4d4ac','#777e64',1.2);
-  gardenPoly(ctx,[[-7,1],[7,1],[7,10],[-7,10]],'#58746a');
-  gardenLine(ctx,[[-7,-5],[6,8]],'#987047',3);
-  if(p.facing==='up')gardenPoly(ctx,[[-7,-4],[7,-4],[8,7],[-7,7]],'#b08550','#74583c',1.1);
-  const arm=side?4:0;
-  gardenLine(ctx,[[-10,-3],[-13+walk*2,5+lay*6]],'#b9c2a0',5);
-  gardenOval(ctx,-13+walk*2,6+lay*7,3.2,3.6,'#c69a6d');
-  gardenLine(ctx,[[9,-3],[12+arm+lay*3,4-walk*2+lay*5]],'#d7d6b0',5);
-  gardenOval(ctx,12+arm+lay*3,5-walk*2+lay*5,3.3,3.7,'#d3aa7b');
-  gardenPoly(ctx,[[-10,-7],[7,-9],[10,-4],[-5,-2]],'#bc684c');
-  gardenPoly(ctx,[[6,-6],[15+walk*1.5,-5],[11,-1],[5,-3]],'#9e503d');
-  // Soft explorer hood and a face opening share the stone's top-left light.
-  gardenOval(ctx,0,-15,13,12.5,'#d5d5b4');
-  gardenOval(ctx,-3,-19,9,7,'#e6e2c5');
-  if(p.facing!=='up'){
-    gardenOval(ctx,side?6:1,-12,side?7:9,7,'#c79c6e');
-    gardenPoly(ctx,side?[[3,-17],[12,-17],[13,-9],[3,-10]]:[[-8,-17],[9,-17],[9,-9],[-8,-9]],'#365652');
-    if(side){gardenLine(ctx,[[7,-14],[10,-14]],'#eee7c8',2);gardenOval(ctx,13,-10,2,2.5,'#d6b084');}
-    else{gardenLine(ctx,[[-5,-14],[-3,-14]],'#f1e7c8',2);gardenLine(ctx,[[4,-14],[6,-14]],'#f1e7c8',2);}
-  } else {gardenLine(ctx,[[-4,-23],[0,-18],[0,-8]],'#b5bea0',1.4);}
-  gardenLine(ctx,[[-11,-8],[-5,-5],[7,-6]],'#b4bb99',2);
-  ctx.restore();
+  const rearX=rear-step*4,frontX=front+step*4;
+  gardenLine(ctx,[[rear,-4],[rearX,5+step*2]],'#293f46',7);
+  gardenLine(ctx,[[front,-4],[frontX,5-step*2]],'#38525a',7);
+  gardenOval(ctx,rearX+1,8+step*2,6.5,3.5,'#553c2d');
+  gardenOval(ctx,frontX+2,8-step*2,7,3.7,'#74503a');
+  gardenLine(ctx,[[frontX-2,6-step*2],[frontX+4,6-step*2]],'#a47a50',1.5);
+  ctx.save();ctx.translate(lean,-bob+bend*8+slump*3);
+  if(hurt)ctx.rotate(-.08-recoil*.12);else if(side)ctx.rotate(bend*.1+(retreat?.055:0));
+  // Far arm and the seed satchel sit behind the torso; the near hand reads clear.
+  const swing=step*4,reach=bend*12;
+  gardenLine(ctx,[[-10,-22],[-14,-13+swing],[-12,-6+swing]],'#ac5035',7);
+  gardenOval(ctx,-12,-5+swing,3.6,4,'#ead2a1');
+  if(side){
+    gardenPoly(ctx,[[-15,-23],[-8,-24],[-6,-4],[-14,-2],[-17,-8]],'#ab793f');
+    gardenLine(ctx,[[-15,-18],[-10,-18]],'#e2b86c',2);
+    gardenLine(ctx,[[-14,-13],[-11,-13]],'#866038',1);
+  }
+  ctx.beginPath();ctx.moveTo(-10,-26);ctx.quadraticCurveTo(-15,-20,-13,-7);
+  ctx.lineTo(-10,1);ctx.quadraticCurveTo(0,5,11,0);ctx.lineTo(13,-10);
+  ctx.quadraticCurveTo(13,-23,7,-26);ctx.closePath();ctx.fillStyle=shirt;ctx.fill();
+  gardenPoly(ctx,[[-9,-24],[-5,-23],[-6,-7],[-10,-4]],'#efb079');
+  if(back){
+    // A compact wicker seed basket is a clear back view, with crossed straps.
+    gardenLine(ctx,[[-8,-24],[5,-1]],'#e5bf7a',2.6);
+    gardenLine(ctx,[[8,-24],[-5,-1]],'#e5bf7a',2.6);
+    gardenPoly(ctx,[[-10,-20],[9,-20],[11,-4],[7,1],[-8,1],[-11,-5]],'#a8713e');
+    gardenPoly(ctx,[[-9,-20],[8,-20],[10,-14],[-10,-14]],'#e4b96d');
+    gardenLine(ctx,[[-9,-11],[9,-11]],'#c99854',2);
+    gardenLine(ctx,[[-8,-6],[8,-6]],'#c99854',1.7);
+    gardenLine(ctx,[[-4,-13],[-3,0],[2,0],[3,-13]],'#845d36',1.2);
+    gardenLeaf(ctx,5,-21,.35,10,'#4a7250');gardenLeaf(ctx,5,-21,-.65,8,'#789351');
+  } else {
+    // Large material blocks survive 320px: the ochre straps divide shirt/apron.
+    gardenPoly(ctx,side?[[-1,-23],[8,-23],[10,0],[1,2],[-3,-5]]:[[-7,-23],[7,-23],[10,0],[0,3],[-10,0]],apron);
+    gardenLine(ctx,side?[[2,-24],[1,-14]]:[[-6,-24],[-6,-14]],'#dec18a',2.8);
+    if(!side)gardenLine(ctx,[[6,-24],[6,-14]],'#dec18a',2.8);
+    gardenPoly(ctx,side?[[1,-10],[8,-11],[7,-4],[2,-3]]:[[-5,-11],[6,-11],[5,-4],[-4,-4]],'#577583');
+    gardenLine(ctx,side?[[2,-10],[7,-10]]:[[-4,-10],[5,-10]],'#9cafab',1.2);
+  }
+  const handX=hurt?20:side?(retreat?12:15+reach*.35):12+reach*.3;
+  const handY=hurt?-24+slump*5:retreat?-30:-7-swing+reach;
+  const elbowX=hurt?15:side?12:13,elbowY=hurt?-18:retreat?-14:-15+reach*.45;
+  gardenLine(ctx,[[9,-22],[elbowX,elbowY],[handX,handY-2]],'#d77344',7.5);
+  gardenLine(ctx,[[10,-22],[elbowX-1,elbowY]],'#eea069',2.8);
+  gardenOval(ctx,handX,handY,3.9,4.3,'#ecd7ab');
+  // The scarf is short enough to stay out of adjacent cells.
+  gardenPoly(ctx,[[-7,-28],[8,-28],[9,-24],[1,-22],[-7,-25]],'#f2d49a');
+  if(side||back)gardenPoly(ctx,[[-8,-27],[-16,-25-swing*.35],[-12,-20-swing*.35],[-6,-24]],'#be5737');
+  // Head and profile nose make facing visible without a direction arrow or glow.
+  ctx.save();ctx.translate(side?1+bend*2:0,bend*1.5);
+  if(hurt)ctx.rotate(.15+recoil*.18);
+  gardenOval(ctx,side?2:0,-34,side?10.5:12,12,'#68432e');
+  if(!back){
+    gardenOval(ctx,side?5:0,-33,side?9:10.5,10,skin);
+    gardenOval(ctx,side?-3:-10,-33,2.7,4,'#cd9568');
+    if(side){
+      gardenPoly(ctx,[[11,-36],[15,-33],[16,-30],[11,-29]],'#e6ad78');
+      if(hurt)gardenLine(ctx,[[6,-34],[10,-32],[6,-30]],'#3b3329',1.8);
+      else gardenOval(ctx,9,-33,1.6,2.3,'#2f342e');
+      gardenLine(ctx,[[8,-26],[11,-27]],'#89543d',1.2);
+      gardenPoly(ctx,[[-6,-39],[4,-40],[3,-36],[-4,-32],[-6,-27]],'#6f4931');
+    }else{
+      for(const x of [-4.5,4.5]){
+        if(hurt)gardenLine(ctx,[[x-1.5,-35],[x+1.5,-32],[x-1.5,-30]],'#3b3329',1.6);
+        else gardenOval(ctx,x,-33,1.65,2.3,'#2f342e');
+      }
+      gardenOval(ctx,0,-29,1.8,2,'#d89965');
+      gardenLine(ctx,[[-3,-25],[0,-24],[3,-25]],'#9a6244',1.2);
+    }
+  }else gardenLine(ctx,[[-7,-28],[0,-26],[7,-28]],'#b8804c',2);
+  // The brim casts its own shallow shade, while the crown catches upper-left light.
+  const hatX=side?-2:0;
+  gardenOval(ctx,hatX+1,-40,22,5,'#8c5e32');
+  gardenOval(ctx,hatX,-42,22,5.5,'#dcb15f');
+  gardenOval(ctx,hatX-3,-43,17,3.7,'#f2d383');
+  ctx.beginPath();ctx.moveTo(hatX-13,-43);ctx.lineTo(hatX-11,-50);
+  ctx.quadraticCurveTo(hatX-8,-56,hatX+4,-54);ctx.quadraticCurveTo(hatX+12,-53,hatX+13,-43);
+  ctx.quadraticCurveTo(hatX+2,-39,hatX-13,-43);ctx.fillStyle=straw;ctx.fill();
+  gardenLine(ctx,[[hatX-12,-44],[hatX-3,-42],[hatX+6,-42],[hatX+12,-44]],'#a85437',3.5);
+  gardenLine(ctx,[[hatX-8,-50],[hatX-5,-52],[hatX+3,-52]],'#f9e2a0',1.5);
+  if(!side&&!back){gardenLeaf(ctx,10,-44,.8,7,'#496f44');gardenOval(ctx,10,-44,2,2,'#f2d283');}
+  ctx.restore();ctx.restore();ctx.restore();
 }
 function drawEnemies(){
   for(const e of Game.enemies){

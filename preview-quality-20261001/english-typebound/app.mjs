@@ -606,7 +606,7 @@ function updateHUD() {
     );
   set(
     "typing-label",
-    g.isRecall ? (g.prompt.revealed?'提示后的补词':'隔词回忆 · 不计字速') : g.phase==='lectern' ? '修复书页 · 间隔跟打' : g.mode==='review' ? (g.prompt.role==='model'?'示范一次 · 看准再写':'间隔跟打 · 之后再回忆') : g.mode !== "journey" ? "逐字书写 · 点亮书页" : { ember: "星火 · 强攻", frost: "霜环 · 控场", bloom: "生息 · 回复" }[g.spell],
+    g.isRecall ? (g.prompt.revealed?'提示后的补词':'隔词回忆 · 不计字速') : g.phase==='lectern' ? '修复书页 · 间隔跟打' : g.mode==='review' ? (g.prompt.role==='model'?'示范一次 · 看准再写':'间隔跟打 · 之后再回忆') : g.mode !== "journey" ? "逐字书写 · 点亮书页" : { ember: "星火 · 强化词伤", frost: "霜环 · 低伤缓敌，无错持续更久", bloom: "生息 · 低伤，无错词回复4血" }[g.spell],
   );
   const progress = practiceProgress(g);
   set("practice-goal-label", progress.label);

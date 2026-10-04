@@ -251,3 +251,43 @@ button:focus-visible { outline: 3px solid #fde68a; outline-offset: 3px; }
   #hud-top #hearts { font-size:12px;letter-spacing:0; }
   .route-line, #route-status { font-size:10px;line-height:16px; }
 }
+
+/* The next try starts with a specific cause and one practical action. */
+#over .btn { min-height:44px; }
+#over-guidance { width:min(420px,94%);padding:12px 14px;border:1px solid #89966970;border-radius:12px;background:#20382eee;text-align:left;line-height:1.55; }
+#over-cause { color:#f2d6a3;font-size:14px;font-weight:700;overflow-wrap:anywhere; }
+#over-tip { color:#f1f0dc;font-size:14px;margin-top:6px; }
+#over-objective { color:#bed0ac;font-size:12px;margin-top:7px; }
+@media (max-width:600px) and (orientation:portrait) {
+  #over { gap:9px; }
+  #over > h1 { font-size:28px; }
+  #over .btn-row { width:100%;gap:7px; }
+  #over .btn-row .btn { min-height:44px;padding:10px 16px; }
+  #over-guidance { width:100%;padding:10px 12px; }
+  #over-stats { width:100%;font-size:13px;padding:8px 14px; }
+  #over-stats .stat-row { padding:4px 0; }
+}
+
+/* Keep landscape sidebars outside the unchanged, centered flight field, even
+   when a device notch consumes part of either side. 31.81818dvh is half of the
+   production 420/660 portrait field width; the other cap is (100vw - 360px)/2. */
+@media (orientation:landscape) and (max-height:600px) {
+  #game-wrap {
+    --flight-side-space:calc(50vw - min(calc(50vw - 180px), 31.81818182dvh));
+    --flight-safe-left:max(12px, env(safe-area-inset-left));
+    --flight-safe-right:max(12px, env(safe-area-inset-right));
+    --flight-left-width:calc(var(--flight-side-space) - var(--flight-safe-left) - 8px);
+    --flight-right-width:calc(var(--flight-side-space) - var(--flight-safe-right) - 8px);
+  }
+  #question-bar, #hint-bar { left:var(--flight-safe-left);width:min(172px, var(--flight-left-width)); }
+  #hud-top { right:var(--flight-safe-right);width:min(160px, var(--flight-right-width));gap:clamp(10px, calc(var(--flight-right-width) - 134px), 14px); }
+  #hud-top .right { max-width:100%;flex-wrap:wrap;justify-content:center; }
+  #hud-top .hud-stats { max-width:100%;flex-wrap:wrap;justify-content:center; }
+  #hud-top .route-line, #hud-top #route-status { white-space:normal;overflow-wrap:anywhere;text-align:center; }
+  #glide-btn { right:max(16px, env(safe-area-inset-right));width:min(150px, var(--flight-right-width)); }
+}
+@media (orientation:landscape) and (max-height:600px) {
+  #question-bar { top:max(12px, env(safe-area-inset-top));max-height:calc(100dvh - max(12px, env(safe-area-inset-bottom)) - max(12px, env(safe-area-inset-top)) - 116px); }
+  #hint-bar { bottom:max(12px, env(safe-area-inset-bottom));max-height:108px;overflow-y:auto; }
+  #hud-top { top:max(16px, env(safe-area-inset-top));max-height:calc(100dvh - max(20px, env(safe-area-inset-bottom)) - max(16px, env(safe-area-inset-top)) - 66px);overflow-y:auto; }
+}
