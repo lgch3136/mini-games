@@ -1163,7 +1163,7 @@ function performanceRecap() {
     advice = `你这次稳定${bias > 0 ? '偏晚' : '偏早'}。在选曲页把节拍校准尝试调到 ${Math.round(clamp(Game.timingOffset * 1000 + bias, -200, 200))} ms，再听一轮确认。`;
   else if (Game.laneMistakes.some(Boolean)) {
     const lane = Game.laneMistakes.indexOf(Math.max(...Game.laneMistakes));
-    advice = `第 ${lane + 1} 轨失误最多（${Game.laneMistakes[lane]} 次）。试试「完整练习」，先练稳这一轨与长条。`;
+    advice = `第 ${lane + 1} 轨失误最多（${Game.laneMistakes[lane]} 次）。${Game.session === 'practice' && !Game.lesson && !Game.recovery ? '下次演奏时，' : '试试「完整练习」，'}先练稳这一轨与长条。`;
   } else if (accuracy >= 95 && notes >= 12) advice = '节拍非常稳定。下一次可以增加键数，或选高一级密度的曲目挑战全连。';
   return { accuracy, stars, bias, samples: errors.length, advice };
 }
