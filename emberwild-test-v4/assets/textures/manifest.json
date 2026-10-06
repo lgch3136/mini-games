@@ -1,0 +1,1012 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "Blender 4.3 Cycles CPU shader-node baking",
+  "sourcePolicy": "Original imagegen images are retained unchanged under source/. Albedo/normal/roughness outputs are explicitly Blender-derived technical textures, not new AI originals.",
+  "mapping": "Model UVs encode authored world scale; texture repeat remains [1,1]. Soil UV = terrain world XZ / 2. Runtime instance scale changes physical density proportionally.",
+  "periodization": "Four repeated original-source samples at half-tile offsets, blended by sin^2(pi*u/v) shader weights; source seams get zero value and zero derivative contribution. This is a derived periodization, not a claim that the original AI images were seamless.",
+  "albedoCalibration": "v2: cloth/leather/stone use [0.60,0.98] linear albedo with source-luminance calibration windows measured from the first actual bakes; soil stays [0.78,0.98]. See each set and calibrationHistory for exact previous/current parameters. Existing material colors remain the palette.",
+  "normalLimit": "Relief is inferred from single-image luminance, not scanned surface height. No displacement, extra geometry, opacity, lights, or material-per-mesh duplication.",
+  "sets": {
+    "cloth": {
+      "materials": [
+        "linen",
+        "linenShade",
+        "linenLight",
+        "linenEdge",
+        "cloth",
+        "clothDark",
+        "teal",
+        "tealLight"
+      ],
+      "tileWorldUnits": 0.65,
+      "normalScale": [
+        0.35,
+        0.35
+      ],
+      "bumpDistance": 0.003,
+      "roughnessRange": [
+        0.8,
+        0.98
+      ],
+      "albedoLinearRange": [
+        0.6,
+        0.98
+      ],
+      "sourceLuminanceRange": [
+        0.24,
+        0.68
+      ],
+      "repeat": [
+        1,
+        1
+      ],
+      "roughnessMapStrength": 1,
+      "roughnessUsage": "Multiply the existing MeshStandardMaterial roughness by the G channel; preserve its scalar. This map stays high-roughness, with v2 source-detail contrast expanded for cloth/leather/stone.",
+      "standard": {
+        "albedo": "cloth-albedo-512.png",
+        "normal": "cloth-normal-512.png",
+        "roughness": "cloth-roughness-256.png"
+      },
+      "low": {
+        "albedo": "cloth-albedo-256.png"
+      },
+      "files": {
+        "cloth-albedo-512.png": {
+          "width": 512,
+          "height": 512,
+          "bytes": 306250,
+          "sha256": "f4d9196e1ced0299be4b8e837aa7926dee530dbbb0d905d02e71153240eeb2b1",
+          "colorSpace": "sRGB",
+          "technicalType": "color modulation, neutral low contrast, not replacement palette",
+          "estimatedGpuRgba8WithMipsBytes": 1398100,
+          "quality": {
+            "width": 512,
+            "height": 512,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.7960785031318665,
+              0.7960785031318665,
+              0.7960785031318665
+            ],
+            "meanRGB": [
+              0.903360903263092,
+              0.903360903263092,
+              0.903360903263092
+            ],
+            "maxRGB": [
+              0.9921569228172302,
+              0.9921569228172302,
+              0.9921569228172302
+            ],
+            "edgeMeanAbsDifferenceX": 0.034918807446956635,
+            "edgeMeanAbsDifferenceY": 0.059627752751111984,
+            "adjacentPixelMeanAbsDifferenceX": 0.043099500238895416,
+            "adjacentPixelMeanAbsDifferenceY": 0.054910991340875626
+          }
+        },
+        "cloth-normal-512.png": {
+          "width": 512,
+          "height": 512,
+          "bytes": 654322,
+          "sha256": "03a2a400afcc11b7c4a91aded872eadb4ffa0d07a3b41151141698af50be7a77",
+          "colorSpace": "Non-Color",
+          "technicalType": "OpenGL +Y tangent-space normal from source luminance via Blender Bump node + NORMAL bake",
+          "estimatedGpuRgba8WithMipsBytes": 1398100,
+          "quality": {
+            "width": 512,
+            "height": 512,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.1411764770746231,
+              0.19607844948768616,
+              0.7960785031318665
+            ],
+            "meanRGB": [
+              0.4992973208427429,
+              0.49816712737083435,
+              0.9785216450691223
+            ],
+            "maxRGB": [
+              0.8980392813682556,
+              0.8313726186752319,
+              1.0
+            ],
+            "edgeMeanAbsDifferenceX": 0.09323170781135559,
+            "edgeMeanAbsDifferenceY": 0.10852480679750443,
+            "adjacentPixelMeanAbsDifferenceX": 0.06933531165122986,
+            "adjacentPixelMeanAbsDifferenceY": 0.08111826330423355
+          }
+        },
+        "cloth-roughness-256.png": {
+          "width": 256,
+          "height": 256,
+          "bytes": 76807,
+          "sha256": "00513d758051d7804845bc63d728c3af1c5d792b0938cb9e242d966ba4c30a52",
+          "colorSpace": "Non-Color",
+          "technicalType": "linear roughness multiplier from source luminance via Blender Map Range + EMIT bake",
+          "estimatedGpuRgba8WithMipsBytes": 349524,
+          "quality": {
+            "width": 256,
+            "height": 256,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.8000000715255737,
+              0.8000000715255737,
+              0.8000000715255737
+            ],
+            "meanRGB": [
+              0.895085871219635,
+              0.895085871219635,
+              0.895085871219635
+            ],
+            "maxRGB": [
+              0.9803922176361084,
+              0.9803922176361084,
+              0.9803922176361084
+            ],
+            "edgeMeanAbsDifferenceX": 0.033287372440099716,
+            "edgeMeanAbsDifferenceY": 0.06018688157200813,
+            "adjacentPixelMeanAbsDifferenceX": 0.04243781790137291,
+            "adjacentPixelMeanAbsDifferenceY": 0.06476277112960815
+          }
+        },
+        "cloth-albedo-256.png": {
+          "width": 256,
+          "height": 256,
+          "bytes": 77995,
+          "sha256": "138e0a048ed7cf0797318b248d30a56b2d4b6a72222d09261406de558b2a5306",
+          "colorSpace": "sRGB",
+          "technicalType": "color modulation, neutral low contrast, not replacement palette",
+          "estimatedGpuRgba8WithMipsBytes": 349524,
+          "quality": {
+            "width": 256,
+            "height": 256,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.7960785031318665,
+              0.7960785031318665,
+              0.7960785031318665
+            ],
+            "meanRGB": [
+              0.9048479795455933,
+              0.9048479795455933,
+              0.9048479795455933
+            ],
+            "maxRGB": [
+              0.9921569228172302,
+              0.9921569228172302,
+              0.9921569228172302
+            ],
+            "edgeMeanAbsDifferenceX": 0.03492647036910057,
+            "edgeMeanAbsDifferenceY": 0.06271445751190186,
+            "adjacentPixelMeanAbsDifferenceX": 0.045445382595062256,
+            "adjacentPixelMeanAbsDifferenceY": 0.0690949410200119
+          }
+        }
+      },
+      "source": {
+        "file": "source/cloth-source.png",
+        "sha256": "3ec61a1e6204e1896ffb63a8b00b14d5cdfa6733a2ff0792321a0b2008dffe63",
+        "bytes": 3403732,
+        "quality": {
+          "width": 1254,
+          "height": 1254,
+          "decodedBy": "Blender 4.3 Image datablock",
+          "minRGB": [
+            0.27843138575553894,
+            0.2666666805744171,
+            0.2392157018184662
+          ],
+          "meanRGB": [
+            0.7265973091125488,
+            0.7029948234558105,
+            0.6668895483016968
+          ],
+          "maxRGB": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "edgeMeanAbsDifferenceX": 0.05273374915122986,
+          "edgeMeanAbsDifferenceY": 0.07037767767906189,
+          "adjacentPixelMeanAbsDifferenceX": 0.047653716057538986,
+          "adjacentPixelMeanAbsDifferenceY": 0.05531248822808266
+        }
+      }
+    },
+    "leather": {
+      "materials": [
+        "wornLeather",
+        "darkLeather",
+        "leatherEdge",
+        "leather",
+        "leatherLight"
+      ],
+      "tileWorldUnits": 0.5,
+      "normalScale": [
+        0.35,
+        0.35
+      ],
+      "bumpDistance": 0.004,
+      "roughnessRange": [
+        0.75,
+        0.96
+      ],
+      "albedoLinearRange": [
+        0.6,
+        0.98
+      ],
+      "sourceLuminanceRange": [
+        0.22,
+        0.44
+      ],
+      "repeat": [
+        1,
+        1
+      ],
+      "roughnessMapStrength": 1,
+      "roughnessUsage": "Multiply the existing MeshStandardMaterial roughness by the G channel; preserve its scalar. This map stays high-roughness, with v2 source-detail contrast expanded for cloth/leather/stone.",
+      "standard": {
+        "albedo": "leather-albedo-512.png",
+        "normal": "leather-normal-512.png",
+        "roughness": "leather-roughness-256.png"
+      },
+      "low": {
+        "albedo": "leather-albedo-256.png"
+      },
+      "files": {
+        "leather-albedo-512.png": {
+          "width": 512,
+          "height": 512,
+          "bytes": 318468,
+          "sha256": "4cf3acdacb1dd74e07fe0486f9360da8da76145e674e91f168fbac1d0ab4c525",
+          "colorSpace": "sRGB",
+          "technicalType": "color modulation, neutral low contrast, not replacement palette",
+          "estimatedGpuRgba8WithMipsBytes": 1398100,
+          "quality": {
+            "width": 512,
+            "height": 512,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.7960785031318665,
+              0.7960785031318665,
+              0.7960785031318665
+            ],
+            "meanRGB": [
+              0.8923377990722656,
+              0.8923377990722656,
+              0.8923377990722656
+            ],
+            "maxRGB": [
+              0.9921569228172302,
+              0.9921569228172302,
+              0.9921569228172302
+            ],
+            "edgeMeanAbsDifferenceX": 0.04840685799717903,
+            "edgeMeanAbsDifferenceY": 0.07101715356111526,
+            "adjacentPixelMeanAbsDifferenceX": 0.044027384370565414,
+            "adjacentPixelMeanAbsDifferenceY": 0.05774043872952461
+          }
+        },
+        "leather-normal-512.png": {
+          "width": 512,
+          "height": 512,
+          "bytes": 634490,
+          "sha256": "fe8e1ce427fa2c1d2abbe8e6802f1fc49c33f81344c0f297a207514421d6994d",
+          "colorSpace": "Non-Color",
+          "technicalType": "OpenGL +Y tangent-space normal from source luminance via Blender Bump node + NORMAL bake",
+          "estimatedGpuRgba8WithMipsBytes": 1398100,
+          "quality": {
+            "width": 512,
+            "height": 512,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.2196078598499298,
+              0.21176472306251526,
+              0.8862745761871338
+            ],
+            "meanRGB": [
+              0.49995550513267517,
+              0.4999200701713562,
+              0.9880541563034058
+            ],
+            "maxRGB": [
+              0.8117647767066956,
+              0.7843137979507446,
+              1.0
+            ],
+            "edgeMeanAbsDifferenceX": 0.06503012031316757,
+            "edgeMeanAbsDifferenceY": 0.07489531487226486,
+            "adjacentPixelMeanAbsDifferenceX": 0.05704519525170326,
+            "adjacentPixelMeanAbsDifferenceY": 0.0676032304763794
+          }
+        },
+        "leather-roughness-256.png": {
+          "width": 256,
+          "height": 256,
+          "bytes": 81106,
+          "sha256": "d5cde0823d3d8f0672cabd9b3b7a60b53e7d73ee20187dfe4239b01a2f900def",
+          "colorSpace": "Non-Color",
+          "technicalType": "linear roughness multiplier from source luminance via Blender Map Range + EMIT bake",
+          "estimatedGpuRgba8WithMipsBytes": 349524,
+          "quality": {
+            "width": 256,
+            "height": 256,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.7490196228027344,
+              0.7490196228027344,
+              0.7490196228027344
+            ],
+            "meanRGB": [
+              0.8486002683639526,
+              0.8486002683639526,
+              0.8486002683639526
+            ],
+            "maxRGB": [
+              0.960784375667572,
+              0.960784375667572,
+              0.960784375667572
+            ],
+            "edgeMeanAbsDifferenceX": 0.05707720294594765,
+            "edgeMeanAbsDifferenceY": 0.06724876910448074,
+            "adjacentPixelMeanAbsDifferenceX": 0.04899954795837402,
+            "adjacentPixelMeanAbsDifferenceY": 0.05664227157831192
+          }
+        },
+        "leather-albedo-256.png": {
+          "width": 256,
+          "height": 256,
+          "bytes": 79985,
+          "sha256": "d6ce86a16e6ed599dc5309886e9eeb08eb6f4d1e41032de3d9d030d953d7bd04",
+          "colorSpace": "sRGB",
+          "technicalType": "color modulation, neutral low contrast, not replacement palette",
+          "estimatedGpuRgba8WithMipsBytes": 349524,
+          "quality": {
+            "width": 256,
+            "height": 256,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.7960785031318665,
+              0.7960785031318665,
+              0.7960785031318665
+            ],
+            "meanRGB": [
+              0.8941598534584045,
+              0.8941598534584045,
+              0.8941598534584045
+            ],
+            "maxRGB": [
+              0.9921569228172302,
+              0.9921569228172302,
+              0.9921569228172302
+            ],
+            "edgeMeanAbsDifferenceX": 0.05260416492819786,
+            "edgeMeanAbsDifferenceY": 0.061871934682130814,
+            "adjacentPixelMeanAbsDifferenceX": 0.04521770775318146,
+            "adjacentPixelMeanAbsDifferenceY": 0.052265893667936325
+          }
+        }
+      },
+      "source": {
+        "file": "source/leather-source.png",
+        "sha256": "28fe8aedb5f43a2f28ee4d7f6130569c79bd7c96252a6ee3b8c594423d9543d2",
+        "bytes": 3313026,
+        "quality": {
+          "width": 1254,
+          "height": 1254,
+          "decodedBy": "Blender 4.3 Image datablock",
+          "minRGB": [
+            0.41568630933761597,
+            0.3803921937942505,
+            0.364705890417099
+          ],
+          "meanRGB": [
+            0.6294509768486023,
+            0.5970175266265869,
+            0.5674939751625061
+          ],
+          "maxRGB": [
+            0.8509804606437683,
+            0.8274510502815247,
+            0.7843137979507446
+          ],
+          "edgeMeanAbsDifferenceX": 0.04579020291566849,
+          "edgeMeanAbsDifferenceY": 0.04597783833742142,
+          "adjacentPixelMeanAbsDifferenceX": 0.03540048748254776,
+          "adjacentPixelMeanAbsDifferenceY": 0.04703368619084358
+        }
+      }
+    },
+    "stone": {
+      "materials": [
+        "stone",
+        "stoneDark",
+        "stoneLight",
+        "rockDark",
+        "rockLight",
+        "moss"
+      ],
+      "tileWorldUnits": 1.5,
+      "normalScale": [
+        0.4,
+        0.4
+      ],
+      "bumpDistance": 0.01,
+      "roughnessRange": [
+        0.8,
+        0.98
+      ],
+      "albedoLinearRange": [
+        0.6,
+        0.98
+      ],
+      "sourceLuminanceRange": [
+        0.3,
+        0.69
+      ],
+      "repeat": [
+        1,
+        1
+      ],
+      "roughnessMapStrength": 1,
+      "roughnessUsage": "Multiply the existing MeshStandardMaterial roughness by the G channel; preserve its scalar. This map stays high-roughness, with v2 source-detail contrast expanded for cloth/leather/stone.",
+      "standard": {
+        "albedo": "stone-albedo-512.png",
+        "normal": "stone-normal-512.png",
+        "roughness": "stone-roughness-256.png"
+      },
+      "low": {
+        "albedo": "stone-albedo-256.png"
+      },
+      "files": {
+        "stone-albedo-512.png": {
+          "width": 512,
+          "height": 512,
+          "bytes": 305416,
+          "sha256": "da0eac4ce10bbd19df0a9ca38ac89c4e2c2db3c303fcbefcdcfe822beea866b1",
+          "colorSpace": "sRGB",
+          "technicalType": "color modulation, neutral low contrast, not replacement palette",
+          "estimatedGpuRgba8WithMipsBytes": 1398100,
+          "quality": {
+            "width": 512,
+            "height": 512,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.7960785031318665,
+              0.7960785031318665,
+              0.7960785031318665
+            ],
+            "meanRGB": [
+              0.9053573608398438,
+              0.9053573608398438,
+              0.9053573608398438
+            ],
+            "maxRGB": [
+              0.9921569228172302,
+              0.9921569228172302,
+              0.9921569228172302
+            ],
+            "edgeMeanAbsDifferenceX": 0.043121933937072754,
+            "edgeMeanAbsDifferenceY": 0.0430912971496582,
+            "adjacentPixelMeanAbsDifferenceX": 0.03803408145904541,
+            "adjacentPixelMeanAbsDifferenceY": 0.0385197214782238
+          }
+        },
+        "stone-normal-512.png": {
+          "width": 512,
+          "height": 512,
+          "bytes": 750095,
+          "sha256": "a9bbf7d9809d85ff9dbc83962500a346fe4182241cfa71924f03353e01f2a767",
+          "colorSpace": "Non-Color",
+          "technicalType": "OpenGL +Y tangent-space normal from source luminance via Blender Bump node + NORMAL bake",
+          "estimatedGpuRgba8WithMipsBytes": 1398100,
+          "quality": {
+            "width": 512,
+            "height": 512,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.05882353335618973,
+              0.07058823853731155,
+              0.7176470756530762
+            ],
+            "meanRGB": [
+              0.49980980157852173,
+              0.5008929371833801,
+              0.9263355135917664
+            ],
+            "maxRGB": [
+              0.9450981020927429,
+              0.9372549653053284,
+              1.0
+            ],
+            "edgeMeanAbsDifferenceX": 0.17414472997188568,
+            "edgeMeanAbsDifferenceY": 0.17063672840595245,
+            "adjacentPixelMeanAbsDifferenceX": 0.15900062024593353,
+            "adjacentPixelMeanAbsDifferenceY": 0.16301342844963074
+          }
+        },
+        "stone-roughness-256.png": {
+          "width": 256,
+          "height": 256,
+          "bytes": 76340,
+          "sha256": "ff53650df146804c7bb29f94ad5272abb7cc6a2210690f258a13674528c118c8",
+          "colorSpace": "Non-Color",
+          "technicalType": "linear roughness multiplier from source luminance via Blender Map Range + EMIT bake",
+          "estimatedGpuRgba8WithMipsBytes": 349524,
+          "quality": {
+            "width": 256,
+            "height": 256,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.8000000715255737,
+              0.8000000715255737,
+              0.8000000715255737
+            ],
+            "meanRGB": [
+              0.8964256048202515,
+              0.8964256048202515,
+              0.8964256048202515
+            ],
+            "maxRGB": [
+              0.9803922176361084,
+              0.9803922176361084,
+              0.9803922176361084
+            ],
+            "edgeMeanAbsDifferenceX": 0.04540440812706947,
+            "edgeMeanAbsDifferenceY": 0.039537373930215836,
+            "adjacentPixelMeanAbsDifferenceX": 0.037175118923187256,
+            "adjacentPixelMeanAbsDifferenceY": 0.037213269621133804
+          }
+        },
+        "stone-albedo-256.png": {
+          "width": 256,
+          "height": 256,
+          "bytes": 77273,
+          "sha256": "8a8fc3aa4105eaa4b685ded07f783de72173dcc312d7af4b9c1548d2f2efca5e",
+          "colorSpace": "sRGB",
+          "technicalType": "color modulation, neutral low contrast, not replacement palette",
+          "estimatedGpuRgba8WithMipsBytes": 349524,
+          "quality": {
+            "width": 256,
+            "height": 256,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.7960785031318665,
+              0.7960785031318665,
+              0.7960785031318665
+            ],
+            "meanRGB": [
+              0.906838059425354,
+              0.906838059425354,
+              0.906838059425354
+            ],
+            "maxRGB": [
+              0.9921569228172302,
+              0.9921569228172302,
+              0.9921569228172302
+            ],
+            "edgeMeanAbsDifferenceX": 0.04794729873538017,
+            "edgeMeanAbsDifferenceY": 0.04235600307583809,
+            "adjacentPixelMeanAbsDifferenceX": 0.03946751356124878,
+            "adjacentPixelMeanAbsDifferenceY": 0.03948487341403961
+          }
+        }
+      },
+      "source": {
+        "file": "source/stone-source.png",
+        "sha256": "f5c214aebe4cd7153520a5410d4ddcb6b151b5341757f2c45436dd3feab2b73b",
+        "bytes": 3389296,
+        "quality": {
+          "width": 1254,
+          "height": 1254,
+          "decodedBy": "Blender 4.3 Image datablock",
+          "minRGB": [
+            0.20000001788139343,
+            0.18039216101169586,
+            0.16862745583057404
+          ],
+          "meanRGB": [
+            0.7677174806594849,
+            0.7320758700370789,
+            0.6782240867614746
+          ],
+          "maxRGB": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "edgeMeanAbsDifferenceX": 0.05109507218003273,
+          "edgeMeanAbsDifferenceY": 0.06267840415239334,
+          "adjacentPixelMeanAbsDifferenceX": 0.04293917492032051,
+          "adjacentPixelMeanAbsDifferenceY": 0.043985988944768906
+        }
+      }
+    },
+    "soil": {
+      "materials": [],
+      "tileWorldUnits": 2.0,
+      "normalScale": [
+        0.25,
+        0.25
+      ],
+      "bumpDistance": 0.012,
+      "roughnessRange": [
+        0.93,
+        0.99
+      ],
+      "albedoLinearRange": [
+        0.78,
+        0.98
+      ],
+      "sourceLuminanceRange": [
+        0.05,
+        0.8
+      ],
+      "repeat": [
+        1,
+        1
+      ],
+      "roughnessMapStrength": 1,
+      "roughnessUsage": "Multiply the existing MeshStandardMaterial roughness by the G channel; preserve its scalar. This map stays high-roughness, with v2 source-detail contrast expanded for cloth/leather/stone.",
+      "standard": {
+        "albedo": "soil-albedo-512.png",
+        "normal": "soil-normal-512.png",
+        "roughness": "soil-roughness-256.png"
+      },
+      "low": {
+        "albedo": "soil-albedo-256.png"
+      },
+      "files": {
+        "soil-albedo-512.png": {
+          "width": 512,
+          "height": 512,
+          "bytes": 223937,
+          "sha256": "02d90ad099441e6db061f2e8a03a3577102e9abb208810e39b3e4c56f7d71351",
+          "colorSpace": "sRGB",
+          "technicalType": "color modulation, neutral low contrast, not replacement palette",
+          "estimatedGpuRgba8WithMipsBytes": 1398100,
+          "quality": {
+            "width": 512,
+            "height": 512,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.8980392813682556,
+              0.8980392813682556,
+              0.8980392813682556
+            ],
+            "meanRGB": [
+              0.9191500544548035,
+              0.9191500544548035,
+              0.9191500544548035
+            ],
+            "maxRGB": [
+              0.9921569228172302,
+              0.9921569228172302,
+              0.9921569228172302
+            ],
+            "edgeMeanAbsDifferenceX": 0.011619177646934986,
+            "edgeMeanAbsDifferenceY": 0.01095281820744276,
+            "adjacentPixelMeanAbsDifferenceX": 0.009705818258225918,
+            "adjacentPixelMeanAbsDifferenceY": 0.009962472133338451
+          }
+        },
+        "soil-normal-512.png": {
+          "width": 512,
+          "height": 512,
+          "bytes": 754808,
+          "sha256": "c76f514f3a0e3152b44d607d0b249305474872072096fe6ad6ddee3a891868c6",
+          "colorSpace": "Non-Color",
+          "technicalType": "OpenGL +Y tangent-space normal from source luminance via Blender Bump node + NORMAL bake",
+          "estimatedGpuRgba8WithMipsBytes": 1398100,
+          "quality": {
+            "width": 512,
+            "height": 512,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.05490196496248245,
+              0.05490196496248245,
+              0.7058823704719543
+            ],
+            "meanRGB": [
+              0.4974820911884308,
+              0.5023234486579895,
+              0.91766756772995
+            ],
+            "maxRGB": [
+              0.9529412388801575,
+              0.9411765336990356,
+              1.0
+            ],
+            "edgeMeanAbsDifferenceX": 0.17967474460601807,
+            "edgeMeanAbsDifferenceY": 0.17980240285396576,
+            "adjacentPixelMeanAbsDifferenceX": 0.1651410311460495,
+            "adjacentPixelMeanAbsDifferenceY": 0.1719510853290558
+          }
+        },
+        "soil-roughness-256.png": {
+          "width": 256,
+          "height": 256,
+          "bytes": 51734,
+          "sha256": "acf7ba2be6a032687fe10466ecc67bc12c284e99dba7aa8eed3e648c58de762d",
+          "colorSpace": "Non-Color",
+          "technicalType": "linear roughness multiplier from source luminance via Blender Map Range + EMIT bake",
+          "estimatedGpuRgba8WithMipsBytes": 349524,
+          "quality": {
+            "width": 256,
+            "height": 256,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.9294118285179138,
+              0.9294118285179138,
+              0.9294118285179138
+            ],
+            "meanRGB": [
+              0.9447206258773804,
+              0.9447206258773804,
+              0.9447206258773804
+            ],
+            "maxRGB": [
+              0.988235354423523,
+              0.988235354423523,
+              0.988235354423523
+            ],
+            "edgeMeanAbsDifferenceX": 0.0076593137346208096,
+            "edgeMeanAbsDifferenceY": 0.00802696030586958,
+            "adjacentPixelMeanAbsDifferenceX": 0.00652705691754818,
+            "adjacentPixelMeanAbsDifferenceY": 0.0065693482756614685
+          }
+        },
+        "soil-albedo-256.png": {
+          "width": 256,
+          "height": 256,
+          "bytes": 59094,
+          "sha256": "f08e0095adf4846efcd77effe6e511da0a0f2d2d0462cea623f0f15233bfd339",
+          "colorSpace": "sRGB",
+          "technicalType": "color modulation, neutral low contrast, not replacement palette",
+          "estimatedGpuRgba8WithMipsBytes": 349524,
+          "quality": {
+            "width": 256,
+            "height": 256,
+            "decodedBy": "Blender 4.3 Image datablock",
+            "minRGB": [
+              0.8980392813682556,
+              0.8980392813682556,
+              0.8980392813682556
+            ],
+            "meanRGB": [
+              0.9205979704856873,
+              0.9205979704856873,
+              0.9205979704856873
+            ],
+            "maxRGB": [
+              0.9921569228172302,
+              0.9921569228172302,
+              0.9921569228172302
+            ],
+            "edgeMeanAbsDifferenceX": 0.012699142098426819,
+            "edgeMeanAbsDifferenceY": 0.013005513697862625,
+            "adjacentPixelMeanAbsDifferenceX": 0.010648727416992188,
+            "adjacentPixelMeanAbsDifferenceY": 0.010692941956222057
+          }
+        }
+      },
+      "source": {
+        "file": "source/soil-source.png",
+        "sha256": "f429d5b1a82da10628c887b018670dd75dd1bd0ebc8ab88942371c5474b48140",
+        "bytes": 3498432,
+        "quality": {
+          "width": 1254,
+          "height": 1254,
+          "decodedBy": "Blender 4.3 Image datablock",
+          "minRGB": [
+            0.1725490242242813,
+            0.14901961386203766,
+            0.12156863510608673
+          ],
+          "meanRGB": [
+            0.6108060479164124,
+            0.5519421100616455,
+            0.48654189705848694
+          ],
+          "maxRGB": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "edgeMeanAbsDifferenceX": 0.07123765349388123,
+          "edgeMeanAbsDifferenceY": 0.0679967850446701,
+          "adjacentPixelMeanAbsDifferenceX": 0.050614532083272934,
+          "adjacentPixelMeanAbsDifferenceY": 0.052542101591825485
+        }
+      }
+    }
+  },
+  "budget": {
+    "basis": "Conservative RGBA8 allocation, complete mip chain, one shared Texture per path; does not multiply by mesh/material count. Original sources and bake blend files are production inputs only, never loaded at runtime.",
+    "completeSets": [
+      "cloth",
+      "leather",
+      "stone",
+      "soil"
+    ],
+    "standardTextureCount": 12,
+    "standardGpuRgba8WithMipsBytes": 12582896,
+    "standardGpuMiB": 11.999984741210938,
+    "lowTextureCount": 4,
+    "lowGpuRgba8WithMipsBytes": 1398096,
+    "lowGpuMiB": 1.3333282470703125,
+    "bothTiersResidentGpuRgba8WithMipsBytes": 13980992,
+    "bothTiersResidentGpuMiB": 13.33331298828125,
+    "limitMiB": 13,
+    "allProductionPngDiskBytes": 4528120,
+    "allSourcePngDiskBytes": 13604486,
+    "tierResidencyPolicy": "Keep only the active quality tier resident. Both tiers simultaneously consume 13.333 MiB, above the 13 MiB target; dispose the retired tier on a quality change."
+  },
+  "calibrationVersion": "v2-visible-detail",
+  "calibrationHistory": [
+    {
+      "version": "v2-visible-detail",
+      "date": "2026-10-06",
+      "reason": "Actual same-camera camp comparison showed the first material calibration was too faint. One bounded contrast/normal/roughness calibration; original images, dimensions, UV and model geometry stay unchanged.",
+      "previousVersion": "v1-pale-modulation",
+      "previousManifest": "versions/calibration-v1-manifest.json",
+      "changes": {
+        "cloth": {
+          "before": {
+            "albedoLinearRange": [
+              0.78,
+              0.98
+            ],
+            "sourceLuminanceRange": [
+              0.05,
+              0.8
+            ],
+            "normalScale": [
+              0.18,
+              0.18
+            ],
+            "roughnessRange": [
+              0.9,
+              0.99
+            ]
+          },
+          "after": {
+            "albedoLinearRange": [
+              0.6,
+              0.98
+            ],
+            "sourceLuminanceRange": [
+              0.24,
+              0.68
+            ],
+            "normalScale": [
+              0.35,
+              0.35
+            ],
+            "roughnessRange": [
+              0.8,
+              0.98
+            ]
+          }
+        },
+        "leather": {
+          "before": {
+            "albedoLinearRange": [
+              0.78,
+              0.98
+            ],
+            "sourceLuminanceRange": [
+              0.05,
+              0.8
+            ],
+            "normalScale": [
+              0.2,
+              0.2
+            ],
+            "roughnessRange": [
+              0.86,
+              0.96
+            ]
+          },
+          "after": {
+            "albedoLinearRange": [
+              0.6,
+              0.98
+            ],
+            "sourceLuminanceRange": [
+              0.22,
+              0.44
+            ],
+            "normalScale": [
+              0.35,
+              0.35
+            ],
+            "roughnessRange": [
+              0.75,
+              0.96
+            ]
+          }
+        },
+        "stone": {
+          "before": {
+            "albedoLinearRange": [
+              0.78,
+              0.98
+            ],
+            "sourceLuminanceRange": [
+              0.05,
+              0.8
+            ],
+            "normalScale": [
+              0.28,
+              0.28
+            ],
+            "roughnessRange": [
+              0.88,
+              0.98
+            ]
+          },
+          "after": {
+            "albedoLinearRange": [
+              0.6,
+              0.98
+            ],
+            "sourceLuminanceRange": [
+              0.3,
+              0.69
+            ],
+            "normalScale": [
+              0.4,
+              0.4
+            ],
+            "roughnessRange": [
+              0.8,
+              0.98
+            ]
+          }
+        },
+        "soil": {
+          "before": {
+            "albedoLinearRange": [
+              0.78,
+              0.98
+            ],
+            "sourceLuminanceRange": [
+              0.05,
+              0.8
+            ],
+            "normalScale": [
+              0.25,
+              0.25
+            ],
+            "roughnessRange": [
+              0.93,
+              0.99
+            ]
+          },
+          "after": {
+            "albedoLinearRange": [
+              0.78,
+              0.98
+            ],
+            "sourceLuminanceRange": [
+              0.05,
+              0.8
+            ],
+            "normalScale": [
+              0.25,
+              0.25
+            ],
+            "roughnessRange": [
+              0.93,
+              0.99
+            ]
+          }
+        }
+      },
+      "scope": "Production PNG rebake and material recommendations only; normal maps remain OpenGL +Y without a green-channel inversion.",
+      "referenceFromStudyRoot": "evidence/camp-MATERIAL-LIGHT-COMPARISON.png"
+    }
+  ]
+}
