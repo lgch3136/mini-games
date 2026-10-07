@@ -13,8 +13,8 @@ export function createHeroPresentation(T,hero,height){
   for(const knee of hero.knees){const inv=knee.matrixWorld.clone().invert(),points=[];knee.traverse(o=>{if(!o.isMesh||!(o.material.name==='darkLeather'||o.userData.heroSoleSupport===true||o.userData.heroSoleSource===true||o.material.userData.sourceMaterials?.includes('darkLeather')))return;const transform=inv.clone().multiply(o.matrixWorld),a=o.geometry.attributes.position;for(let i=0;i<a.count;i++)points.push(new T.Vector3().fromBufferAttribute(a,i).applyMatrix4(transform));});let low=Math.min(...points.map(p=>p.y));const dedup=new Map();for(const p of points)if(p.y<low+.015){const key=p.toArray().map(x=>x.toFixed(4)).join(',');dedup.set(key,p);}soleSamples.push({knee,points:[...dedup.values()]});}
   let phase=0,walkWeight=0,lastOpacity=1;
   const smooth=x=>{x=T.MathUtils.clamp(x,0,1);return x*x*(3-2*x);};
-  function update(dt,{walking,attackTime,dodgeTime}){
-    walkWeight=T.MathUtils.damp(walkWeight,walking?1:0,14,dt);
+  function update(dt,{walking,attackTime,dodgeTime,grounded=true}){
+    walkWeight=T.MathUtils.damp(walkWeight,walking&&grounded?1:0,14,dt);
     phase+=dt*(2+8*walkWeight);
     const stride=Math.sin(phase),hip=stride*.65*walkWeight;
     const dodgeProgress=dodgeTime>0?T.MathUtils.clamp((.32-dodgeTime)/.32,0,1):1;
@@ -38,7 +38,8 @@ export function createHeroPresentation(T,hero,height){
     hero.body.updateWorldMatrix(true,true);
     let clearance=Infinity;
     for(const {knee,points}of soleSamples)for(const p of points){v.copy(p).applyMatrix4(knee.matrixWorld);clearance=Math.min(clearance,v.y-height(v.x,v.z));}
-    if(Number.isFinite(clearance))hero.body.position.y=T.MathUtils.clamp(.005-clearance,-.4,.4);
+    // Airborne soles can still meet an uphill surface: lift them clear, never pull the jump down.
+    if(Number.isFinite(clearance))hero.body.position.y=T.MathUtils.clamp(.005-clearance,grounded?-.4:0,.4);
     hero.body.updateWorldMatrix(false,true);
   }
   function setOpacity(alpha){alpha=T.MathUtils.clamp(alpha,0,1);const fading=alpha<.999;if(alpha===lastOpacity)return;lastOpacity=alpha;for(const m of materials){if(m.transparent!==fading){m.transparent=fading;m.needsUpdate=true;}m.opacity=alpha;m.depthWrite=!fading;}}

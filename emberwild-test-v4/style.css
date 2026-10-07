@@ -2,3 +2,6 @@
 @media(pointer:coarse){#interact{min-height:56px}.actions #attack{width:72px;height:72px}#pause{min-width:48px;min-height:48px}}
 
 
+
+/* Keep three deliberate action targets clear of the left joystick on narrow touch screens. */
+@media(pointer:coarse){.actions{display:grid;grid-template-columns:60px 72px;gap:10px;right:max(18px,env(safe-area-inset-right))}.actions button{width:60px;height:60px}.actions #jump{grid-column:1;grid-row:1}.actions #dodge{grid-column:1;grid-row:2}.actions #attack{grid-column:2;grid-row:2}#interact{bottom:195px}#toast{bottom:265px}}
