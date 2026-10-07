@@ -1,4 +1,4 @@
-import {GAME_GUIDE,matchesGame,readRecent,saveRecent} from './arcade-catalog.mjs?v=20261007-emberwild-entry';
+import {GAME_GUIDE,matchesGame,readRecent,saveRecent} from './arcade-catalog.mjs?v=20261007-rpg';
 const cards=[...document.querySelectorAll('.card[data-cat]')], filters=[...document.querySelectorAll('.filter')], paces=[...document.querySelectorAll('[data-pace]')];
 const input=document.querySelector('#game-search'),count=document.querySelector('#catalog-count'),empty=document.querySelector('#catalog-empty');
 const state={filter:'all',pace:'all',query:''};

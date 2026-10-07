@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>余烬旷野</title><link rel="stylesheet" href="./style.css?v=20261007-controls"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script></head><body>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>余烬旷野</title><link rel="stylesheet" href="./style.css?v=20261007-controls"><link rel="stylesheet" href="./rpg-ui.css?v=20261007-rpg"><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script></head><body>
 <!-- Newly implemented DOM shell based on recovered game.mjs bindings; not recovered original index bytes. -->
 <canvas id="world" tabindex="0" aria-label="余烬旷野第三人称探索场景：WASD 移动，拖动镜头，F 挥剑，Shift 闪避，空格跳跃，E 互动，Esc 暂停"></canvas><div id="vignette"></div>
 <header><div class="brand">余烬旷野<small>灯火未眠 · 第一章</small></div><button id="pause" aria-label="暂停（Esc）" aria-keyshortcuts="Escape">Ⅱ</button></header>
@@ -7,6 +7,6 @@
 <div id="quest"><small>守灯人的委托</small><strong id="objective"></strong><p id="detail"></p></div><div id="compass"></div><div id="place"></div><div id="toast" role="status"></div><button id="interact" aria-label="互动（E）" aria-keyshortcuts="E">交谈</button>
 <div id="hint">WASD 移动　拖动镜头　F 挥剑　Shift 闪避　空格跳跃　E 互动　Esc 暂停</div>
 <div id="touch"><div id="stick" aria-label="移动摇杆"><i></i></div><div class="actions"><button id="jump" aria-label="跳跃（空格）" aria-keyshortcuts="Space">跳跃</button><button id="dodge" aria-label="闪避（Shift）" aria-keyshortcuts="Shift">闪避</button><button id="attack" aria-label="挥剑（F）" aria-keyshortcuts="F">挥剑</button></div></div>
-<div id="screen" class="overlay"><article><small>原创奇幻探索 · 本地候选</small><h1>余烬旷野</h1><p>沿着灯火走入山谷，寻回失落的余烬</p><p id="loading">正在准备林地…</p><button id="start">开始旅程</button></article></div>
-<div id="dialog" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogText"><article><small id="dialogLabel"></small><h1 id="dialogTitle"></h1><p id="dialogText"></p><button id="closeDialog">继续旅程</button><button id="restart" class="secondary hidden">重新开始</button></article></div>
-<script type="module">import('./game.mjs?v=20261007-controls').catch(error=>{console.error(error);document.querySelector('#loading').textContent='场景未能启动。请使用支持 WebGL2 的浏览器通过本地 HTTP 打开，并确认资源完整。';document.querySelector('#start').disabled=true;});</script></body></html>
+<div id="screen" class="overlay"><article><small>原创奇幻探索 · 公开测试</small><h1>余烬旷野</h1><p>沿着灯火走入山谷，寻回失落的余烬</p><p id="loading">正在准备林地…</p><button id="start">开始旅程</button></article></div>
+<div id="dialog" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogText"><article><small id="dialogLabel"></small><h1 id="dialogTitle"></h1><p id="dialogText"></p><button id="closeDialog">继续旅程</button><button id="restart" class="secondary hidden">重新载入存档</button></article></div>
+<script type="module">import('./game.mjs?v=20261007-rpg').catch(error=>{console.error(error);document.querySelector('#loading').textContent='场景未能启动。请使用启用 WebGL2 的浏览器，并确认网络能完整载入资源。';document.querySelector('#start').disabled=true;});</script></body></html>

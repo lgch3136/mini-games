@@ -1,0 +1,7 @@
+Emberwild / 余烬旷野 — asset and dependency notices
+
+Three.js and its included example utilities are distributed under the MIT license; see vendor/LICENSE.
+
+Game code and production geometry, material atlases and score are original work prepared for this project. The newer hero and camp were developed from original image-generation references and edited/generated in Blender. These are not World of Warcraft assets or official Blizzard content. The music score is original procedural synthesis; no commercial recordings or external sample libraries are included.
+
+The runtime package contains no authoring .blend files or original concept images. CPU preview images, when supplied separately, illustrate the production assets but are not WebGL captures.
