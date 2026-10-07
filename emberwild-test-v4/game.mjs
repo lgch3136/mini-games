@@ -1,10 +1,12 @@
 import * as T from './vendor/three.module.min.js';
-import {asset,findPart,templateStats,visualResourceDiagnostics} from './visual-r8.mjs?v=20261007-r8';
+import {asset,findPart,templateStats,visualResourceDiagnostics} from './visual-r10.mjs?v=20261007-r10';
 import {createHeroPresentation} from './hero-presentation-r8.mjs?v=20261007-r8';
 import {quality,qualityBudget} from './quality.mjs';
-import {groundMaterials,prepareGroundGeometry,groundDiagnostics} from './ground-r8.mjs?v=20261007-r8';
-import {createNearPlaneGuard} from './camera-clearance-r8.mjs?v=20261007-r8';
-import {addCampCover} from './camp-cover-r8.mjs?v=20261007-r8';
+import {groundMaterials,prepareGroundGeometry,groundDiagnostics} from './ground-r10.mjs?v=20261007-r10';
+import {createNearPlaneGuard} from './camera-clearance-r10.mjs?v=20261007-r10';
+import {addCampCover} from './camp-cover-r10.mjs?v=20261007-r10';
+import {addUnderstory} from './understory-r10.mjs?v=20261007-r10';
+import {createCameraAlphaFilter} from './camera-alpha-r10.mjs?v=20261007-r10';
 import {addStreamCover} from './stream-cover-r9.mjs?v=20261007-r9';
 import {createRigSupport} from './rig-support-r8.mjs?v=20261007-r8';
 import {createLightEffects} from './light-effects-r8.mjs?v=20261007-r8';
@@ -124,6 +126,7 @@ function batchStaticScenery(){const groups=new Map();for(const root of staticRoo
 if(state.quest===2)scene.traverse(m=>{if(m.isMesh&&m.material.userData?.campRelightBase!==undefined)m.material.emissiveIntensity=m.material.userData.campRelightBase*1.6;});
 batchStaticScenery();stream();
 const campCover=addCampCover({T,scene,asset,height,routeX,quality});
+const understory=addUnderstory({T,scene,asset,height,routeX,quality,occluders});
 const lightEffects=createLightEffects({T,scene,hero,height,quality});
 const skillEffects=createSkillEffects({T,scene,hero,height,quality});
 const lightBudget=createLightBudget(scene,qualityBudget.pointLights);
@@ -236,7 +239,7 @@ const ray=new T.Raycaster(),target=new T.Vector3(),desired=new T.Vector3(),direc
 const cameraRight=new T.Vector3(),cameraUp=new T.Vector3(0,1,0),rayOrigin=new T.Vector3(),rayEnd=new T.Vector3(),rayDir=new T.Vector3();
 // The sparse, diagonal leaves of the authored tree can fit between arm rays.
 // Keep its near-plane sphere clear without adding rays to every world mesh.
-const cameraRetreat=new T.Vector3(),nearPlaneGuard=createNearPlaneGuard({T,quality,meshes:occluders});
+const cameraRetreat=new T.Vector3(),cameraAlpha=createCameraAlphaFilter({T,quality}),nearPlaneGuard=createNearPlaneGuard({T,quality,meshes:occluders,alphaFilter:cameraAlpha});
 const cameraClearanceStats={retreatSteps:0,radius:0,unresolved:0};
 function cameraTouchesTree(position,radius){return nearPlaneGuard.touches(position,radius);}
 function constrainTreeNearPlane(position){
@@ -258,7 +261,7 @@ function constrainCamera(position){
   rayOrigin.copy(target).addScaledVector(cameraRight,horizontal).addScaledVector(cameraUp,vertical);
   rayEnd.copy(position).addScaledVector(cameraRight,horizontal).addScaledVector(cameraUp,vertical);
   rayDir.copy(rayEnd).sub(rayOrigin).normalize();ray.set(rayOrigin,rayDir);ray.far=length;
-  const hits=ray.intersectObjects(occluders,false);if(hits.length)safe=Math.min(safe,Math.max(.45,hits[0].distance-.3));
+  const hit=cameraAlpha.firstSolidHit(ray.intersectObjects(occluders,false));if(hit)safe=Math.min(safe,Math.max(.45,hit.distance-.3));
  }
  // Terrain is analytic rather than an occluder mesh: sample the full arm, not only its endpoint.
  for(let d=.25;d<safe;d+=.2){rayEnd.copy(target).addScaledVector(direction,d);if(rayEnd.y<height(rayEnd.x,rayEnd.z)+.35){safe=Math.max(.45,d-.25);break;}}
@@ -326,9 +329,9 @@ Object.defineProperty(window,'emberwildDiagnostics',{get:()=>({chunks:chunks.siz
 // Pure scene exports are used by the offline production-geometry renderer, never auto-play controls.
 export {scene,renderer,hero,camera,templateStats,tick,attack,dodge,jump,interact,closeDialog,pause,enemies,solids,interactables,player,stream,updateCamera,occluders};
 export function inspectState(){return state;}
-export function inspectCameraClearance(){return {...nearPlaneGuard.stats,...cameraClearanceStats,...nearPlaneGuard.limits,meshes:cameraClearanceMeshes.length};}
+export function inspectCameraClearance(){return {...nearPlaneGuard.stats,...cameraAlpha.stats,...cameraAlpha.limits,alphaStats:{...cameraAlpha.stats},alphaLimits:{...cameraAlpha.limits},...cameraClearanceStats,...nearPlaneGuard.limits,meshes:cameraClearanceMeshes.length};}
 export function inspectMotion(){return {grounded,verticalVelocity,attackTime,dodgeTime,dodgeCd,damageCd,paused,yaw,pitch,movementYaw,mouseButtons,zoomDistance,zoomBounds:{...zoomBounds},moveX,moveZ,lookId,stickId,keys:[...keys]};}
 
 
 export function updatePresentationEffects(dt,elapsed=0){sceneLighting.update(dt,{playing,paused,hidden:document.hidden,quest:state.quest});lightEffects.update(dt,{elapsed,attackTime,dodgeTime,playing,paused:paused||document.hidden,camera,player});lightBudget.update(player);skillEffects.update(dt,{attackTime,dodgeTime,grounded,wardRemaining:state.wardRemaining,playing,paused,hidden:document.hidden,dead:state.dead,camera,player});}
-export function presentationDiagnostics(){return {quality,visualResources:visualResourceDiagnostics(),textures:groundDiagnostics(),groundCover:campCover.diagnostics,forestCover:[...chunks].map(([key,c])=>({chunk:key,...c.cover})),effects:lightEffects.diagnostics,skills:skillEffects.diagnostics,lights:lightBudget.diagnostics,sceneLighting:sceneLighting.diagnostics};}
+export function presentationDiagnostics(){return {quality,visualResources:visualResourceDiagnostics(),textures:groundDiagnostics(),groundCover:campCover.diagnostics,understory:understory.diagnostics,forestCover:[...chunks].map(([key,c])=>({chunk:key,...c.cover})),effects:lightEffects.diagnostics,skills:skillEffects.diagnostics,lights:lightBudget.diagnostics,sceneLighting:sceneLighting.diagnostics};}

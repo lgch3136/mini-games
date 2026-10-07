@@ -1,9 +1,11 @@
-Emberwild / 余烬旷野 — r9 asset and dependency notices
+Emberwild / 余烬旷野 — r10 asset and dependency notices
 
-Three.js and the included example utilities are distributed under the MIT license; see vendor/LICENSE.
+Three.js and the included example utilities use the MIT license. The runtime copy is app/vendor/LICENSE; the editable-source copy is LICENSE-THREE.txt.
 
-The game code, authored character/environment/architecture geometry, derived material atlases and musical score were prepared for this project. Original generated references and texture/icon sources are preserved in the editable source companion where available. The earlier cloth/leather/stone technical texture inputs are retained explicitly; their upstream generated originals were unavailable for this handoff and are not claimed to be recovered.
+Game code, character/environment/architecture geometry, technical material derivatives and musical score were authored for this project. Original generated references and texture/icon inputs are retained in the editable source where available. The botanical source is original AI-generated project material; technical atlases and alpha masks are reproducible derivations. Generated content is not claimed to have exclusive copyright.
 
-The assets are not World of Warcraft assets or official Blizzard content. The original music uses deterministic local synthesis, with no commercial recordings or downloaded sample library.
+The earlier cloth/leather/stone maps are preserved direct technical inputs. Their unavailable upstream generated originals are expressly recorded in docs/input-dependencies.json and are not claimed to have been recovered. Retained r9 architecture GLBs are exact direct inputs to the r10 camp merger, with editable geometry source also included. No downloaded third-party character/plant model or commercial recording/sample library was introduced.
 
-The runtime contains no authoring Blender files or reference artwork. CPU evidence in the source companion uses actual production geometry but approximate lighting and is not a native WebGL capture or GPU/FPS acceptance claim.
+The assets are original project work, not World of Warcraft assets or official Blizzard content. The music uses deterministic local synthesis.
+
+The runtime contains no private storage identities, authoring Blends, generated references or research dumps. CPU evidence uses actual production geometry with approximate lighting, materials and transparency; it is not native browser WebGL, GPU/FPS or real-device acceptance.
