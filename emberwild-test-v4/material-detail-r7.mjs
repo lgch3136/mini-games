@@ -1,0 +1,18 @@
+import * as T from './vendor/three.module.min.js';
+import {quality,qualityBudget} from './quality.mjs';
+const base=new URL('./assets/textures/',import.meta.url);
+const response=await fetch(new URL('manifest.json',base));
+if(!response.ok)throw Error('Production texture manifest unavailable');
+const manifest=await response.json();
+const soilResponse=await fetch(new URL('./assets/textures-r7/manifest-r7.json',import.meta.url));
+if(!soilResponse.ok)throw Error('Updated soil material unavailable');
+const soil=(await soilResponse.json()).sets.soil;
+manifest.sets.soil={...manifest.sets.soil,...soil};
+for(const tier of ['standard','low'])manifest.sets.soil[tier]=Object.fromEntries(Object.entries(soil[tier]).map(([key,file])=>[key,'../textures-r7/'+file]));
+const families={cloth:new Set(['linen','linenShade','linenLight','linenEdge','cloth','clothDark','teal','tealLight']),leather:new Set(['wornLeather','darkLeather','leatherEdge','leather','leatherLight']),stone:new Set(['stone','stoneDark','stoneLight','rockDark','rockLight','moss'])};
+const cache=new Map(),loader=new T.TextureLoader(),loaded={};
+function load(file,kind){const url=new URL(file,base).href;if(!cache.has(url))cache.set(url,loader.loadAsync(url).then(texture=>{texture.name=file;texture.flipY=false;texture.colorSpace=kind==='albedo'?T.SRGBColorSpace:T.NoColorSpace;texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.anisotropy=qualityBudget.anisotropy;texture.userData={...texture.userData,sourcePath:'assets/textures/'+file,role:kind};return texture;}));return cache.get(url);}
+await Promise.all(Object.entries(manifest.sets).map(async([family,set])=>{const files=set[quality];if(!files)throw Error('Missing texture tier '+family+'/'+quality);loaded[family]={};await Promise.all(Object.entries(files).map(async([kind,file])=>{if(typeof file==='string')loaded[family][kind]=await load(file,kind);}));}));
+export function applyMaterialDetail(material,family){const set=manifest.sets[family],maps=loaded[family];if(!maps)return material;material.map=maps.albedo??null;material.normalMap=maps.normal??null;material.roughnessMap=maps.roughness??null;if(material.normalMap){const strengths=set.normalScale??[.15,.15];const ySign=family==='soil'?-1:(Math.sign(material.normalScale.y)||1);material.normalScale.set(strengths[0],strengths[1]*ySign);}material.userData={...material.userData,detailFamily:family};material.needsUpdate=true;return material;}
+export function applyLibraryDetails(root){const applied=new Set();root.traverse(o=>{if(!o.isMesh)return;for(const m of Array.isArray(o.material)?o.material:[o.material]){if(applied.has(m))continue;applied.add(m);const declared=m.userData.detailFamily;const family=Object.hasOwn(families,declared)?declared:Object.keys(families).find(k=>families[k].has(m.name));if(family)applyMaterialDetail(m,family);}});}
+export function textureDiagnostics(){let bytes=0;const sizes=[];for(const [family,maps]of Object.entries(loaded))for(const [role,t]of Object.entries(maps)){const w=t.image?.width??0,h=t.image?.height??0;const rgbaMipBytes=Math.ceil(w*h*4*4/3);bytes+=rgbaMipBytes;sizes.push({family,role,width:w,height:h,rgbaMipBytes,path:t.userData.sourcePath});}return {quality,uniqueTextures:cache.size,rgbaMipBytes:bytes,mib:bytes/1048576,anisotropy:qualityBudget.anisotropy,sizes,browserDecodeVerified:false,note:'RGBA8 full-mip estimate only; neither GPU allocation nor FPS measurement'};}

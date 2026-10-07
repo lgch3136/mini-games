@@ -1,13 +1,15 @@
 import * as T from './vendor/three.module.min.js';
-import {asset,findPart,templateStats,visualResourceDiagnostics} from './visual-art-r5.mjs?v=20261007-rpg';
-import {createHeroPresentation} from './hero-presentation-r5.mjs?v=20261007-rpg';
-import {routeStoneVisual,routeStoneDiagnostics} from './route-stone.mjs';
+import {asset,findPart,templateStats,visualResourceDiagnostics} from './visual-art-r7.mjs?v=20261007-r7';
+import {createHeroPresentation} from './hero-presentation-r7.mjs?v=20261007-r7';
+import {routeStoneVisual,routeStoneDiagnostics} from './route-stone-r7.mjs?v=20261007-r7';
 import {quality,qualityBudget} from './quality.mjs';
-import {applyMaterialDetail,textureDiagnostics} from './material-detail.mjs';
+import {applyMaterialDetail,textureDiagnostics} from './material-detail-r7.mjs?v=20261007-r7';
 import {createLightEffects} from './light-effects.mjs';
+import {campTreeVisual,campTreeDiagnostics} from './camp-tree-r7.mjs?v=20261007-r7';
+import {createSkillEffects} from './skill-effects-r7.mjs?v=20261007-r7';
 import {createLightBudget} from './light-budget.mjs';
 import {routeX,height,rng,chunkSeed,resolveMove,makeState,talk,takeRelic,chest,hurt,retry,desiredChunks,LANDMARKS} from './core-rpg.mjs?v=20261007-rpg';
-import {createRpgUi} from './rpg-ui.mjs';
+import {createRpgUi} from './rpg-ui-r7.mjs?v=20261007-r7';
 import {createMusic} from './music.mjs';
 import {SKILLS,LIMITS,MAP_CELL_SIZE,loadRpgSave,writeRpgSave,levelForXp,xpForLevel,maxHp,weaponDamage,potionHealing,claimKill,tickRpg,activateSkill,setHotbarSlot,swapHotbarSlots,setHotbarAlias,setRpgPreference,campOffers,purchaseAtCamp,discoverAround} from './rpg-state.mjs';
 const $=s=>document.querySelector(s),canvas=$('#world');
@@ -17,7 +19,7 @@ const loadedSave=loadRpgSave(saveStorage);let saveStatus=loadedSave.status,saveC
 const renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='low'?1.25:1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
 const scene=new T.Scene();scene.background=new T.Color('#739293');scene.fog=new T.FogExp2('#739293',.008);const camera=new T.PerspectiveCamera(52,1,.1,220);scene.add(new T.HemisphereLight('#c2dce1','#2f453d',1.5));const sun=new T.DirectionalLight('#ffd7a0',3.5);sun.position.set(-35,65,25);sun.castShadow=true;sun.shadow.mapSize.set(qualityBudget.shadowSize,qualityBudget.shadowSize);Object.assign(sun.shadow.camera,{left:-50,right:50,top:50,bottom:-50,near:1,far:150});sun.shadow.bias=-.0008;scene.add(sun,sun.target);
 const mats=new Map(),geos=new Map();function mat(c,metal=0){const k=c+metal;if(!mats.has(k))mats.set(k,new T.MeshStandardMaterial({color:c,roughness:.85,metalness:metal}));return mats.get(k);}function geo(type,...a){const k=type+a.join(',');if(!geos.has(k))geos.set(k,new T[type](...a));return geos.get(k);}function mesh(g,c,x=0,y=0,z=0,parent=scene){const m=new T.Mesh(g,typeof c==='string'?mat(c):c);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}function box(w,h,d,c,x,y,z,p){return mesh(geo('BoxGeometry',w,h,d),c,x,y,z,p);}function sphere(r,c,x,y,z,p){return mesh(geo('IcosahedronGeometry',r,1),c,x,y,z,p);}function cyl(a,b,h,c,x,y,z,p,n=8){return mesh(geo('CylinderGeometry',a,b,h,n),c,x,y,z,p);}function group(x,z,p=scene){const g=new T.Group();g.position.set(x,height(x,z),z);p.add(g);return g;}
-const staticRoots=[],solids=[],occluders=[],enemies=[],interactables=[],chunks=new Map(),particles=[];let state=loadedSave.state,playing=false,paused=false,mode='',yaw=0,pitch=.08,attackTime=state.motion.attackRecovery,swingResolved=true,dodgeTime=0,dodgeCd=state.motion.dodgeCd,damageCd=0,elapsed=0,toastTimer=0,placeTimer=0,currentPlace='',shake=0,step=0,audio;let moveX=0,moveZ=0,pendingStrikeBonus=0;const keys=new Set(),actionPointers=new Map();
+const staticRoots=[],solids=[],occluders=[],cameraClearanceMeshes=[],enemies=[],interactables=[],chunks=new Map(),particles=[];let state=loadedSave.state,playing=false,paused=false,mode='',yaw=0,pitch=.08,attackTime=state.motion.attackRecovery,swingResolved=true,dodgeTime=0,dodgeCd=state.motion.dodgeCd,damageCd=0,elapsed=0,toastTimer=0,placeTimer=0,currentPlace='',shake=0,step=0,audio;let moveX=0,moveZ=0,pendingStrikeBonus=0,jumpStarted=false;const keys=new Set(),actionPointers=new Map();
 // Vertical motion is independent of combat timers and the existing horizontal collider path.
 const JUMP_SPEED=6.2,GRAVITY=18;let grounded=true,verticalVelocity=0;
 
@@ -31,7 +33,7 @@ const trailPoints=Array.from({length:177},(_,i)=>{const z=18-i*.5;return{x:route
 function clearTrail(x,z,r){for(let k=0;k<4;k++){let best=null,d=Infinity;for(const p of trailPoints){const q=Math.hypot(x-p.x,z-p.z);if(q<d){d=q;best=p;}}if(d>=r+1.9)break;const dx=x-best.x,dz=z-best.z;x=best.x+(dx||.1)/Math.max(d,.1)*(r+2.05);z=best.z+dz/Math.max(d,.1)*(r+2.05);}return{x,z};}
 function placeAsset(name,x,z,parent=scene,scale=1,rotation=0){const g=asset(name);g.position.set(x,height(x,z),z);g.scale.multiplyScalar(scale);g.rotation.y=rotation;parent.add(g);if((parent===scene||parent===authoredDecor)&&['alder','alderTall','pine','boulder','boulderLow','campShelter','hearth','waylamp','fern','watchtower','moonSanctum'].includes(name))staticRoots.push(g);return g;}
 function rock(x,z,scale=2,p=scene,collide=true,crafted=false){if(collide)({x,z}=clearTrail(x,z,scale*.8));const g=placeAsset(Math.sin(x+z)>0?'boulder':'boulderLow',x,z,p,scale,.5*Math.sin(x*2));g.scale.y*=.7+.2*Math.sin(x+z);g.position.y-=scale*.25;if(collide)solid(x,z,scale*.8,g);if(crafted){const i=staticRoots.indexOf(g);if(i>=0)staticRoots.splice(i,1);g.traverse(o=>{if(o.isMesh){o.visible=false;o.userData.routeStoneProxy=true;}});g.add(routeStoneVisual());g.userData.routeStoneReplacement=true;}return g;}
-function tree(x,z,s=1,p=scene,collide=true){if(collide)({x,z}=clearTrail(x,z,.4*s));const variant=(Math.hypot(x,z)>85||Math.sin(x*2.7+z)>0.45)?'pine':Math.cos(x-z)>0?'alderTall':'alder';const g=placeAsset(variant,x,z,p,s,x+z);if(collide)solid(x,z,.4*s,g);return g;}
+function tree(x,z,s=1,p=scene,collide=true,crafted=false){if(collide)({x,z}=clearTrail(x,z,.4*s));const variant=(Math.hypot(x,z)>85||Math.sin(x*2.7+z)>0.45)?'pine':Math.cos(x-z)>0?'alderTall':'alder';const g=placeAsset(variant,x,z,p,s,x+z);if(collide)solid(x,z,.4*s,g);if(crafted&&p===scene){const i=staticRoots.indexOf(g);if(i>=0)staticRoots.splice(i,1);g.traverse(o=>{if(o.isMesh){o.visible=false;o.userData.campTreeProxy=true;const index=occluders.indexOf(o);if(index>=0)occluders.splice(index,1);}});const craftedVisual=campTreeVisual();g.add(craftedVisual);craftedVisual.updateWorldMatrix(true,true);craftedVisual.traverse(o=>{if(o.isMesh){occluders.push(o);cameraClearanceMeshes.push(o);}});g.userData.campTreeReplacement=true;}return g;}
 // One continuous painted surface: dirt softens into moss/grass without a raised ribbon.
 // Detail density is bounded around camp; shared global edge samples keep chunk seams closed.
 const groundPalette={grass:new T.Color('#70815a'),moss:new T.Color('#566e4c'),dry:new T.Color('#89915d'),soil:new T.Color('#a68a63'),worn:new T.Color('#bba27d')};
@@ -84,7 +86,7 @@ const groundMat=applyMaterialDetail(new T.MeshStandardMaterial({vertexColors:tru
 const hero=humanoid();hero.root.position.set(state.position.x,height(state.position.x,state.position.z),state.position.z);hero.root.rotation.y=state.position.heading;const player=hero.root.position;const heroPresentation=createHeroPresentation(T,hero,height);const heroMaterials=heroPresentation.materials;
 // Authored route composition. Foreground framing, clustered vegetation, open trail, ridge skyline.
 const authoredDecor=new T.Group();scene.add(authoredDecor);
-for(let i=0;i<22;i++){const z=16-i*4.6;for(const side of [-1,1]){const x=routeX(z)+side*(9.5+Math.sin(i*1.3)*2.3);if(i%4===1)rock(x,z,(z>-8?.5:.8)*(1.2+(i%4)*.55),scene,true,i===5&&side===1);if(i%2===0)tree(x+side*1.8,z,1+(i%3)*.14);for(let j=0;j<3;j++){const fx=x-side*(.7+j*.5),fz=z+Math.sin(j*2+i)*1.7;placeAsset('fern',fx,fz,authoredDecor,.65+j*.22,i+j);}}}
+for(let i=0;i<22;i++){const z=16-i*4.6;for(const side of [-1,1]){const x=routeX(z)+side*(9.5+Math.sin(i*1.3)*2.3);if(i%4===1)rock(x,z,(z>-8?.5:.8)*(1.2+(i%4)*.55),scene,true,i===5&&side===1);if(i%2===0)tree(x+side*1.8,z,1+(i%3)*.14,scene,true,i===4&&side===1);for(let j=0;j<3;j++){const fx=x-side*(.7+j*.5),fz=z+Math.sin(j*2+i)*1.7;placeAsset('fern',fx,fz,authoredDecor,.65+j*.22,i+j);}}}
 for(const [x,z,s]of [[-10,13,1.2],[10,12,1.3],[-12,1,1.1],[10,-4,.9],[-16,-22,1.2],[-38,-40,1.2],[-32,-46,1.0],[40,-57,1.2],[38,-68,1.05]])tree(x,z,s);
 for(let i=0;i<16;i+=4){const z=-7-i*4.3;for(const side of [-1,1]){const x=routeX(z)+side*(18+Math.sin(i*.8)*4);rock(x,z,2.4+(i%3)*.5);}}
 // The trail is painted into terrain above; no raised mesh or hard soil/grass seam.
@@ -105,14 +107,15 @@ function stream(){const fk=Math.floor(player.x/48)+','+Math.floor(player.z/48);i
 function batchStaticScenery(){const groups=new Map();for(const root of staticRoots){root.updateWorldMatrix(true,true);root.traverse(o=>{if(!o.isMesh||o.userData.dynamic)return;const key=o.geometry.uuid+o.material.uuid;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(o);});}for(const list of groups.values()){if(list.length<2)continue;const inst=new T.InstancedMesh(list[0].geometry,list[0].material,list.length);inst.name='authored_batch';inst.castShadow=true;inst.receiveShadow=true;list.forEach((o,i)=>{inst.setMatrixAt(i,o.matrixWorld);o.visible=false;});inst.instanceMatrix.needsUpdate=true;scene.add(inst);}}
 batchStaticScenery();stream();
 const lightEffects=createLightEffects({T,scene,hero,height,quality});
+const skillEffects=createSkillEffects({T,scene,hero,height,quality});
 const lightBudget=createLightBudget(scene,qualityBudget.pointLights);
 lightBudget.update(player);
 function burst(x,y,z,color,n=12){for(let i=0;i<n;i++){const m=sphere(.065,color,x,y,z);m.castShadow=false;particles.push({m,v:new T.Vector3((Math.random()-.5)*5,Math.random()*4,(Math.random()-.5)*5),life:.5});}}
 function toast(text){$('#toast').textContent=text;$('#toast').style.opacity=1;toastTimer=3.6;}
 function releasePointer(node,id){if(id!==null&&node.hasPointerCapture?.(id))node.releasePointerCapture(id);}
 function clearInput(){
- keys.clear();moveX=moveZ=0;
- const oldStick=stickId,oldLook=lookId;stickId=lookId=null;
+ keys.clear();moveX=moveZ=0;mouseButtons=0;movementYaw=yaw;
+ const oldStick=stickId,oldLook=lookId;stickId=lookId=null;lookTouch=false;
  releasePointer($('#stick'),oldStick);releasePointer(canvas,oldLook);
  for(const [button,id]of actionPointers)releasePointer(button,id);actionPointers.clear();
  $('#stick i').style.transform='';
@@ -120,7 +123,7 @@ function clearInput(){
 function focusGame(){canvas.focus({preventScroll:true});}
 function jump(){
  if(!playing||paused||state.dead||!grounded)return;
- grounded=false;verticalVelocity=JUMP_SPEED;
+ grounded=false;verticalVelocity=JUMP_SPEED;jumpStarted=true;
 }
 function updateVertical(dt){
  const floor=height(player.x,player.z);
@@ -129,15 +132,15 @@ function updateVertical(dt){
  // Also catch an uphill surface during ascent. Terrain is never allowed above the feet.
  if(player.y<=floor){player.y=floor;verticalVelocity=0;grounded=true;}
 }
-function dialog(title,text,label='守灯人 · 艾芙'){if(!mode)mode=state.dead?'death':'dialog';paused=true;saveGame();clearInput();$('#dialog').classList.remove('hidden');$('#dialogTitle').textContent=title;$('#dialogText').textContent=text;$('#dialogLabel').textContent=label;$('#closeDialog').focus({preventScroll:true});}
+function dialog(title,text,label='守灯人 · 艾芙'){if(!mode)mode=state.dead?'death':'dialog';paused=true;rpgUi?.closePanel({restoreFocus:false});saveGame();clearInput();$('#dialog').classList.remove('hidden');$('#dialogTitle').textContent=title;$('#dialogText').textContent=text;$('#dialogLabel').textContent=label;$('#closeDialog').focus({preventScroll:true});}
 function updateUI(){$('#health').style.width=(100*state.hp/maxHp(state))+'%';$('#vitals').textContent=state.hp+' / '+maxHp(state);$('#gold').textContent='✦ '+state.gold;$('#objective').textContent=state.quest===0?'与营地守灯人交谈':state.quest===2?'灯火重燃 · 继续探索':state.relics.size===2?'回营地交还余烬':`找回两枚余烬 · ${state.relics.size}/2`;$('#detail').textContent=state.quest===2?'离开熟悉的小径，寻找林间宝箱。':state.quest===0?'在灯火旁，开始你的旅程。':state.relics.size===2?'守灯人在南方的营地等你。':'风蚀古塔 → 月镜遗迹';}
 let nearest=null;function interact(){if(!playing||paused||state.dead||!nearest)return;const o=nearest;if(o.kind==='npc'){const before=state.quest;const words=talk(state);if(before!==2&&state.quest===2){scene.traverse(m=>{if(m.isMesh&&m.material.name==='ember')m.material.emissiveIntensity=2.4;});burst(1,height(1,3)+1,3,'#ffd17e',42);[523,659,784,1046].forEach((n,i)=>setTimeout(()=>sound(n,.35,'sine',.035),i*130));toast('营地重燃 · 星币 +100 · 锻片 +3 · 经验 +70');}dialog('灯火未眠',words);sound(520,.4);}else if(o.kind==='relic'){if(!state.quest){toast('先与营地守灯人交谈，了解余烬的来历。');return;}if(enemies.some(e=>e.hp>0&&e.guard===o.id)){toast('守卫仍在附近。击败它，再取回余烬。');return;}if(takeRelic(state,o.id)){o.model.visible=false;burst(o.x,height(o.x,o.z)+2,o.z,'#ffe3a0',24);toast('获得余烬 · '+(state.relics.size===2?'回营点灯':'继续前往月镜遗迹'));sound(800,.6);}}else if(chest(state,o.id)){o.lid.rotation.x=-1;toast('宝箱：星币 +25 · 锻片 +2 · 药剂 +1 · 经验 +12');sound(960,.3);}saveGame();updateUI();}
 function clearEnemyTelegraph(e){e.ring.material.opacity=0;e.body.scale.y=1;e.body.rotation.x=0;e.body.rotation.z=0;e.arms.forEach(a=>a.rotation.x=0);}
 function attack(bonus=0){if(!playing||paused||state.dead||attackTime>0||dodgeTime>0)return false;pendingStrikeBonus=bonus;attackTime=.44;swingResolved=false;sound(bonus?280:200,.14,'triangle');saveGame();return true;}
-function strike(){const damage=weaponDamage(state)+pendingStrikeBonus;pendingStrikeBonus=0;for(const e of enemies){if(e.hp<=0)continue;const dx=e.g.position.x-player.x,dz=e.g.position.z-player.z,d=Math.hypot(dx,dz);const dot=(dx*Math.sin(hero.root.rotation.y)+dz*Math.cos(hero.root.rotation.y))/Math.max(.01,d);if(d<3&&dot>-.05){const facing=(Math.sin(e.g.rotation.y)*-dx+Math.cos(e.g.rotation.y)*-dz)/Math.max(.01,d);if(e.type&&e.phase!=='recover'&&e.phase!=='stagger'&&facing>.1){burst(e.g.position.x,e.g.position.y+1.2,e.g.position.z,'#d0a663',5);sound(390,.1,'triangle');toast('重盾挡住了剑锋 · 闪避蓄力，在收招时反击');continue;}e.hp=Math.max(0,e.hp-damage);if(e.hp<=0||!e.type||e.phase!=='windup'){clearEnemyTelegraph(e);e.phase='stagger';e.time=.35;}shake=.1;burst(e.g.position.x,e.g.position.y+1,e.g.position.z,'#fce6a1');sound(85,.12,'sawtooth');e.bar.scale.x=Math.max(0,e.hp/(e.type?7:4));if(!e.hp){const rewarded=claimKill(state,e.id,e.type);toast(rewarded?'守卫消散 · 星币 +'+(e.type?15:8)+' · 锻片 +'+(e.type?2:1)+' · 经验 +'+(e.type?30:15):'守卫消散');saveGame();updateUI();}}}}
+function strike(){const empowered=pendingStrikeBonus>0,damage=weaponDamage(state)+pendingStrikeBonus;pendingStrikeBonus=0;skillEffects.onStrike({empowered});for(const e of enemies){if(e.hp<=0)continue;const dx=e.g.position.x-player.x,dz=e.g.position.z-player.z,d=Math.hypot(dx,dz);const dot=(dx*Math.sin(hero.root.rotation.y)+dz*Math.cos(hero.root.rotation.y))/Math.max(.01,d);if(d<3&&dot>-.05){const facing=(Math.sin(e.g.rotation.y)*-dx+Math.cos(e.g.rotation.y)*-dz)/Math.max(.01,d);if(e.type&&e.phase!=='recover'&&e.phase!=='stagger'&&facing>.1){skillEffects.onDamage({empowered,target:e.g,blocked:true,damage:0});burst(e.g.position.x,e.g.position.y+1.2,e.g.position.z,'#d0a663',5);sound(390,.1,'triangle');toast('重盾挡住了剑锋 · 闪避蓄力，在收招时反击');continue;}const appliedDamage=Math.min(e.hp,damage);e.hp=Math.max(0,e.hp-damage);skillEffects.onDamage({empowered,target:e.g,damage:appliedDamage});if(e.hp<=0||!e.type||e.phase!=='windup'){clearEnemyTelegraph(e);e.phase='stagger';e.time=.35;}shake=.1;burst(e.g.position.x,e.g.position.y+1,e.g.position.z,'#fce6a1');sound(85,.12,'sawtooth');e.bar.scale.x=Math.max(0,e.hp/(e.type?7:4));if(!e.hp){const rewarded=claimKill(state,e.id,e.type);toast(rewarded?'守卫消散 · 星币 +'+(e.type?15:8)+' · 锻片 +'+(e.type?2:1)+' · 经验 +'+(e.type?30:15):'守卫消散');saveGame();updateUI();}}}}
 function dodge(){if(!playing||paused||state.dead||dodgeCd>0||attackTime>.25)return;dodgeTime=.32;dodgeCd=1.05;sound(330,.15,'triangle');saveGame();}
 function pause(){if(!playing||state.dead)return;if(paused&&mode==='pause'){closeDialog();return;}if(paused)return;mode='pause';dialog('在此歇息','林间的时间暂时停住。','暂停');$('#restart').classList.remove('hidden');}
-function closeDialog(){clearInput();if(state.dead){retry(state);verticalVelocity=0;grounded=true;attackTime=dodgeTime=0;pendingStrikeBonus=0;swingResolved=true;heroPresentation.reset();cameraReady=false;player.set(0,height(0,10),10);for(const e of enemies){clearEnemyTelegraph(e);e.phase='idle';e.time=0;e.hp=state.killed.has(e.id)?0:e.type?7:4;e.g.visible=e.hp>0;e.g.scale.y=e.hp>0?1:.03;e.bar.scale.x=e.hp>0?1:0;e.g.position.set(e.homeX,height(e.homeX,e.homeZ),e.homeZ);}damageCd=2;stream();updateUI();}paused=false;mode='';$('#dialog').classList.add('hidden');$('#restart').classList.add('hidden');$('#closeDialog').textContent='继续旅程';saveGame();focusGame();}
+function closeDialog(){clearInput();if(state.dead){retry(state);verticalVelocity=0;grounded=true;attackTime=dodgeTime=0;pendingStrikeBonus=0;swingResolved=true;heroPresentation.reset();skillEffects.reset();jumpStarted=false;cameraReady=false;player.set(0,height(0,10),10);for(const e of enemies){clearEnemyTelegraph(e);e.phase='idle';e.time=0;e.hp=state.killed.has(e.id)?0:e.type?7:4;e.g.visible=e.hp>0;e.g.scale.y=e.hp>0?1:.03;e.bar.scale.x=e.hp>0?1:0;e.g.position.set(e.homeX,height(e.homeX,e.homeZ),e.homeZ);}damageCd=2;stream();updateUI();}paused=false;mode='';$('#dialog').classList.add('hidden');$('#restart').classList.add('hidden');$('#closeDialog').textContent='继续旅程';saveGame();focusGame();}
 $('#start').onclick=()=>{clearInput();playing=true;$('#screen').classList.add('hidden');focusGame();sound(440,.4);};$('#closeDialog').onclick=closeDialog;$('#pause').onclick=pause;$('#interact').onclick=()=>{interact();if(!paused)focusGame();};$('#restart').onclick=()=>location.reload();
 function bindAction(selector,action){
  const button=$(selector);
@@ -152,12 +155,12 @@ function bindAction(selector,action){
 }
 bindAction('#attack',attack);bindAction('#dodge',dodge);bindAction('#jump',jump);
 const gameKeys=new Set(['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','Space']);
-function uiHasFocus(target){return !!target?.closest?.('input,textarea,select,button,[contenteditable]:not([contenteditable="false"])');}
+function uiHasFocus(target){return !!target?.closest?.('input,textarea,select,button,a[href],[role="textbox"],[contenteditable]:not([contenteditable="false"]),.rpg-panel');}
 addEventListener('keydown',e=>{
  if(e.defaultPrevented||e.isComposing||e.ctrlKey||e.metaKey||e.altKey)return;
  if(e.code==='Escape'){if(!e.repeat&&!keys.has(e.code)){keys.add(e.code);pause();}return;}
  if(!(gameKeys.has(e.code)||Object.values(state.baseBindings).includes(e.code))||uiHasFocus(e.target)||!playing||paused||state.dead)return;
- e.preventDefault();if(e.repeat||keys.has(e.code))return;keys.add(e.code);
+ e.preventDefault();if(e.repeat||keys.has(e.code))return;if(movementCodes.has(e.code)&&!hasMovementInput()&&mouseButtons!==1)movementYaw=yaw;keys.add(e.code);
  if(e.code===state.baseBindings.interact)interact();if(e.code===state.baseBindings.attack)attack();
  if(e.code==='ShiftLeft'||e.code==='ShiftRight')dodge();if(e.code==='Space')jump();
 });
@@ -166,10 +169,46 @@ document.addEventListener('focusin',e=>{if(uiHasFocus(e.target))clearInput();});
 addEventListener('blur',()=>{clearInput();if(playing&&!paused)pause();saveGame();});
 addEventListener('pagehide',()=>saveGame());
 document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInput();if(playing&&!paused)pause();saveGame();}});
-let lookId=null,lastX=0,lastY=0,stickId=null;
-canvas.onpointerdown=e=>{if(!playing||paused||state.dead||lookId!==null)return;focusGame();lookId=e.pointerId;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);};
-canvas.onpointermove=e=>{if(e.pointerId!==lookId)return;yaw-=(e.clientX-lastX)*.005;pitch=T.MathUtils.clamp(pitch+(e.clientY-lastY)*.003,-.3,.9);lastX=e.clientX;lastY=e.clientY;};
-canvas.onpointerup=canvas.onpointercancel=canvas.onlostpointercapture=e=>{if(e.pointerId!==lookId)return;lookId=null;releasePointer(canvas,e.pointerId);};
+// Mouse buttons own camera gestures only when the press starts in the world.
+// Left orbit retains the current movement basis until movement stops or right aligns it.
+const movementCodes=new Set(['KeyW','KeyA','KeyS','KeyD']);
+let lookId=null,lastX=0,lastY=0,stickId=null,lookTouch=false,mouseButtons=0,movementYaw=yaw,zoomDistance=7.8;
+const zoomBounds=Object.freeze({min:3,max:13});
+function hasMovementInput(){return Math.hypot(moveX,moveZ)>.08||[...movementCodes].some(code=>keys.has(code))||mouseButtons===3;}
+function setMouseButtons(buttons){
+ const previous=mouseButtons;mouseButtons=buttons&3;
+ if(mouseButtons&2){movementYaw=yaw;hero.root.rotation.y=yaw+Math.PI;}
+ else if(mouseButtons===1&&previous!==1&&!hasMovementInput())movementYaw=yaw;
+}
+function stopLook(){const old=lookId;lookId=null;lookTouch=false;mouseButtons=0;releasePointer(canvas,old);}
+canvas.onpointerdown=e=>{
+ if(!playing||paused||state.dead||document.hidden||(lookId!==null&&lookId!==e.pointerId))return;
+ const touch=e.pointerType==='touch'||e.pointerType==='pen';if(!touch&&e.button!==0&&e.button!==2)return;
+ e.preventDefault();focusGame();if(lookId===null&&!hasMovementInput())movementYaw=yaw;
+ lookId=e.pointerId;lookTouch=touch;lastX=e.clientX;lastY=e.clientY;
+ if(!touch)setMouseButtons(Number.isFinite(e.buttons)?e.buttons:e.button===2?2:1);
+ canvas.setPointerCapture(e.pointerId);
+};
+canvas.onpointermove=e=>{
+ if(e.pointerId!==lookId||!playing||paused||state.dead)return;
+ if(!lookTouch&&Number.isFinite(e.buttons)){setMouseButtons(e.buttons);if(!mouseButtons){stopLook();return;}}
+ yaw-=(e.clientX-lastX)*.005;pitch=T.MathUtils.clamp(pitch+(e.clientY-lastY)*.003,-.3,.9);
+ if(mouseButtons&2){movementYaw=yaw;hero.root.rotation.y=yaw+Math.PI;}
+ lastX=e.clientX;lastY=e.clientY;
+};
+// A second mouse button produces mousedown, not another pointerdown. Its release
+// may occur over UI, so track chord changes on the window capture phase as well.
+addEventListener('mousedown',e=>{if(lookId!==null&&!lookTouch&&Number.isFinite(e.buttons))setMouseButtons(e.buttons);},true);
+addEventListener('mouseup',e=>{if(lookId===null||lookTouch)return;setMouseButtons(Number.isFinite(e.buttons)?e.buttons:mouseButtons&~(e.button===2?2:1));if(!mouseButtons)stopLook();},true);
+const releaseLook=e=>{if(e.pointerId!==lookId)return;if(!lookTouch&&Number.isFinite(e.buttons)&&e.buttons&3){setMouseButtons(e.buttons);return;}stopLook();};
+canvas.onpointerup=releaseLook;
+canvas.onpointercancel=canvas.onlostpointercapture=e=>{if(e.pointerId===lookId)stopLook();};
+addEventListener('pointerup',releaseLook,true);
+addEventListener('pointercancel',e=>{if(e.pointerId===lookId)stopLook();},true);
+canvas.oncontextmenu=e=>e.preventDefault();
+canvas.addEventListener('wheel',e=>{if(!playing||paused||state.dead||document.hidden||e.ctrlKey)return;e.preventDefault();const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?innerHeight:1);zoomDistance=T.MathUtils.clamp(zoomDistance*Math.exp(T.MathUtils.clamp(delta,-1000,1000)*.001),zoomBounds.min,zoomBounds.max);},{passive:false});
+// UI focus or a UI press cancels held world inputs before a control can activate.
+addEventListener('pointerdown',e=>{if(e.target!==canvas&&e.target?.closest?.('.rpg-panel,.rpg-toolbar,.rpg-hotbar,.rpg-small-button'))clearInput();},true);
 const stick=$('#stick');
 function stickMove(e){const r=stick.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2,len=Math.max(36,Math.hypot(x,y));moveX=x/len;moveZ=-y/len;$('#stick i').style.transform=`translate(${moveX*32}px,${-moveZ*32}px)`;}
 stick.onpointerdown=e=>{e.preventDefault();if(!playing||paused||state.dead||stickId!==null)return;stickId=e.pointerId;stick.setPointerCapture(e.pointerId);stickMove(e);};
@@ -177,17 +216,81 @@ stick.onpointermove=e=>{if(e.pointerId===stickId)stickMove(e);};
 stick.onpointerup=stick.onpointercancel=stick.onlostpointercapture=e=>{if(e.pointerId!==stickId)return;stickId=null;moveX=moveZ=0;$('#stick i').style.transform='';releasePointer(stick,e.pointerId);};
 const ray=new T.Raycaster(),target=new T.Vector3(),desired=new T.Vector3(),direction=new T.Vector3();let cameraReady=false;
 const cameraRight=new T.Vector3(),cameraUp=new T.Vector3(0,1,0),rayOrigin=new T.Vector3(),rayEnd=new T.Vector3(),rayDir=new T.Vector3();
-function updateCamera(dt){target.set(player.x,player.y+1.65,player.z);const distance=7.8;desired.set(target.x+Math.sin(yaw)*Math.cos(pitch)*distance,target.y+Math.sin(pitch)*distance+.55,target.z+Math.cos(yaw)*Math.cos(pitch)*distance);direction.copy(desired).sub(target);const length=direction.length();direction.normalize();cameraRight.set(Math.cos(yaw),0,-Math.sin(yaw));let safe=length;for(const [horizontal,vertical]of [[0,0],[.28,0],[-.28,0],[0,.22],[0,-.22]]){rayOrigin.copy(target).addScaledVector(cameraRight,horizontal).addScaledVector(cameraUp,vertical);rayEnd.copy(desired).addScaledVector(cameraRight,horizontal).addScaledVector(cameraUp,vertical);rayDir.copy(rayEnd).sub(rayOrigin).normalize();ray.set(rayOrigin,rayDir);ray.far=length;const hits=ray.intersectObjects(occluders,false);if(hits.length)safe=Math.min(safe,Math.max(.45,hits[0].distance-.3));}if(safe<length)desired.copy(target).addScaledVector(direction,safe);desired.y=Math.max(desired.y,height(desired.x,desired.z)+.8);if(!cameraReady){camera.position.copy(desired);cameraReady=true;}else if(safe<length&&camera.position.distanceTo(target)>desired.distanceTo(target))camera.position.copy(desired);else camera.position.lerp(desired,1-Math.exp(-dt*12));camera.lookAt(target);const alpha=T.MathUtils.clamp((camera.position.distanceTo(target)-.7)/1.35,0,1);heroPresentation.setOpacity(alpha);if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake;}}
+// The sparse, diagonal leaves of the authored tree can fit between arm rays.
+// Keep its near-plane sphere clear without adding rays to every world mesh.
+const cameraSurfaceCache=new WeakMap(),cameraSurfaceTriangle=new T.Triangle(),cameraSurfaceClosest=new T.Vector3(),cameraRetreat=new T.Vector3();
+const cameraClearanceStats={queries:0,meshBounds:0,triangleBounds:0,triangleTests:0,retreatSteps:0,cacheBuilds:0,cachedTriangles:0,cacheBytes:0,radius:0,unresolved:0};
+function cameraSurface(mesh){
+ let cached=cameraSurfaceCache.get(mesh);if(cached&&cached.matrix.equals(mesh.matrixWorld)&&cached.geometry===mesh.geometry)return cached;
+ const a=mesh.geometry.attributes.position,index=mesh.geometry.index,count=index?.count??a.count,data=new Float64Array(count/3*15),bounds=new T.Box3();
+ for(let n=0,offset=0;n<count;n+=3,offset+=15){
+  const triangle=cameraSurfaceTriangle;triangle.a.fromBufferAttribute(a,index?index.getX(n):n).applyMatrix4(mesh.matrixWorld);triangle.b.fromBufferAttribute(a,index?index.getX(n+1):n+1).applyMatrix4(mesh.matrixWorld);triangle.c.fromBufferAttribute(a,index?index.getX(n+2):n+2).applyMatrix4(mesh.matrixWorld);
+  const vertices=[triangle.a,triangle.b,triangle.c];for(let k=0;k<3;k++){const p=vertices[k];data[offset+k*3]=p.x;data[offset+k*3+1]=p.y;data[offset+k*3+2]=p.z;bounds.expandByPoint(p);}
+  data[offset+9]=Math.min(triangle.a.x,triangle.b.x,triangle.c.x);data[offset+10]=Math.min(triangle.a.y,triangle.b.y,triangle.c.y);data[offset+11]=Math.min(triangle.a.z,triangle.b.z,triangle.c.z);data[offset+12]=Math.max(triangle.a.x,triangle.b.x,triangle.c.x);data[offset+13]=Math.max(triangle.a.y,triangle.b.y,triangle.c.y);data[offset+14]=Math.max(triangle.a.z,triangle.b.z,triangle.c.z);
+ }
+ cameraClearanceStats.cacheBuilds++;cameraClearanceStats.cachedTriangles+=count/3-(cached?.data.length/15||0);cameraClearanceStats.cacheBytes+=data.byteLength-(cached?.data.byteLength||0);
+ cached={data,bounds,matrix:mesh.matrixWorld.clone(),geometry:mesh.geometry};cameraSurfaceCache.set(mesh,cached);return cached;
+}
+function cameraTouchesTree(position,radius){
+ cameraClearanceStats.queries++;const radiusSquared=radius*radius;
+ for(const mesh of cameraClearanceMeshes){
+  const {data,bounds}=cameraSurface(mesh);cameraClearanceStats.meshBounds++;if(bounds.distanceToPoint(position)>radius)continue;
+  for(let i=0;i<data.length;i+=15){
+   cameraClearanceStats.triangleBounds++;const dx=Math.max(data[i+9]-position.x,0,position.x-data[i+12]),dy=Math.max(data[i+10]-position.y,0,position.y-data[i+13]),dz=Math.max(data[i+11]-position.z,0,position.z-data[i+14]);if(dx*dx+dy*dy+dz*dz>=radiusSquared)continue;
+   cameraClearanceStats.triangleTests++;cameraSurfaceTriangle.a.set(data[i],data[i+1],data[i+2]);cameraSurfaceTriangle.b.set(data[i+3],data[i+4],data[i+5]);cameraSurfaceTriangle.c.set(data[i+6],data[i+7],data[i+8]);cameraSurfaceTriangle.closestPointToPoint(position,cameraSurfaceClosest);if(cameraSurfaceClosest.distanceToSquared(position)<radiusSquared)return true;
+  }
+ }
+ return false;
+}
+function constrainTreeNearPlane(position){
+ const halfHeight=camera.near*Math.tan(T.MathUtils.degToRad(camera.fov/2)),radius=Math.hypot(camera.near,halfHeight,halfHeight*camera.aspect)+.03;cameraClearanceStats.radius=radius;
+ const length=cameraRetreat.copy(position).sub(target).length();if(length<.001)return false;cameraRetreat.divideScalar(length);
+ const step=Math.max(radius*1.5,length/24);let remaining=length,moved=false;
+ for(let i=0;i<=24;i++){
+  if(!cameraTouchesTree(position,radius))return moved;
+  if(remaining<=.15)break;
+  remaining=Math.max(.15,remaining-step);position.copy(target).addScaledVector(cameraRetreat,remaining);moved=true;cameraClearanceStats.retreatSteps++;
+ }
+ // This is only reachable if the character's own target is inside tree geometry.
+ cameraClearanceStats.unresolved++;return moved;
+}
+function constrainCamera(position){
+ direction.copy(position).sub(target);const length=direction.length();if(length<.001)return false;direction.normalize();
+ cameraRight.set(direction.z,0,-direction.x).normalize();let safe=length;
+ for(const [horizontal,vertical]of [[0,0],[.28,0],[-.28,0],[0,.22],[0,-.22]]){
+  rayOrigin.copy(target).addScaledVector(cameraRight,horizontal).addScaledVector(cameraUp,vertical);
+  rayEnd.copy(position).addScaledVector(cameraRight,horizontal).addScaledVector(cameraUp,vertical);
+  rayDir.copy(rayEnd).sub(rayOrigin).normalize();ray.set(rayOrigin,rayDir);ray.far=length;
+  const hits=ray.intersectObjects(occluders,false);if(hits.length)safe=Math.min(safe,Math.max(.45,hits[0].distance-.3));
+ }
+ // Terrain is analytic rather than an occluder mesh: sample the full arm, not only its endpoint.
+ for(let d=.25;d<safe;d+=.2){rayEnd.copy(target).addScaledVector(direction,d);if(rayEnd.y<height(rayEnd.x,rayEnd.z)+.35){safe=Math.max(.45,d-.25);break;}}
+ if(safe<length)position.copy(target).addScaledVector(direction,safe);
+ return constrainTreeNearPlane(position)||safe<length;
+}
+function updateCamera(dt){
+ for(const key of ['queries','meshBounds','triangleBounds','triangleTests','retreatSteps','unresolved'])cameraClearanceStats[key]=0;
+ target.set(player.x,player.y+1.65,player.z);const distance=zoomDistance;
+ desired.set(target.x+Math.sin(yaw)*Math.cos(pitch)*distance,target.y+Math.sin(pitch)*distance+.55,target.z+Math.cos(yaw)*Math.cos(pitch)*distance);
+ desired.y=Math.max(desired.y,height(desired.x,desired.z)+.8);const blocked=constrainCamera(desired);
+ if(!cameraReady){camera.position.copy(desired);cameraReady=true;}
+ else if(blocked&&camera.position.distanceTo(target)>desired.distanceTo(target))camera.position.copy(desired);
+ else camera.position.lerp(desired,1-Math.exp(-dt*12));
+ // Smoothing can sweep across a trunk or an uphill bank even if the desired arm is clear.
+ camera.position.y=Math.max(camera.position.y,height(camera.position.x,camera.position.z)+.8);constrainCamera(camera.position);
+ camera.lookAt(target);const alpha=T.MathUtils.clamp((camera.position.distanceTo(target)-.7)/1.35,0,1);heroPresentation.setOpacity(alpha);
+ if(shake>0){camera.position.x+=(Math.random()-.5)*shake;camera.position.y+=(Math.random()-.5)*shake;camera.position.y=Math.max(camera.position.y,height(camera.position.x,camera.position.z)+.8);constrainCamera(camera.position);}
+}
 function conformTelegraph(e){const radius=e.type?3.3:2.6,p=e.g.position,a=e.ring.geometry.attributes.position,c=Math.cos(e.g.rotation.y),s=Math.sin(e.g.rotation.y);e.ring.scale.setScalar(radius);for(let i=0;i<a.count;i++){const x=a.getX(i)*radius,y=a.getY(i)*radius;const h=height(p.x+x*c-y*s,p.z-x*s-y*c);a.setZ(i,(h-p.y-e.ring.position.y+.045)/radius);}a.needsUpdate=true;e.ring.geometry.computeBoundingSphere();}
-function updateEnemies(dt){for(const e of enemies){if(e.hp<=0){e.g.scale.y=Math.max(.03,e.g.scale.y-dt*3);e.g.visible=e.g.scale.y>.03;continue;}const p=e.g.position,dx=player.x-p.x,dz=player.z-p.z,d=Math.hypot(dx,dz);const homeDistance=Math.hypot(p.x-e.homeX,p.z-e.homeZ);if(homeDistance>11||e.phase==='return'||d>13&&homeDistance>1){clearEnemyTelegraph(e);e.phase='return';const amount=Math.min(homeDistance,dt*3),q=resolveMove(p.x,p.z,(e.homeX-p.x)/Math.max(.001,homeDistance)*amount,(e.homeZ-p.z)/Math.max(.001,homeDistance)*amount,solids,e.type?.65:.45);e.g.rotation.y=Math.atan2(e.homeX-p.x,e.homeZ-p.z);p.set(q.x,height(q.x,q.z),q.z);if(homeDistance<.35)e.phase='idle';continue;}e.time-=dt;if(e.phase!=='windup'&&e.phase!=='recover'){const facing=Math.atan2(dx,dz);e.g.rotation.y+=Math.atan2(Math.sin(facing-e.g.rotation.y),Math.cos(facing-e.g.rotation.y))*Math.min(1,dt*(e.type?2.8:6));}e.bar.quaternion.copy(e.g.quaternion).invert().multiply(camera.quaternion);if(e.phase==='stagger'){e.body.rotation.z=Math.sin(elapsed*40)*.15;if(e.time<=0)e.phase='idle';}else if(e.phase==='windup'){e.ring.material.opacity=.25+.4*(1-e.time/e.windup);conformTelegraph(e);e.body.rotation.x=-.16*(1-e.time/e.windup);e.rig.knees.forEach(k=>k.rotation.x=.24);e.arms.forEach(a=>a.rotation.x=-1.8);if(e.time<=0){e.phase='recover';e.time=e.recover;e.body.rotation.x=.12;e.body.scale.y=1;e.ring.material.opacity=0;burst(p.x,p.y+.3,p.z,'#e7ac74',8);if(d<(e.type?3.3:2.6)&&damageCd<=0&&hurt(state,e.type?24:16,dodgeTime>0)){damageCd=.65;shake=.3;saveGame();sound(70,.25,'sawtooth');toast('受到攻击 · 预警收紧时闪避，再靠近反击');updateUI();if(state.dead){dialog('灯火仍为你留着','回到营地恢复生命。余烬、已击败守卫、背包、经验与星币会保留；技能冷却继续保留。','旅程暂歇');$('#closeDialog').textContent='在营地重试';return;}}else if(dodgeTime>0&&d<4){toast('闪避成功');sound(700,.16);}}}else if(e.phase==='recover'){e.arms.forEach(a=>a.rotation.x=.9);if(e.time<=0)e.phase='idle';}else{e.body.rotation.z=0;e.arms.forEach(a=>a.rotation.x=Math.sin(elapsed*5)*.12);if(d<2.5){e.phase='windup';e.time=e.windup;sound(140,.18,'triangle',.016);}else if(d<13){const m=resolveMove(p.x,p.z,dx/d*dt*(e.type?1.5:2.1),dz/d*dt*(e.type?1.5:2.1),solids,e.type?.65:.45);p.x=m.x;p.z=m.z;e.body.position.y=Math.sin(elapsed*9)*.04;e.rig.limbs[0].rotation.x=Math.sin(elapsed*7)*.4;e.rig.limbs[2].rotation.x=-e.rig.limbs[0].rotation.x;e.rig.knees[0].rotation.x=Math.max(0,-Math.sin(elapsed*7))*.5;e.rig.knees[1].rotation.x=Math.max(0,Math.sin(elapsed*7))*.5;}else{e.body.position.y=Math.sin(elapsed*2)*.025;e.rig.limbs[0].rotation.x=e.rig.limbs[2].rotation.x=0;e.rig.knees.forEach(k=>k.rotation.x=0);}}p.y=height(p.x,p.z);}}
-function tick(dt){if(!playing||paused||state.dead||document.hidden)return;elapsed+=dt;tickRpg(state,dt);saveClock+=dt;attackTime=Math.max(0,attackTime-dt);if(!swingResolved&&attackTime<=.27){swingResolved=true;strike();}dodgeTime=Math.max(0,dodgeTime-dt);dodgeCd=Math.max(0,dodgeCd-dt);damageCd=Math.max(0,damageCd-dt);shake=Math.max(0,shake-dt);let mx=moveX+(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0),mz=moveZ+(keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0);const len=Math.hypot(mx,mz);if(len>1){mx/=len;mz/=len;}let dx=mx*Math.cos(yaw)-mz*Math.sin(yaw),dz=-mx*Math.sin(yaw)-mz*Math.cos(yaw);if(len>.08){const angle=Math.atan2(dx,dz);hero.root.rotation.y+=Math.atan2(Math.sin(angle-hero.root.rotation.y),Math.cos(angle-hero.root.rotation.y))*Math.min(1,dt*14);}if(dodgeTime>0){dx=Math.sin(hero.root.rotation.y);dz=Math.cos(hero.root.rotation.y);}const speed=dodgeTime>0?12:attackTime>0?2:4.8,m=resolveMove(player.x,player.z,dx*speed*dt,dz*speed*dt,solids);player.x=T.MathUtils.clamp(m.x,-LIMITS.world,LIMITS.world);player.z=T.MathUtils.clamp(m.z,-LIMITS.world,LIMITS.world);updateVertical(dt);const walking=len>.08;heroPresentation.update(dt,{walking,attackTime,dodgeTime,grounded});hero.root.visible=damageCd<=0||Math.floor(elapsed*15)%2===0;updateEnemies(dt);if(paused)return;stream();discoverAround(state,player.x,player.z);if(saveClock>=1)saveGame();nearest=null;let best=3.2;for(const o of interactables){if(o.kind==='relic'&&state.relics.has(o.id)||o.kind==='chest'&&state.opened.has(o.id))continue;const d=Math.hypot(player.x-o.x,player.z-o.z);if(d<best){best=d;nearest=o;}}$('#interact').style.display=nearest?'block':'none';if(nearest)$('#interact').textContent=(matchMedia('(pointer:coarse)').matches?'':state.baseBindings.interact.replace('Key','')+' · ')+(nearest.kind==='npc'?'交谈':nearest.kind==='relic'?'取回余烬':'打开宝箱');let goal=state.quest===0||state.relics.size===2?LANDMARKS[0]:!state.relics.has('tower')?LANDMARKS[1]:LANDMARKS[2];$('#compass').textContent=state.quest===2?'✧ 未知林地':`${goal.name} · ${Math.round(Math.hypot(goal.x-player.x,goal.z-player.z))}m`;for(const l of LANDMARKS)if(Math.hypot(l.x-player.x,l.z-player.z)<11&&currentPlace!==l.id){currentPlace=l.id;$('#place').textContent=l.name;placeTimer=4;}sun.position.set(player.x-35,player.y+65,player.z+25);sun.target.position.copy(player);}
+function updateEnemies(dt){for(const e of enemies){if(e.hp<=0){e.g.scale.y=Math.max(.03,e.g.scale.y-dt*3);e.g.visible=e.g.scale.y>.03;continue;}const p=e.g.position,dx=player.x-p.x,dz=player.z-p.z,d=Math.hypot(dx,dz);const homeDistance=Math.hypot(p.x-e.homeX,p.z-e.homeZ);if(homeDistance>11||e.phase==='return'||d>13&&homeDistance>1){clearEnemyTelegraph(e);e.phase='return';const amount=Math.min(homeDistance,dt*3),q=resolveMove(p.x,p.z,(e.homeX-p.x)/Math.max(.001,homeDistance)*amount,(e.homeZ-p.z)/Math.max(.001,homeDistance)*amount,solids,e.type?.65:.45);e.g.rotation.y=Math.atan2(e.homeX-p.x,e.homeZ-p.z);p.set(q.x,height(q.x,q.z),q.z);if(homeDistance<.35)e.phase='idle';continue;}e.time-=dt;if(e.phase!=='windup'&&e.phase!=='recover'){const facing=Math.atan2(dx,dz);e.g.rotation.y+=Math.atan2(Math.sin(facing-e.g.rotation.y),Math.cos(facing-e.g.rotation.y))*Math.min(1,dt*(e.type?2.8:6));}e.bar.quaternion.copy(e.g.quaternion).invert().multiply(camera.quaternion);if(e.phase==='stagger'){e.body.rotation.z=Math.sin(elapsed*40)*.15;if(e.time<=0)e.phase='idle';}else if(e.phase==='windup'){e.ring.material.opacity=.25+.4*(1-e.time/e.windup);conformTelegraph(e);e.body.rotation.x=-.16*(1-e.time/e.windup);e.rig.knees.forEach(k=>k.rotation.x=.24);e.arms.forEach(a=>a.rotation.x=-1.8);if(e.time<=0){e.phase='recover';e.time=e.recover;e.body.rotation.x=.12;e.body.scale.y=1;e.ring.material.opacity=0;burst(p.x,p.y+.3,p.z,'#e7ac74',8);const hpBeforeHit=state.hp;if(d<(e.type?3.3:2.6)&&damageCd<=0&&hurt(state,e.type?24:16,dodgeTime>0)){skillEffects.onDamage({warded:state.wardRemaining>0,damage:hpBeforeHit-state.hp});damageCd=.65;shake=.3;saveGame();sound(70,.25,'sawtooth');toast('受到攻击 · 预警收紧时闪避，再靠近反击');updateUI();if(state.dead){dialog('灯火仍为你留着','回到营地恢复生命。余烬、已击败守卫、背包、经验与星币会保留；技能冷却继续保留。','旅程暂歇');$('#closeDialog').textContent='在营地重试';return;}}else if(dodgeTime>0&&d<4){toast('闪避成功');sound(700,.16);}}}else if(e.phase==='recover'){e.arms.forEach(a=>a.rotation.x=.9);if(e.time<=0)e.phase='idle';}else{e.body.rotation.z=0;e.arms.forEach(a=>a.rotation.x=Math.sin(elapsed*5)*.12);if(d<2.5){e.phase='windup';e.time=e.windup;sound(140,.18,'triangle',.016);}else if(d<13){const m=resolveMove(p.x,p.z,dx/d*dt*(e.type?1.5:2.1),dz/d*dt*(e.type?1.5:2.1),solids,e.type?.65:.45);p.x=m.x;p.z=m.z;e.body.position.y=Math.sin(elapsed*9)*.04;e.rig.limbs[0].rotation.x=Math.sin(elapsed*7)*.4;e.rig.limbs[2].rotation.x=-e.rig.limbs[0].rotation.x;e.rig.knees[0].rotation.x=Math.max(0,-Math.sin(elapsed*7))*.5;e.rig.knees[1].rotation.x=Math.max(0,Math.sin(elapsed*7))*.5;}else{e.body.position.y=Math.sin(elapsed*2)*.025;e.rig.limbs[0].rotation.x=e.rig.limbs[2].rotation.x=0;e.rig.knees.forEach(k=>k.rotation.x=0);}}p.y=height(p.x,p.z);}}
+function tick(dt){if(!playing||paused||state.dead||document.hidden)return;elapsed+=dt;tickRpg(state,dt);saveClock+=dt;attackTime=Math.max(0,attackTime-dt);if(!swingResolved&&attackTime<=.27){swingResolved=true;strike();}dodgeTime=Math.max(0,dodgeTime-dt);dodgeCd=Math.max(0,dodgeCd-dt);damageCd=Math.max(0,damageCd-dt);shake=Math.max(0,shake-dt);const rightHeld=!!(mouseButtons&2);if(rightHeld||Math.hypot(moveX,moveZ)>.08||!hasMovementInput()&&mouseButtons!==1)movementYaw=yaw;let mx=moveX+(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0),mz=moveZ+(mouseButtons===3||keys.has('KeyW')?1:0)-(keys.has('KeyS')?1:0);const len=Math.hypot(mx,mz);if(len>1){mx/=len;mz/=len;}let dx=mx*Math.cos(movementYaw)-mz*Math.sin(movementYaw),dz=-mx*Math.sin(movementYaw)-mz*Math.cos(movementYaw);if(rightHeld)hero.root.rotation.y=yaw+Math.PI;else if(len>.08){const angle=Math.atan2(dx,dz);hero.root.rotation.y+=Math.atan2(Math.sin(angle-hero.root.rotation.y),Math.cos(angle-hero.root.rotation.y))*Math.min(1,dt*14);}if(dodgeTime>0){dx=Math.sin(hero.root.rotation.y);dz=Math.cos(hero.root.rotation.y);}const speed=dodgeTime>0?12:attackTime>0?2:4.8,m=resolveMove(player.x,player.z,dx*speed*dt,dz*speed*dt,solids);player.x=T.MathUtils.clamp(m.x,-LIMITS.world,LIMITS.world);player.z=T.MathUtils.clamp(m.z,-LIMITS.world,LIMITS.world);updateVertical(dt);const walking=len>.08;heroPresentation.update(dt,{walking,attackTime,dodgeTime,grounded,verticalVelocity,groundHeight:height(player.x,player.z),jumpStarted});jumpStarted=false;hero.root.visible=damageCd<=0||Math.floor(elapsed*15)%2===0;updateEnemies(dt);if(paused)return;stream();discoverAround(state,player.x,player.z);if(saveClock>=1)saveGame();nearest=null;let best=3.2;for(const o of interactables){if(o.kind==='relic'&&state.relics.has(o.id)||o.kind==='chest'&&state.opened.has(o.id))continue;const d=Math.hypot(player.x-o.x,player.z-o.z);if(d<best){best=d;nearest=o;}}$('#interact').style.display=nearest?'block':'none';if(nearest)$('#interact').textContent=(matchMedia('(pointer:coarse)').matches?'':state.baseBindings.interact.replace('Key','')+' · ')+(nearest.kind==='npc'?'交谈':nearest.kind==='relic'?'取回余烬':'打开宝箱');let goal=state.quest===0||state.relics.size===2?LANDMARKS[0]:!state.relics.has('tower')?LANDMARKS[1]:LANDMARKS[2];$('#compass').textContent=state.quest===2?'✧ 未知林地':`${goal.name} · ${Math.round(Math.hypot(goal.x-player.x,goal.z-player.z))}m`;for(const l of LANDMARKS)if(Math.hypot(l.x-player.x,l.z-player.z)<11&&currentPlace!==l.id){currentPlace=l.id;$('#place').textContent=l.name;placeTimer=4;}sun.position.set(player.x-35,player.y+65,player.z+25);sun.target.position.copy(player);}
 // Stable UI boundary: snapshots are copies; actions are the only mutation entrypoints.
 function saveGame(){state.position={x:player.x,z:player.z,heading:Math.atan2(Math.sin(hero.root.rotation.y),Math.cos(hero.root.rotation.y))};state.motion={dodgeCd,attackRecovery:attackTime};const result=writeRpgSave(saveStorage,state,{writable:loadedSave.writable});if(result.ok)saveStatus='saved';else if(!['future','corrupt'].includes(saveStatus))saveStatus=result.status;saveClock=0;return result;}
 const atCamp=()=>Math.hypot(player.x,player.z-6)<10;
 export function uiPause(reason='rpg-ui'){if(!playing||state.dead||paused)return {ok:false};clearInput();paused=true;mode=reason;saveGame();return {ok:true};}
 export function uiResume(reason='rpg-ui'){if(!paused||mode!==reason||state.dead)return {ok:false};clearInput();paused=false;mode='';focusGame();return {ok:true};}
 function finishAction(result,message){if(result.ok){saveGame();updateUI();if(message)toast(message);}else if(result.reason&&!result.baseConflict)toast(result.reason);return result;}
-function useSkill(id){const result=activateSkill(state,id,{active:playing&&!paused&&!document.hidden,canAttack:attackTime<=0&&dodgeTime<=0});if(!result.ok)return finishAction(result);if(id==='emberStrike')attack(2);if(id==='ward'){burst(player.x,player.y+1,player.z,'#82d9dc',20);sound(620,.35);}if(id==='potion'){burst(player.x,player.y+1,player.z,'#b3dd98',14);sound(740,.25);}return finishAction(result,id==='emberStrike'?'烬刃 · 抓住守卫收招的时机':id==='ward'?'灯火护身 · 4 秒减伤':'暖露药剂 · 恢复生命');}
+function useSkill(id){const hpBefore=state.hp,result=activateSkill(state,id,{active:playing&&!paused&&!document.hidden,canAttack:attackTime<=0&&dodgeTime<=0});if(!result.ok)return finishAction(result);if(id==='emberStrike'){const attackStarted=attack(2);skillEffects.onSkill(id,{ok:result.ok,attackStarted});}if(id==='ward'){skillEffects.onSkill(id,result);sound(620,.35);}if(id==='potion'){skillEffects.onSkill(id,{ok:result.ok,healed:state.hp-hpBefore});sound(740,.25);}return finishAction(result,id==='emberStrike'?'烬刃 · 抓住守卫收招的时机':id==='ward'?'灯火护身 · 4 秒减伤':'暖露药剂 · 恢复生命');}
 export const rpgActions=Object.freeze({
  useSlot:index=>Number.isInteger(index)&&index>=0&&index<9?useSkill(state.hotbar[index]):{ok:false,reason:'无效栏位'},
  drinkPotion:()=>useSkill('potion'),
@@ -212,7 +315,7 @@ export function getRpgSnapshot(){
  return {hp:state.hp,maxHp:maxHp(state),gold:state.gold,xp:state.xp-xpForLevel(level),totalXp:state.xp,level,nextLevelXp:level>=10?0:xpForLevel(level+1)-xpForLevel(level),inventory:{...state.inventory,relics:[...state.relics]},skills:SKILLS.map(skill=>({...skill,locked:false})),hotbar:[...state.hotbar],aliases:[...state.aliases],baseBindings:{...state.baseBindings},preferences:{...state.preferences},cooldowns:{...state.cooldowns},wardRemaining:state.wardRemaining,weaponLevel:state.weaponLevel,supplyLevel:state.supplyLevel,equipment:{weaponLevel:state.weaponLevel,supplyLevel:state.supplyLevel,damage:weaponDamage(state),potionHealing:potionHealing(state)},camp:{nearby,upgrades:campOffers(state)},upgrades:campOffers(state),atCamp:nearby,quest:{stage:state.quest,relics:[...state.relics],goal:state.quest===2?'探索林地或使用营地工坊':goal.name},questTarget:state.quest===2?null:{x:goal.x,z:goal.z,label:goal.name},player:{x:player.x,z:player.z,heading:hero.root.rotation.y},landmarks:LANDMARKS.filter(l=>explored(l.x,l.z)).map(l=>({...l,discovered:true,type:l.id==='camp'?'camp':'relic'})),enemies:visibleEnemies.filter(e=>e.hp>0&&enemies.includes(e)).map(e=>({x:e.g.position.x,z:e.g.position.z,visible:true,alive:true})),map:mapCache,playing,paused,mode,dead:state.dead,saveStatus,activeSeconds:state.activeSeconds};
 }
 discoverAround(state,player.x,player.z);
-function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();updateUI();playing=true;$('#screen').classList.add('hidden');toast(matchMedia('(pointer:coarse)').matches?'左摇杆移动 · 右侧挥剑 / 闪避 / 跳跃 · 跟随小径寻找守灯人':`WASD 移动 · ${state.baseBindings.attack.replace('Key','')} 挥剑 · Shift 闪避 · 空格跳跃 · ${state.baseBindings.interact.replace('Key','')} 互动 · 1–9 技能栏`);$('#loading').textContent='林地已就绪 · 原创本地模型';rpgUi=createRpgUi({getSnapshot:getRpgSnapshot,actions:rpgActions,pause:uiPause,resume:uiResume});let previous=performance.now();function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-previous)/1000,.033);previous=now;if(playing&&!paused)tick(dt);if(!paused){for(const b of[b1,b2]){b.jewel.rotation.y+=dt*.6;b.jewel.position.y=2.18+Math.sin(now*.002)*.11;}for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.v.y-=dt*9;p.m.position.addScaledVector(p.v,dt);p.m.scale.setScalar(Math.max(0,p.life*2));if(p.life<=0){scene.remove(p.m);particles.splice(i,1);}}toastTimer-=dt;placeTimer-=dt;$('#toast').style.opacity=toastTimer>0?1:0;$('#place').style.opacity=placeTimer>0?1:0;}updateCamera(dt);updatePresentationEffects(dt,now/1000);rpgUi?.update(now);if(music)music.update({paused:paused||state.dead,hidden:document.hidden,combat:enemies.some(e=>e.hp>0&&e.phase!=='idle'&&Math.hypot(e.g.position.x-player.x,e.g.position.z-player.z)<13),region:atCamp()?'camp':currentPlace==='tower'?'tower':currentPlace==='pool'?'pool':'forest'});renderer.render(scene,camera);}requestAnimationFrame(frame);
+function resize(){renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();updateUI();playing=true;$('#screen').classList.add('hidden');toast(matchMedia('(pointer:coarse)').matches?'左摇杆移动 · 右侧挥剑 / 闪避 / 跳跃 · 跟随小径寻找守灯人':`WASD 移动 · 左拖观察 / 右拖转向 · 双键前进 · 滚轮缩放 · ${state.baseBindings.attack.replace('Key','')} 挥剑 · Shift 闪避 · 空格跳跃 · ${state.baseBindings.interact.replace('Key','')} 互动 · 1–9 技能栏`);$('#loading').textContent='林地已就绪 · 原创本地模型';rpgUi=createRpgUi({getSnapshot:getRpgSnapshot,actions:rpgActions,pause:uiPause,resume:uiResume,clearInput});let previous=performance.now();function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-previous)/1000,.033);previous=now;if(playing&&!paused)tick(dt);if(!paused){for(const b of[b1,b2]){b.jewel.rotation.y+=dt*.6;b.jewel.position.y=2.18+Math.sin(now*.002)*.11;}for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;p.v.y-=dt*9;p.m.position.addScaledVector(p.v,dt);p.m.scale.setScalar(Math.max(0,p.life*2));if(p.life<=0){scene.remove(p.m);particles.splice(i,1);}}toastTimer-=dt;placeTimer-=dt;$('#toast').style.opacity=toastTimer>0?1:0;$('#place').style.opacity=placeTimer>0?1:0;}updateCamera(dt);updatePresentationEffects(dt,now/1000);rpgUi?.update(now);if(music)music.update({paused:paused||state.dead,hidden:document.hidden,combat:enemies.some(e=>e.hp>0&&e.phase!=='idle'&&Math.hypot(e.g.position.x-player.x,e.g.position.z-player.z)<13),region:atCamp()?'camp':currentPlace==='tower'?'tower':currentPlace==='pool'?'pool':'forest'});renderer.render(scene,camera);}requestAnimationFrame(frame);
 if(state.dead){dialog('灯火仍为你留着','已恢复上次旅程。回营地后可以继续探索；背包、经验与已获得的奖励都会保留。','旅程暂歇');$('#closeDialog').textContent='在营地重试';}
 if(['future','corrupt','unavailable'].includes(saveStatus))toast(saveStatus==='future'?'检测到较新版本存档 · 本次不会覆盖它':saveStatus==='corrupt'?'存档无法读取 · 已保留原数据，本次旅程无法保存':'浏览器存储不可用 · 本次进度暂时无法保存');
 canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();paused=true;playing=false;mode='context-lost';clearInput();saveGame();$('#screen').classList.remove('hidden');$('#loading').textContent='图形上下文丢失，请刷新页面重试。';$('#start').disabled=true;});
@@ -222,10 +325,11 @@ Object.defineProperty(window,'emberwildDiagnostics',{get:()=>({chunks:chunks.siz
 
 
 // Pure scene exports are used by the offline production-geometry renderer, never auto-play controls.
-export {scene,hero,camera,templateStats,tick,attack,dodge,jump,interact,closeDialog,pause,enemies,solids,interactables,player,stream};
+export {scene,hero,camera,templateStats,tick,attack,dodge,jump,interact,closeDialog,pause,enemies,solids,interactables,player,stream,updateCamera,occluders};
 export function inspectState(){return state;}
-export function inspectMotion(){return {grounded,verticalVelocity,attackTime,dodgeTime,dodgeCd,damageCd,paused,yaw,pitch,moveX,moveZ,lookId,stickId,keys:[...keys]};}
+export function inspectCameraClearance(){return {...cameraClearanceStats,meshes:cameraClearanceMeshes.length};}
+export function inspectMotion(){return {grounded,verticalVelocity,attackTime,dodgeTime,dodgeCd,damageCd,paused,yaw,pitch,movementYaw,mouseButtons,zoomDistance,zoomBounds:{...zoomBounds},moveX,moveZ,lookId,stickId,keys:[...keys]};}
 
 
-export function updatePresentationEffects(dt,elapsed=0){if(!paused&&!document.hidden)fireLight.intensity=(state.quest===2?18:8.5)+Math.sin(elapsed*13)*.45;lightEffects.update(dt,{elapsed,attackTime,dodgeTime,playing,paused:paused||document.hidden,camera,player});lightBudget.update(player);}
-export function presentationDiagnostics(){return {quality,visualResources:visualResourceDiagnostics(),routeStone:routeStoneDiagnostics(),textures:textureDiagnostics(),effects:lightEffects.diagnostics,lights:lightBudget.diagnostics};}
+export function updatePresentationEffects(dt,elapsed=0){if(!paused&&!document.hidden)fireLight.intensity=(state.quest===2?18:8.5)+Math.sin(elapsed*13)*.45;lightEffects.update(dt,{elapsed,attackTime,dodgeTime,playing,paused:paused||document.hidden,camera,player});lightBudget.update(player);skillEffects.update(dt,{attackTime,wardRemaining:state.wardRemaining,playing,paused,hidden:document.hidden,dead:state.dead,camera,player});}
+export function presentationDiagnostics(){return {quality,visualResources:visualResourceDiagnostics(),routeStone:routeStoneDiagnostics(),campTree:campTreeDiagnostics(),textures:textureDiagnostics(),effects:lightEffects.diagnostics,skills:skillEffects.diagnostics,lights:lightBudget.diagnostics};}
