@@ -1,4 +1,4 @@
-import {SLOT_COUNT, createPressGate, createRpgControls, inventoryBinding, targetLockBinding, hasTextInputFocus, keyLabel, slotView, validateAlias} from './rpg-controls-r13.mjs';
+import {SLOT_COUNT, createPressGate, createRpgControls, inventoryBinding, targetLockBinding, hasTextInputFocus, keyLabel, slotView, validateAlias} from './rpg-controls-r13.mjs?v=20261008-r14';
 import {createMinimap} from './minimap.mjs';
 import {createTargetUi, paintPortrait} from './target-ui-r13.mjs';
 import {materialInventoryRowsR12, paintMaterialIcon, setMaterialIconQuality} from './loot-icons-r12.mjs';

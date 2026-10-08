@@ -86,6 +86,7 @@ export function slotView(snapshot, index) {
   else if (charges === 0) reason = '已耗尽 · 回营地补给';
   else if (remaining > 0) reason = `冷却 ${remaining.toFixed(1)} 秒`;
   else if (id === 'potion' && snapshot.hp >= snapshot.maxHp) reason = '生命已满';
+  else if (snapshot.mount?.owned) reason = snapshot.mount.airborne ? '先降落并下骑' : '先下骑再使用技能';
   else if (snapshot.dead) reason = '请先回营地重试';
   else if (!snapshot.playing || snapshot.paused) reason = '旅程暂停中';
   return {index, id, alias, name: skill.name, icon: skill.icon || (id === 'potion' ? '＋' : id === 'ward' ? '◇' : '✦'), description: skill.description || '', empty: false, locked, charges, remaining, ratio: Math.min(1, remaining / Math.max(0.1, Number(skill.cooldown) || remaining)), usable: !reason, reason};
