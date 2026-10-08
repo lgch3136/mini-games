@@ -1,5 +1,5 @@
 export const GAME_GUIDE = Object.freeze({
- 'emberwild-test-v4': {label:'余烬旷野',style:'探索与挥剑',session:'immersive',href:'emberwild-test-v4/?v=20261007-rpg'},
+ 'emberwild-test-v4': {label:'余烬旷野',style:'探索与挥剑',session:'immersive',href:'emberwild-test-v4/?v=20261008-r11'},
  'english-typebound': {label:'键旅',style:'专注打字',session:'focus'},
  'english-echo-ring': {label:'回响边界',style:'双手闪避',session:'quick'},
  'english-apex-drive': {label:'团团卡丁',style:'横屏漂移',session:'immersive'},
