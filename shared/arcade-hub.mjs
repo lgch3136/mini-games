@@ -1,4 +1,4 @@
-import {GAME_GUIDE,matchesGame,readRecent,saveRecent} from './arcade-catalog.mjs?v=20261008-r14';
+import {GAME_GUIDE,matchesGame,readRecent,saveRecent} from './arcade-catalog.mjs?v=20261008-r15';
 const cards=[...document.querySelectorAll('.card[data-cat]')], filters=[...document.querySelectorAll('.filter')], paces=[...document.querySelectorAll('[data-pace]')];
 const input=document.querySelector('#game-search'),count=document.querySelector('#catalog-count'),empty=document.querySelector('#catalog-empty');
 const state={filter:'all',pace:'all',query:''};

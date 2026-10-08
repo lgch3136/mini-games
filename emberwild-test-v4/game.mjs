@@ -1,13 +1,14 @@
+import {addAuthoredCampGround} from './camp-ground-r15.mjs';
 import * as T from './vendor/three.module.min.js';
 import {createMountController} from './mounts-r14.mjs?v=20261008-r14';
 import {createMountUi} from './mount-ui-r14.mjs?v=20261008-r14';
-import {asset,findPart,templateStats,visualResourceDiagnostics} from './visual-r12.mjs?v=20261008-r12';
+import {asset,findPart,templateStats,visualResourceDiagnostics} from './visual-r15.mjs';
 import {createHeroPresentation} from './hero-presentation-r12.mjs?v=20261008-r12';
 import {quality,qualityBudget} from './quality.mjs';
-import {groundMaterials,prepareGroundGeometry,groundDiagnostics} from './ground-r10.mjs?v=20261007-r10';
+import {groundMaterials,prepareGroundGeometry,groundDiagnostics} from './ground-r15.mjs';
 import {createNearPlaneGuard} from './camera-clearance-r10.mjs?v=20261007-r10';
 import {addCampCover} from './camp-cover-r10.mjs?v=20261007-r10';
-import {addUnderstory} from './understory-r10.mjs?v=20261007-r10';
+import {addUnderstory} from './understory-r15.mjs';
 import {createCameraAlphaFilter} from './camera-alpha-r10.mjs?v=20261007-r10';
 import {addStreamCover} from './stream-cover-r9.mjs?v=20261007-r9';
 import {createRigSupport} from './rig-support-r8.mjs?v=20261007-r8';
@@ -19,7 +20,7 @@ import {createTargeting} from './targeting-r13.mjs?v=20261008-r13';
 import {createJumpGroundEffects} from './jump-ground-r11.mjs?v=20261008-r11';
 import {questSnapshot,acceptQuest,completeQuest} from './quest-dialogue-r11.mjs?v=20261008-r11';
 import {routeX,height,rng,chunkSeed,resolveMove,makeState,talk,takeRelic,chest,hurt,retry,desiredChunks,LANDMARKS} from './core-rpg.mjs?v=20261007-rpg';
-import {createRpgUi} from './rpg-ui-r13.mjs?v=20261008-r14';
+import {createRpgUi} from './rpg-ui-r15.mjs';
 import {inventoryBinding,targetLockBinding,hasTextInputFocus} from './rpg-controls-r13.mjs?v=20261008-r14';
 import {createMusic} from './music.mjs';
 import {SKILLS,MAP_CELL_SIZE,levelForXp,xpForLevel,maxHp,tickRpg,setHotbarSlot,swapHotbarSlots,setHotbarAlias,setRpgPreference,campOffers,purchaseAtCamp,discoverAround} from './rpg-state-r12.mjs';
@@ -146,6 +147,7 @@ if(state.quest===2)scene.traverse(m=>{if(m.isMesh&&m.material.userData?.campReli
 batchStaticScenery();stream();
 const campCover=addCampCover({T,scene,asset,height,routeX,quality});
 const understory=addUnderstory({T,scene,asset,height,routeX,quality,occluders});
+const campGroundKit=await addAuthoredCampGround({T,scene,height,routeX,quality});
 const lightEffects=createLightEffects({T,scene,hero,height,quality});
 const skillEffects=createSkillEffects({T,scene,hero,height,quality});
 const jumpGroundEffects=createJumpGroundEffects({T,scene,hero,camera,height,quality});
@@ -519,4 +521,4 @@ export function inspectMotion(){return {grounded,verticalVelocity,attackTime,dod
 
 
 export function updatePresentationEffects(dt,elapsed=0){if(!gameplayActive())rangedSpells.update(0,{active:false,dead:state.dead});spellEffects.update(rangedSpells.snapshot(),{active:gameplayActive(),hidden:document.hidden,dead:state.dead});spellFeedback?.update(rangedSpells.snapshot(),{playing,paused,dead:state.dead,hidden:document.hidden});updateLevelFeedback(dt);jumpGroundEffects.update(dt,{grounded:grounded&&!mounts?.owns,verticalVelocity,paused,hidden:document.hidden,dead:state.dead});sceneLighting.update(dt,{playing,paused,hidden:document.hidden,quest:state.quest});lightEffects.update(dt,{elapsed,attackTime,dodgeTime,playing,paused:paused||document.hidden,camera,player});lightBudget.update(player);skillEffects.update(dt,{attackTime,dodgeTime,grounded,wardRemaining:state.wardRemaining,playing,paused,hidden:document.hidden,dead:state.dead,camera,player});}
-export function presentationDiagnostics(){return {mounts:mounts?.diagnostics(),quality,particles:{active:particles.length,limit:particleLimit,draws:particles.length},spellFeedback:spellFeedback?.diagnostics(),rangedState:rangedSpells.snapshot(),ranged:rangedSpells.diagnostics(),spellEffects:spellEffects.diagnostics(),levelUp:{queued:levelFeedback.queue.length,current:levelFeedback.current?{...levelFeedback.current}:null,shown:levelFeedback.shown,enqueued:levelFeedback.enqueued,visible:levelAura.visible,maxQueue:9,ringDraws:levelAura.visible?1:0,particleDraws:particles.filter(p=>p.kind==='level-up').length,draws:(levelAura.visible?1:0)+particles.filter(p=>p.kind==='level-up').length},wildlife:wildlifeWorld.diagnostics(),loot:lootWorld.diagnostics(),jumpGround:jumpGroundEffects.diagnostics(),targeting:targeting.diagnostics(),visualResources:visualResourceDiagnostics(),textures:groundDiagnostics(),groundCover:campCover.diagnostics,understory:understory.diagnostics,forestCover:[...chunks].map(([key,c])=>({chunk:key,...c.cover})),effects:lightEffects.diagnostics,skills:skillEffects.diagnostics,lights:lightBudget.diagnostics,sceneLighting:sceneLighting.diagnostics};}
+export function presentationDiagnostics(){return {mounts:mounts?.diagnostics(),quality,particles:{active:particles.length,limit:particleLimit,draws:particles.length},spellFeedback:spellFeedback?.diagnostics(),rangedState:rangedSpells.snapshot(),ranged:rangedSpells.diagnostics(),spellEffects:spellEffects.diagnostics(),levelUp:{queued:levelFeedback.queue.length,current:levelFeedback.current?{...levelFeedback.current}:null,shown:levelFeedback.shown,enqueued:levelFeedback.enqueued,visible:levelAura.visible,maxQueue:9,ringDraws:levelAura.visible?1:0,particleDraws:particles.filter(p=>p.kind==='level-up').length,draws:(levelAura.visible?1:0)+particles.filter(p=>p.kind==='level-up').length},wildlife:wildlifeWorld.diagnostics(),loot:lootWorld.diagnostics(),jumpGround:jumpGroundEffects.diagnostics(),targeting:targeting.diagnostics(),visualResources:visualResourceDiagnostics(),textures:groundDiagnostics(),campGroundKit:campGroundKit.diagnostics(),groundCover:campCover.diagnostics,understory:understory.diagnostics,forestCover:[...chunks].map(([key,c])=>({chunk:key,...c.cover})),effects:lightEffects.diagnostics,skills:skillEffects.diagnostics,lights:lightBudget.diagnostics,sceneLighting:sceneLighting.diagnostics};}

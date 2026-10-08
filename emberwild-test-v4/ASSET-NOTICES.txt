@@ -1,4 +1,4 @@
-Emberwild / 余烬旷野 — r12 asset and dependency notices
+Emberwild / 余烬旷野 — r15 asset and dependency notices
 
 Three.js and the included example utilities use the MIT license. The runtime copy is app/vendor/LICENSE; the editable-source copy is LICENSE-THREE.txt.
 
@@ -19,3 +19,7 @@ Original OBJ SHA-256: 8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144
 Full CC0 text: LICENSE-MAKEHUMAN-ASSETS.txt. Only graphical data is used; no MakeHuman application code is included or required.
 
 R14 Mosscrest stag and Dawnkite gryphon: original task-authored Blender topology, UVs, skeletons and clips reconstructed from retained authoring records. Runtime materials use a NEW original built-in imagegen concept/material sheet generated 2026-10-08; no old GLB byte identity is claimed. No additional third-party mount geometry or texture library is used. The new material source SHA-256 is 83c3f1b9aa3a37e8921ddc9178b9a3cf737b2acfa87f0aecb745e5ec032b0f20. Reconstructed geometry and new materials require fresh runtime/visual verification.
+
+R15 coherent art rebuild: the hero retains the published R12 face/eyes and original hair surfaces, with new tailored garment topology, five clothing skins and original generated material derivatives. A focused retained-hair correction reverses ear-side trimming/reprojection that produced deep shadow artifacts; all other garment data remains unchanged. Warden Aive uses newly generated original face/material inputs and a reconstructed CC0-based head plus original outfit, hair, glove and lantern geometry. Her actual hand control owns the lantern. The camp ground kit uses new original leaf/stone inputs, exact published bark as a declared input, opaque contour geometry and authored split normals conformed to the terrain. Forest and ground-color revisions are new reproducible derivatives of exact published R13 inputs; the recovered planting module is identified separately in source records. No lost original authoring file or historical acceptance is silently reused.
+
+R15 UI hero/Warden portraits are studio renders of the final selected-tier runtime meshes. They are intentional production UI image assets, not gameplay screenshots. CPU scene comparisons use the same scene/camera conversion and the pinned Three hemisphere-diffuse equation for both versions, with normal-map/display/shadow approximations still disclosed in evidence. No native WebGL, GPU, FPS or device acceptance is claimed.
