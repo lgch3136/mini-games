@@ -1,11 +1,17 @@
-Emberwild / 余烬旷野 — r10 asset and dependency notices
+Emberwild / 余烬旷野 — r11 asset and dependency notices
 
 Three.js and the included example utilities use the MIT license. The runtime copy is app/vendor/LICENSE; the editable-source copy is LICENSE-THREE.txt.
 
-Game code, character/environment/architecture geometry, technical material derivatives and musical score were authored for this project. Original generated references and texture/icon inputs are retained in the editable source where available. The botanical source is original AI-generated project material; technical atlases and alpha masks are reproducible derivations. Generated content is not claimed to have exclusive copyright.
+Game code, environment/architecture geometry, original creature and outfit design, technical material derivatives and musical score were authored for this project. The redesigned hero head/neck uses the CC0 MakeHuman core base mesh as an anatomical topology foundation, modified and textured for this project. Original generated references and texture/icon inputs are retained in the editable source where available. The botanical source is original AI-generated project material; technical atlases and alpha masks are reproducible derivations. Generated content is not claimed to have exclusive copyright.
 
-The earlier cloth/leather/stone maps are preserved direct technical inputs. Their unavailable upstream generated originals are expressly recorded in docs/input-dependencies.json and are not claimed to have been recovered. Retained r9 architecture GLBs are exact direct inputs to the r10 camp merger, with editable geometry source also included. No downloaded third-party character/plant model or commercial recording/sample library was introduced.
+The earlier cloth/leather/stone maps are preserved direct technical inputs. Their unavailable upstream generated originals are expressly recorded in docs/input-dependencies.json and are not claimed to have been recovered. Retained r9 architecture GLBs are exact direct inputs to the r10 camp merger, with editable geometry source also included. The only newly introduced external geometry foundation is the MakeHuman CC0 base mesh noted below; no commercial recording/sample library is used.
 
-The assets are original project work, not World of Warcraft assets or official Blizzard content. The music uses deterministic local synthesis.
+Character design, generated material references and project-specific modeling are original; the CC0 head/neck foundation is credited separately. No World of Warcraft assets or official Blizzard content are used. The music uses deterministic local synthesis.
 
 The runtime contains no private storage identities, authoring Blends, generated references or research dumps. CPU evidence uses actual production geometry with approximate lighting, materials and transparency; it is not native browser WebGL, GPU/FPS or real-device acceptance.
+
+MakeHuman core basemesh (graphical asset, CC0 1.0 Universal)
+Source: https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
+Asset license and source/asset distinction: https://github.com/makehumancommunity/makehuman/blob/master/LICENSE.md
+Original OBJ SHA-256: 8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c
+Full CC0 text: LICENSE-MAKEHUMAN-ASSETS.txt. Only graphical data is used; no MakeHuman application code is included or required.
