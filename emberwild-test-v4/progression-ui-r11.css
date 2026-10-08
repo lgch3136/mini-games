@@ -1,0 +1,34 @@
+/* Load only with the opt-in second-batch page. Existing original atlas is reused. */
+.rpg-progression-page{min-width:0;overflow-wrap:anywhere;color:#dddac6}
+.rpg-progression-points{padding:10px;border:1px solid #bfa06d;color:#ffe3a2;background:#393728;font-weight:700;font-variant-numeric:tabular-nums}
+.rpg-progression-levels,.rpg-progression-camp,.rpg-loot-help{font-size:11px;line-height:1.6;color:#b7c6ac;margin:7px 0}
+.rpg-talent-list,.rpg-recipe-list,.rpg-loot-list{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:11px}
+.rpg-talent-card,.rpg-recipe-card,.rpg-loot-card,.rpg-talent-reset{min-width:0;padding:11px;background:#142825;border:1px solid #8b86644f;border-radius:3px}
+.rpg-progression-card-header{display:flex;align-items:center;gap:10px;min-width:0}
+.rpg-progression-card-header .rpg-icon{width:48px;height:48px;border-radius:3px}
+.rpg-panel .rpg-progression-card-header h3{font-size:16px;margin:0;color:#f0d495}
+.rpg-talent-rank{font-size:11px;color:#a9bea2;font-variant-numeric:tabular-nums}
+.rpg-talent-description,.rpg-talent-effect,.rpg-talent-reset p,.rpg-recipe-card p,.rpg-loot-card p{font-size:11px;line-height:1.6;margin:7px 0}
+.rpg-talent-effect{color:#efcf8f;font-variant-numeric:tabular-nums}
+.rpg-progression-page button.rpg-progression-action{min-height:44px;min-width:44px;width:100%;max-width:100%;padding:9px 11px;white-space:normal;line-height:1.4;font-size:12px;border:1px solid #ad9463;border-radius:3px;background:#3f5036;color:#ffefd0;touch-action:manipulation}
+.rpg-progression-page button.rpg-progression-action:focus-visible{outline:3px solid #ffe09c;outline-offset:3px}
+.rpg-progression-page button:disabled{background:#2b3530;color:#bdc6b6;opacity:.65;cursor:not-allowed}
+.rpg-progression-reason{min-height:0;color:#cab483;font-size:10px;line-height:1.5;margin:5px 0 0}
+.rpg-progression-reason:empty{display:none}
+.rpg-talent-reset{margin-top:12px;border-color:#ae7b514f;background:#31291f}
+.rpg-talent-reset .rpg-progression-action{background:#604231!important}
+.rpg-panel h3.rpg-progression-heading{font-size:14px;letter-spacing:.04em;margin:18px 0 8px}
+.rpg-material-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:7px}
+.rpg-material-card{min-width:0;padding:8px;background:#182c28;border:1px solid #80937044;border-radius:3px;text-align:center}
+.rpg-material-card .rpg-icon{width:42px;height:42px;margin:0 auto 5px;border-radius:3px}
+.rpg-material-card strong,.rpg-material-quantity{display:block;font-size:11px}
+.rpg-material-quantity{color:#efcf8f;font-variant-numeric:tabular-nums}
+.rpg-material-card p{font-size:10px;line-height:1.5;color:#aabbab;margin:6px 0 0}
+.rpg-recipe-card h4{font-size:13px;margin:0;color:#e8d4a3}
+.rpg-recipe-output,.rpg-loot-items{color:#ecd091}.rpg-loot-range{color:#a4b89f;font-variant-numeric:tabular-nums}
+.rpg-progression-status{font-size:11px;line-height:1.6;color:#ffe3a3;min-height:0;margin:10px 0 0}
+.rpg-panel[data-panel='progression'] .rpg-panel-header{position:sticky;top:0;z-index:3;background:#152626}
+.rpg-panel[data-panel='progression'] .rpg-close{min-width:44px;min-height:44px;flex-shrink:0}
+.rpg-panel[data-panel='progression'] .rpg-tabs{flex-wrap:wrap}
+.rpg-panel[data-panel='progression'] .rpg-tabs button{min-height:44px;min-width:44px;flex:1 1 70px}
+@media(max-width:380px){.rpg-progression-card-header{gap:7px}.rpg-progression-card-header .rpg-icon{width:40px;height:40px}.rpg-panel .rpg-progression-card-header h3{font-size:14px}.rpg-talent-card,.rpg-recipe-card,.rpg-loot-card,.rpg-talent-reset{padding:9px}.rpg-progression-points{font-size:11px}}

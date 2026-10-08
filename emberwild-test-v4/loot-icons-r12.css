@@ -1,0 +1,11 @@
+/* Only the selected variable is resolved/fetched. No eager dual-tier preload. */
+:root{--loot-material-atlas-r12:url('./assets/loot-r12/material-icons-standard-r12.webp')}
+[data-loot-quality="low"]{--loot-material-atlas-r12:url('./assets/loot-r12/material-icons-low-r12.webp')}
+.rpg-icon.rpg-material-icon-r12,.rpg-icon[data-material-icon]{
+ background-image:var(--loot-material-atlas-r12);
+ background-size:300% 100%;background-repeat:no-repeat;background-position-y:50%;
+ width:52px;height:52px;image-rendering:auto;
+}
+.rpg-icon[data-material-icon="wildBloom"]{background-position-x:0%}
+.rpg-icon[data-material-icon="glowResin"]{background-position-x:50%}
+.rpg-icon[data-material-icon="stoneHorn"]{background-position-x:100%}

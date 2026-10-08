@@ -1,4 +1,4 @@
-import {GAME_GUIDE,matchesGame,readRecent,saveRecent} from './arcade-catalog.mjs?v=20261008-r11';
+import {GAME_GUIDE,matchesGame,readRecent,saveRecent} from './arcade-catalog.mjs?v=20261008-r12';
 const cards=[...document.querySelectorAll('.card[data-cat]')], filters=[...document.querySelectorAll('.filter')], paces=[...document.querySelectorAll('[data-pace]')];
 const input=document.querySelector('#game-search'),count=document.querySelector('#catalog-count'),empty=document.querySelector('#catalog-empty');
 const state={filter:'all',pace:'all',query:''};
@@ -22,3 +22,4 @@ input.addEventListener('input',()=>{state.query=input.value;apply();});
 document.querySelector('#clear-search').addEventListener('click',()=>{input.value='';state.query='';state.filter='all';state.pace='all';filters.forEach(b=>{const on=b.dataset.filter==='all';b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});paces.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.pace==='all')));apply();input.focus();});
 function showRecent(){const recent=readRecent(store),link=document.querySelector('#recent-game');if(!recent){link.hidden=true;return;}link.href=GAME_GUIDE[recent.id].href||`${recent.id}/index.html?v=20260930-quality-r2`;link.querySelector('strong').textContent=GAME_GUIDE[recent.id].label;link.hidden=false;}
 window.addEventListener('pageshow',showRecent);showRecent();apply();
+

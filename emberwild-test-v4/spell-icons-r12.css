@@ -1,0 +1,7 @@
+/* The containing root selects one tier; no eager dual-tier preload. */
+:root{--spell-atlas-r12:url('./assets/spells-r12/spell-icons-standard-r12.webp')}
+[data-spell-quality="low"]{--spell-atlas-r12:url('./assets/spells-r12/spell-icons-low-r12.webp')}
+.rpg-icon.rpg-spell-icon-r12,.rpg-icon[data-spell-icon]{background-image:var(--spell-atlas-r12);background-size:300% 100%;background-repeat:no-repeat;background-position-y:50%;image-rendering:auto}
+.rpg-icon[data-spell-icon="emberBolt"]{background-position-x:0%}
+.rpg-icon[data-spell-icon="frostLance"]{background-position-x:50%}
+.rpg-icon[data-spell-icon="starfall"]{background-position-x:100%}

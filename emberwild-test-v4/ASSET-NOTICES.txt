@@ -1,4 +1,4 @@
-Emberwild / 余烬旷野 — r11 asset and dependency notices
+Emberwild / 余烬旷野 — r12 asset and dependency notices
 
 Three.js and the included example utilities use the MIT license. The runtime copy is app/vendor/LICENSE; the editable-source copy is LICENSE-THREE.txt.
 
@@ -7,6 +7,8 @@ Game code, environment/architecture geometry, original creature and outfit desig
 The earlier cloth/leather/stone maps are preserved direct technical inputs. Their unavailable upstream generated originals are expressly recorded in docs/input-dependencies.json and are not claimed to have been recovered. Retained r9 architecture GLBs are exact direct inputs to the r10 camp merger, with editable geometry source also included. The only newly introduced external geometry foundation is the MakeHuman CC0 base mesh noted below; no commercial recording/sample library is used.
 
 Character design, generated material references and project-specific modeling are original; the CC0 head/neck foundation is credited separately. No World of Warcraft assets or official Blizzard content are used. The music uses deterministic local synthesis.
+
+The two wildlife rigs, loot pouch, material and ranged-spell icons and technical texture atlases are original project assets built from original generated reference/material inputs with Blender-authored geometry, UVs and animation. The stoneback profile shares the boar rig; it is not a third independently authored creature model. Creature portraits render those exact runtime GLBs.
 
 The runtime contains no private storage identities, authoring Blends, generated references or research dumps. CPU evidence uses actual production geometry with approximate lighting, materials and transparency; it is not native browser WebGL, GPU/FPS or real-device acceptance.
 
