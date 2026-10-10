@@ -670,6 +670,11 @@ function render() {
         ctx.fillStyle = unlocked ? '#052e1f' : '#dbeafe';
         ctx.font = '900 13px ui-monospace, monospace';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        // Fine dark keyline keeps non-target letters readable on bright brick hues.
+        if (!unlocked) {
+          ctx.save(); ctx.strokeStyle = '#102934'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+          ctx.strokeText(k.letter, k.x + k.w / 2, k.y + k.h / 2 + 1); ctx.restore();
+        }
         ctx.fillText(k.letter, k.x + k.w / 2, k.y + k.h / 2 + 1);
       }
     }
