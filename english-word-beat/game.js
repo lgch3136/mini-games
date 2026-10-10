@@ -415,7 +415,7 @@ function wordBank() {
 /* ---------------- 状态 ---------------- */
 const Game = {
   state: 'menu',
-  build: '20261010-key-labels-r1',
+  build: '20261010-audio-resume-r1',
   session: 'song', timingOffset: 0, timingErrors: [], laneMistakes: [0,0,0,0,0,0,0], completed: false,
   difficulty: 'medium',
   keyMode: window.matchMedia?.('(pointer:coarse)').matches ? 4 : 7, scrollMul: 1.25, songId: 'joy', section: 0, currentSection: '',
@@ -443,6 +443,48 @@ const Game = {
   logicFrame: 0, rafCount: 0, renderCount: 0,
 };
 
+// AudioContext transitions are asynchronous. Keep only the latest requested
+// state, then reconcile after an older transition settles (including failure).
+// No timer/statechange listener starts audio without an existing start/resume.
+const audioTransports = new WeakMap();
+function requestAudioState(desired) {
+  const context = Game.actx;
+  if (!context || context.state === 'closed') return;
+  let transport = audioTransports.get(context);
+  if (!transport) {
+    transport = { desired, pending: null };
+    audioTransports.set(context, transport);
+  }
+  transport.desired = desired;
+  // A policy-blocked resume may stay pending until a fresh user gesture.
+  // Do not swallow that explicit retry, or a pause of an already-running clock.
+  if (transport.pending?.desired === 'running' &&
+      ((desired === 'running' && context.state === 'suspended') ||
+       (desired === 'suspended' && context.state === 'running'))) transport.pending = null;
+  reconcileAudioState(context, transport);
+}
+function reconcileAudioState(context, transport) {
+  if (Game.actx !== context || context.state === 'closed' || transport.pending || context.state === transport.desired) return;
+  const desired = transport.desired;
+  // Preserve the existing resume behavior for suspended contexts only.
+  if (desired === 'running' && context.state !== 'suspended') return;
+  const method = desired === 'running' ? 'resume' : 'suspend';
+  if (typeof context[method] !== 'function') return;
+  const pending = { desired };
+  transport.pending = pending;
+  let transition;
+  try { transition = context[method](); }
+  catch { if (transport.pending === pending) transport.pending = null; return; }
+  const settled = () => {
+    // A late promise must not clear a newer explicit request's pending marker.
+    if (transport.pending === pending) transport.pending = null;
+    // Do not retry a rejected request in a loop. A later explicit action can
+    // retry; only an opposite request made in the meantime needs reconciling.
+    if (transport.desired !== desired) reconcileAudioState(context, transport);
+  };
+  Promise.resolve(transition).then(settled, settled);
+}
+
 function ensureAudioClock() {
   if (!Game.actx) {
     Game.actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -455,7 +497,7 @@ function ensureAudioClock() {
     Game.master.connect(limiter);
     limiter.connect(Game.actx.destination);
   }
-  if (Game.actx.state === 'suspended') Game.actx.resume().catch(() => {});
+  requestAudioState('running');
   loadPianoSamples();
   return Game.actx;
 }
@@ -990,7 +1032,7 @@ function gameOver() {
   Game.lives = Math.max(0, Game.lives);
   stopVoices();
   Game.heldLane.fill(0); keyboardLanes.clear(); pointerLanes.clear();
-  Game.actx?.suspend().catch(() => {});
+  requestAudioState('suspended');
   Game.activeHolds.fill(null);
   $id('word-bar').classList.add('hidden');
   $id('over').classList.remove('hidden');
@@ -1105,12 +1147,13 @@ canvas.addEventListener('pointerup', releasePointer);
 canvas.addEventListener('pointercancel', releasePointer);
 canvas.addEventListener('lostpointercapture', releasePointer);
 function togglePause() {
+  if (!Game.actx || Game.actx.state === 'closed') return;
   if (Game.state === 'playing') {
     Game.state = 'paused';
     // A deliberate pause preserves observed inputs; keyup/cancel still releases them.
     for (const note of Game.activeHolds) if (note) note.regrip = true;
     Game.pauseStartedAt = Game.actx.currentTime;
-    Game.actx.suspend().catch(() => {});
+    requestAudioState('suspended');
     $id('paused').classList.remove('hidden');
   } else if (Game.state === 'paused') {
     Game.state = 'playing';
@@ -1125,7 +1168,7 @@ function backToMenu() {
   stopVoices();
   Game.state = 'menu';
   Game.heldLane.fill(0); keyboardLanes.clear(); pointerLanes.clear();
-  Game.actx?.suspend().catch(() => {});
+  requestAudioState('suspended');
   Game.activeHolds.fill(null);
   $id('paused').classList.add('hidden');
   $id('over').classList.add('hidden');
@@ -1847,7 +1890,7 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
       const duplicateRenders = Game.renderCount - Game.logicFrame;
       const passed = Game.logicFrame >= 40 && Math.abs(duplicateRenders) <= 3 && Game.floaters.length <= 40;
       Game.state = 'paused';
-      Game.actx?.suspend().catch(() => {});
+      requestAudioState('suspended');
       document.title = passed
         ? `FRAME-BUDGET PASS · ${Game.logicFrame}/${Game.renderCount}`
         : `FRAME-BUDGET FAIL · ${Game.logicFrame}/${Game.renderCount}`;
