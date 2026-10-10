@@ -1,0 +1,54 @@
+/* Full-sized touch controls, song-level finish, and visible feedback hierarchy. */
+body { background:radial-gradient(ellipse at 30% 0,#263057,#10101e 60%,#070910); }
+.panel { padding:20px 22px 28px; }
+#menu .panel h1 { letter-spacing:-.02em; }
+#menu .sub { color:#c1c7e0; line-height:1.75; margin:12px auto; }
+.menu-cover { width:100%; height:120px; border-radius:18px; object-position:center 45%; }
+#menu .scale-map { display:none; }
+.session-settings { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:12px; margin:14px 0 8px; font-size:12px; color:#c1c8df; text-align:left }
+.session-settings select { min-width:0; }
+.timing-settings { text-align:left; background:#9392d812; border:1px solid #b7b9df25; padding:12px; border-radius:12px; font-size:12px; margin:8px 0; color:#c3c8dd }
+.timing-settings summary { cursor:pointer; min-height:24px; }
+.timing-settings output { float:right; font-variant-numeric:tabular-nums; color:#91dbf8; }
+.timing-settings label { display:block; margin:13px 0 5px; }
+.timing-settings input { width:100%; min-height:44px; accent-color:#a9b9fb; }
+.timing-settings p { line-height:1.7; color:#a8b6d0; }
+.star-guide { color:#c3bc9c; font-size:11px; margin:13px 0 5px; }
+.song-progress { position:absolute; left:22px; right:22px; bottom:12px; display:flex; align-items:center; gap:12px; color:#bcd9e9; font-size:11px; }
+.song-progress i { height:3px; flex:1; background:#c3edff25; overflow:hidden; border-radius:5px; }
+.song-progress em { display:block; height:100%; background:linear-gradient(90deg,#78caff,#d3bdfe); transform-origin:left; }
+.result-stars { color:#f1d78c; font-size:38px; letter-spacing:.15em; margin:15px 0; }
+.result-timing { color:#a5bad8; font-size:12px; margin-top:16px; }
+.result-advice { color:#d2d8ec; font-size:13px; line-height:1.8; text-align:left; padding:14px; margin:12px 0; border:1px solid #a9b9e133; background:#c4cdff08; border-radius:14px; }
+#pause-btn,#mute-btn,#exit-btn { min-height:44px; padding:7px 11px; border-radius:12px; }
+button.difficulty,.seg-btn,select { min-height:44px; }
+.btn-main { min-height:50px; border-radius:16px; background:linear-gradient(135deg,#6f8ee6,#7065bd); }
+button,select,input { touch-action:manipulation; }
+@media (max-width:600px) and (orientation:portrait) {
+  .panel { padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px); max-width:100%; }
+  .menu-cover { height:108px; }
+  #menu .keys,.judge-guide { display:none; }
+  #menu .opt-row { margin-top:12px; gap:10px; }
+  #song-select { width:100%; font-size:16px; }
+  select { font-size:16px; }
+  .diff-row { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:14px; }
+  button.difficulty { padding:8px 5px; font-size:11px; }
+  .seg-btn { font-size:13px; padding:8px 15px; }
+  #menu .btn-main { width:100%; margin-top:10px; }
+  .top { top:max(8px,env(safe-area-inset-top)); left:12px; right:12px; flex-wrap:wrap; gap:7px; }
+  .top > .chips:first-child { width:calc(100% - 60px); font-size:12px; }
+  .top > .chips:last-child { width:100%; justify-content:flex-end; }
+  .top .chip:nth-child(2),.top .chip:nth-child(4) { display:none; }
+  .life-wrap { max-width:50px; }
+  #word-bar { top:calc(max(8px,env(safe-area-inset-top)) + 82px); width:auto; max-width:calc(100% - 28px); }
+  #wb-word { font-size:16px; }
+  #wb-zh { font-size:12px; }
+  .song-progress { bottom:max(13px,env(safe-area-inset-bottom)); left:20px; right:20px; }
+  #feedback { white-space:normal; width:max-content; text-align:center; line-height:1.5; font-size:12px; }
+  .btn-row { flex-wrap:wrap; }
+}
+@media (max-height:480px) and (orientation:landscape) {
+  #pause-btn,#mute-btn,#exit-btn { min-height:44px; }
+  #word-bar { top:52px; }
+  #menu .panel { padding:10px 16px; }
+}
