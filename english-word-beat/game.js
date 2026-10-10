@@ -415,7 +415,7 @@ function wordBank() {
 /* ---------------- 状态 ---------------- */
 const Game = {
   state: 'menu',
-  build: '20260930-quality-r1',
+  build: '20261010-hold-resume-r1',
   session: 'song', timingOffset: 0, timingErrors: [], laneMistakes: [0,0,0,0,0,0,0], completed: false,
   difficulty: 'medium',
   keyMode: window.matchMedia?.('(pointer:coarse)').matches ? 4 : 7, scrollMul: 1.25, songId: 'joy', section: 0, currentSection: '',
@@ -917,11 +917,15 @@ function updateHolds() {
     const note = Game.activeHolds[lane];
     if (!note) continue;
     if (note.regrip) {
-      if (Game.heldLane[lane]) note.regrip = false;
-      else if (t < Game.regripUntil) continue;
-      else { breakHold(lane); continue; }
+      // Keep the fixed resume window even if the key is held on the first frame.
+      if (!Game.heldLane[lane]) {
+        if (t < Game.regripUntil) continue;
+        breakHold(lane); continue;
+      }
+      if (t >= Game.regripUntil) note.regrip = false;
     }
     if (t >= note.endAt - .035) {
+      note.regrip = false;
       note.holding = false; note.holdComplete = true;
       Game.activeHolds[lane] = null;
       Game.score += 120; Game.bgPulse = Math.min(1, Game.bgPulse + .24);
@@ -1043,9 +1047,12 @@ window.addEventListener('keydown', (ev) => {
       /INPUT|SELECT|TEXTAREA/.test(ev.target?.tagName) || ev.target?.isContentEditable) return;
   const li = LANE_KEYS().indexOf(ev.code);
   if (li >= 0) {
-    if (Game.state !== 'playing') return;
+    if (Game.state !== 'playing' && Game.state !== 'paused') return;
     ev.preventDefault();
-    if (!ev.repeat && !keyboardLanes.has(li)) { keyboardLanes.add(li); Game.heldLane[li] = 1; judgeHit(li); }
+    if (!ev.repeat && !keyboardLanes.has(li)) {
+      pressLane(li);
+      if (Game.state === 'playing' || Game.state === 'paused') keyboardLanes.add(li);
+    }
     return;
   }
   if (ev.repeat) return;
@@ -1064,11 +1071,19 @@ canvas.addEventListener('pointerdown', (ev) => {
   const rect = canvas.getBoundingClientRect();
   const x = (ev.clientX - rect.left) * W / rect.width;
   const lane = clamp(Math.floor((x - 20) / ((W - 40) / LANES)), 0, LANES - 1);
+  pressLane(lane);
+  if (Game.state !== 'playing') return;
   pointerLanes.set(ev.pointerId, lane);
-  Game.heldLane[lane] = 1;
   try { canvas.setPointerCapture?.(ev.pointerId); } catch {}
-  judgeHit(lane);
 });
+function pressLane(lane) {
+  const note = Game.activeHolds[lane];
+  // A late key event must not rescue an expired hold before the next frame runs.
+  if (Game.state === 'playing' && note?.regrip && !Game.heldLane[lane] && judgeNow() >= Game.regripUntil) breakHold(lane);
+  if (Game.state !== 'playing' && Game.state !== 'paused') return;
+  Game.heldLane[lane] = 1;
+  if (Game.state === 'playing') judgeHit(lane);
+}
 function releasePointer(ev) {
   const lane = pointerLanes.get(ev.pointerId);
   pointerLanes.delete(ev.pointerId);
@@ -1077,8 +1092,14 @@ function releasePointer(ev) {
 function releaseLane(lane) {
   if (keyboardLanes.has(lane)) return;
   for (const held of pointerLanes.values()) if (held === lane) return;
+  if (!Game.heldLane[lane]) return;
   Game.heldLane[lane] = 0;
-  if (Game.state === 'playing' && Game.activeHolds[lane] && judgeNow() < Game.activeHolds[lane].endAt - .035) breakHold(lane);
+  const note = Game.activeHolds[lane];
+  if (Game.state === 'playing' && note) {
+    const t = judgeNow();
+    if (t >= note.endAt - .035) note.regrip = false;
+    else if (!(note.regrip && t < Game.regripUntil)) breakHold(lane);
+  }
 }
 canvas.addEventListener('pointerup', releasePointer);
 canvas.addEventListener('pointercancel', releasePointer);
@@ -1086,7 +1107,7 @@ canvas.addEventListener('lostpointercapture', releasePointer);
 function togglePause() {
   if (Game.state === 'playing') {
     Game.state = 'paused';
-    Game.heldLane.fill(0); keyboardLanes.clear(); pointerLanes.clear();
+    // A deliberate pause preserves observed inputs; keyup/cancel still releases them.
     for (const note of Game.activeHolds) if (note) note.regrip = true;
     Game.pauseStartedAt = Game.actx.currentTime;
     Game.actx.suspend().catch(() => {});
@@ -1560,10 +1581,15 @@ $id('song-select').addEventListener('change', (event) => {
 });
 $id('song-select').value = Game.songId;
 updateSongMenu();
-window.addEventListener('blur', () => { if (Game.state === 'playing') togglePause(); });
-window.addEventListener('pagehide', () => { if (Game.state === 'playing') togglePause(); stopVoices(); });
+function interruptGame() {
+  // Outside the page, releases may be lost even if the game was already paused.
+  Game.heldLane.fill(0); keyboardLanes.clear(); pointerLanes.clear();
+  if (Game.state === 'playing') togglePause();
+}
+window.addEventListener('blur', interruptGame);
+window.addEventListener('pagehide', () => { interruptGame(); stopVoices(); });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && Game.state === 'playing') togglePause();
+  if (document.hidden) interruptGame();
 });
 
 function resize() {
