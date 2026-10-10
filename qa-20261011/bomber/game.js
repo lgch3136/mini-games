@@ -33,6 +33,11 @@ const DIFFS = {
 const GameplayAtlas = new Image();
 GameplayAtlas.src = 'assets/gameplay-atlas-v3.webp';
 
+// Optional terrain-only bake. Collision, actors and warning overlays keep their original paths.
+const TerrainAtlas = new Image();
+TerrainAtlas.src = 'assets/terrain-atlas-v1.webp';
+let terrainAtlasReady = false;
+
 /* ---------------- 工具 ---------------- */
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -813,7 +818,11 @@ gridLayer.width = 880; gridLayer.height = 704;
 const gridContext = gridLayer.getContext('2d');
 const gridSnapshot = new Int8Array(COLS * ROWS).fill(-1);
 function drawGrid() {
-  let dirty = false;
+  // Loading or a malformed/missing image never removes the original painted fallback.
+  // Readiness joins the existing grid invalidation, without another canvas or per-frame bake.
+  const ready = TerrainAtlas.complete && TerrainAtlas.naturalWidth === 512 && TerrainAtlas.naturalHeight === 256;
+  let dirty = ready !== terrainAtlasReady;
+  terrainAtlasReady = ready;
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const index = r * COLS + c;
     if (gridSnapshot[index] !== Game.grid[r][c]) {
@@ -835,6 +844,13 @@ function paintGrid(ctx) {
     for (let c = 0; c < COLS; c++) {
       const x = OX + c * CELL, y = OY + r * CELL;
       const g = Game.grid[r][c];
+      if (terrainAtlasReady) {
+        const variant = (c * 3 + r * 7 + (c * r) % 5) & 3;
+        const tile = g === 1 ? 4 + (variant & 1) : g === 2 ? 6 + (variant & 1) : variant;
+        ctx.drawImage(TerrainAtlas, (tile % 4) * 128, Math.floor(tile / 4) * 128,
+          128, 128, x, y, CELL, CELL);
+        continue;
+      }
       if (g === 1) {
         // 硬墙: 深蓝黑石柱(FC经典不可摧毁柱), 与砖块形成色相差异
         ctx.fillStyle = '#111827';
