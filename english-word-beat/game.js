@@ -415,7 +415,7 @@ function wordBank() {
 /* ---------------- 状态 ---------------- */
 const Game = {
   state: 'menu',
-  build: '20261010-hold-resume-r1',
+  build: '20261010-key-labels-r1',
   session: 'song', timingOffset: 0, timingErrors: [], laneMistakes: [0,0,0,0,0,0,0], completed: false,
   difficulty: 'medium',
   keyMode: window.matchMedia?.('(pointer:coarse)').matches ? 4 : 7, scrollMul: 1.25, songId: 'joy', section: 0, currentSection: '',
@@ -1339,8 +1339,11 @@ function render() {
     ctx.fillRect(x + 12, capY + 3, laneW() - 24, 2);
     ctx.font = `900 ${clamp(laneW() * .24, 11, 17)}px ui-monospace, monospace`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,5,20,.85)';
-    ctx.strokeText(LANE_LABEL()[l], x + laneW() / 2, capY + capH / 2 + 1);
+    // Light/gold caps need crisp dark glyphs; only blue caps need a dark outline.
+    if (color === O2_BLUE) {
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(10,5,20,.85)';
+      ctx.strokeText(LANE_LABEL()[l], x + laneW() / 2, capY + capH / 2 + 1);
+    }
     ctx.fillStyle = color === O2_BLUE ? '#ffffff' : '#152239';
     ctx.fillText(LANE_LABEL()[l], x + laneW() / 2, capY + capH / 2 + 1);
     ctx.fillStyle = 'rgba(190,220,255,.22)';
