@@ -1,6 +1,7 @@
 'use strict';
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+if (window.ArcadeAudio && window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
 
 /* ============================================================
  * 英语炸弹人 · WORD BOMBER —— FC炸弹人机制 × 拼单词开门

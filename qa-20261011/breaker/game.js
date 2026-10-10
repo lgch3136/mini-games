@@ -1,6 +1,7 @@
 'use strict';
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+if (window.ArcadeAudio && window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
 
 /* ============================================================
  * 英语打砖块 · WORD BREAKER —— FC打砖块 × 拼单词
