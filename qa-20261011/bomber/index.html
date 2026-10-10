@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>英语炸弹人 · WORD BOMBER · QA 20261011 · 独立测试存档</title>
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20260930-quality-r3">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game" width="880" height="704"></canvas>
+
+  <div id="hud">
+    <div id="word-bar" class="hidden">
+      <span id="wb-kind">拼单词</span><span id="wb-word"></span>
+      <div id="wb-zh"></div>
+    </div>
+    <div id="stats">
+      <div class="chips">
+        <span class="chip">⭐ <b id="score">0</b></span>
+        <span class="chip">🧡 <b id="lives">3</b></span>
+        <span class="chip">🚪 <b id="stage">1</b>-<b id="round">1</b></span>
+      </div>
+      <div class="chips">
+        <button id="mute-btn">声音</button>
+        <button id="pause-btn">暂停</button>
+      </div>
+    </div>
+    <div id="feedback" role="status"></div>
+    <div id="mission" class="mission-strip"></div><div id="build-status" class="build-strip"></div>
+  </div>
+
+  <div id="touch-controls">
+    <div class="tc-pad">
+      <button id="up-btn">▲</button>
+      <button id="left-btn">◀</button>
+      <button id="right-btn">▶</button>
+      <button id="down-btn">▼</button>
+    </div>
+    <button id="bomb-btn">💣</button>
+  </div>
+
+  <div class="overlay" id="menu">
+    <div class="panel">
+      <img class="menu-cover" src="../shared/mobile-art/bomber-diorama.webp" alt="">
+
+      <h1>英语炸弹人<small>WORD BOMBER</small></h1>
+      <p class="sub">炸开砖墙，按顺序收集隐藏字母，拼出单词开启传送门。<br>先放炸弹，转过拐角躲开橙色预警。每轮选升级，挑战无伤徽章。</p>
+      <div class="keys">
+        <span>方向键 / WASD 移动</span><span>空格 / J 放炸弹</span><span>P 暂停</span><span>M 静音</span>
+      </div>
+      <div class="diff-row">
+        <button class="difficulty selected" data-difficulty="easy">初级</button>
+        <button class="difficulty" data-difficulty="medium">中级</button>
+        <button class="difficulty" data-difficulty="hard">高级</button>
+      </div>
+      <button class="btn-main" id="start-btn">开始游戏</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="supply">
+    <div class="panel"><p class="mission-kicker">远征补给 · 每轮选一项</p><h1>下一程怎么走？</h1>
+      <img id="supply-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本轮表现徽章"><p id="supply-summary" class="sub"></p>
+      <div class="supply-grid"><button id="supply-fire"><b>扩散核心</b><span>火力 +1 · 达上限后增加容量</span></button><button id="supply-speed"><b>轻盈靴</b><span>移动更快 · 升级整局保留</span></button><button id="supply-heart"><b>安全补给</b><span>恢复 1 颗心 · 最多 5 颗</span></button></div>
+    </div>
+  </div>
+  <div class="overlay hidden" id="paused">
+    <div class="panel">
+      <h1 style="font-size:30px;">暂停中</h1>
+      <div class="btn-row">
+        <button class="btn-main" id="resume-btn" style="padding:10px 34px;font-size:15px;">继续</button>
+        <button class="btn-sub" id="pause-menu-btn">回主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="over">
+    <div class="panel">
+      <p class="eyebrow" id="over-kicker" style="color:#fbbf24;letter-spacing:4px;font-size:12px;margin-bottom:6px;">行动结束</p>
+      <h1 id="over-title" style="font-size:32px;">再战一轮？</h1>
+      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本局徽章">
+      <div id="over-stats"></div>
+      <p class="sub" id="over-recap" style="min-height:20px;"></p>
+      <div class="btn-row">
+        <button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
+        <button class="btn-sub" id="menu-btn">回主菜单</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/vocabulary.js"></script>
+<script src="audio-qa.js?v=20260930-mobile-r2"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2"></script>
+<script src="game.js?v=20260930-mobile-r2&mobile=20260930-quality-r2"></script>
+</body>
+</html>
