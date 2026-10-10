@@ -878,13 +878,19 @@ window.addEventListener('resize',resizeArena);
 new ResizeObserver(resizeArena).observe($id('game-wrap'));
 
 /* ---------------- 绑定 ---------------- */
-function toggleMute() {
-  if (window.ArcadeAudio) ArcadeAudio.toggle();
-  if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
-  $id('mute-btn').textContent = ArcadeAudio.muted ? '已静音' : '声音';
+function updateMuteButton() {
+  const button = $id('mute-btn');
+  if (button && window.ArcadeAudio) button.textContent = ArcadeAudio.muted ? '已静音' : '声音';
 }
+function toggleMute() {
+  if (!window.ArcadeAudio) return;
+  ArcadeAudio.toggle();
+  if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
+  updateMuteButton();
+}
+updateMuteButton();
 $id('recall-btn').addEventListener('pointerdown',e=>{e.preventDefault();recallBall();});
-$id('mute-btn').addEventListener('click', toggleMute);
+$id('mute-btn')?.addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
 $id('start-btn').addEventListener('click', () => { if (window.ChipMusic) ChipMusic.unlock(); startGame(); });
 $id('retry-btn').addEventListener('click', startGame);
