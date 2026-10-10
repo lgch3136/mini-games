@@ -1,6 +1,7 @@
 'use strict';
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+if (window.ArcadeAudio && window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
 
 /* ============================================================
  * 英语炸弹人 · WORD BOMBER —— FC炸弹人机制 × 拼单词开门
@@ -418,6 +419,7 @@ function explodeBomb(bomb) {
   if (multiKill >= 2) {
     const bonus = multiKill * 75;
     Game.score += bonus;
+    updateScoreHud();
     floatText('连锁 ×' + multiKill + '  +' + bonus, OX + bomb.col * CELL + CELL / 2, OY + bomb.row * CELL, '#fde68a');
   }
   Game.shake = Math.max(Game.shake, .3);
@@ -428,6 +430,7 @@ function explodeBomb(bomb) {
 function breakBrick(c, r) {
   Game.grid[r][c] = 0;
   Game.score += 10;
+  updateScoreHud();
   const x = OX + c * CELL + CELL / 2, y = OY + r * CELL + CELL / 2;
   for (let i = 0; i < 8; i++) {
     Game.particles.push({
@@ -448,6 +451,7 @@ let hitStopTimer = 0;
 function killEnemy(e) {
   e.dead = true;
   Game.score += 100;
+  updateScoreHud();
   hitStopTimer = .06;   // 命中停顿60ms: 打击感核心
   const x = OX + e.col * CELL + CELL / 2, y = OY + e.row * CELL + CELL / 2;
   for (let i = 0; i < 12; i++) {
@@ -575,6 +579,7 @@ function updatePlayer(dt) {
       else { p.speed = Math.min(224, p.speed + 14); showFeedback('👟 移速提升！'); }
       Game.build = { speed: p.speed, bombPower: p.bombPower, bombMax: p.bombMax };
       Game.score += 80;
+      updateHud();
       Game.pickups.splice(i, 1);
       if (window.ArcadeAudio) ArcadeAudio.play('confirm', .2, 1.15);
     }
@@ -718,6 +723,7 @@ function maybeOpenPortal() {
   if (!Game.portal || Game.portal.open || Game.portal.hidden || Game.word.progress < Game.word.en.length || Game.enemies.some((enemy) => !enemy.dead)) return false;
   Game.portal.open = true;
   Game.score += 200 + Game.word.en.length * 30;
+  updateScoreHud();
   showFeedback('🎉 三项目标完成 · 传送门开启！');
   Game.flash = .35;
   const px = OX + Game.portal.col * CELL + CELL / 2, py = OY + Game.portal.row * CELL + CELL / 2;
@@ -1176,8 +1182,14 @@ function render() {
 }
 
 /* ---------------- HUD ---------------- */
+function updateScoreHud() {
+  const el = $id('score');
+  const value = String(Game.score);
+  if (el.textContent !== value) el.textContent = value;
+}
+
 function updateHud() {
-  $id('score').textContent = Game.score;
+  updateScoreHud();
   $id('lives').textContent = Game.lives;
   $id('stage').textContent = Game.stage;
   $id('round').textContent = Game.round;
@@ -1246,15 +1258,21 @@ function drawTacticalReadout() {
 }
 
 /* ---------------- 主循环 ---------------- */
-function toggleMute() {
-  if (window.ArcadeAudio) ArcadeAudio.toggle();
-  if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
-  $id('mute-btn').textContent = ArcadeAudio.muted ? '已静音' : '声音';
+function updateMuteButton() {
+  const button = $id('mute-btn');
+  if (button && window.ArcadeAudio) button.textContent = ArcadeAudio.muted ? '已静音' : '声音';
 }
+function toggleMute() {
+  if (!window.ArcadeAudio) return;
+  ArcadeAudio.toggle();
+  if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
+  updateMuteButton();
+}
+updateMuteButton();
 $id('supply-fire').addEventListener('click', () => chooseSupply('fire'));
 $id('supply-speed').addEventListener('click', () => chooseSupply('speed'));
 $id('supply-heart').addEventListener('click', () => chooseSupply('heart'));
-$id('mute-btn').addEventListener('click', toggleMute);
+$id('mute-btn')?.addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
 $id('start-btn').addEventListener('click', () => { if (window.ChipMusic) ChipMusic.unlock(); startGame(); });
 $id('retry-btn').addEventListener('click', startGame);

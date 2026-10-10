@@ -85,13 +85,13 @@
             <summary>操作与设置 <span>＋</span></summary>
             <div class="settings-body">
               <p>
-                逐字输入，打完一个词按空格施法。错字不推进，直接重打；Backspace
-                回退。1 / 2 / 3 切换强攻、冰霜与回复；每 3 连词爆发。Enter 用 3
+                逐字输入，打完一个词按空格完成。热身与静心、错词练习无伤害。错字不推进，直接重打；Backspace
+                回退。冒险中：1 / 2 / 3 切换强攻、冰霜与回复；每 3 连词爆发。Enter 用 3
                 格能量开盾，敌人即将攻击时只用 1 格即可反制；Esc 暂停。
               </p>
               <p>
                 字速 WPM = 已完成单词的字符数（含空格）÷ 5 ÷
-                实际战斗分钟。菜单、奖励、暂停时间均不计入。退格重打不会刷伤害。
+                实际书写分钟。菜单、奖励、暂停时间均不计入。退格重打不会刷伤害。
               </p>
               <label
                 ><input id="meaning-toggle" type="checkbox" checked />
@@ -281,6 +281,9 @@
       </section>
       <section
         id="pause-screen"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
         class="overlay"
         hidden
         aria-labelledby="pause-title"
@@ -295,6 +298,9 @@
       </section>
       <section
         id="result"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
         class="overlay"
         hidden
         aria-labelledby="result-title"
@@ -331,6 +337,6 @@
       </div>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="app.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2"></script>
+    <script type="module" src="app.mjs?v=20261010-result-fix-r1"></script>
   </body>
 </html>

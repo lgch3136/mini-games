@@ -40,6 +40,16 @@ export class TypingInput {
         return;
       }
       if (!this.active()) return;
+      // Controls keep native activation; text-entry fields keep their own input.
+      // Ordinary letters still reach gameplay after clicking Shield or Sound.
+      const target = e.target;
+      if (target !== input) {
+        const control = target?.closest?.('button,a,input,select,textarea,summary,[contenteditable="true"]') || target;
+        if (target?.isContentEditable || control?.isContentEditable ||
+            /^(INPUT|SELECT|TEXTAREA)$/.test(control?.tagName || "")) return;
+        if (/^(BUTTON|A|SUMMARY)$/.test(control?.tagName || "") &&
+            (e.key === " " || e.key === "Enter")) return;
+      }
       if (e.isComposing || this.composing || e.keyCode === 229) {
         notice("请切换到英文键盘，输入法组词不会计错。");
         return;
@@ -72,7 +82,12 @@ export class TypingInput {
       }
     });
     on(input, "beforeinput", (e) => {
-      if (!this.active() || e.isComposing || this.composing) return;
+      if (!this.active()) {
+        if (e.cancelable) e.preventDefault();
+        input.value = "";
+        return;
+      }
+      if (e.isComposing || this.composing) return;
       if (e.inputType === "deleteContentBackward") {
         if (e.cancelable) {
           e.preventDefault();
@@ -87,6 +102,10 @@ export class TypingInput {
       }
     });
     on(input, "input", (e) => {
+      if (!this.active()) {
+        input.value = "";
+        return;
+      }
       if (e.isComposing || this.composing) return;
       if (e.inputType === "deleteContentBackward") erase();
       else if (e.inputType === "insertText") {
@@ -97,10 +116,11 @@ export class TypingInput {
     });
     on(input, "paste", (e) => {
       e.preventDefault();
-      notice("练习需要逐字输入，不支持粘贴答案。");
+      if (this.active()) notice("练习需要逐字输入，不支持粘贴答案。");
     });
     on(input, "drop", (e) => e.preventDefault());
     on(input, "compositionstart", () => {
+      if (!this.active()) return;
       this.composing = true;
       notice("请切换到英文键盘，输入法组词不会计错。");
     });

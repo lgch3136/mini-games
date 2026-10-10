@@ -1,14 +1,14 @@
-import { practiceProgress, typingCoach, practiceAdvice } from "./practice.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import { practiceProgress, typingCoach, practiceAdvice } from "./practice.mjs?v=20261010-result-fix-r1";
 import { Journey, STEP } from "./sim.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   makeLexicon,
   safeReview,
   RELICS,
 } from "./content.mjs?v=20260918-play-r1";
-import { TypingInput } from "./input.mjs?v=20260918-play-r1";
+import { TypingInput } from "./input.mjs?v=20261010-result-fix-r1";
 import { Stage, practiceMetrics } from "./focus-render.mjs?v=20260930-polish-r1";
 import { TypeAudio } from "./audio.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
-const VERSION = "20260930-quality-r1";
+const VERSION = "20261010-result-fix-r1";
 const $ = (id) => document.getElementById(id);
 const read = (k, fallback) => {
   try {
@@ -68,7 +68,8 @@ let wordSignature = "",
   lastPhase = "",
   endedReason = "",
   resultSignature = "",
-  pendingShown = false;
+  pendingShown = false,
+  activeOverlay = null;
 const pulses = new Map(),
   uiAnimations = new Map(),
   abort = new AbortController(),
@@ -193,7 +194,7 @@ function startRoom(id) {
   paused = false;
   syncView();
   processEvents();
-  note(journey.enemy.detail);
+  note(journey.mode === "journey" ? journey.enemy.detail : "无伤害练习 · 逐字输入，空格完成单词");
   audio.start();
   requestFrame();
   if (!matchMedia("(pointer:coarse)").matches || native)
@@ -230,8 +231,6 @@ function togglePause() {
   else {
     audio.start();
     requestFrame();
-    if (!matchMedia("(pointer:coarse)").matches || native)
-      $("typing-input").focus({ preventScroll: true });
   }
   syncView();
 }
@@ -253,7 +252,7 @@ function toMenu() {
   $("start").focus({ preventScroll: true });
 }
 function endRun(reason = "rest") {
-  if (!journey || menuMode) return;
+  if (!journey || menuMode || ["complete", "defeat", "ended"].includes(journey.phase)) return;
   endedReason = reason;
   journey.phase = reason === "rest" ? "ended" : journey.phase;
   paused = false;
@@ -372,14 +371,15 @@ function keyErase() {
   updateWord();
 }
 function guard() {
-  if (paused || menuMode) return;
+  if (paused || menuMode || journey?.phase !== "combat" || journey.mode !== "journey") return;
   if (!journey.guard())
     notify("3 格能量展开护盾；敌人即将攻击时，1 格即可反制。");
   processEvents();
   updateHUD();
+  focusTyping();
 }
 function chooseSpell(spell) {
-  if (paused || menuMode || !journey?.selectSpell(spell)) return;
+  if (paused || menuMode || journey?.phase !== "combat" || journey.mode !== "journey" || !journey.selectSpell(spell)) return;
   processEvents();
   updateHUD();
   if (!matchMedia("(pointer:coarse)").matches)
@@ -540,9 +540,9 @@ function updateWord(force = false) {
     g.errorAge > 0
       ? `需要 ${g.expected === " " ? "空格" : g.expected.toUpperCase()} · 直接重打`
       : g.cursor === g.word.en.length
-        ? "按空格施法"
+        ? (g.mode === "journey" ? "按空格施法" : "按空格完成这一词")
         : !g.roomStarted
-          ? "第一键落下时，战斗才开始"
+          ? (g.mode === "journey" ? "第一键落下时，战斗才开始" : "跟随亮键 · 第一键开始计时")
           : "",
   );
   $("space-mark").classList.toggle("ready", g.cursor === g.word.en.length);
@@ -585,14 +585,12 @@ function updateHUD() {
     );
   set(
     "typing-label",
-    { ember: "星火 · 强攻", frost: "霜环 · 控场", bloom: "生息 · 回复" }[
-      g.spell
-    ],
+    g.mode !== "journey" ? "逐字练习 · 无伤害" : { ember: "星火 · 强攻", frost: "霜环 · 控场", bloom: "生息 · 回复" }[g.spell],
   );
   const progress = practiceProgress(g);
   set("practice-goal-label", progress.label);
   $("practice-goal-fill").style.transform = `scaleX(${progress.fraction})`;
-  set("typing-coach", typingCoach(g));
+  set("typing-coach", typingCoach(g, { touch: matchMedia("(pointer:coarse)").matches && !native }));
   const metrics = practiceMetrics(g);
   set('wpm', metrics.wpm ?? '—');
   set('session-time', timeText(metrics.seconds));
@@ -621,7 +619,7 @@ function updateHUD() {
   );
   $("enemy-bar").style.width =
     `${g.mode === "review" ? Math.max(0, 1 - g.stats.words / g.reviewTarget) * 100 : ((stage.displayEnemyHP ?? e.hp) / e.maxHp) * 100}%`;
-  set("enemy-rule", e.detail);
+  set("enemy-rule", g.mode === "journey" ? e.detail : "无伤害练习 · 逐字输入，空格完成单词");
   set("chapter-en", g.chapter.en);
   set("room-label", `${g.chapter.name} · ${(g.depth % 9) + 1} / 9`);
   set("combo", g.combo > 0 ? `${g.combo} 连词` : "");
@@ -807,6 +805,39 @@ function renderResult() {
   $("result-review").disabled = !review.size;
   persist(true);
 }
+function focusTyping() {
+  if (!destroyed && !menuMode && !paused && journey?.phase === "combat" &&
+      (!matchMedia("(pointer:coarse)").matches || native))
+    $("typing-input").focus({ preventScroll: true });
+}
+function syncOverlayFocus() {
+  const overlay = paused ? $("pause-screen") : !$("result").hidden ? $("result") : null;
+  for (const region of [$("menu"), $("map"), $("battle"), document.querySelector(".topbar")]) {
+    region.inert = !!overlay;
+    if (overlay) region.setAttribute("aria-hidden", "true");
+    else region.removeAttribute("aria-hidden");
+  }
+  const typingActive = !destroyed && !menuMode && !paused && journey?.phase === "combat";
+  $("typing-input").disabled = !typingActive;
+  if (overlay === activeOverlay) return;
+  activeOverlay = overlay;
+  if (overlay) {
+    input?.reset();
+    (paused ? $("resume") : overlay).focus({ preventScroll: true });
+  } else if (typingActive && (!matchMedia("(pointer:coarse)").matches || native)) {
+    $("typing-input").focus({ preventScroll: true });
+  }
+}
+function containOverlayFocus(e) {
+  if (e.key !== "Tab" || !activeOverlay) return;
+  const buttons = [...activeOverlay.querySelectorAll("button")]
+    .filter((button) => !button.disabled && !button.closest("[hidden]"));
+  const index = buttons.indexOf(document.activeElement);
+  if (!buttons.length || index < 0 || (e.shiftKey ? index === 0 : index === buttons.length - 1)) {
+    e.preventDefault();
+    (buttons[e.shiftKey ? buttons.length - 1 : 0] || activeOverlay).focus();
+  }
+}
 function syncView() {
   const phase = journey?.phase || "menu",
     showingResult =
@@ -821,6 +852,19 @@ function syncView() {
   const viewChanged = $("app").dataset.view !== view;
   $("app").dataset.view = view;
   $("app").dataset.practiceTarget = journey?.focusGoal ? "true" : "false";
+  const practice = !!journey && journey.mode !== "journey";
+  $("battle").setAttribute("aria-label", practice ? "逐字英语练习" : "打字冒险战斗");
+  document.querySelector(".spell-picker").hidden = practice;
+  $("guard").hidden = practice;
+  const guardKey = document.querySelector('[data-key="Enter"]');
+  if (guardKey) { guardKey.hidden = practice; guardKey.disabled = practice; }
+  for (const button of document.querySelectorAll("[data-spell]")) button.disabled = practice;
+  const spaceKey = document.querySelector('[data-key="Space"]');
+  if (spaceKey) {
+    spaceKey.textContent = practice ? "SPACE · 完成单词" : "SPACE · 施法";
+    spaceKey.setAttribute("aria-label", practice ? "空格，完成单词" : "空格，施法");
+  }
+  set("input-help", practice ? "英文逐字输入 · 空格完成单词 · Esc 暂停" : "英文输入 · 空格施法 · Enter 护盾 · Esc 暂停");
   $("app").dataset.chapter = menuMode
     ? "0"
     : String(Math.floor((journey?.depth || 0) / 3) % 3);
@@ -833,7 +877,9 @@ function syncView() {
     menuMode || paused || phase !== "victory" || journey.victoryAge < 1.25;
   $("pause").hidden = menuMode || !["combat", "victory"].includes(phase);
   set("pause", paused ? "继续" : "暂停");
-  $("exit").hidden = menuMode;
+  $("exit").hidden = menuMode || showingResult;
+  $("exit").disabled = showingResult;
+  $("native-keyboard").hidden = menuMode || !["combat", "victory"].includes(phase);
   if (!menuMode && phase === "map") renderMap();
   if (!menuMode && phase === "victory") renderVictory();
   if (showingResult) renderResult();
@@ -844,6 +890,7 @@ function syncView() {
     resize();
     if (["defeat", "complete", "ended", "map"].includes(phase)) stop();
   } else if (viewChanged) resize();
+  syncOverlayFocus();
 }
 function frame(now) {
   raf = 0;
@@ -929,6 +976,7 @@ try {
     notice: notify,
     pulse,
   });
+  on(document, "keydown", containOverlayFocus);
   createKeyboard();
   updatePreferences();
   countWords();
@@ -968,6 +1016,7 @@ try {
   for (const button of document.querySelectorAll("[data-spell]"))
     on(button, "click", () => chooseSpell(button.dataset.spell));
   on($("sound"), "click", async () => {
+    focusTyping();
     await audio.setMuted(!audio.muted);
     set("sound", `声音 ${audio.muted ? "关" : "开"}`);
     $("sound").setAttribute("aria-pressed", !audio.muted);

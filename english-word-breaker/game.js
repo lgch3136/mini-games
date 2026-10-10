@@ -1,6 +1,7 @@
 'use strict';
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+if (window.ArcadeAudio && window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
 
 /* ============================================================
  * 英语打砖块 · WORD BREAKER —— FC打砖块 × 拼单词
@@ -175,8 +176,9 @@ function buildLevel() {
 
   Game.sectorName = ['晨星拱廊','磁环堡垒','流光棋阵','钻石核心'][(Game.level-1)%4];
   Game.targetIdle = 0; Game.rescueArmed = false;
+  Game.comboCount = 0; Game.comboTimer = 0;
   Game.paddle = newPaddle();
-  Game.balls = [Object.assign(newBall(W / 2, Game.paddle.y - 12), { stuck: true })];
+  Game.balls = [Object.assign(newBall(Game.paddle.x + Game.paddle.w / 2, Game.paddle.y - 9), { stuck: true })];
   Game.particles = []; Game.floaters = []; Game.trails = [];
   updateHud();
   showFeedback(`${Game.sectorName} · 板心接球积蓄召回 · 追踪绿色字母`);
@@ -322,7 +324,7 @@ function update(dt) {
       const base = Math.min(430, DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12);
       const sp = Math.hypot(b.vx, b.vy);
       if (sp < base && sp > 0) {
-        const k = 1 + Math.min(.4, .12 * dt);
+        const k = Math.min(base / sp, 1 + Math.min(.4, .12 * dt));
         b.vx *= k; b.vy *= k;
       }
     }
@@ -337,10 +339,11 @@ function update(dt) {
     if (b.y > H + 20) {
       Game.balls.splice(bi, 1);
       if (!Game.balls.length) {
+        Game.comboCount = 0; Game.comboTimer = 0;
         Game.lives--;
         updateHud();
         if (Game.lives <= 0) { gameOver(); return; }
-        Game.balls = [Object.assign(newBall(W / 2, p.y - 12), { stuck: true })];
+        Game.balls = [Object.assign(newBall(p.x + p.w / 2, p.y - 9), { stuck: true })];
         showFeedback(`剩余 ${Game.lives} 条命`);
       }
       continue;
@@ -376,8 +379,18 @@ function update(dt) {
       const overlapL = b.x + b.r - k.x, overlapR = k.x + k.w - (b.x - b.r);
       const overlapT = b.y + b.r - k.y, overlapB = k.y + k.h - (b.y - b.r);
       const minX = Math.min(overlapL, overlapR), minY = Math.min(overlapT, overlapB);
-      if (minY < minX) { b.y=b.vy>0?k.y-b.r-.2:k.y+k.h+b.r+.2;b.vy=-b.vy; }
-      else { b.x=b.vx>0?k.x-b.r-.2:k.x+k.w+b.r+.2;b.vx=-b.vx; }
+      // Resolve toward the nearest face, not the velocity's assumed entry side.
+      // A grazing corner can already be moving away on this axis; using its
+      // velocity to pick a face would teleport it through the entire brick.
+      if (minY < minX) {
+        const above = overlapT < overlapB;
+        b.y = above ? k.y - b.r - .2 : k.y + k.h + b.r + .2;
+        b.vy = (above ? -1 : 1) * Math.abs(b.vy);
+      } else {
+        const left = overlapL < overlapR;
+        b.x = left ? k.x - b.r - .2 : k.x + k.w + b.r + .2;
+        b.vx = (left ? -1 : 1) * Math.abs(b.vx);
+      }
 
       hitBrick(k, i);
       break;
@@ -436,6 +449,7 @@ function hitBrick(k, idx) {
   if (Game.fireTimer > 0) k.hp = 1;
   k.hp--;
   if (k.hp > 0) {
+    updateHud();
     if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .8);
     return;
   }
@@ -509,6 +523,11 @@ function applyPowerup(kind) {
     if(Game.paddle.widthBoosts.length<3) Game.paddle.widthBoosts.push(12);
     else Game.paddle.widthBoosts[0]=12;
     Game.paddle.w = Math.min(W*.44, basePaddleWidth() + Game.paddle.widthBoosts.length * 34);
+    Game.paddle.x = clamp(Game.paddle.x, 8, W - Game.paddle.w - 8);
+    for (const b of Game.balls) if (b.stuck) {
+      b.x = Game.paddle.x + Game.paddle.w / 2;
+      b.y = Game.paddle.y - b.r - 2;
+    }
     showFeedback('📏 挡板加长!');
   } else if (kind === 'slow') {
     for (const b of Game.balls) { b.vx *= .72; b.vy *= .72; }
@@ -761,14 +780,68 @@ function drawTargetLine() {
   ctx.save();ctx.strokeStyle='rgba(103,232,249,.65)';ctx.lineWidth=2;ctx.setLineDash([4,9]);
   ctx.beginPath();ctx.moveTo(ball.x,ball.y);ctx.lineTo(target.x+target.w/2,target.y+target.h/2);ctx.stroke();ctx.restore();
 }
+// Only resize recovery searches: candidate columns must have a clear vertical
+// route to the paddle lane, so an empty but enclosed brick pocket is rejected.
+function findResizeRecovery(ball,x,y,bottom,maxShift,overlaps) {
+  const left=ball.r+6,right=W-ball.r-6,gap=ball.r+.2;
+  const xs=new Set([x,left,right]);
+  for(const k of Game.bricks) {
+    for(const edge of [k.x-gap,k.x+k.w+gap]) if(edge>=left && edge<=right) xs.add(edge);
+  }
+  let best=null,bestDistance=Infinity;
+  for(const cx of xs) {
+    let cy=y;
+    for(const k of Game.bricks) if(cx>k.x-gap && cx<k.x+k.w+gap) cy=Math.max(cy,k.y+k.h+gap);
+    const distance=Math.hypot(cx-ball.x,cy-ball.y);
+    if(cy<=bottom && distance<=maxShift+1e-9 && distance<bestDistance && !overlaps(cx,cy)) {
+      best={x:cx,y:cy};bestDistance=distance;
+    }
+  }
+  return best;
+}
+// Reflow can put a brick over a previously clear ball. Keep ordinary physics,
+// velocities, ball identities and progress untouched; reject excessive moves.
+function recoverResizedBall(ball,previous,sameBricks,maxShift) {
+  const left=ball.r+6,right=W-ball.r-6,top=playTop()+ball.r,bottom=Game.paddle.y-ball.r-2;
+  if(left>right || top>bottom) return false;
+  const overlaps=(x,y)=>Game.bricks.some(k=>{
+    const dx=x-clamp(x,k.x,k.x+k.w),dy=y-clamp(y,k.y,k.y+k.h);
+    return dx*dx+dy*dy<=ball.r*ball.r;
+  });
+  const move=(x,y)=>{
+    if(Math.hypot(x-ball.x,y-ball.y)>maxShift+1e-9) return false;
+    ball.x=x;ball.y=y;return true;
+  };
+  const x=clamp(ball.x,left,right),y=clamp(ball.y,top,bottom);
+  if(ball.stuck) return x===ball.x && y===ball.y && !overlaps(x,y);
+  if(!overlaps(x,y)) return move(x,y);
+  // A tiny height change need not rescale a clear ball into unchanged bricks.
+  // Retaining its old legal point preserves its existing region, not a new trap.
+  if(sameBricks && previous.x>=left && previous.x<=right && previous.y>=top && previous.y<=bottom && !overlaps(previous.x,previous.y)) return move(previous.x,previous.y);
+  const safe=findResizeRecovery(ball,x,y,bottom,maxShift,overlaps);
+  return safe ? move(safe.x,safe.y) : false;
+}
+// Track requested CSS dimensions even when geometry is deferred: repeated
+// one-pixel drag events must not accumulate permission for a large jump.
+let lastResizeWidth=W,lastResizeHeight=H;
 function resizeArena() {
   const wrap=$id('game-wrap'),width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);
   // Use actual CSS pixels in every orientation: HUD and physics share one scale.
   const nw=width,nh=height;
+  const maxShift=Math.hypot(nw-lastResizeWidth,nh-lastResizeHeight);
+  lastResizeWidth=nw;lastResizeHeight=nh;
+  // Below these sizes the six minimum-height rows leave no ball-sized lane
+  // above the paddle (including on the menu, before a board exists).
+  if(nw<=70 || nh<(nw<600&&nh>nw?342:264)) return;
   const dpr=Math.min(window.devicePixelRatio||1,2,Math.sqrt(1400000/(width*height)));
   if(W===nw&&H===nh&&canvas.width===Math.round(width*dpr)&&canvas.height===Math.round(height*dpr))return;
+  const oldW=W,oldH=H;
+  // Keep the previous logical layout if a transient tiny panel cannot fit a
+  // safe ball/dock. CSS still scales the canvas; retry on the next resize.
+  const oldGeometry=[...Game.bricks,...Game.balls,...Game.powerups,...Game.particles,...Game.floaters,...(Game.paddle?[Game.paddle]:[])].map(item=>[item,{...item}]);
+  const restoreGeometry=()=>{ W=oldW;H=oldH;for(const [item,previous] of oldGeometry) Object.assign(item,previous); };
   const sx=nw/W,sy=nh/H,oldTop=playTop(),oldBottom=Game.paddle?.y || paddleY();
-  const oldBricks=Game.bricks.map(k=>({y:k.y,h:k.h}));
+  const oldBricks=Game.bricks.map(k=>({x:k.x,y:k.y,w:k.w,h:k.h})),oldBalls=Game.balls.map(b=>({x:b.x,y:b.y}));
   for(const item of [...Game.balls,...Game.powerups,...Game.particles,...Game.floaters]) { item.x*=sx;item.y*=sy; }
   W=nw;H=nh;
   const bw=(W-40)/10,bh=brickStep(),playScale=(paddleY()-playTop())/Math.max(1,oldBottom-oldTop);
@@ -787,12 +860,15 @@ function resizeArena() {
     else brick.lowered=false;
   }
   if(Game.paddle) {
+    if(Game.bricks.some(k=>k.w<=0 || k.h<=0)) { restoreGeometry();return; }
     Game.paddle.w=Math.min(W*.44,basePaddleWidth()+Game.paddle.widthBoosts.length*34);
     Game.paddle.x=clamp(Game.paddle.x*sx,8,W-Game.paddle.w-8);Game.paddle.y=paddleY();Game.paddle.targetX=null;
-    for(const ball of Game.balls) {
+    const sameBricks=Game.bricks.every((k,i)=>['x','y','w','h'].every(key=>k[key]===oldBricks[i][key]));
+    for(const [i,ball] of Game.balls.entries()) {
       ball.x=clamp(ball.x,ball.r,W-ball.r);
       ball.y=clamp(ball.y,playTop()+ball.r,Game.paddle.y-ball.r-2);
       if(ball.stuck) { ball.x=Game.paddle.x+Game.paddle.w/2;ball.y=Game.paddle.y-ball.r-2; }
+      if(!recoverResizedBall(ball,oldBalls[i],sameBricks,maxShift)) { restoreGeometry();return; }
     }
   }
   canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);arenaKey='';
@@ -802,13 +878,19 @@ window.addEventListener('resize',resizeArena);
 new ResizeObserver(resizeArena).observe($id('game-wrap'));
 
 /* ---------------- 绑定 ---------------- */
-function toggleMute() {
-  if (window.ArcadeAudio) ArcadeAudio.toggle();
-  if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
-  $id('mute-btn').textContent = ArcadeAudio.muted ? '已静音' : '声音';
+function updateMuteButton() {
+  const button = $id('mute-btn');
+  if (button && window.ArcadeAudio) button.textContent = ArcadeAudio.muted ? '已静音' : '声音';
 }
+function toggleMute() {
+  if (!window.ArcadeAudio) return;
+  ArcadeAudio.toggle();
+  if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
+  updateMuteButton();
+}
+updateMuteButton();
 $id('recall-btn').addEventListener('pointerdown',e=>{e.preventDefault();recallBall();});
-$id('mute-btn').addEventListener('click', toggleMute);
+$id('mute-btn')?.addEventListener('click', toggleMute);
 $id('pause-btn').addEventListener('click', togglePause);
 $id('start-btn').addEventListener('click', () => { if (window.ChipMusic) ChipMusic.unlock(); startGame(); });
 $id('retry-btn').addEventListener('click', startGame);
