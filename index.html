@@ -6,6 +6,14 @@
 <meta name="theme-color" content="#05070f">
 <title>🎮 英语小游戏街机厅 · English Arcade</title>
 <link rel="stylesheet" href="style.css?v=20260930-quality-r5&mobile=20260930-quality-r5">
+<style>
+.emberwild-card-group{display:flex;flex-direction:column;gap:8px;min-width:0}
+.emberwild-card-group:has(>.card.hidden){display:none}
+.emberwild-card-group>.card{flex:1}
+.emberwild-qa-link{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 14px;border:1px solid #adc6df40;border-radius:10px;color:#b8d8ed;text-decoration:none;font:13px system-ui}
+.emberwild-qa-link small{color:#8fa6c8;font-size:11px}
+.emberwild-qa-link:focus-visible{outline:3px solid #7dd3fc;outline-offset:3px}
+</style>
 </head>
 <body>
 <div class="page">
@@ -31,6 +39,7 @@
   <p id="catalog-empty" hidden>没有找到匹配的游戏。<button id="clear-search" type="button">清除筛选</button></p>
   <main class="grid" aria-label="游戏列表">
 
+    <div class="emberwild-card-group">
     <a class="card" href="emberwild-test-v4/?v=20261008-r16" data-cat="action">
       <div class="art art-ranger"><span class="emoji" aria-hidden="true">🔥</span></div>
       <div class="info">
@@ -41,6 +50,8 @@
         <div class="meta"><span>⌨️ WASD 移动 · F 挥剑 · Shift 闪避</span><span>空格跳跃 · E 互动 · B 背包 · Tab 目标</span></div>
       </div>
     </a>
+      <a class="emberwild-qa-link" href="qa-emberwild-r22-animation-20261011/index.html">动作测试版 <small>R22 · 独立存档</small></a>
+    </div>
 
     <a class="card" href="english-typebound/index.html?v=20261010-result-fix-r1" data-cat="casual">
       <div class="art art-cover"><img src="english-typebound/assets/cover-light-20260928.webp" alt="键旅原创概念封面：沿着键帽前行的节奏光轨" loading="eager"><span class="art-label">原创概念封面</span></div>
