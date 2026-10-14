@@ -1,0 +1,703 @@
+{
+  "version": "R25-LAZY-MOUNTS-QA",
+  "status": "isolated-qa-candidate",
+  "entry": "emberwild-r23-character-qa/app/index.html",
+  "saveNamespace": "emberwild-r23-performance-qa:",
+  "baselineCommit": "d3afa4d207f72f3aab6b8202e573e15cca65c3d1",
+  "gameSha256": "97bbe2e79e206fc6d9722aab5076a88e16e85fd9cffe11c7571b3eb40f2f95e1",
+  "controllerSha256": "0bcad3e3879d77de60c7008356a9d6c2c5007896cb5c914ef6e0a3352044c5f5",
+  "pixelABSha256": "23727499c35c9b8ab3cab758ac554fbcc9f27ac41d7b80437c750938be1558c9",
+  "groundJumpDefaultOn": true,
+  "pixelDiagnosticDefaultActive": false,
+  "gpuAcceptance": false,
+  "nativeFpsAcceptance": false,
+  "touchDeviceAcceptance": false,
+  "browserAcceptance": false,
+  "telemetry": false,
+  "files": [
+    {
+      "path": "ASSET-NOTICES.txt",
+      "bytes": 2277,
+      "sha256": "0e442d2e5ec05284fafeb59faab0498b6674417d293cd6f2a156daf804c4805e"
+    },
+    {
+      "path": "CANDIDATE-NOTES.txt",
+      "bytes": 1309,
+      "sha256": "43712dff97ff2f40ad2158435277e115cf0900bafea41e99187d57b4bebb079c"
+    },
+    {
+      "path": "LICENSE-SNOW-CC-BY-4.0.txt",
+      "bytes": 18616,
+      "sha256": "6dac255b5ac86c1ab76998594d5976eec94c70c7acce17e5294818aa5f22565c"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/ASSET-NOTICES.txt",
+      "bytes": 272,
+      "sha256": "29b15e558a41917ea1f785389cf95e581b3dc5c3c162a4cd39fd2fc8f43a0a7a"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/LICENSE-MAKEHUMAN-ASSETS.txt",
+      "bytes": 6962,
+      "sha256": "f6089cba01cb570a24712b41ab8a586ccd3cc5ef53dc266ca50b95c288956d2c"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/camp-low-r16.glb",
+      "bytes": 3746272,
+      "sha256": "1d54055ce2b9ff9ada32ae0a1e68a0050dfcd7f985113c4c737d5dd96dd937cb"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/camp-standard-r16.glb",
+      "bytes": 7638932,
+      "sha256": "126ec354dba90313c83e6e6f4001b7ecc12ea3f62d4353c47e560fcf276e8602"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/characters-low-r19.glb",
+      "bytes": 3220604,
+      "sha256": "1ce7b4f2b757cf687ade8bd58e8b823a199a0468ed487c225373a483aee47ec8"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/characters-standard-r19.glb",
+      "bytes": 7283216,
+      "sha256": "188393e0ff6e2f3f92a8da7e33cadc34b3b6eb75ac30959b42347f5d995168ee"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/dawnkite_gryphon-low-r14.glb",
+      "bytes": 618528,
+      "sha256": "d13249f6d2816981e8a4820eed7b2d66e58da71383a615a3473c2c6cd7c09113"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/dawnkite_gryphon-standard-r14.glb",
+      "bytes": 1378656,
+      "sha256": "6bf68ad3090679d2997ac7879f29a062e82a8e09c92eab5aa57ca1e875175c1f"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/flora-low-r16.glb",
+      "bytes": 1030692,
+      "sha256": "fba4f70b43c545f2fd672d811b8f7ba1239e2221e8c384e2259c097c4f2a96f2"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/flora-standard-r16.glb",
+      "bytes": 2980904,
+      "sha256": "e471cfda7a20af0106e16352415236a9e8b9defbaa9064c1296380a803d66666"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ground-kit-low-r15.glb",
+      "bytes": 283076,
+      "sha256": "5159f640568e5f28cf3c9d99ceb08f7a6f170e0f7242507bf7d9d58d6df10f36"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ground-kit-standard-r15.glb",
+      "bytes": 871136,
+      "sha256": "eb6bd8a7a2d97b4c6f397e2ec2ea67f6352e29aeb8de5f35f48caf85da8b6590"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ground-r15/ground-camp-low.png",
+      "bytes": 1663314,
+      "sha256": "29fd08a3c031e84ce636b249d3472d22a520419e707b63483fe8de310ca53425"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ground-r15/ground-camp-standard.png",
+      "bytes": 6676703,
+      "sha256": "17ed2cfd593c50036a8561d0b53571b246fc58238138346b4623b6a65d815553"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ground-r15/ground-fallback-low.png",
+      "bytes": 31481,
+      "sha256": "b577308de91c4d38752b68a89c13aaf062262763943e7f474ac17e152fe861ac"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ground-r15/ground-fallback-standard.png",
+      "bytes": 123458,
+      "sha256": "b6cc785cdb605357687952d60c89e93e4fb1f4deb3265d4329155ba041d0b831"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ground-r15/ground-route-low.png",
+      "bytes": 449562,
+      "sha256": "56aee700d65b8362c351fc51dfff56547a0ba6801d8a30e7409d5a7586622ea6"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ground-r15/ground-route-standard.png",
+      "bytes": 1780838,
+      "sha256": "86c3edc4596fab849c0f93011336f78d86ffabc0c3de94b49a0a4d5cf1447ac9"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/loot-r12/loot-pouch-low-r12.glb",
+      "bytes": 13824,
+      "sha256": "ded9a4625e1b91b070b57a02ecf99ce31378471096d1c549851741505990140e"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/loot-r12/loot-pouch-standard-r12.glb",
+      "bytes": 17248,
+      "sha256": "eb0fedc15f4b6d36ec1a9339fd32cc0e258199ee9c8602553aa20d309f3a41b3"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/loot-r12/material-icons-low-r12.webp",
+      "bytes": 16210,
+      "sha256": "1ac5edda107e4fb8fb73f11ad971a577e4fe8fe11398e1d4ddb768f1d22a14cd"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/loot-r12/material-icons-standard-r12.webp",
+      "bytes": 51510,
+      "sha256": "cfd7f39c2b78cb1b601f42b588c7772faca2c359b021f561bfb255ef65272ed5"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/mosscrest_stag-low-r14.glb",
+      "bytes": 530012,
+      "sha256": "922fee2d3c998d076a0cf3925c1672b702cb702b110feb373ccc2fdcc693caa3"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/mosscrest_stag-standard-r14.glb",
+      "bytes": 1188492,
+      "sha256": "255704dc03a2175f689ca4b9a79cf5c98a10cc7671d72d0a868a95a46adf048b"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/spells-r12/spell-icons-low-r12.webp",
+      "bytes": 16726,
+      "sha256": "33da45005e81a468de09aba8deb7b7bbf51f8047e8245bb20e9bc8ef62ac67a6"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/spells-r12/spell-icons-standard-r12.webp",
+      "bytes": 55302,
+      "sha256": "12192bafcfe9395381ad8ba90f0252d08def596d5e0f29d937ebd9f51b8ddf5a"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/textures-r7/soil-normal-512-r7.png",
+      "bytes": 702606,
+      "sha256": "56e0d0caff9e5826d3984cbbba9e8fde8bd18414640b97f70e3b736b416354b0"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/textures-r7/soil-roughness-256-r7.png",
+      "bytes": 60466,
+      "sha256": "d4a9c7a0181fe5dff13f896c20b3a6ac07af7d7fde29014c210c54777375cb4e"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r11/portrait-bulwark-low.png",
+      "bytes": 23443,
+      "sha256": "83022c10636f56dac9078a0caf6f45c47c53d525e0a4aa85e27295024106f828"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r11/portrait-bulwark-standard.png",
+      "bytes": 79886,
+      "sha256": "1979d0d7f734df831eae42680e81666f58e2036ee38f6bcba80f597fdc02c127"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r11/portrait-sentinel-low.png",
+      "bytes": 22267,
+      "sha256": "3b31302a694adf5aacd3867f172a2fce2e5182393939706460d2a44b196ef3fe"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r11/portrait-sentinel-standard.png",
+      "bytes": 76051,
+      "sha256": "4eeab918294139aa72496b236d520b9b9344cad9ee15fa49d9ed0dac392c19b6"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r12/portrait-emberBoar-low.png",
+      "bytes": 21423,
+      "sha256": "57e7c63a448bd41801a75521c539cc6dfe03c50b7a63b8b4c89c0d8f4bbd7282"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r12/portrait-emberBoar-standard.png",
+      "bytes": 70217,
+      "sha256": "ecf8d49ea342d22b413191a560ce0bcc2558e19d253866ab403bf635b160022b"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r12/portrait-moonMoth-low.png",
+      "bytes": 15071,
+      "sha256": "5cf50f550267bdebf6f3e74ac6795dcf575a7a9a619adebadc3ee72cd97113bf"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r12/portrait-moonMoth-standard.png",
+      "bytes": 51131,
+      "sha256": "ea51f4893fda50eeacc8b4537f5fbd99bcd21551477075a2541bf912aa88e03f"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r15/portrait-warden-low.png",
+      "bytes": 26333,
+      "sha256": "a549c492c00c15940ec8596791ce912602f3aafbca2ae9683838d25280067f14"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r15/portrait-warden-standard.png",
+      "bytes": 95166,
+      "sha256": "3f5ae331812006d53124bdb41f10631040f458961bd1c13f0d49f21afa24e6d9"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/ui-r8/items-skills-atlas.webp",
+      "bytes": 43568,
+      "sha256": "4506b8660494d1cbcbae66e3da3a02c7d7ede8dc086f7b48d6c12390e320c40d"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/wildlife-low-r11.glb",
+      "bytes": 357488,
+      "sha256": "5f22c4302ba5b6def6fcceb77af32701a7748732643bb88541aac15a71ee1b6f"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/assets/wildlife-standard-r11.glb",
+      "bytes": 1974976,
+      "sha256": "a4f99e4d7b9f2a9bd077c7a64ab0f509c136ed5ad1291b88eb3ab1ceee94162c"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/camera-alpha-r10.mjs",
+      "bytes": 8463,
+      "sha256": "7e483f687fa5b159d5092f50103c0ec0ff4faf43bf3e76d2379adf28bf2a6199"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/camera-clearance-r10.mjs",
+      "bytes": 4021,
+      "sha256": "0f7234237821f22b746e71c8f6fe6458bb42b26cd945ff3a5c7949e803eedd79"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/camp-cover-r10.mjs",
+      "bytes": 4916,
+      "sha256": "6ac3d4a96c15646e172ec8e4a0df431aa362ebfee5f71ce8fab126e6f5c142bd"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/camp-ground-r15.mjs",
+      "bytes": 8750,
+      "sha256": "bdfc22b8c937d2f35016fbf45bd7b05d4b317f4dd72609b230327f3c0312aca8"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/core-rpg.mjs",
+      "bytes": 2029,
+      "sha256": "76cd582058b0030a540943923c9049bdbb017b39d0854e5a57c070e8703b81ba"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/ground-r15.mjs",
+      "bytes": 3700,
+      "sha256": "ec5610f03cd14f0b9878b68c0718032d086805129e1619246adaa791bcebd38f"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/jump-ground-r11.mjs",
+      "bytes": 3846,
+      "sha256": "c46608df7eb57c7537975489eaf4814f2a6fb512fd0dd38f9dfbddf073ad04c3"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/light-budget.mjs",
+      "bytes": 911,
+      "sha256": "141a6452dae1fc05f4802b04820ac2efba9522daaf4266c13d6f3f8d224d38cd"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/loot-icons-r12.css",
+      "bytes": 729,
+      "sha256": "93b1bd7c69bcc86574f1c7c43cebcb04cc2f30220adb53a6476136f02f717453"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/loot-icons-r12.mjs",
+      "bytes": 2010,
+      "sha256": "a8f93cdf141b8315ae2ff21439289e6fade408e6d87b4894c195270fcef405a7"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/loot-world-r12.mjs",
+      "bytes": 8977,
+      "sha256": "81636d441a3b6bc03ea2fde5a3510d69e953c0b1c01e2ddbf827b2bb5d290d23"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/minimap.mjs",
+      "bytes": 7477,
+      "sha256": "4b8b2f3d3e21cb93ff01c49173c72dec4175cc3c01830775b54e7c646208f008"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/mount-turn-r14.mjs",
+      "bytes": 9561,
+      "sha256": "61774be43ac735c17ac618ba82ad9fb7f9c2d8ae0a916e1f0b78230352830e1c"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/mount-ui-r14.css",
+      "bytes": 2594,
+      "sha256": "946e8f6ef394660607ed20e07918c295e9115b5dc4fb5d82b49bead5f9bb33de"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/music.mjs",
+      "bytes": 16674,
+      "sha256": "eb312684f0be5a1cd9a0e6d81b73eec12154b9cd31353a3789f340bf945a0c19"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/progression-ui-r11.css",
+      "bytes": 3604,
+      "sha256": "5ed04bbdd098d13e55b3e99850e10423573f43e9d71df6cd627796c40e1e4c27"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/progression-ui-r11.mjs",
+      "bytes": 16163,
+      "sha256": "732f7e7cc591c77e52a3ee4dd6897805162f2db97527cd97f973b584572bd4ab"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/quality.mjs",
+      "bytes": 467,
+      "sha256": "b408052b7600620b0f321f0aa32f05b1fcbb76ecba94eb0eaf76487fe01fbd79"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/quest-dialogue-r11.mjs",
+      "bytes": 2721,
+      "sha256": "3de774ea953029a120ddbfe002b39ffcc13265850e1ea0c4ee9d3f406dd5e355"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/ranged-spells-r12.mjs",
+      "bytes": 12405,
+      "sha256": "649fc2a770dd5a2ebde66da1795965a533e3feb62c92ae7d5252dc6444c42b24"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/ranged-spells-r19.mjs",
+      "bytes": 14104,
+      "sha256": "90cd0f13b4c3b3cbc4bd1a8e0cda5ccbc5be1cea00dd8f579a16adef38640cd0"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/rig-support-r8.mjs",
+      "bytes": 1127,
+      "sha256": "1dab5f663d1b5511b862460738d0b548b21116d2760ff132a277490a0f917eb0"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/rpg-controls-r13.mjs",
+      "bytes": 8462,
+      "sha256": "17dcd339f013bec61a060a4ef87b4f08fdb20c32b9f4418de2ff481c1758ff97"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/rpg-progression-r11.mjs",
+      "bytes": 20926,
+      "sha256": "1c84b49b878bbb767d2f5e777d65f2fb7eb824c6a10a740bea82c5b26fecf2c8"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/rpg-state-r12.mjs",
+      "bytes": 1740,
+      "sha256": "4e7c418119e7e752ca7945e214e8e9e57e7b70f74d072ee893ff1ad6da9104be"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/rpg-state.mjs",
+      "bytes": 13335,
+      "sha256": "0d23c67bfd17bb2da5609a2a3acadc003d3258d0ee3fe4d5b17b321295a1bae5"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/rpg-ui-r12.css",
+      "bytes": 19547,
+      "sha256": "e1f3d2d45f90d1f44bd82f0e6b85f7db63e5539470b1b84454989ff58f0e0a39"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/rpg-ui-r13.css",
+      "bytes": 1210,
+      "sha256": "094e8666eef1e8ed76178ede077bb447194c3979b898e22d1928ec49b63f1a9c"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/rpg-ui-r8.css",
+      "bytes": 23228,
+      "sha256": "e6d8da30c87db6703e54bf89c7b0441e640004081ac54628ac3fcda49b45d573"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/scene-lighting-r9.mjs",
+      "bytes": 3371,
+      "sha256": "5fe7b8415e868083ab54b105e5a27609237cab7b910c3695a9f94685e18abf50"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/spell-definitions-r12.mjs",
+      "bytes": 1386,
+      "sha256": "310183fa4dc7d5208a22f2a8640327e46630e821730ad6259154f2e2a1d4ce78"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/spell-effects-r19.mjs",
+      "bytes": 20010,
+      "sha256": "bb89fa348e2d32cf60a68bc69cf1db4c84c4c4ff5fb01c4818a71e3cef88612a"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/spell-feedback-r12.css",
+      "bytes": 3622,
+      "sha256": "1a4fbf705fac53208f863fb0e0e6c05be53ce64dfe497a30bdc083901483134b"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/spell-feedback-r12.mjs",
+      "bytes": 2737,
+      "sha256": "b9f0de0f7700df093fa36161aa9089c3b44dfa1aae340bb5c6ddb8dda87548a2"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/spell-icons-r12.css",
+      "bytes": 648,
+      "sha256": "6fbc767af73fa78bc2474e7337c8eeabe242c2251491ad7bd1a659c34f79798b"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/spell-icons-r12.mjs",
+      "bytes": 1002,
+      "sha256": "2bd907c6a6d84b003f422741e4ddf24e9150c5c5e36c77c335e40c1428511500"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/stream-cover-r9.mjs",
+      "bytes": 2544,
+      "sha256": "968ea123a3b376dfe0b1d29c305e375f64e290ec6e33e9ea39e4cf2f74b50f8b"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/style.css",
+      "bytes": 5130,
+      "sha256": "7c957ef3934f79054ffcc75189c43773935077193573bc06821294589c8047e0"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/targeting-r13.mjs",
+      "bytes": 7374,
+      "sha256": "8831b4e51c917373bea92c2f0e9f81b5e072d55ad9e55f2856f645558b6a8b9e"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/understory-r15.mjs",
+      "bytes": 7466,
+      "sha256": "ab794d27d446ae1c710f5d0cd37624848d1de7160b2f4e7fc9265bead627e70b"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/vendor/BufferGeometryUtils.js",
+      "bytes": 37637,
+      "sha256": "5f76ff28be936bb281c241a292bb075bbd574d3bf0ca23f4f00896f74181ddd1"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/vendor/GLTFLoader.js",
+      "bytes": 114961,
+      "sha256": "e2ab44d6c6fcad49651bb708cc443f779af0471d66a4cf8ff8f8e34c414a6634"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/vendor/LICENSE",
+      "bytes": 1081,
+      "sha256": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/vendor/SkeletonUtils.js",
+      "bytes": 11551,
+      "sha256": "d5fc069c345d2eb93b5f93da485c75135000e50965e71ed12d4bdc3cfe9c9144"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/vendor/three.core.min.js",
+      "bytes": 385386,
+      "sha256": "05b2609338c76cd65daf74f3ac515bc9a5045e1b3b33edc07d8c9bd55250fa90"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/vendor/three.module.min.js",
+      "bytes": 365552,
+      "sha256": "86bcee248b64f44bcfc23c331ae74619061957d59cab040171dcb6fb5900beb6"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/visual-r19.mjs",
+      "bytes": 3041,
+      "sha256": "9afd540326a631cb24ecf1276457aeaf2c67bef175b5fb9384d6873d5ec82e76"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/wildlife-assets-r12.mjs",
+      "bytes": 2979,
+      "sha256": "bfa4eea7ba00fdd4489d0f375698e9d028856f30288a440740c3a8c44f41d733"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/wildlife-r11.mjs",
+      "bytes": 7409,
+      "sha256": "e3878ea051a394d8ac91bb73ccad1a5a047d97202789de2e88fb338619300097"
+    },
+    {
+      "path": "emberwild-integrated-r19/app/wildlife-world-r12.mjs",
+      "bytes": 15516,
+      "sha256": "081e6d0fa8c6f61d75bed89d25046c5f81740591c1980157265927a35f1cec55"
+    },
+    {
+      "path": "emberwild-r21-effect-binding-study/runtime/action-effects-r21.mjs",
+      "bytes": 23139,
+      "sha256": "845f2573765d9a0282e6440f1042dde134f27036005b4dd4eea0d523d238fb0e"
+    },
+    {
+      "path": "emberwild-r21-effect-binding-study/runtime/blade-frame.mjs",
+      "bytes": 3234,
+      "sha256": "ed39522e8687bcd78436237130bb9d4552af0cdb2c5d27394de507acfe037238"
+    },
+    {
+      "path": "emberwild-r21-effect-binding-study/runtime/explorer-blade-contract.mjs",
+      "bytes": 2634,
+      "sha256": "9dc8dfcaa2a7592c0777f18fb120dc7cba960ddfd66492d96171c24a0c87db6c"
+    },
+    {
+      "path": "emberwild-r21-effect-binding-study/runtime/light-effects-r21-v2.mjs",
+      "bytes": 20018,
+      "sha256": "4c523df74b0407f6a1d9a2352eea07a5790ea78358970255ce66fe4cbff960f4"
+    },
+    {
+      "path": "emberwild-r21-hero-adapter-study/runtime/hero-material-lifecycle-v2.mjs",
+      "bytes": 8002,
+      "sha256": "9558c0b2e3cac0f3facfa813b24b5296ed5a7019da3b6d4813d3a11d24e93987"
+    },
+    {
+      "path": "emberwild-r21-integration-study/runtime/spell-frame-adapter.mjs",
+      "bytes": 1621,
+      "sha256": "b1dbd4d090ec50da31f2481f879a10eccb4965d27803bb483bfcafaec3d1ee4f"
+    },
+    {
+      "path": "emberwild-r21-original-character/weapon-study/output/explorer-sword-low.glb",
+      "bytes": 27912,
+      "sha256": "08239283edfcee33bbd8bb9e2a129261efd9e47ec22027fdbb3bce69f09b97e7"
+    },
+    {
+      "path": "emberwild-r21-original-character/weapon-study/output/explorer-sword-standard.glb",
+      "bytes": 36600,
+      "sha256": "7694213541bb4173d11b6a5d187ff43ddc62d40b5a912ebd09721d2a3430a3b7"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-action-study/runtime/r19-collision-frame-rebuilt-a.mjs",
+      "bytes": 2865,
+      "sha256": "6d78f90e0a8f4eb06ef6a82010322af3ea471553c7b9e65d99a7991c7254f3ed"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-action-study/runtime/r19-contact-frame-rebuilt-a.mjs",
+      "bytes": 5883,
+      "sha256": "2a5631b46a7341de0612703f050dae86e341c03d8bb323abb58a174347daf444"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-action-study/runtime/r19-foot-frame-rebuilt-a.mjs",
+      "bytes": 4622,
+      "sha256": "a0e4f60894e01555170aff6c1fcf722ab8041e0d7e403d72ade01230dd62c8ff"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-action-study/runtime/r19-safe-origin-frame-rebuilt-a.mjs",
+      "bytes": 4651,
+      "sha256": "0b1834bf0cdb045fde224c838e793a71b5b162be095a246a95b7cdd11e8e7e41"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-action-study/runtime/wholebody-rebuilt-actions-a.mjs",
+      "bytes": 74275,
+      "sha256": "7a526ae05490d2961198eb52814ca6c50e4942f32919dd15505c12bb303352c8"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-game-study/app/mount-ui-reconstructed.mjs",
+      "bytes": 9243,
+      "sha256": "616e1926a3afee89edf4597d4eb8ad77709f9706993e50b7ae146de5657e7951"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-game-study/runtime/composite-actor-rebuilt-a.mjs",
+      "bytes": 14923,
+      "sha256": "e96594b1b5dc2273227556109f5ec57cb892e6aa9fbf2403a369989d43b356e4"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-game-study/runtime/mounts-rebuilt-owned-b.mjs",
+      "bytes": 68978,
+      "sha256": "0bcad3e3879d77de60c7008356a9d6c2c5007896cb5c914ef6e0a3352044c5f5"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-game-study/runtime/r21-hero-resources-rebuilt-a.mjs",
+      "bytes": 17535,
+      "sha256": "1a99f37a00075b7e8368e6394cdc586d0f452a0aadc04525b506d8e440559c92"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-game-study/runtime/resource-ledger.mjs",
+      "bytes": 4845,
+      "sha256": "72014d45f98aa7f8a9d14b5a898613a3d1ac16cc1dafae8d46cb3b541fecfb3d"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-game-study/runtime/source-contracts.mjs",
+      "bytes": 10100,
+      "sha256": "6b26b35d331ea671609d1087860713d6e434087cfc55469a866bed80bfa57079"
+    },
+    {
+      "path": "emberwild-r21-rebuilt-game-study/runtime/stag-jump-pose.mjs",
+      "bytes": 3569,
+      "sha256": "d36a1ac43989d76c4fe691950ba2bf89a92dfb65d1b8b6994e58db861d2586f4"
+    },
+    {
+      "path": "emberwild-r21-rider-approach-study/runtime/rider-pose-r21-cancel-g.mjs",
+      "bytes": 20556,
+      "sha256": "b1b29226ef13987be293f564c73d42d6bbbae638786ded45db44ae37e7c25ea2"
+    },
+    {
+      "path": "emberwild-r21-running-hand-study/runtime/locomotion-hand-gesture-b.mjs",
+      "bytes": 1006,
+      "sha256": "6c5d1377c19776589ad087a70824b31d06b81aca233232df130c3c063a2dcdda"
+    },
+    {
+      "path": "emberwild-r21-safe-origin-study/runtime/r19-safe-foot-move.mjs",
+      "bytes": 4294,
+      "sha256": "d83e16f653d787c74f6b933c3a9428abec34c0cda32a28a3a3d236e8ed9b38c6"
+    },
+    {
+      "path": "emberwild-r21-spell-hold-continuity-study/runtime/sole-pivot.mjs",
+      "bytes": 729,
+      "sha256": "ce04146ae77701e0f7192239ad0d7ad920d7e9236056d38ffbe9e144abaa60e9"
+    },
+    {
+      "path": "emberwild-r21-weapon-motion-study/runtime/equipment-pose-adapter-v3.mjs",
+      "bytes": 5701,
+      "sha256": "ffbd298b9c3890c3c78f8eafb0d54e513e2084c322ff05a63fba8bc749c88f33"
+    },
+    {
+      "path": "emberwild-r21-wholebody-motion/input/rig-spec.json",
+      "bytes": 11167,
+      "sha256": "31bb8239c9699280f7653abb0a34405a7399c6055e0729ce46568ac3ed2836fd"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/assets/ui-model20/portrait-model20-a02-low.png",
+      "bytes": 24423,
+      "sha256": "2170bb1c0a9e5130b6e41084bdd66e7726275fd0cdd13ab40680010872000d84"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/assets/ui-model20/portrait-model20-a02-standard.png",
+      "bytes": 84500,
+      "sha256": "d703ff5989b5401ef6e92202f55486ce152fb10f3fc72de28c47b2c8a2482d40"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/assets/ui-model20/portrait-unavailable.svg",
+      "bytes": 251,
+      "sha256": "01ee95a7e5493e0fb552135a7259f0ad056048e57a85cc2790a12eb428854ed3"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/boot-status.mjs",
+      "bytes": 3009,
+      "sha256": "85216faa1c3776f5f6dcefd7ddef659211a52681c2ae56e184368676a81b0552"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/build-id-reconstructed.mjs",
+      "bytes": 1566,
+      "sha256": "4b75b1ba5f9eea72fa2af2c2ad36b56c26dec808fa81ab717bc9f43104c077a6"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/game.mjs",
+      "bytes": 87359,
+      "sha256": "97bbe2e79e206fc6d9722aab5076a88e16e85fd9cffe11c7571b3eb40f2f95e1"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/gpu-timer.mjs",
+      "bytes": 8737,
+      "sha256": "9d0ebf2085488ff944dcc14212421f436a8a204bcb7ed405d845a7f8dac5ab54"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/index.html",
+      "bytes": 3158,
+      "sha256": "ba4f08eae176c089bc997da93a716efe130223d65a8b9cf5528d2873e55d2ef3"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/performance-probe.mjs",
+      "bytes": 5353,
+      "sha256": "25a81e6daab792f49052d9c5b36bc0e94f6dcbed8bf181c57c0dc6b29c6c6f58"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/pixel-ab.mjs",
+      "bytes": 25489,
+      "sha256": "23727499c35c9b8ab3cab758ac554fbcc9f27ac41d7b80437c750938be1558c9"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/rpg-ui-local-r5.mjs",
+      "bytes": 57642,
+      "sha256": "ee57e6b5085a996e00d642f82586be9ab5599a499c8938ef940a637a7ae2c744"
+    },
+    {
+      "path": "emberwild-r23-character-qa/app/target-ui-local-r5.mjs",
+      "bytes": 9638,
+      "sha256": "7ebf5657fa9bf304b1b7d9b63ee85cdae5eb677fc01df826598e73d131931d45"
+    },
+    {
+      "path": "emberwild-r23-character-qa/runtime/owned-sound-timers-a.mjs",
+      "bytes": 1499,
+      "sha256": "37d3c5b08992dc9bc00944bd61dfc7f7bc400ad97fac67f89c19ad072fc59b1a"
+    },
+    {
+      "path": "index.html",
+      "bytes": 2056,
+      "sha256": "ed0ab239288200ce000ae478bcb6933ec4acba429cc8e0164ce6a7b589b9e314"
+    },
+    {
+      "path": "pbr-candidate-assets/hero-low.glb",
+      "bytes": 1901756,
+      "sha256": "8b71a0815510e0d1e8a1dd9e7ed8b3603e9ad013cc6e912f48e182eb1583211c"
+    },
+    {
+      "path": "pbr-candidate-assets/hero-standard.glb",
+      "bytes": 3065640,
+      "sha256": "fae111e64fcd77f1d40ba1e2f1af79ed6fc4c3d4afeeb4661cc03f9440cc4e4f"
+    }
+  ],
+  "mountUiSha256": "616e1926a3afee89edf4597d4eb8ad77709f9706993e50b7ae146de5657e7951",
+  "mountLifecycleTestsPassed": 23,
+  "spatialBatchingEnabled": false,
+  "steadyFpsImprovementVerified": false
+}

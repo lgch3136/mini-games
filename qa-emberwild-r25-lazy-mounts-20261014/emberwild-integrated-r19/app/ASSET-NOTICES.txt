@@ -1,0 +1,3 @@
+Runtime asset and dependency notices
+
+See ../../ASSET-NOTICES.txt for the complete current component attribution and modification notices. The complete MakeHuman CC0 text remains LICENSE-MAKEHUMAN-ASSETS.txt and Three.js MIT remains vendor/LICENSE, relative to this file.
