@@ -1,0 +1,21 @@
+Emberwild / 余烬旷野 R23 — Runtime asset and dependency notices
+
+MakeHuman graphical assets — CC0 1.0 Universal
+The adapted head and neck use official MakeHuman hm08 graphical control geometry and graphical morph data. These graphical assets are CC0. No MakeHuman executable application code is included or required, and this notice does not relicense upstream application code.
+Source: https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
+Asset/code license distinction: https://github.com/makehumancommunity/makehuman/blob/master/LICENSE.md
+Full CC0 text: emberwild-integrated-r19/app/LICENSE-MAKEHUMAN-ASSETS.txt
+
+Snow Rig (CC) — Blender Foundation | studio.blender.org
+Source: https://studio.blender.org/characters/snow/v4/
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License URL: https://creativecommons.org/licenses/by/4.0/
+Full license: LICENSE-SNOW-CC-BY-4.0.txt
+Only adapted hair geometry and the original hair-bundle UVs are used. Five upper bundles were retained and fitted; disconnected ponytail components and the original shaved-side base were omitted. A new Emberwild undercoat was authored, hair roots were adjusted, and a lower-tessellation variant was made. No Snow face, body or rig was imported. Eye/hair color and roughness PNGs are original deterministic Emberwild textures; no Snow source raster is copied. This adaptation is not endorsed by Blender Foundation. The licensed material is supplied without warranties as described in the license.
+
+Three.js and bundled example utilities — MIT
+Copyright © 2010–2026 three.js authors
+Full MIT license: emberwild-integrated-r19/app/vendor/LICENSE
+
+Other runtime content
+Other game code, geometry, outfit and creature designs, technical materials, portraits, icons and synthesized music were made for this project. Some visual inputs and derivatives were made with generative AI; exclusive copyright is not claimed for generated content. The original body/armor, semantic rig and runtime gameplay retain their existing project provenance. The separate licenses above apply to the identified components; they do not relicense all game assets. No Blizzard/World of Warcraft media or commercial recordings/sample libraries are included.
