@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c121b">
+  <title>旅行者动作 A/B：新旧外形与原动作片段</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div><p class="eyebrow">角色外形对照 · TRAVELER</p><h1>旅行者动作 A/B<span>独立候选预览 · 非正式游戏更新</span></h1></div>
+      <div id="status" class="status loading" role="status">正在加载并核验…</div>
+    </header>
+
+    <section class="panel trial-intro"><strong>同一套骨架，直接切换 OLD / NEW</strong><p>默认用新旅行者运行原前向起停控制器。切换「原动作片段」可看 Idle、Walk、Run、Jump 起跳、Land 落地；它们是实际带贴图模型的原始片段，不是跳跃玩法。每次切换清空输入、回到原点；模型按需加载，加载失败保留上一个模型。</p><p>首次约 24.9 MB；完整看遍两款外形及所有模式约 102.4 MB，浏览器可缓存模型。已做离线数值与有限姿态检查；浏览器连续播放、GPU 和帧率仍待验收。</p><a href="../qa-ranger-motion-20261015/">← 查看原前向预览</a></section>
+    <section class="panel comparison-controls" aria-label="外形与动作对照">
+      <div><label for="appearance">外形 A/B</label><select id="appearance" disabled><option value="new">NEW · 新旅行者</option><option value="old">OLD · 原角色</option></select></div>
+      <div><label for="preview-mode">查看模式</label><select id="preview-mode" disabled><option value="forward">前向操控 · 原控制器</option><option value="clips">原动作片段 · 1×</option></select></div>
+      <div><label for="clip">原动作片段</label><select id="clip" disabled><option value="Idle">Idle · 待机</option><option value="Walk">Walk · 行走</option><option value="Run">Run · 跑步</option><option value="Jump">Jump · 起跳片段</option><option value="Land">Land · 落地片段</option></select></div>
+      <p id="selection-note" class="selection-note" role="status">模型加载完成后可以切换</p>
+      <div class="clip-scrub"><label for="clip-phase">片段相位 · 拖动即暂停</label><input id="clip-phase" type="range" min="0" max="1000" value="0" disabled><span id="clip-label">选择原片段模式查看 Idle / Walk / Run / Jump / Land</span></div>
+    </section>
+    <section class="workspace">
+      <div class="viewport-column">
+        <div id="viewport" class="viewport" aria-label="Ranger three-dimensional motion preview">
+          <div class="scene-top"><span class="scene-label">NATIVE THREE · 1×</span><span id="model-label" class="scene-label">NEW · 旅行者</span><span class="scene-label">0.5 m WORLD CHECKER</span></div>
+          <div id="loading" class="loading-overlay"><span class="spinner" aria-hidden="true"></span><p id="loading-text">准备原始带贴图模型</p><small>首次加载包含模型与运行所需的姿态、足底数据</small></div>
+          <div class="scene-bottom"><span id="input-state">Input: released · accepted: 0 m/s</span><span id="camera-label">FRONT</span></div>
+          <noscript><p class="noscript">JavaScript and WebGL are required for this isolated preview</p></noscript>
+        </div>
+        <div class="view-toolbar" aria-label="Camera views">
+          <span class="muted">镜头</span>
+          <button class="camera active" data-camera="front" aria-pressed="true">正面</button>
+          <button class="camera" data-camera="rear" aria-pressed="false">背面</button>
+          <button class="camera" data-camera="side" aria-pressed="false">侧面</button>
+          <span class="toolbar-note">镜头跟随物理位置</span>
+        </div>
+        <div id="failure" class="failure hidden" role="alert"><strong>Preview frozen</strong><p id="failure-text"></p><small>The verified model bind pose is restored when a model is available. Reset or select another model to continue.</small></div>
+      </div>
+
+      <aside class="panel controls">
+        <div class="section-heading"><h2>试试动作</h2><span class="tag">仅前向</span></div>
+        <p class="description">按住 W 或下方按钮，以 4.8 m/s 向前移动。按钮获得焦点后也可按住空格或回车。松开后开始停步动作。</p>
+        <div class="manual-controls">
+          <button id="hold" class="button primary hold" disabled>长按前跑 <kbd>W</kbd></button>
+          <button id="toggle" class="button" aria-pressed="false" disabled>开始前跑</button>
+          <div class="button-row"><button id="tap50" class="button" disabled>点跑 50 毫秒</button><button id="tap100" class="button" disabled>点跑 100 毫秒</button></div>
+        </div>
+        <p class="fine-print">点跑会替换当前输入；再次点击会重新计时，不会排队。</p>
+        <div class="divider"></div>
+        <label for="scenario" class="field-label">13 组输入序列</label>
+        <select id="scenario" disabled>
+          <option value="ordinary">普通起跑 → 停步</option>
+          <option value="tap_50ms">点跑 50 毫秒</option>
+          <option value="tap_100ms">点跑 100 毫秒</option>
+          <option value="resume_settling">停步中再次起跑</option>
+          <option value="blocked">按住前跑但中途受阻</option>
+          <optgroup label="在不同跑步相位松开">
+            <option value="stop_phase_0">Phase 0.000</option><option value="stop_phase_125">Phase 0.125</option>
+            <option value="stop_phase_25">Phase 0.250</option><option value="stop_phase_375">Phase 0.375</option>
+            <option value="stop_phase_50">Phase 0.500</option><option value="stop_phase_625">Phase 0.625</option>
+            <option value="stop_phase_75">Phase 0.750</option><option value="stop_phase_875">Phase 0.875</option>
+          </optgroup>
+        </select>
+        <p id="scenario-description" class="scenario-description">Move 0.50–2.10 s; inspect the following 1.00 s of settling.</p>
+        <button id="run" class="button wide" disabled>重置并运行序列</button>
+        <p class="fine-print">序列只提供当下输入；动作按实际接受的位移即时计算。</p>
+        <div class="button-row transport"><button id="pause" class="button" aria-pressed="false" disabled>暂停</button><button id="reset" class="button" disabled>重置</button></div>
+        <p id="transport-note" class="transport-note" aria-live="polite">等待数据核验</p>
+      </aside>
+    </section>
+
+    <section class="telemetry panel" aria-label="Runtime diagnostics">
+      <div class="section-heading"><h2>实时诊断</h2><span class="muted">模拟固定 120 Hz · 不代表实测显示帧率</span></div>
+      <div class="metrics">
+        <div><span>Controller mode</span><strong id="diag-mode">—</strong></div>
+        <div><span>Sprint phase</span><strong id="diag-phase">—</strong></div>
+        <div><span>Accepted distance</span><strong id="diag-distance">0.000 m</strong></div>
+        <div><span>Physics root · Blender XYZ</span><strong id="diag-root">0.000, 0.000, 0.000</strong></div>
+        <div><span>Simulation time</span><strong id="diag-time">0.000 s</strong></div>
+        <div><span>Errors</span><strong id="diag-errors">—</strong></div>
+      </div>
+      <details><summary>Controller, rig and event details</summary><pre id="diagnostics">Source not yet loaded</pre></details>
+    </section>
+
+    <section class="scope panel" aria-label="Tested scope and known limitations">
+      <div><h2>试验范围</h2><p>新旧外形采用相同的 65 骨架与动作数据；新披肩是较挺的风格化服装，耳根、后颈及衣服内层仍有局部接触，未宣称全部无穿模。</p><p>独立的前向起停试验，包含短暂松键后继续跑和停稳后再起跑的修正。可手动控制，也可运行 13 组固定输入序列。页面成功加载不等于动作质量或性能验收。</p></div>
+      <div><h2>仍保留的局限</h2><ul><li>历史延迟受力样例中骨盆再升高约 3.120 毫米；当前对应已知失败仍未解决</li><li>历史小腿权重带来的脚跟形变约 6.411 毫米</li><li>历史保存插值的地面残差约 −0.257 毫米</li><li>未完成浏览器连续播放、WebGL、GPU 或帧率验收</li><li>本页不包含转向、侧移、倒跑、跳跃玩法或战斗验收；原片段播放不等于物理接地验收</li></ul></div>
+    </section>
+    <footer>许可明确的原模型与旅行者改型 · 独立物理位置 · 错误时冻结并恢复原始绑定姿态 · 控制器版本 d07d2ca3 · <a href="./ASSET-NOTICES.txt">素材许可</a></footer>
+  </main>
+  <script>
+    // Classic HTML-level guard runs even when the main ES module/dependency cannot load.
+    (() => {
+      const showBootFailure = detail => {
+        const loading = document.getElementById('loading');
+        if (!loading || loading.classList.contains('hidden')) return;
+        loading.classList.add('error');
+        const message = 'Preview module could not start: ' + detail + '. Check the local files/server, then reload.';
+        document.getElementById('loading-text').textContent = message;
+        const status = document.getElementById('status');
+        status.textContent = 'Cannot load preview'; status.className = 'status failed';
+        document.getElementById('failure').classList.remove('hidden');
+        document.getElementById('failure-text').textContent = message;
+        document.getElementById('transport-note').textContent = 'Reload after resolving the module loading error';
+      };
+      window.addEventListener('error', event => {
+        if (event.target && event.target.tagName === 'SCRIPT') showBootFailure('script or dependency unavailable');
+        else if (event.message) showBootFailure(event.message);
+      }, true);
+      window.addEventListener('unhandledrejection', event => showBootFailure(event.reason?.message || String(event.reason)));
+    })();
+  </script>
+  <script type="module" src="./app.min.mjs"></script>
+</body>
+</html>
