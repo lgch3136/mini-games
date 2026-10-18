@@ -1,11 +1,11 @@
 {
   "kind": "optional-first-chapter-preview",
-  "priorPreparedRuntimeChanged": false,
+  "priorPreparedRuntimeChanged": true,
   "entry": "index-story-reconstruction-20261018.html",
   "runtime": {
-    "file": "game-story-reconstruction-20261018-fbc777fb566b.min.mjs",
-    "bytes": 1134190,
-    "sha256": "fbc777fb566bdd9ea7aceea315526796fd9c3587d8be9759818c9bc7d3c37d02",
+    "file": "game-story-reconstruction-20261018-a50a005f69b6.min.mjs",
+    "bytes": 1134292,
+    "sha256": "a50a005f69b63fcfedeed05904db00adbf3710f9839286f97fbd0b9d2c3a04f5",
     "esbuildVersion": "0.25.12",
     "sourceMaps": false,
     "minified": true,
@@ -15,14 +15,14 @@
     {
       "path": "index-story-reconstruction-20261018.html",
       "bytes": 5484,
-      "sha256": "0b5e5204009aae993de34c3df8e2359954f89dfb1a9899ba09ecf1246ad6bb84",
-      "gitBlobSHA1": "80b7fa2fdbacc08b60d39fb98d727834f3d7c647"
+      "sha256": "676fce2e65cd4c161802b6b771ace6b143015bd60126b74dc4e19996f4efd88e",
+      "gitBlobSHA1": "ca61ced76f405b4422a9252538356e999778744b"
     },
     {
-      "path": "game-story-reconstruction-20261018-fbc777fb566b.min.mjs",
-      "bytes": 1134190,
-      "sha256": "fbc777fb566bdd9ea7aceea315526796fd9c3587d8be9759818c9bc7d3c37d02",
-      "gitBlobSHA1": "f36a5d726052b6f6a7a65342eaf0294da4466e75"
+      "path": "game-story-reconstruction-20261018-a50a005f69b6.min.mjs",
+      "bytes": 1134292,
+      "sha256": "a50a005f69b63fcfedeed05904db00adbf3710f9839286f97fbd0b9d2c3a04f5",
+      "gitBlobSHA1": "f2e3409a97732787f9a3cc08995bb1aca6c5d5fb"
     },
     {
       "path": "README-story-reconstruction-20261018.md",
@@ -44,5 +44,15 @@
     "runtimeUnchanged": true,
     "cpuTestsPassed": 235,
     "browserAcceptance": false
+  },
+  "groundBlockedWalkingGate": {
+    "version": "20261019-ground-walk-gate-r1",
+    "scope": "ordinary grounded non-dodge walking flag requires accepted horizontal movement",
+    "cpuTestsPassed": 268,
+    "browserAcceptance": false,
+    "gpuAcceptance": false,
+    "fpsMeasured": false,
+    "baselineCommit": "254e5482918fa8fef56f7a7b00f4e55857de9b30",
+    "baselineRuntimeSHA256": "fbc777fb566bdd9ea7aceea315526796fd9c3587d8be9759818c9bc7d3c37d02"
   }
 }
