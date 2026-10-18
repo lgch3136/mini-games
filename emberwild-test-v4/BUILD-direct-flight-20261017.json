@@ -1,0 +1,50 @@
+{
+  "product": "Emberwild / 余烬旷野",
+  "version": "r16-direct-flight-20261017-r1",
+  "releaseDate": "2026-10-17",
+  "entry": "index-direct-flight-20261017.html",
+  "baselineCommit": "2566fcb64b81cee25ce62b01fa01147358748f00",
+  "baseline": "R16 formal full game + accepted 2026-10-16 flight integration",
+  "publicScope": "formal full-game entry only; R25 QA and hero preview unchanged",
+  "runtime": {
+    "file": "game-direct-flight-20261017-c83b12de01b2.min.mjs",
+    "bytes": 1106224,
+    "sha256": "c83b12de01b2e5e00d85c82d57c9a950bcbde8cd44f04fee8c40a5e62276af82",
+    "esbuildVersion": "0.25.12",
+    "sourceMaps": false,
+    "minified": true,
+    "closedModuleBundle": true
+  },
+  "files": [
+    {
+      "path": "README-direct-flight-20261017.md",
+      "bytes": 2505,
+      "sha256": "e3378f6b3e5788a04773e2ba9e6299f8ee9884a3bfa1d5895fdcb422cd2b48f0"
+    },
+    {
+      "path": "game-direct-flight-20261017-c83b12de01b2.min.mjs",
+      "bytes": 1106224,
+      "sha256": "c83b12de01b2e5e00d85c82d57c9a950bcbde8cd44f04fee8c40a5e62276af82"
+    },
+    {
+      "path": "index-direct-flight-20261017.html",
+      "bytes": 3294,
+      "sha256": "d05feb15c7457a257a30b716edadfe8f6dbef1790836986d906d8d06c4b9ef1a"
+    }
+  ],
+  "assetsChanged": false,
+  "saveNamespaceChanged": false,
+  "legacyEntry": "./index-flight-20261016.html?v=20261016-flight-r1",
+  "verification": {
+    "sourceAndCPU": "passed; documented CPU-only limits and unchanged native-flap endpoint overlap",
+    "browserRendered": false,
+    "continuousRenderedMotion": false,
+    "gpuAcceptance": false,
+    "fpsMeasured": false
+  },
+  "licenses": [
+    "ASSET-NOTICES.txt",
+    "vendor/LICENSE",
+    "LICENSE-MAKEHUMAN-ASSETS.txt"
+  ]
+}
