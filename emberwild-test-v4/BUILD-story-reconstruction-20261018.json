@@ -1,0 +1,41 @@
+{
+  "kind": "optional-first-chapter-preview",
+  "priorPreparedRuntimeChanged": false,
+  "entry": "index-story-reconstruction-20261018.html",
+  "runtime": {
+    "file": "game-story-reconstruction-20261018-fbc777fb566b.min.mjs",
+    "bytes": 1134190,
+    "sha256": "fbc777fb566bdd9ea7aceea315526796fd9c3587d8be9759818c9bc7d3c37d02",
+    "esbuildVersion": "0.25.12",
+    "sourceMaps": false,
+    "minified": true,
+    "closedModuleBundle": true
+  },
+  "files": [
+    {
+      "path": "index-story-reconstruction-20261018.html",
+      "bytes": 3246,
+      "sha256": "f35928153f187b1e3a0de9a35decd4e22632f171c6900e74c20dda529bba93fc",
+      "gitBlobSHA1": "0cdda4f3a440e0bfd4b3ec725b198727588e37dc"
+    },
+    {
+      "path": "game-story-reconstruction-20261018-fbc777fb566b.min.mjs",
+      "bytes": 1134190,
+      "sha256": "fbc777fb566bdd9ea7aceea315526796fd9c3587d8be9759818c9bc7d3c37d02",
+      "gitBlobSHA1": "f36a5d726052b6f6a7a65342eaf0294da4466e75"
+    },
+    {
+      "path": "README-story-reconstruction-20261018.md",
+      "bytes": 670,
+      "sha256": "56a884317e870515ad2c7a96599bed606b2e91b04e4d6b8e617a136814d9db87",
+      "gitBlobSHA1": "0cc0a91eac5bc2a4cf8c34e24281794f70417b54"
+    }
+  ],
+  "assetsCommit": "f14e9f886c16dd21619ee2d14186f0defdddaaae",
+  "browserAcceptance": false,
+  "gpuAcceptance": false,
+  "fpsMeasured": false,
+  "saveNamespace": "emberwild.rpg.save.story-preview.v1",
+  "saveIndependent": true,
+  "formalEntryReplaced": false
+}
