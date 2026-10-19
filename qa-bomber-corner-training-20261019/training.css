@@ -1,0 +1,43 @@
+/* Optional drill only. Existing controls, game assets and formal layout remain intact. */
+.training-entry { margin-top:12px; }
+.training-entry p { margin-top:6px; color:#b7cbd2; font-size:12px; line-height:1.5; }
+.training-mode #training-tools { position:absolute; top:62px; left:12px; right:12px; display:flex; justify-content:center; gap:8px; pointer-events:auto; }
+.training-mode #training-tools button { min-height:44px; padding:6px 14px; font-size:12px; }
+.training-mode .training-result-actions { flex-wrap:wrap; align-items:center; }
+.training-mode .training-result-actions .btn-main { margin-top:0; padding:12px 22px; font-size:15px; letter-spacing:1px; }
+.training-mode #stats .chip { display:none; }
+.training-mode .mission-strip { color:#d1fae5; font-weight:700; }
+@media (max-width:600px) and (orientation:portrait) {
+  /* The freed score-chip space keeps actions away from the thumb controls. */
+  .training-mode #training-tools { top:env(safe-area-inset-top); left:8px; right:auto; gap:4px; }
+  .training-mode #training-tools button { padding:6px 10px; }
+  .training-mode .mission-strip { top:calc(120px + env(safe-area-inset-top)); }
+}
+@media (orientation:landscape) and (max-height:600px) and (min-width:601px) {
+  .training-mode #word-bar { top:64px; }
+  .training-mode .mission-strip { top:134px; }
+  .training-mode .build-strip { top:182px; }
+  .training-mode #training-tools { left:12px; right:auto; top:248px; width:164px; flex-wrap:wrap; justify-content:flex-start; gap:4px; }
+  .training-mode #training-tools button { min-height:44px; padding:4px 9px; }
+  .training-mode #feedback { display:none; }
+}
+@media (orientation:landscape) and (max-width:600px) {
+  /* Small landscape needs three zones too; only practice changes this layout. */
+  #game-wrap.training-mode { width:100vw; height:100dvh; aspect-ratio:auto; border:0; border-radius:0; }
+  .training-mode #game { width:calc(100vw - 288px); height:auto; aspect-ratio:880/704; left:50%; top:50%; transform:translate(-50%,-50%); }
+  .training-mode #stats { left:8px; right:auto; top:4px; width:128px; }
+  .training-mode #word-bar { position:absolute; left:8px; top:54px; margin:0; width:128px; padding:5px; }
+  .training-mode #wb-kind { display:block; margin:0 0 2px; }
+  .training-mode #wb-word { font-size:14px; }
+  .training-mode #wb-zh { font-size:10px; }
+  .training-mode .mission-strip,.training-mode .build-strip { left:8px; right:auto; width:128px; text-align:left; line-height:1.45; font-size:11px; }
+  .training-mode .mission-strip { top:128px; }
+  .training-mode .build-strip { top:176px; }
+  .training-mode #training-tools { left:8px; right:auto; top:248px; width:128px; gap:4px; flex-wrap:wrap; justify-content:flex-start; }
+  .training-mode #training-tools button { min-height:44px; padding:4px 9px; }
+  .training-mode #feedback { display:none; }
+  .training-mode #touch-controls { display:flex; left:auto; right:4px; top:0; bottom:0; width:144px; height:auto; padding:12px 0; flex-direction:column-reverse; justify-content:space-between; align-items:center; }
+  .training-mode .tc-pad { width:148px; height:136px; }
+  .training-mode #down-btn { top:84px; }
+  .training-mode #bomb-btn { flex:none; }
+}
