@@ -313,7 +313,7 @@ function gameOver() {
   $id('over-stats').innerHTML =
     `<div><span>本局得分</span><b>${Game.score}</b></div>` +
     `<div><span>最高纪录</span><b>${high}</b></div>` +
-    `<div><span>完成单词</span><b>${Game.word ? Game.word.en : '-'}</b></div>`;
+    `<div><span>本轮目标</span><b>${Game.word ? Game.word.en : '-'}</b></div>`;
   if (window.ArcadeAudio) ArcadeAudio.play('laser', .3, .45);
 }
 
