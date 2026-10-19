@@ -153,9 +153,10 @@
             <p>地形会挡住子弹。找好位置，再出发。</p>
             <button id="resume-btn" class="primary">
               继续行动 <span>→</span></button
-            ><button id="restart-btn" class="secondary">从补给点重新开始</button
+            ><button id="restart-btn" class="secondary">重试当前行动</button
             ><button class="text-button menu-button">返回行动选择</button>
             <p class="dialog-hint">P / Esc 暂停 · M 声音 · 鼠标也可瞄准射击</p>
+            <p class="retry-warning">重试保留补给位置与战术目标；得分、词核等重算。返回菜单或刷新会清除补给位置。</p>
           </div>
         </section>
         <section id="result-screen" class="screen dialog-screen" hidden>
@@ -208,6 +209,6 @@
       </footer>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="game.js?v=20260930-polish-r1&mobile=20260930-quality-r5"></script>
+    <script type="module" src="game.js?v=20261019-checkpoint-copy-r1&mobile=20260930-quality-r5"></script>
   </body>
 </html>

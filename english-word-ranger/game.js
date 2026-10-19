@@ -244,7 +244,7 @@ function handleEvents() {
         3,
       );
     else if (e.type === "checkpoint")
-      notice("补给点已记录", "生命 +2 · 手雷补充 · 倒下后可从这里继续", 3.2);
+      notice("补给点已记录", "生命与手雷已补充。重试得分、词核重算。", 3.2);
     else if (e.type === "boss") {
       sound.intense = true;
       notice("信号核心 · 重装守卫", "先看攻击预兆，核心发亮时集中射击", 4);
@@ -357,10 +357,10 @@ function finish() {
   setText(
     "result-description",
     won
-      ? "林地通路重新开放。你带回的词核已进入行动记录。"
+      ? "行动完成。最佳得分和勋章保存在本机；本次词核见下方回顾。"
       : world.checkpoint.x > 200
-        ? "补给点保留了你的进度。可以从那里继续。"
-        : "蹲下避开平射；跃过盾兵，或用手雷打破防线。",
+        ? "重试保留补给位置和战术目标（奖励不重复发放）；得分、击破、用时及词核进度归零，后续敌人重建。"
+        : "尚未记录补给点。重试从关卡起点开始，战术目标保留（奖励不重复发放）；得分、击破、用时及词核进度归零。",
   );
   $("result-stats").replaceChildren(
     ...[
@@ -394,7 +394,7 @@ function finish() {
   );
   setText(
     "result-primary",
-    won ? (endless ? "下一行动 →" : "再次挑战 →") : "从补给点继续 →",
+    won ? (endless ? "下一行动 →" : "再次挑战 →") : (world.checkpoint.x > 200 ? "从补给点重试 →" : "从起点重试 →"),
   );
   try {
     const best = Math.max(
