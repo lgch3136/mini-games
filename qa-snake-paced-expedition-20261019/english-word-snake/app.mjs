@@ -183,6 +183,9 @@ function screen() {
   $("pause").hidden = menu || phase === "over";
   $("pause-screen").hidden = phase !== "paused" || routePlanning;
   $("over-screen").hidden = phase !== "over";
+  // A result is a presentation-only modal; keep background controls out of its tab order.
+  for (const id of ["topbar", "hud", "controls", "game"])
+    $(id).inert = phase === "over";
   $("pause").textContent = phase === "paused" ? "▶" : "Ⅱ";
   $("pause").setAttribute(
     "aria-label",
@@ -486,6 +489,10 @@ function finish() {
   screen();
   hud(true);
   render();
+  // Each result opens at its heading, with the actions outside the scrollable recap.
+  for (const id of ["over-screen", "result-details", "word-review"])
+    $(id).scrollTop = 0;
+  $("result-title").focus({ preventScroll: true });
 }
 function toMenu() {
   if (game?.phase === "playing") game.setPaused(true);
@@ -555,7 +562,21 @@ $("pause").addEventListener("click", () =>
   game?.phase === "paused" ? resume() : pause(),
 );
 for (const id of ["exit", "pause-menu", "over-menu"])
-  $(id).addEventListener("click", toMenu);
+  $(id).addEventListener("click", () => {
+    toMenu();
+    if (id === "over-menu") $("start").focus({ preventScroll: true });
+  });
+// The finished game is stopped. Tab only navigates the recap and its two actions.
+document.addEventListener("keydown", (event) => {
+  if (menu || game?.phase !== "over" || event.key !== "Tab") return;
+  const targets = [$("result-details"), $("restart"), $("over-menu")];
+  const current = targets.indexOf(document.activeElement);
+  const next = event.shiftKey
+    ? current <= 0 ? targets.length - 1 : current - 1
+    : (current + 1) % targets.length;
+  event.preventDefault();
+  targets[next].focus({ preventScroll: true });
+});
 $("hint").addEventListener("click", () => {
   if (game?.phase === "playing") {
     game.hint();
@@ -626,7 +647,7 @@ const percentile = (values, p) => {
 Object.defineProperty(window, "snakeDiagnostics", {
   value: () => ({
     version: VERSION,
-    build: "20261019-paced-expedition-r1-local",
+    build: "20261019-paced-expedition-r2-local",
     menu,
     raf: !!raf,
     game: game?.snapshot() || null,

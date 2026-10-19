@@ -54,3 +54,50 @@ button:focus-visible, select:focus-visible { outline:3px solid #3d8968; outline-
 /* A compact menu explanation; this does not add playing-board chrome. */
 #menu .menu-card { margin-block:auto; }
 .challenge-note { margin:-7px 0 12px; font-size:11px; line-height:1.5; color:#49694f; }
+
+/* Result-only layout: use the viewport rather than the shorter game-board footprint.
+   Headline, score, summary and actions never belong to the scrolling recap. */
+#over-screen {
+  position:fixed; inset:0; z-index:20;
+  padding:max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  overflow:hidden; background:#eaf0dfd9;
+}
+#over-screen .result-card {
+  width:min(460px, 100%); max-height:100%; min-height:0;
+  display:flex; flex-direction:column; gap:12px;
+  padding:22px; overflow:hidden;
+}
+.result-card > :not(.result-details) { flex-shrink:0; }
+#over-screen .result-heading h2 { margin:6px 0 0; font-size:25px; line-height:1.3; }
+.result-summary { display:flex; justify-content:center; align-items:center; gap:18px; }
+#over-screen .mastery-medal { width:76px; height:76px; margin:0; flex:0 0 76px; object-fit:contain; }
+#over-screen .expedition-stars { margin:0 0 4px; font-size:26px; line-height:1.1; }
+#over-screen .final-score { display:block; font-size:48px; line-height:1.05; }
+#over-screen #final-details { margin:0; line-height:1.6; }
+#over-screen .result-details {
+  flex:0 1 auto; min-height:0; max-height:180px;
+  overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  scrollbar-gutter:stable; scroll-padding:6px; border-radius:12px;
+}
+#over-screen #word-review { max-height:none; overflow:visible; padding:2px; }
+#over-screen .expedition-next { margin:8px 0 0; padding:10px; line-height:1.6; }
+.result-actions { display:grid; grid-template-columns:1.2fr 1fr; gap:10px; }
+#over-screen .result-actions button { min-width:0; min-height:44px; margin:0; padding:11px 10px; font-size:14px; }
+#over-screen .result-actions .quiet { border:1px solid #c5d7ad; border-radius:12px; }
+#over-screen :focus-visible { outline:3px solid #3d8968; outline-offset:-3px; }
+@media (max-width:380px) {
+  #over-screen .result-card { padding:14px; gap:10px; }
+  #over-screen .result-heading h2 { font-size:23px; }
+  #over-screen .result-actions { gap:8px; }
+}
+@media (max-height:480px) {
+  #over-screen .result-card { width:min(560px, 100%); padding:12px; gap:6px; }
+  #over-screen .result-heading .eyebrow { display:none; }
+  #over-screen .result-heading h2 { margin:0; font-size:20px; line-height:1.2; }
+  #over-screen .mastery-medal { width:40px; height:40px; flex-basis:40px; }
+  #over-screen .result-tally { display:flex; align-items:center; gap:14px; }
+  #over-screen .expedition-stars { margin:0; font-size:22px; }
+  #over-screen .final-score { font-size:36px; }
+  #over-screen #final-details { font-size:11px; line-height:1.4; }
+  #over-screen .result-details { max-height:100px; }
+}
