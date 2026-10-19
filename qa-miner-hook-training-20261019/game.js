@@ -283,7 +283,7 @@ function resetSession(kind) {
   $id('practice-tools').classList.add('hidden'); $id('practice-result').classList.add('hidden');
   $id('pause-practice-actions').classList.add('hidden');
   for (const id of ['practice-heading', 'practice-ledger', 'practice-message', 'practice-result-ledger']) $id(id).textContent = '';
-  wrap.classList.remove('practice-mode'); displayedSecond = -1;
+  wrap.classList.remove('practice-mode'); updatePracticeDynamiteCue(); displayedSecond = -1;
   $id('score-label').textContent = '本局得分'; $id('quota-label').textContent = '本关采矿';
   accumulator = 0; lastTime = performance.now();
   Game.wallet = 0; Game.precision = 0; Game.bestPrecision = 0;
@@ -745,6 +745,21 @@ function updatePracticeHud() {
   updateHudTimer(); updateDynamiteButton();
 }
 
+// A display-only cue: never changes the hook, input timing, ledger, or storage.
+function updatePracticeDynamiteCue() {
+  const p = Game.practice, h = Game.hook;
+  const active = Boolean(Game.runKind === 'practice' && p?.step === 2 && p.phase === 'aim'
+    && Game.state === 'playing' && p.dynamite > 0 && h?.state === 'retract'
+    && h.grabbed === p.target && h.grabbed?.kind === 'rock'
+    && p.shot?.caught === p.target && !p.shot.delivered && !p.shot.discarded);
+  const message = $id('practice-message');
+  $id('dynamite-btn').classList.toggle('practice-now', active);
+  message.classList.toggle('practice-now', active);
+  const text = !p ? '' : Game.state === 'paused' ? '练习已暂停。继续后再按提示操作。'
+    : active ? '现在按 X / 点雷管 · 放弃石头，再等空钩回顶' : p.message;
+  if (message.textContent !== text) message.textContent = text;
+}
+
 function nextPracticeStep() {
   const p = Game.practice;
   if (!p || p.phase !== 'success' || p.step >= 2 || Game.state !== 'playing') return;
@@ -797,6 +812,7 @@ function togglePause() {
     accumulator = 0; lastTime = performance.now();
     ensureLoop();
   }
+  if (Game.practice) updatePracticeDynamiteCue();
 }
 function backToMenu() {
   if (Game.practice) resetSession('normal');
@@ -864,6 +880,7 @@ function updateDynamiteButton() {
   const usable = Game.state === 'playing' && count > 0 && Game.hook && Game.hook.state === 'retract' && Game.hook.grabbed && Game.hook.grabbed.kind !== 'letter';
   button.classList.toggle('ready', Boolean(usable));
   button.setAttribute('aria-disabled', usable ? 'false' : 'true');
+  updatePracticeDynamiteCue();
 }
 
 /* ---------------- 渲染 ---------------- */

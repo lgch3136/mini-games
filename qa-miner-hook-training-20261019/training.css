@@ -51,3 +51,13 @@
   .practice-actions { display:contents; }
   .practice-actions button { width:100%; margin-top:5px; min-height:44px; padding:7px 3px; }
 }
+
+/* r2: steady, display-only timing cue; no flashing, pulsing, motion, or larger hit area. */
+.practice-mode #practice-message.practice-now {
+  color:#fff0a8; font-weight:900; text-shadow:0 1px 0 #281807;
+}
+.practice-mode #dynamite-btn.practice-now {
+  opacity:1; color:#2b1d08; background:#fde68a; border-color:#fff7d6;
+  box-shadow:0 0 0 3px rgba(253,230,138,.45), 0 0 18px rgba(251,191,36,.4);
+  transform:none; transition:none; animation:none;
+}
