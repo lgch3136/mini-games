@@ -7,14 +7,22 @@
 <title>🎮 英语小游戏街机厅 · English Arcade</title>
 <link rel="stylesheet" href="style.css?v=20260930-quality-r5&mobile=20260930-quality-r5">
 <style>
-.emberwild-card-group{display:flex;flex-direction:column;gap:8px;min-width:0}
+/* Preview lists must never stretch the game cards in the same grid row. */
+.grid{align-items:start}
+.grid>.card{min-width:0}
+.emberwild-card-group{display:flex;flex-direction:column;gap:8px;min-width:0;align-self:start}
 .emberwild-card-group:has(>.card.hidden){display:none}
-.emberwild-card-group>.card{flex:1}
-.emberwild-qa-link{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 14px;border:1px solid #adc6df40;border-radius:10px;color:#b8d8ed;text-decoration:none;font:13px system-ui}
+.emberwild-card-group>.card{flex:0 1 auto}
+.emberwild-qa-link{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;max-width:100%;min-height:44px;padding:8px 14px;border:1px solid #adc6df40;border-radius:10px;color:#b8d8ed;text-decoration:none;font:13px/1.5 system-ui;overflow-wrap:anywhere}
 .emberwild-qa-link small{color:#8fa6c8;font-size:11px}
-.emberwild-qa-link:focus-visible{outline:3px solid #7dd3fc;outline-offset:3px}
-.emberwild-qa-latest{align-self:stretch;flex-direction:column;align-items:flex-start;gap:4px;border-color:#64dec1;background:#10342d;font-weight:650}
+.emberwild-qa-link:focus-visible,.emberwild-qa-history>summary:focus-visible,.emberwild-qa-history-list:focus-visible{outline:3px solid #7dd3fc;outline-offset:3px}
+.emberwild-qa-latest{border-color:#64dec1;background:#10342d;font-weight:650}
 .emberwild-qa-latest small{color:#b8d8ed;font-weight:400}
+.emberwild-qa-kicker{color:#86e7cb;font-size:11px}
+.emberwild-qa-history{min-width:0;border:1px solid #adc6df40;border-radius:10px;background:#0b1524}
+.emberwild-qa-history>summary{min-height:44px;padding:11px 14px;color:#b8d8ed;font:13px/1.5 system-ui;cursor:pointer;overflow-wrap:anywhere}
+.emberwild-qa-history[open]>summary{border-bottom:1px solid #adc6df40}
+.emberwild-qa-history-list{display:flex;flex-direction:column;gap:8px;min-width:0;max-height:min(50vh,24rem);overflow-y:auto;overscroll-behavior:contain;padding:8px}
 .art.game-cover{height:auto;aspect-ratio:16/9}
 .art.game-cover img{object-fit:cover}
 </style>
@@ -44,28 +52,33 @@
   <main class="grid" aria-label="游戏列表">
 
     <div class="emberwild-card-group">
-      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-traveler-motion-20261016/index.html">10/16 · 新人物动作试玩 <small>旅行者 A/B · 五段原动作 · 未并入正式版</small><small>独立实验 · 仅离线检查 · 浏览器 / GPU / 帧率未验收</small></a>
     <a class="card" href="emberwild-test-v4/index-direct-flight-20261017.html?v=20261017-direct-flight-r1" data-cat="action">
       <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/emberwild.webp" alt="余烬旷野 · AI 原创概念封面，非实机画面" width="960" height="540" loading="eager" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
       <div class="info">
         <span class="badge new">10/17 · 狮鹫重设计</span>
         <h2>余烬旷野</h2>
         <p class="en">EMBERWILD · 完整游戏 R16 + 狮鹫重设计</p>
-        <p class="desc">骑上狮鹫后空格直接起飞，右键 + W（或双键）沿视线升降；更新收翼起降、地面步态与侧后方折翼。沿用 R16 人物与存档；新人物仍在上方独立预览。仅离线检查，浏览器 / GPU / 帧率尚未验收。</p>
+        <p class="desc">骑上狮鹫后空格直接起飞，右键 + W（或双键）沿视线升降；更新收翼起降、地面步态与侧后方折翼。沿用 R16 人物与存档；新人物可从下方历史试玩进入。仅离线检查，浏览器 / GPU / 帧率尚未验收。</p>
         <div class="meta"><span>⌨️ WASD 移动 · F 挥剑 · Shift 闪避</span><span>空格跳跃 · E 互动 · B 背包 · Tab 目标</span></div>
       </div>
     </a>
-      <a class="emberwild-qa-link" href="emberwild-test-v4/index-story-reconstruction-20261018.html?v=20261019-ground-walk-gate-r1">第一章试玩 <small>地面受阻行走判定修复 · 启动失败可重试 · 独立预览存档 · 浏览器/GPU/帧率未验收</small></a>
-      <a class="emberwild-qa-link" href="qa-ranger-motion-20261015/index.html">人物动作试验 <small>仅前向起停 · 非正式游戏更新 · 连续播放与性能未验收</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-shadow-ab-20261015/index.html">阴影对照诊断 <small>自愿 QA · 独立存档 · 手动开始 · 非性能升级</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-r25-lazy-mounts-20261014/index.html">坐骑按需加载试玩 <small>R25 最新 QA · 准备就绪后再次召唤 · 帧率改善未验收</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-r24-playable-20261013/emberwild-r23-character-qa/app/index.html?quality=standard">坐骑跳跃试玩 <small>R24 对照 QA · 苔冠鹿蓄力、跃起、落地 · 沿用测试存档</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-r23-pixel-20261012/emberwild-r23-character-qa/app/index.html?quality=standard&amp;perf=1">单按钮像素对照 <small>前版 QA · 临时降低像素后恢复 · 可取消</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-r23-shadow-20261011/emberwild-r23-character-qa/app/index.html?quality=standard&amp;perf=1">固定画面阴影诊断 <small>前版 QA · 同一测试存档</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-r23-loading-20261011/emberwild-r23-character-qa/app/index.html?quality=standard&amp;perf=1">加载修复与性能诊断 <small>前版 QA · 同一测试存档</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-r23-performance-20261011/emberwild-r23-character-qa/app/index.html?quality=standard&amp;perf=1">原性能诊断测试版 <small>R23 · 修复前对照</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-r22-animation-20261011/index.html">动作测试版 <small>R22 · 独立存档</small></a>
-      <a class="emberwild-qa-link" href="qa-emberwild-r23-character-20261011/index.html">人物视觉测试版 <small>R23 · 新人物双档 · 沿用R22动作 · 独立存档</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="emberwild-test-v4/index-story-reconstruction-20261018.html?v=20261019-ground-walk-gate-r1"><span class="emberwild-qa-kicker">最新候选</span>第一章试玩 <small>地面受阻行走判定修复 · 启动失败可重试 · 独立预览存档 · 浏览器/GPU/帧率未验收</small></a>
+      <details class="emberwild-qa-history">
+        <summary>余烬旷野 · 历史试玩与诊断（11）</summary>
+        <div class="emberwild-qa-history-list" role="region" aria-label="余烬旷野历史试玩链接" tabindex="0">
+          <a class="emberwild-qa-link" href="qa-traveler-motion-20261016/index.html">10/16 · 新人物动作试玩 <small>旅行者 A/B · 五段原动作 · 未并入正式版</small><small>独立实验 · 仅离线检查 · 浏览器 / GPU / 帧率未验收</small></a>
+          <a class="emberwild-qa-link" href="qa-ranger-motion-20261015/index.html">人物动作试验 <small>仅前向起停 · 非正式游戏更新 · 连续播放与性能未验收</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-shadow-ab-20261015/index.html">阴影对照诊断 <small>自愿 QA · 独立存档 · 手动开始 · 非性能升级</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-r25-lazy-mounts-20261014/index.html">坐骑按需加载试玩 <small>R25 历史 QA · 准备就绪后再次召唤 · 帧率改善未验收</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-r24-playable-20261013/emberwild-r23-character-qa/app/index.html?quality=standard">坐骑跳跃试玩 <small>R24 对照 QA · 苔冠鹿蓄力、跃起、落地 · 沿用测试存档</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-r23-pixel-20261012/emberwild-r23-character-qa/app/index.html?quality=standard&amp;perf=1">单按钮像素对照 <small>前版 QA · 临时降低像素后恢复 · 可取消</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-r23-shadow-20261011/emberwild-r23-character-qa/app/index.html?quality=standard&amp;perf=1">固定画面阴影诊断 <small>前版 QA · 同一测试存档</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-r23-loading-20261011/emberwild-r23-character-qa/app/index.html?quality=standard&amp;perf=1">加载修复与性能诊断 <small>前版 QA · 同一测试存档</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-r23-performance-20261011/emberwild-r23-character-qa/app/index.html?quality=standard&amp;perf=1">原性能诊断测试版 <small>R23 · 修复前对照</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-r22-animation-20261011/index.html">动作测试版 <small>R22 · 独立存档</small></a>
+          <a class="emberwild-qa-link" href="qa-emberwild-r23-character-20261011/index.html">人物视觉测试版 <small>R23 · 新人物双档 · 沿用R22动作 · 独立存档</small></a>
+        </div>
+      </details>
     </div>
 
     <div class="emberwild-card-group">
@@ -73,7 +86,7 @@
       <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/typebound.webp" alt="键旅 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
       <div class="info"><span class="badge new">10/11 · 修复更新</span><h2>键旅</h2><p class="en">TYPEBOUND</p><p class="desc">逐字输入，空格完成；保留三系法术与错词回练。本次修复练习结算保留、暂停与结算误输入，以及声音按钮后的键盘焦点。</p><div class="meta"><span>⌨️ 英文打字 + 空格施法</span><span>📱 屏幕键盘</span></div></div>
     </a>
-      <a class="emberwild-qa-link" href="qa-typebound-adventure-20261019/index.html?v=20261019-combat-r3">键旅冒险美术试玩 <small>独立记录 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-typebound-adventure-20261019/index.html?v=20261019-combat-r3"><span class="emberwild-qa-kicker">最新候选</span>键旅冒险美术试玩 <small>独立记录 · 正式版未替换</small></a>
     </div>
 
     <div class="emberwild-card-group">
@@ -81,7 +94,7 @@
       <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/echo.webp" alt="回响边界 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
       <div class="info"><span class="badge new">新作</span><h2>回响边界</h2><p class="en">ECHO RING</p><p class="desc">只能向圆心开火，自己的回弹也会成为危险。细腻涟漪、穿行擦弹与连击共鸣，在一圈回响里挑战高分。</p><div class="meta"><span>⌨️ WASD + J / 空格</span><span>📱 双手操控</span></div></div>
     </a>
-      <a class="emberwild-qa-link" href="qa-echo-resonance-20261019/english-echo-ring/index.html?v=20261019-resonance-window-r1">共鸣余时预览 <small>独立成绩与设置 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-echo-resonance-20261019/english-echo-ring/index.html?v=20261019-resonance-window-r1"><span class="emberwild-qa-kicker">最新候选</span>共鸣余时预览 <small>独立成绩与设置 · 正式版未替换</small></a>
     </div>
 
     <a class="card" href="english-apex-drive/index.html?v=20260930-quality-r5" data-cat="racing">
@@ -138,7 +151,7 @@
         <div class="meta"><span>⌨️ 方向键+空格</span><span>📱 支持</span></div>
       </div>
     </a>
-      <a class="emberwild-qa-link" href="qa-bomber-corner-training-20261019/index.html?v=20261019-corner-training-r2">拐角练习预览 <small>独立试玩 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-bomber-corner-training-20261019/index.html?v=20261019-corner-training-r2"><span class="emberwild-qa-kicker">最新候选</span>拐角练习预览 <small>独立试玩 · 正式版未替换</small></a>
     </div>
 
     <div class="emberwild-card-group">
@@ -152,7 +165,7 @@
         <div class="meta"><span>⌨️ 空格发射</span><span>📱 点按</span></div>
       </div>
     </a>
-      <a class="emberwild-qa-link" href="qa-miner-hook-training-20261019/index.html?v=20261019-hook-training-r2">三钩练习预览 <small>独立记录 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-miner-hook-training-20261019/index.html?v=20261019-hook-training-r2"><span class="emberwild-qa-kicker">最新候选</span>三钩练习预览 <small>独立记录 · 正式版未替换</small></a>
     </div>
 
     <div class="emberwild-card-group">
@@ -166,7 +179,7 @@
         <div class="meta"><span>⌨️ ←→+空格</span><span>📱 拖动</span></div>
       </div>
     </a>
-      <a class="emberwild-qa-link" href="qa-breaker-precision-20261019/index.html?v=20261019-precision-r2">精准蓄能预览 <small>独立记录 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-breaker-precision-20261019/index.html?v=20261019-precision-r2"><span class="emberwild-qa-kicker">最新候选</span>精准蓄能预览 <small>独立记录 · 正式版未替换</small></a>
     </div>
 
     <a class="card" href="english-temple-dash/index.html?v=20260930-quality-r5" data-cat="action">
@@ -189,7 +202,7 @@
         <div class="meta"><span>⌨️ WASD+J</span><span>📱 支持</span></div>
       </div>
     </a>
-      <a class="emberwild-qa-link" href="qa-thunder-answer-readability-20261019/english-thunder-fighter/index.html?v=20261019-answer-readability-r1">答案芯片可读性预览 <small>独立成绩与设置 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-thunder-answer-readability-20261019/english-thunder-fighter/index.html?v=20261019-answer-readability-r1"><span class="emberwild-qa-kicker">最新候选</span>答案芯片可读性预览 <small>独立成绩与设置 · 正式版未替换</small></a>
     </div>
 
     <div class="emberwild-card-group">
@@ -202,7 +215,7 @@
         <div class="meta"><span>⌨️ 方向键 + 空格</span><span>📱 滑动 / 方向盘</span></div>
       </div>
     </a>
-      <a class="emberwild-qa-link" href="qa-snake-route-pause-20261019/english-word-snake/index.html?v=20261019-route-pause-r1-qa">暂停看路线预览 <small>独立成绩与设置 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-snake-route-pause-20261019/english-word-snake/index.html?v=20261019-route-pause-r1-qa"><span class="emberwild-qa-kicker">最新候选</span>暂停看路线预览 <small>独立成绩与设置 · 正式版未替换</small></a>
     </div>
 
     <div class="emberwild-card-group">
@@ -215,7 +228,7 @@
         <div class="meta"><span>🖱 点击起飞</span><span>📱 点按</span></div>
       </div>
     </a>
-      <a class="emberwild-qa-link" href="qa-flappy-first-flight-20261019/index.html?v=20261019-first-flight-r1">首次飞行练习预览 <small>独立记录 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-flappy-first-flight-20261019/index.html?v=20261019-first-flight-r1"><span class="emberwild-qa-kicker">最新候选</span>首次飞行练习预览 <small>独立记录 · 正式版未替换</small></a>
     </div>
 
     <div class="emberwild-card-group">
@@ -229,7 +242,7 @@
         <div class="meta"><span>⌨️ 7K 键音</span><span>📱 多点触控</span></div>
       </div>
     </a>
-      <a class="emberwild-qa-link" href="qa-wordbeat-practice-retry-20261019/english-word-beat/index.html?v=20261019-practice-retry-r1-qa">完整练习重试预览 <small>独立成绩与设置 · 正式版未替换</small></a>
+      <a class="emberwild-qa-link emberwild-qa-latest" href="qa-wordbeat-practice-retry-20261019/english-word-beat/index.html?v=20261019-practice-retry-r1-qa"><span class="emberwild-qa-kicker">最新候选</span>完整练习重试预览 <small>独立成绩与设置 · 正式版未替换</small></a>
     </div>
 
     <a class="card more-card" href="https://github.com/lgch3136/mini-games/issues" target="_blank" rel="noopener">
