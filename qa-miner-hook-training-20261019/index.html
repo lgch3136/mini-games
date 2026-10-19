@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QA · 英语挖金子 · 三钩练习</title>
+<link rel="stylesheet" href="style.css?v=20260930-mobile-r2&mobile=20260930-quality-r5">
+<link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+<link rel="stylesheet" href="training.css?v=20261019-hooks-r1">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game" width="720" height="560"></canvas>
+
+  <div id="hud">
+    <div id="stats">
+      <div class="chips">
+        <span class="chip"><span id="score-label">本局得分</span> <b id="score">0</b></span>
+        <span class="chip">⛏️ 第<b id="level">1</b>关</span>
+        <span class="chip">⏱ <b id="timer">60</b></span>
+        <span class="chip"><span id="quota-label">本关采矿</span> <b id="quota">0/0</b></span>
+      </div>
+      <div class="chips">
+        <button id="mute-btn">声音</button>
+        <button id="pause-btn">暂停</button>
+      </div>
+    </div>
+    <div id="word-bar" class="hidden">
+      <span id="wb-kind">挖字母</span><span id="wb-word"></span>
+      <div id="wb-zh"></div>
+    </div>
+    <div id="feedback" role="status"></div><div id="contract-status"></div>
+    <section id="practice-tools" class="hidden" aria-label="三钩练习">
+      <div id="practice-heading"></div>
+      <div id="practice-ledger"></div>
+      <p id="practice-message" role="status" aria-live="polite"></p>
+      <div class="practice-actions"><button class="btn-sub" id="practice-retry">重练本步</button><button class="btn-main" id="practice-next" disabled>下一步</button></div>
+      <div class="practice-actions"><button class="btn-sub" id="practice-skip" aria-label="跳过练习，开始候选普通局">跳过开局</button><button class="btn-sub" id="practice-menu">回菜单</button></div>
+    </section>
+    <button id="cast-btn" type="button">发射 / 空钩收回</button>
+    <button id="dynamite-btn" type="button" aria-disabled="true">💥 雷管 <b id="dynamites">1</b></button>
+  </div>
+
+  <div class="overlay" id="menu">
+    <div class="panel">
+      <img class="menu-cover" src="../shared/mobile-art/miner-diorama.webp" alt="">
+
+      <h1>英语挖金子<small>WORD MINER</small></h1>
+      <p class="sub">摆动抓钩，掐准时机发射！<br>瞄准虚线，点按出钩；再次点按可空钩收回。精准抓取奖励时间，拼完整词＋采矿达标才完成合约。合约完成后，用本局钱包购买本局升级。</p>
+      <div class="keys">
+        <span>空格 发射 · X 引爆放弃</span><span>P 暂停</span><span>M 静音</span><span>📱 触屏点按</span>
+      </div>
+      <div class="diff-row">
+        <button class="difficulty selected" data-difficulty="easy">初级</button>
+        <button class="difficulty" data-difficulty="medium">中级</button>
+        <button class="difficulty" data-difficulty="hard">高级</button>
+      </div>
+      <p class="qa-notice">QA 候选 · 独立纪录 · 不影响正式版</p>
+      <button class="btn-main" id="start-btn">开始候选普通局</button>
+      <div class="practice-entry"><button class="btn-sub" id="practice-btn">先练三钩（不计时）</button><p>可重试、可跳过 · 练习奖励不保存</p></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="paused">
+    <div class="panel">
+      <h1 style="font-size:30px;">暂停中</h1>
+      <div id="pause-practice-actions" class="hidden"><p class="sub">三钩练习 · 不计时 · 不保存奖励</p><div class="btn-row"><button class="btn-sub" id="practice-pause-retry">重练本步</button><button class="btn-sub" id="practice-pause-skip">跳过，开始候选普通局</button></div></div>
+      <div class="btn-row">
+        <button class="btn-main" id="resume-btn" style="padding:10px 34px;font-size:15px;">继续</button>
+        <button class="btn-sub" id="pause-menu-btn">回主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="practice-result" role="dialog" aria-labelledby="practice-result-title">
+    <div class="panel"><p class="qa-notice">三钩练习 · 不保存奖励</p><h1 id="practice-result-title">三项练习完成</h1>
+      <p class="sub">你已学会取字母、取金块、用雷管放弃石头。<br>正式合约还要拼完整词并采矿达标；这次只拼到 C__，合约尚未完成。</p>
+      <p id="practice-result-ledger"></p><p class="sub">练习分数、钱包、矿收和雷管都不带入普通局。</p>
+      <div class="btn-row"><button class="btn-main" id="practice-play">开始候选普通局</button><button class="btn-sub" id="practice-all">全部重练</button><button class="btn-sub" id="practice-result-menu">回菜单</button></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="over">
+    <div class="panel">
+      <p id="over-kicker" style="color:#fbbf24;letter-spacing:4px;font-size:12px;margin-bottom:6px;">行动结束</p>
+      <h1 id="over-title" style="font-size:32px;color:#fde68a;text-shadow:0 3px 16px rgba(250,204,21,.4);">再来一局？</h1>
+      <img id="run-medal" class="mastery-medal" src="../shared/mobile-art/medal-bronze.webp" alt="本局徽章">
+      <div id="over-stats"></div>
+      <div class="btn-row">
+        <button class="btn-main" id="retry-btn" style="padding:11px 38px;font-size:16px;">再来一局</button>
+        <button class="btn-sub" id="menu-btn">回主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="shop">
+    <div class="panel shop-panel">
+      <p class="shop-kicker">合约完成 · 矿工商店</p>
+      <h1>带什么下矿？<small id="shop-summary"></small></h1>
+      <div class="shop-grid">
+        <button class="shop-buy" data-item="dynamite"><b>💥 雷管 +1</b><span>拉到废石时立即炸掉</span><em>250</em></button>
+        <button class="shop-buy" data-item="strength"><b>💪 力量药水</b><span>本局回收速度 +20%</span><em>400</em></button>
+        <button class="shop-buy" data-item="luck"><b>💎 幸运草</b><span>本局增加深层钻石</span><em>500</em></button>
+      </div>
+      <button class="btn-main" id="next-level-btn">进入下一关</button>
+    </div>
+  </div>
+</div>
+
+<script src="../shared/vocabulary.js"></script>
+<script src="../shared/audio.js?v=20260930-mobile-r2"></script>
+<script src="../shared/chip-music.js?v=20260930-mobile-r2"></script>
+<script src="game.js?v=20261019-hooks-r1"></script>
+</body>
+</html>

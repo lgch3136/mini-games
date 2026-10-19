@@ -1,0 +1,53 @@
+/* Local-only QA labels and optional training presentation. No gameplay sizing changes in normal mode. */
+.qa-notice { color:#b4e4ed; font-size:12px; line-height:1.4; margin:8px 0; }
+.practice-entry { margin-top:10px; }
+.practice-entry p { margin-top:5px; font-size:11px; color:#d4bd94; }
+#stats .chip { padding:3px 6px; font-size:11px; }
+#stats .chips:first-child { flex-wrap:wrap; }
+#contract-status { padding:0 5px; line-height:1.5; }
+#practice-tools { position:absolute; left:12px; right:12px; bottom:80px; padding:10px 12px; border:1px solid #a5c9bc; border-radius:13px; background:rgba(18,26,21,.96); pointer-events:auto; }
+#practice-heading { font-weight:800; color:#e8f5d9; font-size:14px; }
+#practice-ledger { font-size:11px; color:#d4d8c5; line-height:1.6; margin-top:3px; }
+#practice-message { min-height:42px; margin:4px 0 6px; font-size:12px; line-height:1.5; color:#fff0cb; }
+.practice-actions { display:flex; gap:6px; margin-top:5px; }
+.practice-actions button { min-height:44px; flex:1; margin:0; padding:7px 8px; font-size:12px; letter-spacing:0; }
+.practice-actions #practice-menu { flex:0 0 66px; }
+.practice-actions button:disabled { opacity:.45; cursor:default; box-shadow:none; transform:none; }
+.practice-mode #word-bar, .practice-mode #contract-status, .practice-mode #feedback { display:none!important; }
+.practice-mode #stats .chip:nth-child(2) { display:none; }
+.practice-mode #stats { align-items:flex-start; }
+#practice-result .btn-row, #pause-practice-actions .btn-row { flex-wrap:wrap; }
+#practice-result .btn-row button { min-height:44px; margin:0; letter-spacing:0; }
+#practice-result-ledger { margin-top:12px; font-size:13px; line-height:1.6; color:#b6f3df; }
+@media (max-width:600px) and (orientation:portrait) {
+  #practice-tools { left:8px; right:8px; bottom:max(80px,calc(env(safe-area-inset-bottom) + 72px)); padding:8px 10px; }
+  #practice-message { font-size:12px; min-height:54px; }
+  .practice-mode #stats .chips:first-child { max-width:62%; }
+  .practice-mode #stats .chip { padding:3px 5px; font-size:10px; }
+  .practice-mode #cast-btn { padding:10px 12px; font-size:12px; }
+  #contract-status { top:calc(80px + env(safe-area-inset-top)); font-size:10px; }
+}
+@media (orientation:landscape) and (max-height:450px) {
+  #game-wrap.practice-mode { --practice-panel:clamp(212px,36vw,280px); width:100vw; height:100dvh; border:0; border-radius:0; aspect-ratio:auto; }
+  .practice-mode canvas { width:calc(100% - var(--practice-panel)); }
+  .practice-mode #stats { left:6px; right:calc(var(--practice-panel) + 6px); top:5px; flex-direction:column; gap:3px; }
+  .practice-mode #stats .chips:first-child { max-width:100%; }
+  .practice-mode #stats .chips { justify-content:flex-start; gap:3px; }
+  .practice-mode #stats .chip { font-size:10px; padding:2px 4px; }
+  .practice-mode #pause-btn, .practice-mode #mute-btn { min-height:44px; padding:3px 10px; }
+  #practice-tools { left:auto; top:6px; right:6px; bottom:6px; width:calc(var(--practice-panel) - 12px); padding:10px; overflow-y:auto; }
+  #practice-heading { font-size:13px; }
+  #practice-message { font-size:12px; min-height:78px; }
+  .practice-actions { flex-wrap:wrap; }
+  .practice-actions #practice-skip { flex-basis:100%; }
+  .practice-actions #practice-menu { flex:1; }
+  .practice-mode #cast-btn { left:8px; bottom:10px; min-height:48px; font-size:11px; padding:8px; }
+  .practice-mode #dynamite-btn { right:calc(var(--practice-panel) + 8px); bottom:10px; min-height:48px; padding:8px; font-size:11px; }
+}
+/* One compact action row keeps all four choices clear of the target area. */
+@media (min-height:451px), (orientation:portrait) {
+  #practice-tools { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); column-gap:6px; }
+  #practice-heading, #practice-ledger, #practice-message { grid-column:1 / -1; }
+  .practice-actions { display:contents; }
+  .practice-actions button { width:100%; margin-top:5px; min-height:44px; padding:7px 3px; }
+}
