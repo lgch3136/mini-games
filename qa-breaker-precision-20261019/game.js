@@ -72,6 +72,58 @@ function newPaddle() {
   return { x: W / 2 - basePaddleWidth()/2, w: basePaddleWidth(), h: 14, y: paddleY(), targetX: null, widthBoosts: [] };
 }
 
+// Presentation-only layout. Geometry W/H and all Game coordinates stay unchanged.
+// A taller HUD borrows unused space BELOW the paddle, translating the entire
+// playable band without scaling its length, width, speed, or collision geometry.
+const HudLayout = { offset: 0, safeBottom: 0, headerBottom: 0, supported: true, lowerScale: 1 };
+function hudGeometry(width, height, headerBottom, safeBottom, scaleY = 1) {
+  const portrait = width < 600 && height > width;
+  const top = portrait ? 130 : 80;
+  const paddleBottom = height - (portrait ? 98 : 70) + 14;
+  const floor = paddleBottom + 7; // Largest ball radius; preserve its entire catch band.
+  const offset = Math.max(0, (headerBottom + 4) / scaleY - top);
+  const bottomGap = height - paddleBottom - offset - safeBottom / scaleY;
+  const lowerScale = (height - floor - offset) / (height - floor);
+  // Preserve 8 CSS px beyond the visible 1px paddle stroke and max 0.6px shake.
+  const enoughSize = portrait ? width >= 320 && height >= 420 : width >= 480 && height >= 300;
+  return { offset, lowerScale, bottomGap, supported: enoughSize && bottomGap >= 8 / scaleY + 1.6 - .01 && lowerScale >= .35 };
+}
+function syncHudLayout() {
+  const rect = canvas.getBoundingClientRect();
+  const header = $id('hud-layout').getBoundingClientRect();
+  const safe = $id('safe-bottom-probe').getBoundingClientRect().height;
+  const scaleY = rect.height / H;
+  if (!(scaleY > 0)) return;
+  const headerBottom = header.bottom - rect.top;
+  const layout = hudGeometry(W, H, headerBottom, safe, scaleY);
+  // CSS can shrink a previously accepted logical arena after resize recovery was
+  // deferred. That does not grant a hidden exemption from the visible minimum.
+  const visiblePortrait = rect.width < 600 && rect.height > rect.width;
+  const visibleSizeOK = visiblePortrait ? rect.width >= 320 && rect.height >= 420 : rect.width >= 480 && rect.height >= 300;
+  const overflow = ['hud-layout', 'hud-controls', 'stats', 'word-bar', 'sector-status'].some(id => {
+    const el = $id(id);
+    return el.scrollWidth > el.clientWidth + 1;
+  });
+  HudLayout.supported = layout.supported && visibleSizeOK && !overflow;
+  HudLayout.offset = HudLayout.supported ? layout.offset : 0;
+  HudLayout.lowerScale = HudLayout.supported ? layout.lowerScale : 1;
+  HudLayout.safeBottom = safe;
+  HudLayout.headerBottom = headerBottom;
+  $id('layout-warning').classList.toggle('hidden', HudLayout.supported);
+  if (!HudLayout.supported && Game.state === 'playing') togglePause();
+}
+// Only the discard strip below the complete radius-7 paddle collision band
+// is fitted to the original bottom edge. Never distort a possible catch.
+// Beyond H, return to the original on-screen Y: even the rotating capsules
+// (vertical extent < 17px including stroke) are fully out before y>H+20 removal.
+// This is continuous at both anchors and never changes any Game coordinate.
+function projectLowerY(y) {
+  const floor = paddleY() + 14 + 7;
+  if (y <= floor) return y;
+  if (y <= H) return floor + (y - floor) * HudLayout.lowerScale;
+  return y - HudLayout.offset;
+}
+
 function newBall(x, y, angleDeg) {
   const sp = Math.min(430, DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12);
   const a = (angleDeg == null ? rand(-125, -55) : angleDeg) * Math.PI / 180;
@@ -189,6 +241,7 @@ function buildLevel() {
 }
 
 function startGame() {
+  if (!HudLayout.supported) return;
   resetInput();
   Game.score = 0; Game.lives = 3; Game.level = 1;
   Game.wordsDone = 0; Game.bestCombo = 0; Game.recalls = 1; Game.preciseReturns = 0;
@@ -273,7 +326,7 @@ function recallBall() {
 
 function togglePause() {
   if (Game.state === 'playing') { resetInput(); Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
-  else if (Game.state === 'paused') {
+  else if (Game.state === 'paused' && HudLayout.supported) {
     Game.state = 'playing';
     $id('paused').classList.add('hidden');
     accumulator = 0;
@@ -645,6 +698,7 @@ function updateHud() {
     ).join('');
     $id('wb-zh').textContent = w.zh;
   }
+  syncHudLayout();
 }
 
 /* ---------------- 渲染 ---------------- */
@@ -694,7 +748,7 @@ function render() {
   if (Game.state !== 'menu') {
     const sx = !reducedMotion.matches && Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;
     ctx.save();
-    ctx.translate(sx, !reducedMotion.matches && Game.shake > 0 ? rand(-2, 2) * Game.shake : 0);
+    ctx.translate(sx, HudLayout.offset + (!reducedMotion.matches && Game.shake > 0 ? rand(-2, 2) * Game.shake : 0));
 
     drawTargetLine();
     // 砖块
@@ -734,7 +788,7 @@ function render() {
     for (const u of Game.powerups) {
       const spec = POWERUPS[u.kind];
       ctx.save();
-      ctx.translate(u.x, u.y);
+      ctx.translate(u.x, projectLowerY(u.y));
       ctx.rotate(Math.sin(Game.time * 3 + u.phase) * .08);
       ctx.shadowColor = spec.color; ctx.shadowBlur = 14;
       ctx.fillStyle = 'rgba(8,17,31,.96)';
@@ -764,7 +818,7 @@ function render() {
     for (const tr of Game.trails) {
       ctx.globalAlpha = tr.life * .3;
       ctx.fillStyle = Game.fireTimer > 0 ? '#fb923c' : '#fde68a';
-      ctx.beginPath(); ctx.arc(tr.x, tr.y, 6 * tr.life, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(tr.x, projectLowerY(tr.y), 6 * tr.life, 0, TAU); ctx.fill();
     }
     ctx.globalAlpha = 1;
     for (const b of Game.balls) {
@@ -772,10 +826,10 @@ function render() {
       ctx.shadowColor = Game.fireTimer > 0 ? 'rgba(249,115,22,.95)' : 'rgba(255,240,180,.9)';
       ctx.shadowBlur = 12;
       ctx.fillStyle = Game.fireTimer > 0 ? '#fff7ed' : '#fffbeb';
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(b.x, projectLowerY(b.y), b.r, 0, TAU); ctx.fill();
       // 高光点
       ctx.fillStyle = 'rgba(255,255,255,.9)';
-      ctx.beginPath(); ctx.arc(b.x - 2.2, b.y - 2.4, 2.2, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(b.x - 2.2, projectLowerY(b.y) - 2.4, 2.2, 0, TAU); ctx.fill();
       ctx.restore();
     }
 
@@ -785,7 +839,7 @@ function render() {
       ctx.fillStyle = 'rgba(232,241,255,.9)';
       ctx.font = '700 16px system-ui'; ctx.textAlign = 'center';
       const target = Game.word && Game.word.en[Game.word.progress];
-      ctx.fillText(Game.rescueArmed && target ? `瞄准 ${target} · 点击 / 空格 发射` : '点击 / 空格 发射', W / 2, H * .62);
+      ctx.fillText(Game.rescueArmed && target ? `瞄准 ${target} · 点击 / 空格 发射` : '点击 / 空格 发射', W / 2, projectLowerY(H * .62) + HudLayout.offset);
     }
   } else {
     drawMenuDemo();
@@ -795,7 +849,7 @@ function render() {
     ctx.globalAlpha = clamp(f.life * 1.5, 0, 1);
     ctx.fillStyle = f.color;
     ctx.font = '800 16px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(f.text, f.x, f.y);
+    ctx.fillText(f.text, f.x, projectLowerY(f.y) + HudLayout.offset);
   }
   ctx.globalAlpha = 1;
 }
@@ -804,7 +858,7 @@ function drawParticles() {
   for (const pt of Game.particles) {
     ctx.globalAlpha = clamp(pt.life * 2.2, 0, 1);
     ctx.fillStyle = pt.color;
-    ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+    ctx.fillRect(pt.x - pt.size / 2, projectLowerY(pt.y) - pt.size / 2, pt.size, pt.size);
   }
   ctx.globalAlpha = 1;
 }
@@ -934,10 +988,11 @@ function resizeArena() {
     }
   }
   canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);arenaKey='';
+  syncHudLayout();
   if(Game.state!=='playing') render();
 }
 window.addEventListener('resize',resizeArena);
-new ResizeObserver(resizeArena).observe($id('game-wrap'));
+new ResizeObserver(() => { resizeArena(); syncHudLayout(); }).observe($id('game-wrap'));
 
 /* ---------------- 绑定 ---------------- */
 function updateMuteButton() {
@@ -986,6 +1041,7 @@ function ensureLoop() {
   rafId = requestAnimationFrame(frame);
 }
 function frame(now) {
+  if (!HudLayout.supported && Game.state === 'playing') togglePause();
   rafId = 0;
   Game.rafCount++;
   const dt = Math.max(0, Math.min(.1, (now - lastTime) / 1000));
@@ -1101,6 +1157,10 @@ if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
 }
 
 resizeArena();
+syncHudLayout();
+new ResizeObserver(syncHudLayout).observe($id('hud-layout'));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncHudLayout);
+window.addEventListener('resize', syncHudLayout);
 render();
 
 ArenaBackground.addEventListener('load', () => { if (Game.state !== 'playing') render(); });

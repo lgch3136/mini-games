@@ -180,3 +180,37 @@ button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   #precision-track { gap:2px; }
   #precision-track i { width:6px; height:6px; }
 }
+
+/* r2: one safe top HUD for every orientation; no controls in paddle travel. */
+#hud-layout {
+  position:absolute; top:0; left:0; right:0; box-sizing:border-box;
+  display:grid; grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:"stats controls" "word word" "precision precision";
+  align-items:center; gap:2px 4px;
+  padding:calc(2px + env(safe-area-inset-top,0px)) max(8px,env(safe-area-inset-right,0px)) 0 max(8px,env(safe-area-inset-left,0px));
+  background:rgba(8,18,33,.98); border-bottom:1px solid rgba(125,211,252,.28);
+}
+#stats { position:static; grid-area:stats; display:block; min-width:0; font-size:11px; }
+#stats .chips, #stats .chips:first-child { display:flex; flex-wrap:wrap; gap:2px 4px; max-width:none; align-items:center; }
+#stats .chip { padding:0; border:0; background:none; border-radius:0; font-size:11px; line-height:14px; white-space:nowrap; }
+#hud-controls { grid-area:controls; display:flex; gap:4px; align-items:center; justify-content:center; }
+#hud-controls button { box-sizing:border-box; height:48px; min-height:48px; margin:0; font:700 13px/18px system-ui; white-space:nowrap; }
+#recall-btn { position:static; transform:none; min-width:192px; padding:0 12px; border-radius:12px; }
+#hud-controls #mute-btn, #hud-controls #pause-btn { width:48px; min-width:48px; padding:0 4px; border-radius:10px; font-size:12px; }
+#word-bar {
+  position:static; grid-area:word; transform:none; display:flex; align-items:center; justify-content:center;
+  gap:6px; min-width:0; max-width:none; height:20px; padding:0; border:0; border-radius:0;
+  background:none; box-shadow:none; line-height:20px; white-space:nowrap;
+}
+#wb-kind { margin:0; font-size:10px; }
+#wb-word { font-size:17px; line-height:20px; letter-spacing:3px; }
+#wb-zh { display:inline; margin:0; font-size:11px; line-height:20px; }
+#sector-status { position:static; grid-area:precision; min-width:0; height:16px; line-height:16px; }
+#safe-bottom-probe { position:absolute; bottom:0; left:0; width:0; height:env(safe-area-inset-bottom,0px); pointer-events:none; visibility:hidden; }
+#layout-warning { position:absolute; inset:0; z-index:60; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; gap:12px; color:#e0f2fe; text-align:center; background:#081221; }
+#layout-warning p { font-size:20px; font-weight:800; }
+#layout-warning span { font-size:13px; line-height:1.8; }
+@media(max-width:599.98px) and (orientation:portrait) {
+  #hud-layout { grid-template-columns:minmax(0,1fr); grid-template-areas:"controls" "stats" "word" "precision"; }
+  #stats .chips { justify-content:center; }
+}

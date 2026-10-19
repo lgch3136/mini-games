@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>英语打砖块 · 精准蓄能 QA 候选</title>
-<link rel="stylesheet" href="style.css?v=20261019-breaker-precision-r1">
+<link rel="stylesheet" href="style.css?v=20261019-breaker-precision-r2">
 <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 </head>
 <body>
@@ -12,6 +12,7 @@
   <canvas id="game" width="720" height="560"></canvas>
 
   <div id="hud">
+    <div id="hud-layout">
     <div id="stats">
       <div class="chips">
         <span class="chip">⭐ <b id="score">0</b></span>
@@ -19,21 +20,28 @@
         <span class="chip">🏁 第<b id="level">1</b>关</span>
         <span class="chip">🎁 <b id="drop">0/4</b></span>
       </div>
-      <div class="chips">
-        <button id="mute-btn">声音</button>
-        <button id="pause-btn">暂停</button>
-      </div>
     </div>
     <div id="word-bar" class="hidden">
       <span id="wb-kind">拼单词</span><span id="wb-word"></span>
       <div id="wb-zh"></div>
     </div>
-    <div id="feedback" role="status"></div><div id="sector-status">
+    <div id="sector-status">
       <span id="precision-count">板心 0/3</span>
       <span id="precision-track" aria-hidden="true"><i id="precision-pip-0"></i><i id="precision-pip-1"></i><i id="precision-pip-2"></i></span>
       <span id="precision-next">再接 3 次 → 召回 +1</span>
     </div>
-    <button id="recall-btn" type="button">召回瞄准 <b id="recall-count">1</b>/2 · R</button>
+    <div id="hud-controls" role="group" aria-label="游戏操作">
+      <button id="recall-btn" type="button">召回瞄准 <b id="recall-count">1</b>/2 · R</button>
+      <button id="mute-btn" type="button">声音</button>
+      <button id="pause-btn" type="button">暂停</button>
+    </div>
+    </div>
+    <div id="feedback" role="status"></div>
+    <i id="safe-bottom-probe" aria-hidden="true"></i>
+  </div>
+  <div id="layout-warning" class="hidden" role="alert">
+    <p>窗口空间不足</p>
+    <span>请放大窗口或旋转设备<br>竖屏至少 320 × 420，横屏至少 480 × 300<br>刘海和手势区需另留安全空间</span>
   </div>
 
   <div class="overlay" id="menu">
@@ -82,6 +90,6 @@
 <script src="../shared/vocabulary.js"></script>
 <script src="../shared/audio.js?v=20260930-mobile-r2"></script>
 <script src="../shared/chip-music.js?v=20260930-mobile-r2"></script>
-<script src="game.js?v=20261019-breaker-precision-r1"></script>
+<script src="game.js?v=20261019-breaker-precision-r2"></script>
 </body>
 </html>
