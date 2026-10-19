@@ -3115,6 +3115,21 @@ kbd {
   gap: 7px;
   margin: 0 0 9px;
 }
+/* Rule text owns its contrast over bright book pages. Keep its existing DOM
+   flow, health-bar positions, and small-screen display:none rules intact.
+   Padding follows the inherited text size rather than shifting the sprite. */
+#app[data-play-mode="journey"] #enemy-rule:not(:empty) {
+  box-sizing: border-box;
+  max-inline-size: 100%;
+  padding: 0.45em 0.65em;
+  color: #fff4d5;
+  background: #0c202a;
+  border: 1px solid #77959166;
+  border-radius: 0.6em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
 .spell-picker button {
   display: grid;
   grid-template-columns: 24px 1fr;
