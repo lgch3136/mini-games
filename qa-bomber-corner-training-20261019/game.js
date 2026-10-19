@@ -346,7 +346,7 @@ function startTraining() {
   for (const [col, row] of [[6,5], [5,5], [5,4], [7,5]]) Game.grid[row][col] = 0;
   const target = TRAINING.letter;
   Game.grid[target.row][target.col] = 2;
-  Game.word = { en: 'A', zh: '只练取字母，不算完成单词', progress: 0 };
+  Game.word = { en: 'A', zh: '按住左再上，到绿色圆圈2', progress: 0 };
   Game.letters = [{ ...target, letter: 'A', index: 0, taken: false, hidden: true }];
   Game.portal = null;
   Game.bombs = []; Game.flames = []; Game.enemies = []; Game.pickups = []; Game.particles = []; Game.floaters = [];
@@ -357,7 +357,7 @@ function startTraining() {
   $id('game-wrap').classList.add('training-mode');
   $id('training-tools').classList.remove('hidden');
   $id('word-bar').classList.remove('hidden');
-  $id('feedback').classList.remove('show'); Game.feedbackUntil = 0;
+  $id('feedback').classList.remove('show'); $id('feedback').textContent = ''; Game.feedbackUntil = 0;
   updateHud();
   if (window.ChipMusic) { ChipMusic.unlock(); ChipMusic.play('bomber-loop'); }
   if (window.ArcadeAudio) ArcadeAudio.start();
@@ -369,7 +369,7 @@ function updateTrainingHud() {
   if (!t) return;
   const safe = Game.player.col === TRAINING.safe.col && Game.player.row === TRAINING.safe.row;
   const step = !t.placed ? '1 · 方框处放弹（空格 / J / 💣）'
-    : Game.bombs.length ? (safe ? '2 · 已到拐角，留在圆圈等爆炸' : '2 · 先向左，再向上转进圆圈')
+    : Game.bombs.length ? (safe ? '2 · 已到拐角，留在圆圈等爆炸' : '2 · 按住左再上，走到绿色圆圈 2')
     : Game.flames.length ? '2 · 火焰还在，继续待在拐角'
     : '3 · 火灭了，向下再向右取 A';
   if ($id('mission').textContent !== step) $id('mission').textContent = step;
