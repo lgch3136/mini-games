@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>余烬旷野 · 守卫失力动作 QA</title><meta name="arcade-version" content="20261022-guard-reactions-r3"><link rel="stylesheet" href="../emberwild-test-v4/style.css?v=20261007-controls"><link rel="stylesheet" href="../emberwild-test-v4/rpg-ui-r13.css?v=20261008-r13"><link rel="stylesheet" href="../emberwild-test-v4/spell-feedback-r12.css?v=20261008-r12"><link rel="stylesheet" href="../emberwild-test-v4/mount-ui-r14.css?v=20261008-r14"><style>#startupRetry[hidden]{display:none!important}</style></head><body>
+<!-- New reconstructed main-story preview; this is not the original sealed source bundle. -->
+<canvas id="world" tabindex="0" aria-label="余烬旷野第三人称探索场景：WASD 移动，左拖观察，右拖转向，双键前进，滚轮缩放，F 挥剑，Shift 闪避，空格跳跃，E 互动，B 背包 · Tab 选择目标不暂停，Esc 先关闭背包，再按暂停"></canvas><div id="vignette"></div>
+<header><div class="brand">余烬旷野<small title="本候选与正式版、旧主线预览分槽存储，不同步">守卫失力动作 QA · 独立存档</small></div><button id="pause" aria-label="暂停（Esc）" aria-keyshortcuts="Escape">Ⅱ</button></header>
+<div id="status"><div class="health"><i id="health"></i></div><span id="vitals">100 / 100</span><span id="gold">✦ 0</span></div>
+<div id="quest"><small>旅程调查</small><strong id="objective"></strong><p id="detail"></p></div><div id="compass"></div><div id="place"></div><div id="toast" role="status"></div><button id="interact" aria-label="互动（E）" aria-keyshortcuts="E">交谈</button>
+<div id="hint">WASD 移动　左拖观察，右拖转向，双键前进，滚轮缩放　F 挥剑　Shift 闪避　空格跳跃　E 互动　B 背包 · Tab 选择目标不暂停　Esc 关闭 / 暂停</div>
+<div id="touch"><div id="stick" aria-label="移动摇杆"><i></i></div><div class="actions"><button id="jump" aria-label="跳跃（空格）" aria-keyshortcuts="Space">跳跃</button><button id="dodge" aria-label="闪避（Shift）" aria-keyshortcuts="Shift">闪避</button><button id="attack" aria-label="挥剑（F）" aria-keyshortcuts="F">挥剑</button></div></div>
+<div id="screen" class="overlay"><article><small>持械失力候选 · 未实机验收</small><h1>余烬旷野</h1><p>沿着灯火走入山谷，追查逆流而来的微光</p><p>本候选使用独立存档，初次可只读迁入正式角色资料；不会写回正式版或旧主线预览。真实场景、手感与性能尚未验收。</p><p id="loading">正在准备林地…</p><button id="start">开始旅程</button><button id="startupRetry" class="secondary" type="button" hidden>重新加载场景</button></article></div>
+<div id="dialog" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-describedby="dialogText"><article><small id="dialogLabel"></small><h1 id="dialogTitle"></h1><p id="dialogText"></p><button id="closeDialog">继续旅程</button><button id="restart" class="secondary hidden">重新载入存档</button></article></div>
+<script type="module">
+// Recovery only reloads this page on an explicit click. It never accesses storage.
+function installStartupRecovery({document, reload, online}) {
+  const screen = document.querySelector('#screen');
+  const loading = document.querySelector('#loading');
+  const start = document.querySelector('#start');
+  const retry = document.querySelector('#startupRetry');
+  let failed = false, reloading = false;
+  loading.setAttribute('role', 'status');
+  loading.setAttribute('aria-live', 'polite');
+  retry.addEventListener('click', () => {
+    if (!failed || reloading) return;
+    reloading = true;
+    retry.disabled = true;
+    retry.textContent = '正在重新加载…';
+    try { reload(); }
+    catch {
+      reloading = false;
+      retry.disabled = false;
+      retry.textContent = '再次尝试重新加载';
+      loading.textContent = '浏览器未能重新加载，请使用浏览器刷新按钮。恢复操作不会清除存档。';
+    }
+  });
+  return {
+    fail(error) {
+      if (failed) return;
+      failed = true;
+      let message = '';
+      try { message = String(error?.message || ''); } catch {}
+      let hint;
+      if (/webgl|error creating.*context|failed to create.*context/i.test(message)) {
+        hint = '图形初始化失败。请确认浏览器支持 WebGL2，并检查硬件加速设置后重试。';
+      } else if (online() === false) {
+        hint = '当前设备可能离线，场景未能启动。连接网络后可以重试。';
+      } else if (/failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|networkerror|network error/i.test(message)) {
+        hint = '场景模块未能加载，可能是网络或资源问题。请稍后重试。';
+      } else {
+        hint = '场景初始化失败。可以重新加载；若仍失败，请保留控制台错误以便排查。';
+      }
+      loading.textContent = hint + ' 重新加载会回到最近一次已保存的进度，不会清除存档。';
+      screen.classList.remove('hidden');
+      start.disabled = true;
+      retry.hidden = false;
+      retry.focus();
+    }
+  };
+}
+const recovery = installStartupRecovery({document, reload: () => location.reload(), online: () => navigator.onLine});
+import('./game-guard-reactions-20261022-4b1346120d0a.min.mjs').catch(error => { console.error(error); recovery.fail(error); });
+</script></body></html>
