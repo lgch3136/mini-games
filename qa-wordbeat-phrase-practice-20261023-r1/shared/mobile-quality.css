@@ -1,0 +1,6 @@
+@import url('./mobile-art/reward-motion.css?mobile=20260930-quality-r2');
+/* Deliberately scoped: game layout, colors and motion retain their own identity. */
+.mastery-medal { display:inline-block; width:clamp(56px,16vw,88px); height:auto; aspect-ratio:1; object-fit:contain; vertical-align:middle; filter:drop-shadow(0 5px 8px #0005); }
+.mastery-medal[hidden] { display:none; }
+@media (max-height: 440px) { .mastery-medal { width:52px; } }
+.menu-cover[src*="-diorama.webp"] { object-fit:contain; background:#152b32; }
