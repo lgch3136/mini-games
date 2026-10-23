@@ -1,0 +1,1396 @@
+'use strict';
+
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+if (window.ArcadeAudio && window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
+
+/* ============================================================
+ * 英语打砖块 · WORD BREAKER —— FC打砖块 × 拼单词
+ *
+ * 经典循环: 球撞砖块 → 砖上字母按序拼词 → 词成墙破进入下一关
+ * 变化: 多球/加长板/火球道具, 关卡砖阵图案递进, 无限挑战
+ * ============================================================ */
+
+const $id = (x) => document.getElementById(x);
+const canvas = $id('game');
+const ctx = canvas.getContext('2d');
+const ArenaBackground = new Image();
+ArenaBackground.src = 'assets/arena-bg-v3.webp';
+
+let W = 720, H = 560;                 // 逻辑尺寸, 手机按视口重算
+const TAU = Math.PI * 2;
+const FIXED_STEP = 1 / 60;
+// Shared by the existing hit test and its visible center stripe; no threshold change.
+const PRECISE_ZONE = .22;
+const PRECISE_GOAL = 3;
+const RECALL_CAP = 2;
+let recalledBall = null, recallAngle = null;
+
+const DIFFS = {
+  easy:   { ballSpeed: 250, label: '初级' },
+  medium: { ballSpeed: 300, label: '中级' },
+  hard:   { ballSpeed: 360, label: '高级' },
+};
+
+const POWERUPS = {
+  multi: { label: 'M', name: '分裂球', color: '#60a5fa' },
+  wide: { label: 'W', name: '加长板', color: '#34d399' },
+  slow: { label: 'S', name: '减速球', color: '#c084fc' },
+  fire: { label: 'F', name: '熔甲球', color: '#fb7185' },
+};
+
+/* ---------------- 工具 ---------------- */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+
+function wordBank() {
+  const bank = (window.PROJECT_VOCAB && PROJECT_VOCAB[Game.difficulty]) || VOCAB[Game.difficulty];
+  return bank.filter((item) => item.en.length >= 3 && item.en.length <= 8);
+}
+
+/* ---------------- 状态 ---------------- */
+const Game = {
+  state: 'menu',            // menu | ready | playing | paused | over
+  difficulty: 'easy',
+  score: 0, lives: 3, level: 1,
+  wordsDone: 0, bestCombo: 0, recalls: 1, preciseReturns: 0, rescueArmed: false, targetIdle: 0, sectorName: '晨星拱廊',
+  time: 0, shake: 0,
+  bricks: [], balls: [], powerups: [], particles: [], floaters: [], trails: [],
+  word: null, lastWord: '',
+  letterLayout: [], levelClearTimer: 0,
+  paddle: null,
+  feedback: '', feedbackUntil: 0,
+  fireTimer: 0,
+  dropMeter: 0,
+  logicFrame: 0, rafCount: 0, renderCount: 0,
+};
+
+// One in-memory retry target, not a save slot or a normal-run continuation.
+const WordPractice = { active: false, opening: null, normalOpening: null, failed: null, result: null };
+
+function copyWordOpening(source) {
+  if (!source || !Object.hasOwn(DIFFS, source.difficulty) || !Number.isSafeInteger(source.level) || source.level < 1) return null;
+  const word = source.word;
+  if (!word || typeof word.en !== 'string' || !/^[A-Z]{3,8}$/.test(word.en) || typeof word.zh !== 'string') return null;
+  if (!Array.isArray(source.letterLayout) || source.letterLayout.length !== word.en.length) return null;
+  const grid = BRICK_PATTERNS[(source.level - 1) % BRICK_PATTERNS.length]();
+  const seen = new Set(), layout = [];
+  for (const cell of source.letterLayout) {
+    if (!Array.isArray(cell) || cell.length !== 2) return null;
+    const [r, c] = cell;
+    if (!Number.isInteger(r) || !Number.isInteger(c) || !grid[r]?.[c] || seen.has(`${r}:${c}`)) return null;
+    seen.add(`${r}:${c}`); layout.push(Object.freeze([r, c]));
+  }
+  return Object.freeze({ difficulty: source.difficulty, level: source.level,
+    word: Object.freeze({ en: word.en, zh: word.zh }), letterLayout: Object.freeze(layout) });
+}
+
+function clearWordPractice() {
+  WordPractice.active = false; WordPractice.opening = null; WordPractice.normalOpening = null;
+  WordPractice.failed = null; WordPractice.result = null;
+  $id('wb-kind').textContent = '拼单词';
+  $id('practice-pause-note').classList.add('hidden');
+  $id('word-practice-review').classList.add('hidden');
+  $id('practice-btn').classList.add('hidden');
+  $id('practice-btn').disabled = true;
+  $id('retry-btn').textContent = '再来一局';
+  $id('run-medal').classList.remove('hidden');
+}
+
+function showWordPracticeReview() {
+  const failed = WordPractice.failed;
+  if (!failed) return;
+  const { word, level } = failed.opening;
+  const progress = WordPractice.active && WordPractice.result ? WordPractice.result.progress : failed.progress;
+  const label = WordPractice.active ? '本次练习' : '原局未完';
+  $id('word-review').textContent = `${label} · 第 ${level} 关 · ${word.en} · ${word.zh}\n已得 ${word.en.slice(0, progress) || '无'} · ${progress}/${word.en.length} · ${progress === word.en.length ? '本词完成' : '下一字 ' + word.en[progress]}`;
+  $id('word-practice-review').classList.remove('hidden');
+  $id('practice-btn').textContent = WordPractice.active ? '再练这个词' : '练这个未完词';
+  $id('practice-btn').classList.remove('hidden');
+  $id('practice-btn').disabled = false;
+}
+
+function rememberFailedWord() {
+  WordPractice.failed = null;
+  $id('word-practice-review').classList.add('hidden');
+  $id('practice-btn').classList.add('hidden');
+  $id('practice-btn').disabled = true;
+  const opening = WordPractice.normalOpening, w = Game.word;
+  if (!opening || !w || opening.word.en !== w.en || opening.word.zh !== w.zh ||
+      opening.level !== Game.level || opening.difficulty !== Game.difficulty ||
+      !Number.isInteger(w.progress) || w.progress < 0 || w.progress >= w.en.length) return;
+  WordPractice.failed = Object.freeze({ opening, progress: w.progress });
+  showWordPracticeReview();
+}
+
+function startWordPractice() {
+  if (Game.state !== 'over' || !HudLayout.supported || !WordPractice.failed) return false;
+  const failed = WordPractice.failed, opening = copyWordOpening(failed.opening);
+  if (!opening || !Number.isInteger(failed.progress) || failed.progress < 0 || failed.progress >= opening.word.en.length) return false;
+  WordPractice.active = true; WordPractice.opening = opening; WordPractice.result = null;
+  Game.difficulty = opening.difficulty;
+  $id('wb-kind').textContent = '练词';
+  $id('practice-pause-note').classList.remove('hidden');
+  startRun();
+  return true;
+}
+
+function finishWordPractice(complete) {
+  if (!WordPractice.active || WordPractice.result) return;
+  const progress = Game.word.progress;
+  // An empty letter wall or the legacy permissive fallback is not a learned word.
+  if (complete && progress !== Game.word.en.length) return;
+  WordPractice.result = Object.freeze({ complete, progress });
+  Game.state = 'over'; Game.levelClearTimer = 0;
+  resetInput();
+  if (window.ChipMusic) ChipMusic.stop();
+  $id('word-bar').classList.add('hidden');
+  $id('over').classList.remove('hidden');
+  $id('run-medal').classList.add('hidden');
+  Game.feedback = ''; Game.feedbackUntil = 0; $id('feedback').classList.remove('show');
+  $id('over-kicker').textContent = `原第 ${Game.level} 关练词 · 不计普通纪录`;
+  $id('over-title').textContent = complete ? '这个词练成了！' : '继续练这个词？';
+  $id('over-stats').innerHTML =
+    `<div><span>本次字母</span><b>${progress}/${Game.word.en.length}</b></div>` +
+    `<div><span>本次板心接球</span><b>${Game.preciseReturns}</b></div>` +
+    `<div><span>最佳连击</span><b>${Game.bestCombo}</b></div>`;
+  $id('retry-btn').textContent = '普通新局';
+  showWordPracticeReview();
+  if (window.ArcadeAudio) ArcadeAudio.play(complete ? 'confirm' : 'laser', .3, complete ? 1.3 : .45);
+}
+
+function portraitArena() { return W < 600 && H > W; }
+function basePaddleWidth() { return portraitArena() ? 90 : 110; }
+function playTop() { return portraitArena() ? 130 : 80; }
+function paddleY() { return H - (portraitArena() ? 98 : 70); }
+function brickStep() { return Math.min(portraitArena() ? 27 : 22, Math.max(14, (paddleY() - playTop() - 80) / 6)); }
+function newPaddle() {
+  return { x: W / 2 - basePaddleWidth()/2, w: basePaddleWidth(), h: 14, y: paddleY(), targetX: null, widthBoosts: [] };
+}
+
+// Presentation-only layout. Geometry W/H and all Game coordinates stay unchanged.
+// A taller HUD borrows unused space BELOW the paddle, translating the entire
+// playable band without scaling its length, width, speed, or collision geometry.
+const HudLayout = { offset: 0, safeBottom: 0, headerBottom: 0, supported: true, lowerScale: 1 };
+function hudGeometry(width, height, headerBottom, safeBottom, scaleY = 1) {
+  const portrait = width < 600 && height > width;
+  const top = portrait ? 130 : 80;
+  const paddleBottom = height - (portrait ? 98 : 70) + 14;
+  const floor = paddleBottom + 7; // Largest ball radius; preserve its entire catch band.
+  const offset = Math.max(0, (headerBottom + 4) / scaleY - top);
+  const bottomGap = height - paddleBottom - offset - safeBottom / scaleY;
+  const lowerScale = (height - floor - offset) / (height - floor);
+  // Preserve 8 CSS px beyond the visible 1px paddle stroke and max 0.6px shake.
+  const enoughSize = portrait ? width >= 320 && height >= 420 : width >= 480 && height >= 300;
+  return { offset, lowerScale, bottomGap, supported: enoughSize && bottomGap >= 8 / scaleY + 1.6 - .01 && lowerScale >= .35 };
+}
+function syncHudLayout() {
+  const rect = canvas.getBoundingClientRect();
+  const header = $id('hud-layout').getBoundingClientRect();
+  const safe = $id('safe-bottom-probe').getBoundingClientRect().height;
+  const scaleY = rect.height / H;
+  if (!(scaleY > 0)) return;
+  const headerBottom = header.bottom - rect.top;
+  const layout = hudGeometry(W, H, headerBottom, safe, scaleY);
+  // CSS can shrink a previously accepted logical arena after resize recovery was
+  // deferred. That does not grant a hidden exemption from the visible minimum.
+  const visiblePortrait = rect.width < 600 && rect.height > rect.width;
+  const visibleSizeOK = visiblePortrait ? rect.width >= 320 && rect.height >= 420 : rect.width >= 480 && rect.height >= 300;
+  const overflow = ['hud-layout', 'hud-controls', 'stats', 'word-bar', 'sector-status'].some(id => {
+    const el = $id(id);
+    return el.scrollWidth > el.clientWidth + 1;
+  });
+  HudLayout.supported = layout.supported && visibleSizeOK && !overflow;
+  HudLayout.offset = HudLayout.supported ? layout.offset : 0;
+  HudLayout.lowerScale = HudLayout.supported ? layout.lowerScale : 1;
+  HudLayout.safeBottom = safe;
+  HudLayout.headerBottom = headerBottom;
+  $id('layout-warning').classList.toggle('hidden', HudLayout.supported);
+  if (!HudLayout.supported && Game.state === 'playing') togglePause();
+}
+// Only the discard strip below the complete radius-7 paddle collision band
+// is fitted to the original bottom edge. Never distort a possible catch.
+// Beyond H, return to the original on-screen Y: even the rotating capsules
+// (vertical extent < 17px including stroke) are fully out before y>H+20 removal.
+// This is continuous at both anchors and never changes any Game coordinate.
+function projectLowerY(y) {
+  const floor = paddleY() + 14 + 7;
+  if (y <= floor) return y;
+  if (y <= H) return floor + (y - floor) * HudLayout.lowerScale;
+  return y - HudLayout.offset;
+}
+
+function newBall(x, y, angleDeg) {
+  const sp = Math.min(430, DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12);
+  const a = (angleDeg == null ? rand(-125, -55) : angleDeg) * Math.PI / 180;
+  return { x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 7, stuck: false };
+}
+
+/* ---------------- 关卡生成 ---------------- */
+const BRICK_PATTERNS = [
+  // 每关一种砖阵主题, 循环使用且随关卡加密
+  function rainbow() {           // 彩虹拱
+    const g = [];
+    for (let r = 0; r < 6; r++) {
+      const row = [];
+      for (let c = 0; c < 10; c++) {
+        if ((r === 0 && (c < 2 || c > 7))) { row.push(null); continue; }
+        row.push({ hp: 1 + (r < 2 ? 1 : 0), letterSlot: true });
+      }
+      g.push(row);
+    }
+    return g;
+  },
+  function fortress() {          // 堡垒: 双层城墙+缺口
+    const g = [];
+    for (let r = 0; r < 6; r++) {
+      const row = [];
+      for (let c = 0; c < 10; c++) {
+        if (r >= 1 && r <= 2 && (c === 4 || c === 5)) { row.push(null); continue; }
+        row.push({ hp: (r + c) % 4 === 0 ? 2 : 1, letterSlot: true });
+      }
+      g.push(row);
+    }
+    return g;
+  },
+  function checker() {           // 棋盘
+    const g = [];
+    for (let r = 0; r < 6; r++) {
+      const row = [];
+      for (let c = 0; c < 10; c++) {
+        if ((r + c) % 2 === 1 && r > 2) { row.push(null); continue; }
+        row.push({ hp: (r + c) % 3 === 0 ? 2 : 1, letterSlot: true });
+      }
+      g.push(row);
+    }
+    return g;
+  },
+  function diamond() {           // 菱形
+    const g = [];
+    const mc = 4.5;
+    for (let r = 0; r < 6; r++) {
+      const row = [];
+      for (let c = 0; c < 10; c++) {
+        if (Math.abs(c - mc) + r > 6.5) { row.push(null); continue; }
+        row.push({ hp: Math.abs(c - mc) + r < 2.5 ? 2 : 1, letterSlot: true });
+      }
+      g.push(row);
+    }
+    return g;
+  },
+];
+
+function buildLevel() {
+  recalledBall = null; recallAngle = null;
+  let item;
+  if (WordPractice.active) item = WordPractice.opening.word;
+  else {
+    const bank = wordBank();
+    do { item = bank[Math.floor(Math.random() * bank.length)]; }
+    while (item.en === Game.lastWord && bank.length > 1);
+    Game.lastWord = item.en;
+  }
+  Game.word = { en: item.en.toUpperCase(), zh: item.zh, progress: 0 };
+
+  const patFn = BRICK_PATTERNS[(Game.level - 1) % BRICK_PATTERNS.length];
+  const grid = patFn();
+
+  // 收集所有槽位, 随机分配字母(其余为普通砖)
+  const slots = [];
+  for (let r = 0; r < grid.length; r++)
+    for (let c = 0; c < grid[r].length; c++)
+      if (grid[r][c]) slots.push([r, c]);
+  if (!WordPractice.active) for (let i = slots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  const letters = [...Game.word.en];
+  Game.letterLayout = WordPractice.active
+    ? WordPractice.opening.letterLayout.map(cell => [...cell]) : slots.slice(0, letters.length);
+  const letterAt = new Map(Game.letterLayout.map(([r, c], index) => [`${r}:${c}`, { letter: letters[index], index }]));
+
+  Game.bricks = [];
+  const bw = (W - 40) / 10, bh = brickStep();
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) {
+      const cell = grid[r][c];
+      if (!cell) continue;
+      const brick = {
+        x: 20 + c * bw, y: playTop() + 16 + r * bh, w: bw - 3, h: bh - 3,
+        row: r, column: c,
+        hp: cell.hp + (Game.level > 4 ? 1 : 0),
+        letter: null, index: -1,
+        hue: 30 + r * 28 + c * 4,
+      };
+      const assigned = letterAt.get(`${r}:${c}`);
+      if (assigned) {
+        brick.letter = assigned.letter;
+        brick.index = assigned.index;
+      }
+      Game.bricks.push(brick);
+    }
+  }
+
+  Game.sectorName = ['晨星拱廊','磁环堡垒','流光棋阵','钻石核心'][(Game.level-1)%4];
+  Game.targetIdle = 0; Game.rescueArmed = false;
+  Game.comboCount = 0; Game.comboTimer = 0;
+  Game.paddle = newPaddle();
+  Game.balls = [Object.assign(newBall(Game.paddle.x + Game.paddle.w / 2, Game.paddle.y - 9), { stuck: true })];
+  Game.particles = []; Game.floaters = []; Game.trails = [];
+  updateHud();
+  showFeedback(WordPractice.active ? '练词 · 不计纪录 · 从首字母开始' : `${Game.sectorName} · 板心接球积蓄召回 · 追踪绿色字母`);
+  if (!WordPractice.active) WordPractice.normalOpening = copyWordOpening({
+    word: Game.word, difficulty: Game.difficulty, level: Game.level, letterLayout: Game.letterLayout });
+}
+
+function startGame() {
+  if (!HudLayout.supported) return;
+  clearWordPractice();
+  startRun();
+}
+
+function startRun() {
+  resetInput();
+  Game.score = 0; Game.lives = 3; Game.level = WordPractice.active ? WordPractice.opening.level : 1;
+  Game.wordsDone = 0; Game.bestCombo = 0; Game.recalls = 1; Game.preciseReturns = 0;
+  Game.time = 0; Game.shake = 0; Game.fireTimer = 0;
+  Game.levelClearTimer = 0;
+  Game.dropMeter = 0; Game.powerups = [];
+  Game.logicFrame = 0; Game.rafCount = 0; Game.renderCount = 0;
+  Game.state = 'playing';
+  $id('menu').classList.add('hidden');
+  $id('over').classList.add('hidden');
+  $id('paused').classList.add('hidden');
+  $id('word-bar').classList.remove('hidden');
+  if (window.ChipMusic) ChipMusic.play('breaker-loop');
+  if (window.ArcadeAudio) ArcadeAudio.start();
+  buildLevel();
+  accumulator = 0;
+  ensureLoop();
+}
+
+function nextLevel() {
+  if (WordPractice.active) { finishWordPractice(true); return; }
+  Game.level++; Game.recalls = Math.max(1,Game.recalls);
+  Game.score += 300 + Game.lives * 100;
+  buildLevel();
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .3, 1.25);
+}
+
+/* ---------------- 输入 ---------------- */
+window.addEventListener('keydown', (ev) => {
+  // Result buttons own native Enter/Space activation; do not start a second run.
+  if (Game.state === 'over' && (ev.code === 'Enter' || ev.code === 'Space') &&
+      document.activeElement?.tagName === 'BUTTON' && $id('over').contains(document.activeElement)) return;
+  if (['ArrowLeft', 'ArrowRight', 'Space'].includes(ev.code)) ev.preventDefault();
+  if (ev.code === 'ArrowLeft' || ev.code === 'KeyA') input.left = true;
+  if (ev.code === 'ArrowRight' || ev.code === 'KeyD') input.right = true;
+  if ((ev.code === 'Space' || ev.code === 'KeyJ') && !ev.repeat) {
+    if (Game.state === 'playing') launchStuck();
+    else if (Game.state === 'ready') Game.state = 'playing';
+  }
+  if (!ev.repeat && (ev.code === 'KeyP' || ev.code === 'Escape')) togglePause();
+  if (ev.code === 'KeyR' && !ev.repeat) recallBall();
+  if (!ev.repeat && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !ev.isComposing) {
+    if (ev.code === 'KeyQ') adjustRecallAngle(-5);
+    if (ev.code === 'KeyE') adjustRecallAngle(5);
+    if (ev.code === 'KeyT') resetRecallAngle();
+  }
+  if (ev.code === 'KeyM' && !ev.repeat) toggleMute();
+  if (ev.code === 'Enter' && (Game.state === 'menu' || Game.state === 'over')) startGame();
+});
+window.addEventListener('keyup', (ev) => {
+  if (ev.code === 'ArrowLeft' || ev.code === 'KeyA') input.left = false;
+  if (ev.code === 'ArrowRight' || ev.code === 'KeyD') input.right = false;
+});
+const input = { left: false, right: false };
+
+// 触屏拖动
+function aimPaddle(ev) {
+  if (ev.isPrimary === false) return;
+  if (Game.state !== 'playing' && Game.state !== 'ready') return;
+  const rect = canvas.getBoundingClientRect();
+  Game.paddle.targetX = (ev.clientX - rect.left) * W / rect.width;
+}
+canvas.addEventListener('pointermove', aimPaddle);
+canvas.addEventListener('pointerdown', (ev) => {
+  if (ev.isPrimary === false || (ev.button != null && ev.button !== 0)) return;
+  ev.preventDefault();
+  aimPaddle(ev);
+  try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* synthetic pointer */ }
+  if (Game.state === 'playing') launchStuck();
+});
+
+function manualRecallBall() {
+  return HudLayout.supported && Game.state === 'playing' && !WordPractice.active && Game.rescueArmed &&
+    Game.levelClearTimer <= 0 && recalledBall?.stuck && Game.balls.includes(recalledBall)
+    ? recalledBall : null;
+}
+function adjustRecallAngle(delta) {
+  const ball = manualRecallBall();
+  if (!ball || !Number.isFinite(delta)) return false;
+  if (recallAngle === null) {
+    const target = Game.bricks.find(k => k.index === Game.word.progress && k.letter);
+    recallAngle = target ? Math.atan2(target.x + target.w/2 - ball.x, ball.y - target.y - target.h/2) * 180/Math.PI : 0;
+  }
+  recallAngle = clamp(recallAngle + delta, -60, 60);
+  updatePrecisionHud();
+  return true;
+}
+function resetRecallAngle() {
+  if (!manualRecallBall()) return false;
+  recallAngle = null; updatePrecisionHud(); return true;
+}
+function updateRecallAimHud() {
+  const held = manualRecallBall();
+  $id('recall-aim-controls').classList.toggle('hidden', !held);
+  for (const id of ['recall-left-btn','recall-right-btn','recall-auto-btn']) $id(id).disabled = !held;
+  $id('recall-angle-label').textContent = recallAngle === null
+    ? '默认追踪字母 · Q/E 改方向 · T 恢复'
+    : `手动 ${recallAngle < 0 ? '左' : '右'} ${Math.abs(recallAngle).toFixed(0)}° · 空格/点击发射`;
+}
+function launchStuck() {
+  const manualBall = manualRecallBall();
+  for (const b of Game.balls) if (b.stuck) {
+    b.stuck = false;
+    const target = Game.bricks.find(k=>k.index===Game.word.progress && k.letter);
+    if (b === manualBall && recallAngle !== null) {
+      const angle = clamp(recallAngle, -60, 60) * Math.PI/180;
+      const speed = Math.min(430, DIFFS[Game.difficulty].ballSpeed+(Game.level-1)*12);
+      b.vx = Math.sin(angle)*speed; b.vy = -Math.cos(angle)*speed;
+    } else if (Game.rescueArmed && target) {
+      const dx=target.x+target.w/2-b.x,dy=target.y+target.h/2-b.y,dist=Math.hypot(dx,dy);
+      const speed=Math.min(430,DIFFS[Game.difficulty].ballSpeed+(Game.level-1)*12);
+      b.vx=dx/dist*speed;b.vy=dy/dist*speed;
+    } else { b.vy=-Math.abs(b.vy||260);b.vx=b.vx||rand(-90,90); }
+  }
+  Game.rescueArmed=false; recalledBall=null; recallAngle=null;
+  updatePrecisionHud();
+}
+function recallBall() {
+  if(Game.state!=='playing'||Game.levelClearTimer>0||Game.recalls<=0||!Game.balls.some(b=>!b.stuck)) return false;
+  const ball=Game.balls.find(b=>!b.stuck); Game.recalls--;Game.rescueArmed=true;
+  recalledBall = WordPractice.active ? null : ball; recallAngle = null;
+  ball.stuck=true;ball.x=Game.paddle.x+Game.paddle.w/2;ball.y=Game.paddle.y-ball.r-2;
+  burst(ball.x,ball.y,'#67e8f9',12);showFeedback('召回成功 · 移动挡板，点击瞄准绿色目标');updateHud();return true;
+}
+
+function togglePause() {
+  if (Game.state === 'playing') { resetInput(); Game.state = 'paused'; $id('paused').classList.remove('hidden'); }
+  else if (Game.state === 'paused' && HudLayout.supported) {
+    Game.state = 'playing';
+    $id('paused').classList.add('hidden');
+    accumulator = 0;
+    ensureLoop();
+  }
+  updatePrecisionHud();
+}
+function backToMenu() {
+  clearWordPractice();
+  Game.state = 'menu';
+  recalledBall=null; recallAngle=null; updateRecallAimHud();
+  if (window.ChipMusic) ChipMusic.stop();
+  $id('paused').classList.add('hidden');
+  $id('over').classList.add('hidden');
+  $id('word-bar').classList.add('hidden');
+  $id('menu').classList.remove('hidden');
+}
+
+/* ---------------- 物理 ---------------- */
+function update(dt) {
+  if (WordPractice.active && WordPractice.result) return;
+  Game.logicFrame++;
+  Game.time += dt;
+  Game.comboTimer = Math.max(0, Game.comboTimer - dt);
+  if (!Game.comboTimer) Game.comboCount = 0;
+  Game.shake = Math.max(0, Game.shake - dt * 2);
+  Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
+  Game.fireTimer = Math.max(0, Game.fireTimer - dt);
+  if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
+
+  if (Game.levelClearTimer > 0) {
+    Game.levelClearTimer -= dt;
+    updateEffects(dt);
+    if (Game.levelClearTimer <= 0) nextLevel();
+    return;
+  }
+
+  // 挡板
+  const p = Game.paddle;
+  for (let i = p.widthBoosts.length - 1; i >= 0; i--) {
+    p.widthBoosts[i] -= dt;
+    if (p.widthBoosts[i] <= 0) p.widthBoosts.splice(i, 1);
+  }
+  p.w = Math.min(W*.44, basePaddleWidth() + p.widthBoosts.length * 34);
+  const speed = 480;
+  if (input.left) p.targetX = null, p.x -= speed * dt;
+  if (input.right) p.targetX = null, p.x += speed * dt;
+  if (p.targetX != null) p.x += clamp(p.targetX - (p.x + p.w / 2), -speed * dt, speed * dt);
+  p.x = clamp(p.x, 8, W - p.w - 8);
+
+  // 球
+  for (let bi = Game.balls.length - 1; bi >= 0; bi--) {
+    const b = Game.balls[bi];
+    if (b.stuck) { b.x = p.x + p.w / 2; b.y = p.y - b.r - 2; continue; }
+    // Arkanoid速度守恒: 球速缓慢回归基准(减速道具效果渐退)
+    {
+      const base = Math.min(430, DIFFS[Game.difficulty].ballSpeed + (Game.level - 1) * 12);
+      const sp = Math.hypot(b.vx, b.vy);
+      if (sp < base && sp > 0) {
+        const k = Math.min(base / sp, 1 + Math.min(.4, .12 * dt));
+        b.vx *= k; b.vy *= k;
+      }
+    }
+    b.x += b.vx * dt; b.y += b.vy * dt;
+
+    // 墙壁
+    if (b.x < b.r + 6) { b.x = b.r + 6; b.vx = Math.abs(b.vx); wallHit(); }
+    if (b.x > W - b.r - 6) { b.x = W - b.r - 6; b.vx = -Math.abs(b.vx); wallHit(); }
+    if (b.y < b.r + playTop()) { b.y = b.r + playTop(); b.vy = Math.abs(b.vy); wallHit(); }
+
+    // 掉落
+    if (b.y > H + 20) {
+      Game.balls.splice(bi, 1);
+      if (!Game.balls.length) {
+        Game.comboCount = 0; Game.comboTimer = 0;
+        Game.lives--;
+        updateHud();
+        if (Game.lives <= 0) { gameOver(); return; }
+        Game.balls = [Object.assign(newBall(p.x + p.w / 2, p.y - 9), { stuck: true })];
+        showFeedback(`剩余 ${Game.lives} 条命`);
+      }
+      continue;
+    }
+
+    // 挡板反弹: 击中位置决定反弹角(经典手感核心)
+    if (b.vy > 0 && b.y + b.r >= p.y && b.y - b.r <= p.y + p.h && b.x >= p.x - 4 && b.x <= p.x + p.w + 4) {
+      const rel = clamp((b.x - (p.x + p.w / 2)) / (p.w / 2), -1, 1);
+      const ang = rel * 60 * Math.PI / 180;     // 最大60度
+      const sp = Math.hypot(b.vx, b.vy);
+      b.vx = Math.sin(ang) * sp;
+      b.vy = -Math.abs(Math.cos(ang) * sp);
+      b.y = p.y - b.r - 1;
+      if (Math.abs(rel)<PRECISE_ZONE) {
+        Game.preciseReturns++;Game.score+=15;
+        const charge = Game.preciseReturns % PRECISE_GOAL;
+        if (charge === 0) {
+          const previousRecalls = Game.recalls;
+          Game.recalls = Math.min(RECALL_CAP, Game.recalls + 1);
+          if (Game.recalls > previousRecalls) {
+            floatText('板心 ×3 · 召回 +1', p.x+p.w/2, p.y-40, '#67e8f9');
+            showFeedback(`3 次板心达成 · 召回 +1 · 按 R 瞄准`);
+          } else {
+            floatText('板心 +15 · 召回已满', p.x+p.w/2, p.y-40, '#fde68a');
+          }
+        } else {
+          floatText(`板心 +15 · ${charge}/${PRECISE_GOAL}`, p.x+p.w/2, p.y-40, '#67e8f9');
+        }
+        updateHud();
+      }
+      if (Game.comboCount >= 3) floatText('连击 x' + Game.comboCount + '!', p.x + p.w / 2, p.y - 24, '#fbbf24');
+      Game.comboCount = 0; Game.comboTimer = 0;
+      if (window.ArcadeAudio) ArcadeAudio.play('click', .1, 1.1);
+    }
+
+    // 砖块碰撞(圆-矩形最近点法)
+    for (let i = Game.bricks.length - 1; i >= 0; i--) {
+      const k = Game.bricks[i];
+      const nx = clamp(b.x, k.x, k.x + k.w);
+      const ny = clamp(b.y, k.y, k.y + k.h);
+      const ddx = b.x - nx, ddy = b.y - ny;
+      if (ddx * ddx + ddy * ddy > b.r * b.r) continue;
+
+      // 反弹方向: 比较穿透深度
+      const overlapL = b.x + b.r - k.x, overlapR = k.x + k.w - (b.x - b.r);
+      const overlapT = b.y + b.r - k.y, overlapB = k.y + k.h - (b.y - b.r);
+      const minX = Math.min(overlapL, overlapR), minY = Math.min(overlapT, overlapB);
+      // Resolve toward the nearest face, not the velocity's assumed entry side.
+      // A grazing corner can already be moving away on this axis; using its
+      // velocity to pick a face would teleport it through the entire brick.
+      if (minY < minX) {
+        const above = overlapT < overlapB;
+        b.y = above ? k.y - b.r - .2 : k.y + k.h + b.r + .2;
+        b.vy = (above ? -1 : 1) * Math.abs(b.vy);
+      } else {
+        const left = overlapL < overlapR;
+        b.x = left ? k.x - b.r - .2 : k.x + k.w + b.r + .2;
+        b.vx = (left ? -1 : 1) * Math.abs(b.vx);
+      }
+
+      hitBrick(k, i);
+      if (WordPractice.active && WordPractice.result) return;
+      break;
+    }
+  }
+
+  updateTargetAssist(dt);
+
+  // 道具下落
+  for (let i = Game.powerups.length - 1; i >= 0; i--) {
+    const u = Game.powerups[i];
+    u.y += 130 * dt;
+    if (u.y > H + 20) { Game.powerups.splice(i, 1); continue; }
+    if (u.y + 12 >= p.y && u.y <= p.y + p.h && u.x >= p.x - 8 && u.x <= p.x + p.w + 8) {
+      applyPowerup(u.kind);
+      Game.powerups.splice(i, 1);
+    }
+  }
+
+  for (const b of Game.balls) if (!b.stuck) Game.trails.push({ x: b.x, y: b.y, life: 1 });
+  if (Game.trails.length > 90) Game.trails.splice(0, Game.trails.length - 90);
+  updateEffects(dt);
+}
+
+function updateEffects(dt) {
+  for (let i = Game.trails.length - 1; i >= 0; i--) {
+    Game.trails[i].life -= dt * 2.7;
+    if (Game.trails[i].life <= 0) Game.trails.splice(i, 1);
+  }
+  for (let i = Game.particles.length - 1; i >= 0; i--) {
+    const pt = Game.particles[i];
+    pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 300 * dt;
+    if (pt.life <= 0) Game.particles.splice(i, 1);
+  }
+  for (let i = Game.floaters.length - 1; i >= 0; i--) {
+    const f = Game.floaters[i];
+    f.life -= dt; f.y -= 36 * dt;
+    if (f.life <= 0) Game.floaters.splice(i, 1);
+  }
+}
+
+function wallHit() { if (window.ArcadeAudio) ArcadeAudio.play('click', .06, 1.4); }
+
+Game.comboCount = 0; Game.comboTimer = 0;
+function hitBrick(k, idx) {
+  if (WordPractice.active && WordPractice.result) return;
+  // 球路可以规划，字母顺序不能靠运气：未轮到的字母砖保持锁定。
+  if (k.letter && k.index !== Game.word.progress) {
+    k.lockUntil = Game.time + .24;
+    floatText('先击 ' + Game.word.en[Game.word.progress], k.x + k.w / 2, k.y, '#93c5fd');
+    if (window.ArcadeAudio) ArcadeAudio.play('click', .06, .55);
+    return;
+  }
+  // 空中连击: 球触板前每碎一块砖连击+1
+  Game.comboCount++; Game.comboTimer = 3; Game.bestCombo=Math.max(Game.bestCombo,Game.comboCount);
+  Game.score += 10 * Math.min(5, Game.comboCount);
+  if (Game.fireTimer > 0) k.hp = 1;
+  k.hp--;
+  if (k.hp > 0) {
+    updateHud();
+    if (window.ArcadeAudio) ArcadeAudio.play('click', .08, .8);
+    return;
+  }
+  Game.bricks.splice(idx, 1);
+  Game.score += 20;
+  burst(k.x + k.w / 2, k.y + k.h / 2, `hsl(${k.hue},70%,62%)`, 8);
+  if (k.letter) collectLetter(k);
+  if (WordPractice.active && WordPractice.result) return;
+  // 每破四块必掉一个字母胶囊；计量与正在下落的胶囊都跨关保留。
+  if (++Game.dropMeter >= 4) {
+    Game.dropMeter = 0;
+    const kinds = Object.keys(POWERUPS);
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+    Game.powerups.push({ x: k.x + k.w / 2, y: k.y, kind, phase: Math.random() * TAU });
+    showFeedback(`道具掉落 · ${POWERUPS[kind].name}`);
+  }
+  updateHud();
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .1, 1.3);
+  // 清版判定: 只剩无字母的普通砖也算过? 不——字母砖全收集即胜利(经典单词玩法)
+  const letterBricks = Game.bricks.filter((b) => b.letter).length;
+  if (letterBricks === 0 && Game.word.progress < Game.word.en.length) {
+    // 字母砖被清但词没拼完 => 判定过关(宽容设计)
+    wordComplete();
+  }
+}
+
+function collectLetter(brick) {
+  if (WordPractice.active && WordPractice.result) return;
+  const w = Game.word;
+  if (brick.index !== w.progress) {
+    // 错序字母也收下但不推进(宽容): 显示提示
+    floatText(brick.letter, brick.x + brick.w / 2, brick.y, '#94a3b8');
+    return;
+  }
+  w.progress++; Game.targetIdle=0;
+  Game.score += 50;
+  floatText('✓ ' + brick.letter, brick.x + brick.w / 2, brick.y, '#86efac');
+  updateHud();
+  if (w.progress >= w.en.length) wordComplete();
+}
+
+function wordComplete() {
+  if (WordPractice.active) { finishWordPractice(true); return; }
+  if (Game.levelClearTimer > 0) return;
+  Game.wordsDone++;
+  const bonus = 300 + Game.word.en.length * 40 + Game.lives * 80;
+  Game.score += bonus;
+  floatText('🎉 +' + bonus, W / 2, H / 2, '#fde68a');
+  showFeedback('拼写完成! 进入下一关');
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .32, 1.3);
+  Game.shake = .3;
+  for (const brick of Game.bricks) burst(brick.x + brick.w / 2, brick.y + brick.h / 2, `hsl(${brick.hue},70%,62%)`, 3);
+  Game.score += Game.bricks.length * 5;
+  Game.bricks.length = 0;
+  Game.levelClearTimer = .85;
+  updateHud();
+}
+
+function applyPowerup(kind) {
+  if (WordPractice.active && WordPractice.result) return;
+  if (kind === 'multi') {
+    // 分裂球: 现有每个球分裂出2个
+    const cur = Game.balls.slice();
+    for (const b of cur) {
+      if (b.stuck) continue;
+      for (const da of [-.5, .5]) {
+        if (Game.balls.length>=8) break;
+        const sp = Math.hypot(b.vx, b.vy);
+        const a = Math.atan2(b.vy, b.vx) + da;
+        Game.balls.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: b.r, stuck: false });
+      }
+    }
+    const added = Game.balls.length - cur.length;
+    showFeedback(added > 0 ? `M +60 · 新增 ${added} 球` :
+      cur.every(b => b.stuck) ? 'M +60 · 待发球未分裂' : 'M +60 · 已达 8 球上限');
+  } else if (kind === 'wide') {
+    if(Game.paddle.widthBoosts.length<3) Game.paddle.widthBoosts.push(12);
+    else Game.paddle.widthBoosts[0]=12;
+    Game.paddle.w = Math.min(W*.44, basePaddleWidth() + Game.paddle.widthBoosts.length * 34);
+    Game.paddle.x = clamp(Game.paddle.x, 8, W - Game.paddle.w - 8);
+    for (const b of Game.balls) if (b.stuck) {
+      b.x = Game.paddle.x + Game.paddle.w / 2;
+      b.y = Game.paddle.y - b.r - 2;
+    }
+    showFeedback('📏 W 加长 · 板内分段条逐层倒计时');
+  } else if (kind === 'slow') {
+    for (const b of Game.balls) { b.vx *= .72; b.vy *= .72; }
+    showFeedback('🐢 球减速!');
+  } else {
+    Game.fireTimer = 10;
+    showFeedback('🔥 F 熔甲 10 秒 · 板内底条倒计时');
+  }
+  Game.score += 60;
+  updateHud();
+  if (window.ArcadeAudio) ArcadeAudio.play('confirm', .18, 1.15);
+}
+
+function gameOver() {
+  if (WordPractice.active) { finishWordPractice(false); return; }
+  rememberFailedWord();
+  const medalPoints=Game.wordsDone*2;
+  $id('run-medal').src='../shared/mobile-art/medal-'+(medalPoints>=12?'prism':medalPoints>=6?'gold':medalPoints>=2?'silver':'bronze')+'.webp';
+  Game.state = 'over';
+  if (window.ChipMusic) ChipMusic.stop();
+  $id('word-bar').classList.add('hidden');
+  $id('over').classList.remove('hidden');
+  const key = 'word-breaker-qa-recall-angle-20261023-highscore-' + Game.difficulty;
+  let high = 0;
+  try {
+    high = Number(localStorage.getItem(key) || 0);
+    if (Game.score > high) { high = Game.score; localStorage.setItem(key, String(Game.score)); }
+  } catch (e) { /* ignore */ }
+  $id('over-kicker').textContent = `第 ${Game.level} 关`;
+  $id('over-title').textContent = Game.score >= high ? '新纪录！' : '再来一局？';
+  $id('over-stats').innerHTML =
+    `<div><span>本局得分</span><b>${Game.score}</b></div>` +
+    `<div><span>最高纪录</span><b>${high}</b></div>` +
+    `<div><span>完成单词</span><b>${Game.wordsDone}</b></div>` +
+    `<div><span>本局板心接球</span><b>${Game.preciseReturns}</b></div>` +
+    `<div><span>最佳连击</span><b>${Game.bestCombo}</b></div>`;
+  if (window.ArcadeAudio) ArcadeAudio.play('laser', .3, .45);
+}
+
+/* ---------------- 特效工具 ---------------- */
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    Game.particles.push({ x, y, vx: rand(-150, 150), vy: rand(-160, 40), life: rand(.25, .5), color, size: rand(2.5, 5) });
+  }
+  if (Game.particles.length > 180) Game.particles.splice(0, Game.particles.length - 180);
+}
+function floatText(text, x, y, color) {
+  Game.floaters.push({ text, x, y, color, life: .95 });
+}
+function showFeedback(text) {
+  Game.feedbackUntil = 2.6;
+  const el = $id('feedback');
+  el.textContent = text;
+  el.classList.add('show');
+}
+// preciseReturns is a run total, not a streak. Edges, lost lives, levels and
+// spending a recall retain its remainder; a full inventory still wraps at 3.
+function precisionStatus() {
+  const charge = Game.preciseReturns % PRECISE_GOAL;
+  const target = Game.word && Game.word.en[Game.word.progress];
+  const aiming = Game.rescueArmed && Game.balls.some(b => b.stuck) && target;
+  const paused = Game.state === 'paused';
+  const clearing = Game.levelClearTimer > 0;
+  const flying = Game.balls.some(b => !b.stuck);
+  return {
+    charge,
+    phase: paused ? 'paused' : clearing ? 'clearing' : aiming ? 'aiming' : Game.recalls >= RECALL_CAP ? 'full' : 'charging',
+    detail: paused ? '已暂停 · 进度保留' : clearing ? '换关中 · 进度保留' :
+      aiming ? (manualRecallBall() && recallAngle !== null ? `手动 ${recallAngle.toFixed(0)}° · 点击/空格发射` : `瞄准 ${target} · 点击/空格发射`) :
+      Game.recalls >= RECALL_CAP ? (flying ? '召回已满 · 先用 R' : '召回已满 · 先发射') :
+      `再接 ${PRECISE_GOAL - charge} 次 → 召回 +1`,
+  };
+}
+function updatePrecisionHud() {
+  updateRecallAimHud();
+  const status = precisionStatus();
+  const row = $id('sector-status');
+  row.dataset.phase = status.phase;
+  row.title = `${Game.sectorName} · 本局板心 ${Game.preciseReturns} 次 · 最佳连击 ${Game.bestCombo} · 板缘和掉命不清空进度 · 满额不增加召回`;
+  $id('precision-count').textContent = `板心 ${status.charge}/${PRECISE_GOAL}`;
+  $id('precision-next').textContent = status.detail;
+  for (let i = 0; i < PRECISE_GOAL; i++) {
+    $id('precision-pip-' + i).classList.toggle('filled', i < status.charge);
+  }
+}
+function updateHud() {
+  $id('score').textContent = Game.score;
+  $id('lives').textContent = Game.lives;
+  $id('level').textContent = Game.level;
+  $id('drop').textContent = `${Game.dropMeter}/4`;
+  $id('recall-count').textContent = Game.recalls;
+  $id('recall-btn').disabled = Game.recalls<=0;
+  updatePrecisionHud();
+  const w = Game.word;
+  if (w) {
+    $id('wb-word').innerHTML = [...w.en].map((ch, i) =>
+      i < w.progress ? `<span class="got">${ch}</span>` : i === w.progress ? `<span class="next">${ch}</span>` : '_'
+    ).join('');
+    $id('wb-zh').textContent = w.zh;
+  }
+  syncHudLayout();
+}
+
+/* ---------------- 渲染 ---------------- */
+const arenaLayer = document.createElement('canvas');
+let arenaKey = '';
+function drawArenaBackdrop() {
+  const key = [canvas.width, canvas.height, W, H, ArenaBackground.naturalWidth || 0].join(':');
+  if (arenaKey !== key) {
+    arenaKey = key;
+    arenaLayer.width = canvas.width; arenaLayer.height = canvas.height;
+    const layer = arenaLayer.getContext('2d');
+    layer.setTransform(arenaLayer.width / W, 0, 0, arenaLayer.height / H, 0, 0);
+    paintArenaBackdrop(layer);
+  }
+  ctx.drawImage(arenaLayer, 0, 0, W, H);
+}
+function paintArenaBackdrop(ctx) {
+  // 宣传图同级的竞技场环境；中央压暗保证砖块、球和字母始终可读。
+  if (ArenaBackground.complete && ArenaBackground.naturalWidth) {
+    const sw = ArenaBackground.naturalHeight * W / H;
+    ctx.drawImage(ArenaBackground, (ArenaBackground.naturalWidth - sw) / 2, 0, sw, ArenaBackground.naturalHeight, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#0a1220';
+    ctx.fillRect(0, 0, W, H);
+  }
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, 'rgba(3,8,18,.38)');
+  bg.addColorStop(.72, 'rgba(3,8,18,.64)');
+  bg.addColorStop(1, 'rgba(3,8,18,.25)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  // 顶部HUD条背景
+  ctx.fillStyle = '#0c1524';
+  ctx.fillRect(0, 0, W, 44);
+  // 低对比竞技场网格填补空区，并提供弹道参照。
+  ctx.strokeStyle = 'rgba(125,211,252,.055)'; ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 44); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 176; y < H; y += 56) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+}
+
+// Static corner reticle: a non-color cue, entirely inside the target brick.
+// Presentation only; read current geometry every render so collection and assist
+// relocation need no cached marker state. Balls are drawn later, above the cue.
+function drawCurrentTargetMarker(k) {
+  const inset = 2, arm = 3;
+  const left = k.x + inset, right = k.x + k.w - inset;
+  const top = k.y + inset, bottom = k.y + k.h - inset;
+  ctx.save();
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  ctx.setLineDash([]); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+  ctx.beginPath();
+  ctx.moveTo(left, top + arm); ctx.lineTo(left, top); ctx.lineTo(left + arm, top);
+  ctx.moveTo(right - arm, top); ctx.lineTo(right, top); ctx.lineTo(right, top + arm);
+  ctx.moveTo(left, bottom - arm); ctx.lineTo(left, bottom); ctx.lineTo(left + arm, bottom);
+  ctx.moveTo(right - arm, bottom); ctx.lineTo(right, bottom); ctx.lineTo(right, bottom - arm);
+  ctx.strokeStyle = '#07131e'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
+}
+
+// Read-only ability windows, entirely in the paddle's existing 14px body.
+// Each W layer has its own 12s timer. Expiring one layer does NOT always
+// shrink a capped paddle; show independent layer fractions, not a shrink ETA.
+// F has a separate 10s timer. Read both directly, preserving their existing
+// pause/level-transition differences. No HUD row, wall-clock or animation.
+function drawPowerWindows(p) {
+  if (Game.state !== 'playing' && Game.state !== 'paused' && Game.state !== 'ready') return;
+  const count = p.widthBoosts.length;
+  if (!count && Game.fireTimer <= 0) return;
+  ctx.save();
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  const left = p.x + 4, width = p.w - 8;
+  // The precise-return stripe is at y+2..6 and remains unchanged above us.
+  if (count) {
+    const gap = 3, slot = (width - gap * (count - 1)) / count;
+    for (let i = 0; i < count; i++) {
+      const x = left + i * (slot + gap);
+      ctx.fillStyle = '#102c23';
+      ctx.fillRect(x, p.y + 8, slot, 2);
+      ctx.fillStyle = '#34d399';
+      ctx.fillRect(x, p.y + 8, slot * clamp(p.widthBoosts[i] / 12, 0, 1), 2);
+    }
+  }
+  if (Game.fireTimer > 0) {
+    ctx.fillStyle = '#491d24';
+    ctx.fillRect(left, p.y + 11, width, 2);
+    ctx.fillStyle = '#fb7185';
+    ctx.fillRect(left, p.y + 11, width * clamp(Game.fireTimer / 10, 0, 1), 2);
+  }
+  ctx.restore();
+}
+
+function render() {
+  updateRecallAimHud();
+  Game.renderCount++;
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+  drawArenaBackdrop();
+
+  if (Game.state !== 'menu') {
+    const sx = !reducedMotion.matches && Game.shake > 0 ? rand(-3, 3) * Game.shake : 0;
+    ctx.save();
+    ctx.translate(sx, HudLayout.offset + (!reducedMotion.matches && Game.shake > 0 ? rand(-2, 2) * Game.shake : 0));
+
+    drawTargetLine();
+    // 砖块
+    for (const k of Game.bricks) {
+      const base = `hsl(${k.hue},62%,${k.hp > 1 ? 46 : 58}%)`;
+      ctx.fillStyle = base;
+      ctx.beginPath(); ctx.roundRect(k.x, k.y, k.w, k.h, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.22)';
+      ctx.beginPath(); ctx.roundRect(k.x + 2, k.y + 2, k.w - 4, 4, 2); ctx.fill();
+      if (k.hp > 1) {
+        ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(k.x + 1, k.y + 1, k.w - 2, k.h - 2, 4); ctx.stroke();
+      }
+      if (k.letter) {
+        // 字母砖: 冷青绿描边+发光(与普通砖区分)
+        const unlocked = k.index === Game.word.progress;
+        const lockFlash = (k.lockUntil || 0) > Game.time;
+        ctx.shadowColor = unlocked ? 'rgba(110,231,183,1)' : lockFlash ? 'rgba(147,197,253,.9)' : 'rgba(71,85,105,.4)';
+        ctx.shadowBlur = unlocked ? 14 : lockFlash ? 10 : 3;
+        ctx.strokeStyle = unlocked ? '#a7f3d0' : lockFlash ? '#93c5fd' : '#64748b';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.roundRect(k.x + 1, k.y + 1, k.w - 2, k.h - 2, 4); ctx.stroke();
+        ctx.shadowBlur = 0;
+        if (unlocked) drawCurrentTargetMarker(k);
+        ctx.fillStyle = unlocked ? '#052e1f' : '#dbeafe';
+        ctx.font = '900 13px ui-monospace, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        // Fine dark keyline keeps non-target letters readable on bright brick hues.
+        if (!unlocked) {
+          ctx.save(); ctx.strokeStyle = '#102934'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+          ctx.strokeText(k.letter, k.x + k.w / 2, k.y + k.h / 2 + 1); ctx.restore();
+        }
+        ctx.fillText(k.letter, k.x + k.w / 2, k.y + k.h / 2 + 1);
+      }
+    }
+
+    // 道具
+    for (const u of Game.powerups) {
+      const spec = POWERUPS[u.kind];
+      ctx.save();
+      ctx.translate(u.x, projectLowerY(u.y));
+      ctx.rotate(Math.sin(Game.time * 3 + u.phase) * .08);
+      ctx.shadowColor = spec.color; ctx.shadowBlur = 14;
+      ctx.fillStyle = 'rgba(8,17,31,.96)';
+      ctx.strokeStyle = spec.color; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.roundRect(-22, -14, 44, 28, 14); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#f8fafc'; ctx.font = '900 14px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(spec.label, 0, 1);
+      ctx.restore();
+    }
+
+    // 挡板
+    const p = Game.paddle;
+    const pg = ctx.createLinearGradient(p.x, p.y, p.x, p.y + p.h);
+    pg.addColorStop(0, '#e2e8f0'); pg.addColorStop(.5, '#94a3b8'); pg.addColorStop(1, '#475569');
+    ctx.fillStyle = pg;
+    ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(59,130,246,.8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(p.x, p.y, p.w, p.h, 7); ctx.stroke();
+
+    // Center stripe matches the true strict |rel| < .22 hit window (22% of
+    // paddle width). It widens with W capsules without changing collision code.
+    ctx.fillStyle = '#67e8f9';
+    ctx.fillRect(p.x + p.w * (1 - PRECISE_ZONE) / 2, p.y + 2, p.w * PRECISE_ZONE, 4);
+    drawPowerWindows(p);
+
+    // 球 + 拖尾
+    for (const tr of Game.trails) {
+      ctx.globalAlpha = tr.life * .3;
+      ctx.fillStyle = Game.fireTimer > 0 ? '#fb923c' : '#fde68a';
+      ctx.beginPath(); ctx.arc(tr.x, projectLowerY(tr.y), 6 * tr.life, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (const b of Game.balls) {
+      ctx.save();
+      ctx.shadowColor = Game.fireTimer > 0 ? 'rgba(249,115,22,.95)' : 'rgba(255,240,180,.9)';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = Game.fireTimer > 0 ? '#fff7ed' : '#fffbeb';
+      ctx.beginPath(); ctx.arc(b.x, projectLowerY(b.y), b.r, 0, TAU); ctx.fill();
+      // 高光点
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.beginPath(); ctx.arc(b.x - 2.2, projectLowerY(b.y) - 2.4, 2.2, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+
+    drawParticles();
+    ctx.restore();
+    if (Game.balls.some((ball) => ball.stuck)) {
+      ctx.fillStyle = 'rgba(232,241,255,.9)';
+      ctx.font = '700 16px system-ui'; ctx.textAlign = 'center';
+      const target = Game.word && Game.word.en[Game.word.progress];
+      ctx.fillText(manualRecallBall() && recallAngle !== null ? '手动方向 · 非穿砖路径预测' : Game.rescueArmed && target ? `瞄准 ${target} · 点击 / 空格 发射` : '点击 / 空格 发射', W / 2, projectLowerY(H * .62) + HudLayout.offset);
+    }
+  } else {
+    drawMenuDemo();
+  }
+  // 浮字最上层
+  for (const f of Game.floaters) {
+    ctx.globalAlpha = clamp(f.life * 1.5, 0, 1);
+    ctx.fillStyle = f.color;
+    ctx.font = '800 16px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText(f.text, f.x, projectLowerY(f.y) + HudLayout.offset);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawParticles() {
+  for (const pt of Game.particles) {
+    ctx.globalAlpha = clamp(pt.life * 2.2, 0, 1);
+    ctx.fillStyle = pt.color;
+    ctx.fillRect(pt.x - pt.size / 2, projectLowerY(pt.y) - pt.size / 2, pt.size, pt.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawMenuDemo() {
+  // 菜单背后的静态演示画面
+  const bw = (W - 40) / 10;
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 10; c++) {
+    ctx.fillStyle = `hsl(${30 + r * 28},62%,58%)`;
+    ctx.beginPath(); ctx.roundRect(20 + c * bw, 56 + r * 22, bw - 3, 19, 4); ctx.fill();
+  }
+  ctx.fillStyle = '#94a3b8';
+  ctx.beginPath(); ctx.roundRect(W / 2 - 55, H - 42, 110, 14, 7); ctx.fill();
+  ctx.fillStyle = '#fffbeb';
+  ctx.beginPath(); ctx.arc(W / 2, H - 60, 7, 0, TAU); ctx.fill();
+}
+
+
+// The objective never remains hidden behind a long, unlucky bounce cycle.
+function updateTargetAssist(dt) {
+  if(Game.balls.every(b=>b.stuck)) return;
+  Game.targetIdle+=dt;
+  if(Game.targetIdle<18) return;
+  Game.targetIdle=0;
+  const target=Game.bricks.find(k=>k.letter && k.index===Game.word.progress);
+  if(!target) return;
+  const bottom=Math.max(...Game.bricks.map(k=>k.y+k.h),playTop()+180);
+  if(bottom+target.h < Game.paddle.y-140) { target.y=bottom+10;target.lowered=true;target.hp=1;showFeedback('目标已下移 · 绿色字母等待击破'); }
+}
+function drawTargetLine() {
+  const manualBall = manualRecallBall();
+  if (manualBall && recallAngle !== null) {
+    const angle = clamp(recallAngle,-60,60)*Math.PI/180;
+    const dx=Math.sin(angle), dy=-Math.cos(angle), len=64;
+    const x=manualBall.x+dx*len,y=manualBall.y+dy*len;
+    ctx.save();ctx.strokeStyle='#fde68a';ctx.lineWidth=3;ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(manualBall.x,manualBall.y);ctx.lineTo(x,y);
+    ctx.moveTo(x-dx*10-dy*5,y-dy*10+dx*5);ctx.lineTo(x,y);ctx.lineTo(x-dx*10+dy*5,y-dy*10-dx*5);
+    ctx.stroke();ctx.restore();return;
+  }
+  const ball=Game.balls.find(b=>b.stuck);
+  if(!ball||!Game.rescueArmed) return;
+  const target=Game.bricks.find(k=>k.letter&&k.index===Game.word.progress);
+  if(!target) return;
+  ctx.save();ctx.strokeStyle='rgba(103,232,249,.65)';ctx.lineWidth=2;ctx.setLineDash([4,9]);
+  ctx.beginPath();ctx.moveTo(ball.x,ball.y);ctx.lineTo(target.x+target.w/2,target.y+target.h/2);ctx.stroke();ctx.restore();
+}
+// Only resize recovery searches: candidate columns must have a clear vertical
+// route to the paddle lane, so an empty but enclosed brick pocket is rejected.
+function findResizeRecovery(ball,x,y,bottom,maxShift,overlaps) {
+  const left=ball.r+6,right=W-ball.r-6,gap=ball.r+.2;
+  const xs=new Set([x,left,right]);
+  for(const k of Game.bricks) {
+    for(const edge of [k.x-gap,k.x+k.w+gap]) if(edge>=left && edge<=right) xs.add(edge);
+  }
+  let best=null,bestDistance=Infinity;
+  for(const cx of xs) {
+    let cy=y;
+    for(const k of Game.bricks) if(cx>k.x-gap && cx<k.x+k.w+gap) cy=Math.max(cy,k.y+k.h+gap);
+    const distance=Math.hypot(cx-ball.x,cy-ball.y);
+    if(cy<=bottom && distance<=maxShift+1e-9 && distance<bestDistance && !overlaps(cx,cy)) {
+      best={x:cx,y:cy};bestDistance=distance;
+    }
+  }
+  return best;
+}
+// Reflow can put a brick over a previously clear ball. Keep ordinary physics,
+// velocities, ball identities and progress untouched; reject excessive moves.
+function recoverResizedBall(ball,previous,sameBricks,maxShift) {
+  const left=ball.r+6,right=W-ball.r-6,top=playTop()+ball.r,bottom=Game.paddle.y-ball.r-2;
+  if(left>right || top>bottom) return false;
+  const overlaps=(x,y)=>Game.bricks.some(k=>{
+    const dx=x-clamp(x,k.x,k.x+k.w),dy=y-clamp(y,k.y,k.y+k.h);
+    return dx*dx+dy*dy<=ball.r*ball.r;
+  });
+  const move=(x,y)=>{
+    if(Math.hypot(x-ball.x,y-ball.y)>maxShift+1e-9) return false;
+    ball.x=x;ball.y=y;return true;
+  };
+  const x=clamp(ball.x,left,right),y=clamp(ball.y,top,bottom);
+  if(ball.stuck) return x===ball.x && y===ball.y && !overlaps(x,y);
+  if(!overlaps(x,y)) return move(x,y);
+  // A tiny height change need not rescale a clear ball into unchanged bricks.
+  // Retaining its old legal point preserves its existing region, not a new trap.
+  if(sameBricks && previous.x>=left && previous.x<=right && previous.y>=top && previous.y<=bottom && !overlaps(previous.x,previous.y)) return move(previous.x,previous.y);
+  const safe=findResizeRecovery(ball,x,y,bottom,maxShift,overlaps);
+  return safe ? move(safe.x,safe.y) : false;
+}
+// Track requested CSS dimensions even when geometry is deferred: repeated
+// one-pixel drag events must not accumulate permission for a large jump.
+let lastResizeWidth=W,lastResizeHeight=H;
+function resizeArena() {
+  const wrap=$id('game-wrap'),width=Math.max(1,wrap.clientWidth),height=Math.max(1,wrap.clientHeight);
+  // Use actual CSS pixels in every orientation: HUD and physics share one scale.
+  const nw=width,nh=height;
+  const maxShift=Math.hypot(nw-lastResizeWidth,nh-lastResizeHeight);
+  lastResizeWidth=nw;lastResizeHeight=nh;
+  // Below these sizes the six minimum-height rows leave no ball-sized lane
+  // above the paddle (including on the menu, before a board exists).
+  if(nw<=70 || nh<(nw<600&&nh>nw?342:264)) return;
+  const dpr=Math.min(window.devicePixelRatio||1,2,Math.sqrt(1400000/(width*height)));
+  if(W===nw&&H===nh&&canvas.width===Math.round(width*dpr)&&canvas.height===Math.round(height*dpr))return;
+  const oldW=W,oldH=H;
+  // Keep the previous logical layout if a transient tiny panel cannot fit a
+  // safe ball/dock. CSS still scales the canvas; retry on the next resize.
+  const oldGeometry=[...Game.bricks,...Game.balls,...Game.powerups,...Game.particles,...Game.floaters,...(Game.paddle?[Game.paddle]:[])].map(item=>[item,{...item}]);
+  const restoreGeometry=()=>{ W=oldW;H=oldH;for(const [item,previous] of oldGeometry) Object.assign(item,previous); };
+  const sx=nw/W,sy=nh/H,oldTop=playTop(),oldBottom=Game.paddle?.y || paddleY();
+  const oldBricks=Game.bricks.map(k=>({x:k.x,y:k.y,w:k.w,h:k.h})),oldBalls=Game.balls.map(b=>({x:b.x,y:b.y}));
+  for(const item of [...Game.balls,...Game.powerups,...Game.particles,...Game.floaters]) { item.x*=sx;item.y*=sy; }
+  W=nw;H=nh;
+  const bw=(W-40)/10,bh=brickStep(),playScale=(paddleY()-playTop())/Math.max(1,oldBottom-oldTop);
+  // Reflow rows as complete boxes, rather than shrinking their positions alone.
+  // HP, letter order and destroyed bricks survive rotation unchanged.
+  Game.bricks.forEach((brick,i)=>{
+    if(Number.isInteger(brick.row)&&Number.isInteger(brick.column)) {
+      brick.x=20+brick.column*bw;brick.y=playTop()+16+brick.row*bh;brick.w=bw-3;brick.h=bh-3;
+    } else {
+      brick.x*=sx;brick.w*=sx;brick.y=playTop()+(oldBricks[i].y-oldTop)*playScale;brick.h=oldBricks[i].h*playScale;
+    }
+  });
+  for(const brick of Game.bricks.filter(k=>k.lowered)) {
+    const bottom=Math.max(...Game.bricks.filter(k=>k!==brick).map(k=>k.y+k.h),playTop());
+    if(bottom+10+brick.h<paddleY()-64) brick.y=bottom+10;
+    else brick.lowered=false;
+  }
+  if(Game.paddle) {
+    if(Game.bricks.some(k=>k.w<=0 || k.h<=0)) { restoreGeometry();return; }
+    Game.paddle.w=Math.min(W*.44,basePaddleWidth()+Game.paddle.widthBoosts.length*34);
+    Game.paddle.x=clamp(Game.paddle.x*sx,8,W-Game.paddle.w-8);Game.paddle.y=paddleY();Game.paddle.targetX=null;
+    const sameBricks=Game.bricks.every((k,i)=>['x','y','w','h'].every(key=>k[key]===oldBricks[i][key]));
+    for(const [i,ball] of Game.balls.entries()) {
+      ball.x=clamp(ball.x,ball.r,W-ball.r);
+      ball.y=clamp(ball.y,playTop()+ball.r,Game.paddle.y-ball.r-2);
+      if(ball.stuck) { ball.x=Game.paddle.x+Game.paddle.w/2;ball.y=Game.paddle.y-ball.r-2; }
+      if(!recoverResizedBall(ball,oldBalls[i],sameBricks,maxShift)) { restoreGeometry();return; }
+    }
+  }
+  canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);arenaKey='';
+  syncHudLayout();
+  if(Game.state!=='playing') render();
+}
+window.addEventListener('resize',resizeArena);
+new ResizeObserver(() => { resizeArena(); syncHudLayout(); }).observe($id('game-wrap'));
+
+/* ---------------- 绑定 ---------------- */
+function updateMuteButton() {
+  const button = $id('mute-btn');
+  if (button && window.ArcadeAudio) button.textContent = ArcadeAudio.muted ? '已静音' : '声音';
+}
+function toggleMute() {
+  if (!window.ArcadeAudio) return;
+  ArcadeAudio.toggle();
+  if (window.ChipMusic) ChipMusic.setMuted(ArcadeAudio.muted);
+  updateMuteButton();
+}
+updateMuteButton();
+$id('recall-btn').addEventListener('pointerdown',e=>{e.preventDefault();recallBall();});
+for (const [id, action] of [['recall-left-btn',()=>adjustRecallAngle(-5)],['recall-right-btn',()=>adjustRecallAngle(5)],['recall-auto-btn',resetRecallAngle]])
+  $id(id).addEventListener('click', action);
+$id('mute-btn')?.addEventListener('click', toggleMute);
+$id('pause-btn').addEventListener('click', togglePause);
+$id('start-btn').addEventListener('click', () => { if (window.ChipMusic) ChipMusic.unlock(); startGame(); });
+$id('retry-btn').addEventListener('click', startGame);
+$id('practice-btn').addEventListener('click', startWordPractice);
+$id('menu-btn').addEventListener('click', backToMenu);
+$id('resume-btn').addEventListener('click', togglePause);
+$id('pause-menu-btn').addEventListener('click', backToMenu);
+document.querySelectorAll('.difficulty').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.difficulty').forEach((x) => x.classList.remove('selected'));
+  b.classList.add('selected');
+  Game.difficulty = b.dataset.difficulty;
+}));
+function resetInput() {
+  input.left = input.right = false;
+  if (Game.paddle) Game.paddle.targetX = null;
+}
+window.addEventListener('blur', () => {
+  resetInput();
+  if (Game.state === 'playing') togglePause();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { resetInput(); if (Game.state === 'playing') togglePause(); }
+});
+
+/* ---------------- 主循环 ---------------- */
+let lastTime = performance.now();
+let accumulator = 0;
+let rafId = 0;
+function ensureLoop() {
+  if (rafId || document.hidden) return;
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(frame);
+}
+function frame(now) {
+  if (!HudLayout.supported && Game.state === 'playing') togglePause();
+  rafId = 0;
+  Game.rafCount++;
+  const dt = Math.max(0, Math.min(.1, (now - lastTime) / 1000));
+  lastTime = now;
+  let advanced = false;
+  if (Game.state === 'playing') {
+    accumulator = Math.min(.1, accumulator + dt);
+    while (accumulator + 1e-9 >= FIXED_STEP && Game.state === 'playing') {
+      update(FIXED_STEP);
+      accumulator = Math.max(0, accumulator - FIXED_STEP);
+      advanced = true;
+    }
+  }
+  else if (Game.state !== 'menu') {
+    accumulator = 0;
+    // paused/over 时仍更新浮字淡出
+    Game.feedbackUntil = Math.max(0, Game.feedbackUntil - dt);
+    if (Game.feedbackUntil <= 0) $id('feedback').classList.remove('show');
+  } else accumulator = 0;
+  if (advanced || Game.state !== 'playing') render();
+  if (Game.state === 'playing') rafId = requestAnimationFrame(frame);
+}
+
+/* ---------------- 自检 ---------------- */
+window.__wordBreaker = Game;
+
+if (/[?&]selftest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    try {
+      Game.difficulty = 'easy';
+      startGame();
+      if (FIXED_STEP !== 1 / 60) throw new Error('fixed-step setup failed');
+      if (Game.logicFrame || Game.renderCount || Game.rafCount) throw new Error('frame counters were not reset');
+      if (Game.state !== 'playing' || !Game.bricks.length) throw new Error('start failed');
+      if (Game.player_check) throw new Error('nope');
+      const ordinary = Game.bricks.filter((brick) => !brick.letter).slice(0, 4);
+      for (const brick of ordinary) {
+        brick.hp = 1;
+        hitBrick(brick, Game.bricks.indexOf(brick));
+      }
+      if (Game.powerups.length !== 1) throw new Error('guaranteed powerup drop failed');
+      const capsule = Game.powerups[0];
+      buildLevel();
+      if (!Game.powerups.includes(capsule)) throw new Error('powerup did not survive level change');
+      capsule.kind = 'wide'; capsule.x = Game.paddle.x + Game.paddle.w / 2; capsule.y = Game.paddle.y - 12;
+      const paddleWidth = Game.paddle.w;
+      update(.01);
+      if (Game.powerups.includes(capsule) || Game.paddle.w <= paddleWidth) throw new Error('powerup pickup failed');
+      // 字母数=单词长度
+      const letterCount = Game.bricks.filter((b) => b.letter).length;
+      if (letterCount !== Game.word.en.length) throw new Error('letter count mismatch');
+      const placedLetters = Game.bricks.filter((b) => b.letter).sort((a, b) => a.index - b.index);
+      if (!placedLetters.every((brick, index) => brick.row === Game.letterLayout[index][0] && brick.column === Game.letterLayout[index][1])) throw new Error('shuffled letter layout was ignored');
+      const trailCount = Game.trails.length;
+      render();
+      if (Game.trails.length !== trailCount) throw new Error('render mutated trail state');
+      const lockedIdx = Game.bricks.findIndex((b) => b.letter && b.index === 1);
+      if (lockedIdx >= 0) {
+        const locked = Game.bricks[lockedIdx], hpBefore = locked.hp;
+        hitBrick(locked, lockedIdx);
+        if (!Game.bricks.includes(locked) || locked.hp !== hpBefore || Game.word.progress !== 0) throw new Error('letter lock failed');
+      }
+      // 模拟按序命中字母砖，过关演出结束后再进入新砖阵。
+      const startLevel = Game.level;
+      for (let hits = 0; hits < 40; hits++) {
+        if (Game.levelClearTimer > 0) break;
+        const idx = Game.bricks.findIndex((b) => b.letter && b.index === Game.word.progress);
+        if (idx >= 0) hitBrick(Game.bricks[idx], idx);
+      }
+      if (Game.levelClearTimer <= 0 || Game.bricks.length) throw new Error('level clear presentation failed');
+      for (let i = 0; i < 60 && Game.level === startLevel; i++) update(FIXED_STEP);
+      if (Game.level <= startLevel) throw new Error('did not advance level');
+      if (Game.level <= 1) throw new Error('did not advance level');
+      // 球拍反弹
+      Game.state = 'playing';
+      // 从高处落下测试挡板反弹(击中挡板后vy必须变向上)
+      Game.balls = [{ x: Game.paddle.x + Game.paddle.w / 2, y: Game.paddle.y - 120,
+                      vx: 0, vy: 260, r: 7, stuck: false }];
+      const ball = Game.balls[0];
+      let bounced = false;
+      for (let i = 0; i < 300; i++) {
+        update(0.008);
+        if (ball.vy < 0 && ball.y < Game.paddle.y) { bounced = true; break; }
+        if (Game.balls.length === 0) throw new Error('ball lost during bounce test');
+      }
+      if (!bounced) throw new Error('paddle bounce failed');
+      document.title = 'SELFTEST-OK';
+      document.documentElement.dataset.selftest = 'pass';
+      Game.state = 'paused';
+    } catch (e) {
+      document.title = 'SELFTEST-FAIL: ' + e.message;
+      document.documentElement.dataset.selftest = 'fail';
+      Game.state = 'paused';
+      console.error(e);
+    }
+  });
+}
+
+if (/[?&]frametest(?:[=&]|$)/.test(location.search)) {
+  requestAnimationFrame(() => {
+    startGame();
+    launchStuck();
+    setTimeout(() => {
+      const duplicateRenders = Game.renderCount - Game.logicFrame;
+      const passed = Game.logicFrame >= 40 && duplicateRenders <= 3 && Game.trails.length <= 90;
+      Game.state = 'paused';
+      document.title = passed
+        ? `FRAME-BUDGET PASS · ${Game.logicFrame}/${Game.renderCount}`
+        : `FRAME-BUDGET FAIL · ${Game.logicFrame}/${Game.renderCount}`;
+      document.documentElement.dataset.frametest = passed ? 'pass' : 'fail';
+    }, 1200);
+  });
+}
+
+resizeArena();
+syncHudLayout();
+new ResizeObserver(syncHudLayout).observe($id('hud-layout'));
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncHudLayout);
+window.addEventListener('resize', syncHudLayout);
+render();
+
+ArenaBackground.addEventListener('load', () => { if (Game.state !== 'playing') render(); });
