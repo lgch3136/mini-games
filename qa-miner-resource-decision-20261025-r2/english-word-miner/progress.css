@@ -1,0 +1,73 @@
+/* Display-only QA HUD. The canvas, wrapper and physical coordinates stay unchanged. */
+.qa-notice { color:#b4e4ed; font-size:12px; line-height:1.4; margin:8px 0; }
+#stats { align-items:flex-start; }
+#stats .chips:first-child { display:grid; grid-template-columns:repeat(4,max-content); gap:3px; max-width:calc(100% - 112px); }
+#stats .chip { padding:2px 4px; font-size:10px; line-height:13px; white-space:nowrap; }
+#stats .chips:last-child { gap:4px; }
+#pause-btn, #mute-btn { min-width:48px; padding:3px 6px; }
+#contract-status { top:29px; left:12px; right:124px; padding:0; text-align:left; font-size:11px; line-height:14px; }
+#contract-progress { color:#fff0bd; font-weight:800; font-variant-numeric:tabular-nums; }
+#contract-next { color:#b8f5da; }
+#contract-status[data-phase="complete"] #contract-progress { color:#b8f5da; }
+#contract-status[data-phase="idle"] { display:none; }
+#over-contract { margin:10px auto 4px; max-width:420px; padding:8px 10px; border:1px solid #9aa77f; border-radius:10px; color:#fff0bd; font-size:13px; line-height:1.6; }
+#over-contract-next { color:#b8f5da; }
+#over-contract-note { color:#d2c0a0; font-size:11px; }
+#over-ledger-note { color:#d2c0a0; font-size:11px; line-height:1.5; margin:6px auto; max-width:420px; }
+@media (max-width:600px) and (orientation:portrait) {
+  #stats .chips:first-child { grid-template-columns:repeat(2,max-content); max-width:calc(100% - 106px); }
+  #stats .chip { font-size:10px; padding:2px 4px; }
+  #contract-status { top:calc(52px + env(safe-area-inset-top)); left:8px; right:8px; font-size:11px; line-height:14px; }
+}
+@media (orientation:landscape) and (max-height:450px) {
+  #stats { top:5px; left:7px; right:7px; }
+  #stats .chip { font-size:9px; padding:1px 3px; line-height:12px; }
+  #stats .chips:first-child { grid-template-columns:repeat(4,max-content); max-width:calc(100% - 104px); }
+  #contract-status { top:22px; left:7px; right:111px; font-size:10px; line-height:12px; }
+}
+
+/* r2: outcome first. Achievement stays positive but subordinate to the result. */
+#over-title { line-height:1.25; }
+.result-achievement { display:flex; justify-content:center; align-items:center; gap:8px; margin:8px auto; }
+#over-record { color:#e9cc84; font-size:14px; font-weight:700; }
+.result-achievement .mastery-medal { width:44px; }
+/* Desktop-only adjustment. Do not infer phone/short-landscape acceptance. */
+@media (min-width:900px) and (min-height:650px) {
+  #menu .panel { margin:auto; padding:16px 20px; }
+  #menu .menu-cover { width:240px; max-height:150px; margin-bottom:8px; }
+  #menu h1 { font-size:32px; }
+  #menu .sub { margin-top:8px; line-height:1.65; }
+  #menu .keys { margin-top:8px; }
+  #menu .diff-row { margin-top:10px; }
+  #menu #start-btn { margin-top:10px; }
+  #contract-status { top:31px; line-height:17px; }
+  #contract-progress { font-size:14px; }
+  #contract-next { font-size:12px; }
+  /* Upper-left HUD band, not the middle of the mining field. */
+  #feedback { top:70px; left:12px; right:auto; transform:none; max-width:calc(50% - 24px); padding:4px 8px; font-size:12px; line-height:17px; text-align:left; }
+}
+
+/* Keep changing aim references out of the live region; announce only contract updates. */
+#contract-next-announcement { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; border:0; }
+
+/* r2: the next decision stays stable; speculative payout never replaces an objective. */
+#contract-progress { font-size:11px; font-weight:600; color:#e7d4a5; }
+#contract-next { font-size:14px; line-height:19px; font-weight:800; color:#c7ffe4; font-variant-numeric:tabular-nums; }
+#contract-reference { min-height:17px; font-size:11px; line-height:17px; color:#c9bca5; }
+#contract-reference[data-kind="held"] { color:#ffd0a0; }
+#feedback { white-space:normal; overflow-wrap:anywhere; }
+@media (min-width:900px) and (min-height:650px) {
+  #contract-status { top:31px; line-height:16px; }
+  #contract-next { font-size:15px; line-height:21px; }
+  #contract-reference { font-size:12px; line-height:18px; min-height:18px; }
+  #feedback { top:91px; max-width:min(430px,calc(100% - 24px)); }
+}
+@media (max-width:600px) and (orientation:portrait) {
+  #contract-next { font-size:13px; line-height:18px; }
+  #contract-reference { font-size:10px; line-height:15px; min-height:30px; max-width:100%; }
+  #feedback { font-size:12px; line-height:18px; width:max-content; max-width:90%; }
+}
+@media (orientation:landscape) and (max-height:450px) {
+  #contract-next { font-size:11px; line-height:15px; }
+  #contract-reference { font-size:10px; line-height:13px; min-height:13px; }
+}
