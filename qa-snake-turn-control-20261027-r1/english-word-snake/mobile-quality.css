@@ -1,0 +1,120 @@
+/* A finite, readable learning loop while keeping the garden's tactile identity. */
+.session-choice { display:grid; gap:7px; margin:15px 0; color:#31524a; font-size:12px; font-weight:650 }
+.session-choice select { width:100%; min-height:46px; border:1px solid #a9baa1; background:#fffdf2; color:#244a3f; border-radius:13px; padding:10px 12px; font:inherit }
+.expedition-track { display:flex; align-items:center; gap:10px; position:relative; padding:5px 1px 10px; color:#476253; font-size:11px }
+.expedition-track b { margin-left:auto; font-variant-numeric:tabular-nums }
+.expedition-track > i { position:absolute; height:3px; bottom:3px; left:0; right:0; border-radius:8px; overflow:hidden; background:#385c3d15 }
+.expedition-track em { display:block; height:100%; transform-origin:left; background:linear-gradient(90deg,#539b65,#cfb959); transition:transform .4s ease }
+.expedition-stars { font-size:36px; letter-spacing:.15em; color:#a97925; margin:10px 0 }
+.expedition-next { color:#49694f; line-height:1.8; font-size:12px; background:#e5ecd4; padding:12px; border-radius:13px }
+#word-review { max-height:100px; overflow-y:auto }
+#word-review span { font-size:12px; line-height:1.6 }
+button, select, input { touch-action:manipulation }
+button:focus-visible, select:focus-visible { outline:3px solid #3d8968; outline-offset:3px }
+@media (max-width:650px) {
+  .session-choice { margin:10px 0; }
+  .session-choice select { font-size:16px; }
+  .expedition-track { font-size:11px; }
+  #controls { padding-bottom:max(10px,env(safe-area-inset-bottom)); }
+  #controls .dpad button { min-width:44px; min-height:44px; }
+  .small-card { max-height:calc(100dvh - 90px); overflow-y:auto; overscroll-behavior:contain; }
+}
+@media (prefers-reduced-motion:reduce) { .expedition-track em { transition:none; } }
+/* Keep the short-landscape controls in the flex flow, below the board. */
+@media (max-height:480px) and (orientation:landscape) {
+  #controls { min-height:44px; height:auto; }
+  #controls .dpad button { flex:0 0 44px; width:44px; height:44px; min-width:44px; min-height:44px; }
+  #controls .boost, #controls .live-speed select { min-height:44px; }
+}
+
+/* Optional route view: use the existing footer footprint, never cover or resize the board. */
+#controls { position:relative; }
+#app[data-route-planning="true"] #controls > :not(#route-tools) { visibility:hidden; }
+#app[data-route-planning="true"] #harvest { visibility:hidden; }
+#route-tools { position:absolute; inset:0; display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:8px; background:var(--paper); border-radius:14px; }
+#route-tools > span { color:var(--green); font-size:12px; font-weight:650; }
+#route-tools button { min-height:44px; font-size:13px; white-space:nowrap; }
+#route-resume { width:auto; padding:10px 16px; box-shadow:none; }
+#route-back { padding:8px 12px; border:1px solid #c5d7ad; }
+#pause-screen .small-card { max-height:100%; overflow-y:auto; overscroll-behavior:contain; }
+#pause-screen button { min-height:44px; }
+.route-choice { width:100%; padding:10px 12px; border:1px solid #8cab75; border-radius:12px; background:#e4efd2; color:var(--green); font-size:13px; font-weight:650; }
+.qa-notice { font-size:10px; line-height:1.5; color:#627465; }
+@media (max-width:700px) and (orientation:portrait) {
+  #route-tools { grid-template-columns:1fr 1fr; align-content:center; gap:5px 8px; padding-bottom:4px; }
+  #route-tools > span { grid-column:1 / -1; font-size:11px; }
+  #route-tools button { width:100%; padding:8px; font-size:12px; }
+}
+@media (max-height:480px) and (orientation:landscape) {
+  #route-tools { gap:6px; }
+  #route-tools > span { font-size:11px; }
+  #route-tools button { padding:8px 10px; font-size:12px; }
+}
+
+/* A compact menu explanation; this does not add playing-board chrome. */
+#menu .menu-card { margin-block:auto; }
+.challenge-note { margin:-7px 0 12px; font-size:11px; line-height:1.5; color:#49694f; }
+
+/* Result-only layout: use the viewport rather than the shorter game-board footprint.
+   Headline, score, summary and actions never belong to the scrolling recap. */
+#over-screen {
+  position:fixed; inset:0; z-index:20;
+  padding:max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  overflow:hidden; background:#eaf0dfd9;
+}
+#over-screen .result-card {
+  width:min(460px, 100%); max-height:100%; min-height:0;
+  display:flex; flex-direction:column; gap:12px;
+  padding:22px; overflow:hidden;
+}
+.result-card > :not(.result-details) { flex-shrink:0; }
+#over-screen .result-heading h2 { margin:6px 0 0; font-size:25px; line-height:1.3; }
+.result-summary { display:flex; justify-content:center; align-items:center; gap:18px; }
+#over-screen .mastery-medal { width:76px; height:76px; margin:0; flex:0 0 76px; object-fit:contain; }
+#over-screen .expedition-stars { margin:0 0 4px; font-size:26px; line-height:1.1; }
+#over-screen .final-score { display:block; font-size:48px; line-height:1.05; }
+#over-screen #final-details { margin:0; line-height:1.6; }
+#over-screen .result-details {
+  flex:0 1 auto; min-height:0; max-height:180px;
+  overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
+  scrollbar-gutter:stable; scroll-padding:6px; border-radius:12px;
+}
+#over-screen #word-review { max-height:none; overflow:visible; padding:2px; }
+#over-screen .expedition-next { margin:8px 0 0; padding:10px; line-height:1.6; }
+.result-actions { display:grid; grid-template-columns:1.2fr 1fr; gap:10px; }
+#over-screen .result-actions button { min-width:0; min-height:44px; margin:0; padding:11px 10px; font-size:14px; }
+#over-screen .result-actions .quiet { border:1px solid #c5d7ad; border-radius:12px; }
+#over-screen :focus-visible { outline:3px solid #3d8968; outline-offset:-3px; }
+@media (max-width:380px) {
+  #over-screen .result-card { padding:14px; gap:10px; }
+  #over-screen .result-heading h2 { font-size:23px; }
+  #over-screen .result-actions { gap:8px; }
+}
+@media (max-height:480px) {
+  #over-screen .result-card { width:min(560px, 100%); padding:12px; gap:6px; }
+  #over-screen .result-heading .eyebrow { display:none; }
+  #over-screen .result-heading h2 { margin:0; font-size:20px; line-height:1.2; }
+  #over-screen .mastery-medal { width:40px; height:40px; flex-basis:40px; }
+  #over-screen .result-tally { display:flex; align-items:center; gap:14px; }
+  #over-screen .expedition-stars { margin:0; font-size:22px; }
+  #over-screen .final-score { font-size:36px; }
+  #over-screen #final-details { font-size:11px; line-height:1.4; }
+  #over-screen .result-details { max-height:100px; }
+}
+
+/* Route learning lives inside the existing result scroller; controls/layout stay put. */
+.coil-route-recap { text-align:left; }
+.coil-route-recap h3 { font-size:14px; line-height:1.3; margin:0 0 4px; }
+.coil-route-recap .route-key { margin:5px 0; color:#45604b; font-size:11px; line-height:1.5; }
+.coil-route-map { display:block; width:min(100%, 200px); height:auto; margin:3px auto; }
+.coil-route-recap .route-pickups { margin:6px 0; padding-left:22px; font-size:12px; line-height:1.7; }
+.coil-route-recap .route-comparison { margin:6px 0; padding:7px; border-radius:8px; background:#edf3e4; color:#314d38; font-size:12px; line-height:1.6; }
+
+/* Feedback stays in the existing footer: no canvas overlay or layout resize. */
+#turn-feedback { color:#355740; font-variant-numeric:tabular-nums; }
+#controls .dpad button { position:relative; }
+#controls .dpad button::after { content:attr(data-turn-badge); position:absolute; top:1px; right:2px; min-width:11px; font-size:10px; line-height:13px; font-weight:700; color:#26452f; pointer-events:none; }
+#controls .dpad button[data-turn-state="queued"] { border-color:#3e744b; background:#e1edcc; }
+#controls .dpad button[data-turn-state="current"] { box-shadow:inset 0 0 0 2px #69894f; }
+#controls .dpad button[data-turn-state="rejected"] { border-color:#97520d; background:#fff0d7; }
+#controls .dpad button[data-turn-state="rejected"]::after { color:#80430a; }
