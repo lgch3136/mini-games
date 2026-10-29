@@ -1,0 +1,774 @@
+import { RollFeedback } from "./roll-feedback.mjs?v=20261028-roll-feedback-private-r1";
+import { fieldCoach, rememberRanger, storedMedal, tacticalProfile, rangerFieldKey, rangerBestKey, stompOpportunityNote } from "./contracts.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
+import {
+  World,
+  STEP,
+  HEIGHT,
+  OPERATIONS,
+  clamp,
+} from "./engine.mjs?v=20260930-controls-r1&mobile=20260930-quality-r2";
+import { Renderer } from "./render.js?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { Soundtrack } from "./sound.js?v=20260930-controls-r1&mobile=20260930-quality-r2";
+import { ActionLatch, pointerAim } from "./input.mjs?v=20260930-controls-r1&mobile=20260930-quality-r2";
+
+const $ = (id) => document.getElementById(id);
+const canvas = $("game"),
+  renderer = new Renderer(canvas),
+  sound = new Soundtrack();
+const coarse = matchMedia("(pointer: coarse)");
+let selectedStage = 0,
+  difficulty = "normal",
+  endless = false;
+let world = new World(),
+  screen = "menu",
+  raf = 0,
+  lastTime = 0,
+  accumulator = 0,
+  hudTime = 0;
+let noticeUntil = 0,
+  lastWordKey = "",
+  lastHealth = "",
+  lastCombo = 0,
+  audioEndTimer = null;
+const rollFeedback = new RollFeedback();
+const keys = new Set(),
+  touch = {
+    x: 0,
+    y: 0,
+    jump: false,
+    fire: false,
+    grenade: false,
+    roll: false,
+    aim: null,
+  };
+const actionPointers = new Map(),
+  actionLatch = new ActionLatch();
+let mouse = { down: false, x: 0, y: 0, pointerId: null },
+  joystickId = null,
+  fireId = null,
+  fireOrigin = null;
+const labels = { rifle: "突击步枪", spread: "散射 · S", pulse: "脉冲 · P" };
+
+function setText(id, text) {
+  if ($(id).textContent !== String(text)) $(id).textContent = text;
+}
+function cleanInput() {
+  keys.clear();
+  Object.assign(touch, {
+    x: 0,
+    y: 0,
+    jump: false,
+    fire: false,
+    grenade: false,
+    roll: false,
+    aim: null,
+  });
+  mouse.down = false;
+  mouse.pointerId = null;
+  actionLatch.clear();
+  joystickId = fireId = null;
+  $("joy-knob").style.transform = "";
+  for (const pointers of actionPointers.values()) pointers.clear();
+  document
+    .querySelectorAll("#touch-controls .active")
+    .forEach((el) => el.classList.remove("active"));
+}
+function inputState() {
+  const has = (...names) => names.some((k) => keys.has(k));
+  const input = {
+    x:
+      (has("KeyD", "ArrowRight") ? 1 : 0) -
+        (has("KeyA", "ArrowLeft") ? 1 : 0) || touch.x,
+    y:
+      (has("KeyS", "ArrowDown") ? 1 : 0) - (has("KeyW", "ArrowUp") ? 1 : 0) ||
+      touch.y,
+    jump: has("Space", "KeyK", "KeyZ") || touch.jump,
+    fire: has("KeyJ", "KeyX") || touch.fire || mouse.down,
+    grenade: has("KeyL", "KeyC") || touch.grenade,
+    roll: has("ShiftLeft", "ShiftRight") || touch.roll,
+  };
+  if (Number.isFinite(touch.aim)) input.aim = touch.aim;
+  else if (mouse.down) input.aim = pointerAim(world.player, mouse, world.camera);
+  return input;
+}
+function recordActionEdges() {
+  actionLatch.update(inputState());
+}
+function showScreen(name) {
+  screen = name;
+  $("menu").hidden = name !== "menu";
+  $("pause-screen").hidden = name !== "paused";
+  $("result-screen").hidden = name !== "result";
+  $("app").classList.toggle("playing", name !== "menu");
+  $("hud").hidden = name === "menu";
+  $("word-strip").hidden = name === "menu";
+  $("touch-controls").hidden = !coarse.matches || name !== "playing";
+  if (name === "menu") {
+    $("notice").hidden = $("combo").hidden = $("boss-hud").hidden = true;
+    $("field-contract").hidden = true;
+  }
+  renderer.resize();
+  world.viewW = renderer.width;
+  renderer.render(world, 1);
+}
+function bestKey(shortThrow, specialization) {
+  return rangerBestKey(shortThrow, specialization);
+}
+function selectedSpecialization() { return tacticalProfile($("tactical-choice").value).id; }
+function scoreLabel(short, specialization, value) {
+  const profile = tacticalProfile(specialization);
+  return `${profile.id === "normal" ? "" : profile.label + " · "}${short ? "双抛实验" : "原弧线"}最佳 ${value} · ${profile.id === "normal" ? "两模式独立" : "与常规及其他专精独立"}`;
+}
+function refreshTacticalChoice() {
+  const profile = tacticalProfile(selectedSpecialization());
+  setText("tactical-description", profile.id === "normal"
+    ? "保留原三目标：翻滚避弹或踩击 1 次、4 连击、1 词核。"
+    : `${profile.goal} → 生命 +1（满血不增）＋${profile.badge}。${profile.tip}。另两目标不变，徽记不加数值；重试保留进度，成绩独立。${profile.id === "stomp" ? "重试不会复活已越过补给的敌人，宜前段完成。" : ""}`);
+  refreshMenuRecords();
+}
+function refreshMenuRecords() {
+  const short = $("short-throw").checked;
+  const specialization = selectedSpecialization();
+  setText("operation-record", storedMedal(rangerFieldKey({stage: selectedStage, difficulty, shortThrow: short, contract: {specialization}}), undefined, specialization));
+  try {
+    const value = Number(localStorage.getItem(bestKey(short, specialization)) || 0);
+    setText("best-score", scoreLabel(short, specialization, Number.isFinite(value) ? value.toLocaleString() : "0"));
+  } catch { setText("best-score", "本地记录暂不可用 · 本次游玩不受影响"); }
+}
+function wordBank() {
+  const vocabulary = window.PROJECT_VOCAB || {};
+  const levels =
+    difficulty === "hard"
+      ? ["medium", "hard"]
+      : difficulty === "easy"
+        ? ["easy"]
+        : ["easy", "medium"];
+  return levels
+    .flatMap((level) => vocabulary[level] || [])
+    .filter((w) => /^[a-z]{3,8}$/i.test(w.en));
+}
+function begin(nextWorld = null, shortThrow = $("short-throw").checked, specialization = selectedSpecialization()) {
+  cancelAnimationFrame(raf);
+  clearTimeout(audioEndTimer);
+  sound.pause();
+  cleanInput();
+  world =
+    nextWorld ||
+    new World({
+      seed: 47 + selectedStage * 193,
+      stage: selectedStage,
+      difficulty,
+      shortThrow,
+      specialization,
+      words: wordBank(),
+      width: renderer.width,
+    });
+  rollFeedback.reset();
+  lastWordKey = lastHealth = "";
+  lastCombo = 0;
+  noticeUntil = 0;
+  renderer.setWorld(world);
+  showScreen("playing");
+  updateHUD();
+  sound.intense = false;
+  sound.step = 0;
+  sound.start();
+  notice(
+    world.contract.specialization ? tacticalProfile(world.contract.specialization).label + " · 行动开始" : "行动开始",
+    coarse.matches
+      ? "左手移动，右手射击；拖动射击键可瞄准"
+      : "按住 J 射击 · 空格短按小跳，长按高跳",
+    5,
+  );
+  canvas.focus({ preventScroll: true });
+  accumulator = 0;
+  lastTime = 0;
+  raf = requestAnimationFrame(frame);
+}
+function pause() {
+  if (screen !== "playing") return;
+  cancelAnimationFrame(raf);
+  raf = 0;
+  sound.pause();
+  cleanInput();
+  showScreen("paused");
+  const profile = tacticalProfile(world.contract.specialization);
+  $("tactical-pause").hidden = profile.id === "normal";
+  setText("tactical-pause", `${profile.label} · ${profile.goal}；当前 ${Math.min(world.contract.goals()[0].value, 2)}/2。重试保留本局专精与真实动作进度，已领目标奖励不重发。返回行动选择才可更换。${stompOpportunityNote(world)}${profile.id === "roll" && rollFeedback.detail(world) ? " " + rollFeedback.detail(world) : ""}`);
+  $("resume-btn").focus({ preventScroll: true });
+}
+function resume() {
+  if (screen !== "paused") return;
+  cleanInput();
+  showScreen("playing");
+  sound.start();
+  canvas.focus({ preventScroll: true });
+  lastTime = 0;
+  accumulator = 0;
+  raf = requestAnimationFrame(frame);
+}
+function menu() {
+  cancelAnimationFrame(raf);
+  raf = 0;
+  clearTimeout(audioEndTimer);
+  sound.pause();
+  cleanInput();
+  selectedStage %= OPERATIONS.length;
+  refreshMenuRecords();
+  document.querySelectorAll("#operation-select button").forEach((b) => {
+    const selected = Number(b.dataset.stage) === selectedStage;
+    b.classList.toggle("selected", selected);
+    b.setAttribute("aria-pressed", String(selected));
+  });
+  setText("operation-title", OPERATIONS[selectedStage].name);
+  setText("operation-brief", OPERATIONS[selectedStage].subtitle);
+  rollFeedback.reset();
+  world = new World({ stage: selectedStage, width: renderer.width });
+  renderer.setWorld(world);
+  showScreen("menu");
+  $("start-btn").focus({ preventScroll: true });
+}
+function notice(label, text, duration = 2.8) {
+  setText("notice-label", label);
+  setText("notice-text", text);
+  $("notice").hidden = false;
+  noticeUntil = world.time + duration;
+}
+function echo(text) {
+  const el = $("word-echo");
+  el.textContent = text;
+  const x = clamp(
+    ((world.player.x - world.camera) / renderer.width) * 100,
+    6,
+    80,
+  );
+  el.style.left = x + "%";
+  el.style.top = clamp(((world.player.y - 105) / HEIGHT) * 100, 19, 74) + "%";
+  el.getAnimations().forEach((a) => a.cancel());
+  el.animate(
+    [
+      { opacity: 0, transform: "translateY(6px) scale(.88)" },
+      { opacity: 1, transform: "translateY(0) scale(1)", offset: 0.22 },
+      { opacity: 1, offset: 0.65 },
+      { opacity: 0, transform: "translateY(-20px)" },
+    ],
+    { duration: 800, easing: "ease-out" },
+  );
+}
+function handleEvents() {
+  for (const e of world.events) {
+    sound.sound(e.type, e);
+    if (e.type === "contract") notice("战术目标达成 · " + e.reward, e.label + (e.badge ? " · 获得" + e.badge : ""), 3);
+    else if (e.type === "evade") echo(world.contract.specialization === "roll" ? `避弹 ${Math.min(world.contract.evades, 2)}/2` : "EVADE");
+    else if (e.type === "stomp" && world.contract.specialization === "stomp") echo(`不同敌人 ${Math.min(world.contract.stompIds.size, 2)}/2`);
+    else if (e.type === "letter") echo(e.letter);
+    else if (e.type === "word") {
+      echo(e.en);
+      notice("词核充能 · 生命 +1 / 手雷 +1", `${e.en}  ·  ${e.zh}`, 4);
+    } else if (e.type === "weapon")
+      notice(
+        "武器补给 · 35 秒",
+        e.weapon === "spread"
+          ? "S 散射弹 · 覆盖更宽的角度"
+          : "P 脉冲弹 · 可以穿透盾牌",
+        3,
+      );
+    else if (e.type === "checkpoint")
+      notice("补给点已记录", "生命与手雷已补充；已记录当前词前缀。重试回退补给后新增字母，得分重算。", 3.2);
+    else if (e.type === "boss") {
+      sound.intense = true;
+      notice("信号核心 · 重装守卫", "先看攻击预兆，核心发亮时集中射击", 4);
+    } else if (e.type === "bossDown") {
+      sound.intense = false;
+      notice("封锁解除", "向右抵达撤离点 →", 12);
+    } else if (e.type === "coreBreak") {
+      notice("一组能量锁已击破", "护甲重新闭合 · 准备闪避下一轮攻击", 2);
+    } else if (e.type === "rescue")
+      notice("安全绳回收 · 生命 -1", "提前起跳；长按跳跃可以跨得更远", 3);
+  }
+}
+function updateHUD() {
+  const p = world.player;
+  const bossActive = world.boss.active && world.boss.hp > 0;
+  const goals = world.contract.goals(), nextGoal = goals.find(g => !world.contract.claimed.has(g.id));
+  setText("field-objective", (world.contract.specialization ? tacticalProfile(world.contract.specialization).label + " · " : "") + (nextGoal ? `${world.contract.claimed.size}/3 战术目标 · ${nextGoal.label} ${Math.min(nextGoal.value, nextGoal.target)}/${nextGoal.target}` : "✓ 三项战术目标已达成"));
+  const opportunityNote = world.contract.specialization === "stomp" ? stompOpportunityNote(world) : "";
+  const rollNote = world.contract.specialization === "roll" ? rollFeedback.current(world) : null;
+  setText("field-coach", opportunityNote || rollNote?.text || fieldCoach(world));
+  if (opportunityNote) setText("field-objective", $("field-objective").textContent + " · 本次尝试已无新目标");
+  $("tactical-boss-note").hidden = !opportunityNote;
+  setText("tactical-boss-note", opportunityNote ? "踩击专精未完成 · 本次尝试已无新目标（暂停查看）" : "");
+  setText("roll-ready", (p.rollCooldown > 0 ? `翻滚 ${p.rollCooldown.toFixed(1)}s` : "翻滚就绪") + (rollNote ? " · " + rollNote.short : ""));
+  // During boss combat the attack cue takes priority over supplemental goals.
+  $("field-contract").hidden = screen === "menu" || bossActive;
+  const healthKey = `${p.hp}/${world.maxHp}`;
+  if (lastHealth !== healthKey) {
+    $("health").replaceChildren(
+      ...Array.from({ length: world.maxHp }, (_, i) => {
+        const el = document.createElement("span");
+        if (i >= p.hp) el.className = "empty";
+        return el;
+      }),
+    );
+    $("health").setAttribute("aria-label", `生命 ${p.hp} / ${world.maxHp}`);
+    lastHealth = healthKey;
+  }
+  setText("weapon-name", labels[p.weapon]);
+  setText("grenades", `${world.shortThrow ? "双抛" : "手雷"} × ${p.grenades}`);
+  setText("score-text", String(world.score).padStart(6, "0"));
+  setText("run-number", String(world.stage + 1).padStart(2, "0"));
+  const sector =
+    p.x < 2250 ? 0 : p.x < 3900 ? 1 : p.x < world.level.arena ? 2 : 3;
+  setText("sector", OPERATIONS[world.stage % OPERATIONS.length].sectors[sector]);
+  const wordKey = world.word.en + ":" + world.word.progress;
+  if (wordKey !== lastWordKey) {
+    setText("word-meaning", world.word.zh);
+    $("word-meaning").title = world.word.zh;
+    $("word-letters").replaceChildren(
+      ...[...world.word.en].map((letter, i) => {
+        const el = document.createElement("span");
+        el.textContent = letter;
+        el.className =
+          i < world.word.progress
+            ? "collected"
+            : i === world.word.progress
+              ? "next"
+              : "";
+        return el;
+      }),
+    );
+    $("word-letters").setAttribute(
+      "aria-label",
+      `${world.word.en}，已收集 ${world.word.progress} 个字母`,
+    );
+    lastWordKey = wordKey;
+  }
+  $("combo").hidden = world.combo < 2;
+  if (lastCombo !== world.combo) {
+    setText("combo-count", world.combo);
+    if (world.combo > 1)
+      $("combo").animate(
+        [{ transform: "scale(1.22)" }, { transform: "scale(1)" }],
+        { duration: 180, easing: "ease-out" },
+      );
+    lastCombo = world.combo;
+  }
+  $("boss-hud").hidden = screen === "menu" || !bossActive;
+  if (world.boss.active) {
+    $("boss-health").style.width =
+      Math.max(0, (world.boss.hp / world.boss.maxHp) * 100).toFixed(1) + "%";
+    $("boss-health").style.background = world.boss.exposed ? "#a6eccb" : "";
+    setText(
+      "boss-state",
+      world.boss.exposed
+        ? "核心暴露 · 反击"
+        : world.boss.phase === "telegraph"
+          ? {
+              fan: world.stage === 0 && world.boss.cannons.every((hp) => hp <= 0)
+                ? "炮台已拆 · 等待核心暴露"
+                : "弹幕预备 · 跳跃 / 换位",
+              stomp: "冲击波预备 · 跳跃",
+              mortar: "空袭预备 · 离开标记",
+            }[world.boss.attack]
+          : world.stage === 0 && world.boss.cannons.every((hp) => hp <= 0)
+            ? "炮台已拆 · 等待核心暴露"
+            : "护甲闭合 · 可拆炮台",
+    );
+  }
+  if (world.time > noticeUntil) $("notice").hidden = true;
+}
+function finish() {
+  cancelAnimationFrame(raf);
+  raf = 0;
+  cleanInput();
+  showScreen("result");
+  updateHUD();
+  const won = world.status === "won";
+  const report = rememberRanger(world);
+  $("field-medal").hidden = !report.stars;
+  if (report.stars) $("field-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+  $("tactical-badge").hidden = !report.specialization;
+  setText("tactical-badge", report.specialization ? `${tacticalProfile(report.specialization).label} · ${report.badge ? "✓ " + report.badge + "已取得" : "专项徽记未取得"}（无额外数值奖励）` : "");
+  setText("field-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip + (report.improved ? "\n行动勋章已升级" : ""));
+  setText(
+    "result-label",
+    (report.specialization ? tacticalProfile(report.specialization).label + " · " : "") + (world.shortThrow ? "双抛实验 · " : "原弧线 · ") + (won ? "SIGNAL RESTORED / 任务完成" : "REGROUP / 重整旗鼓"),
+  );
+  setText("result-title", won ? "信号已恢复。" : "这次，换个打法。");
+  setText(
+    "result-description",
+    won
+      ? "行动完成。最佳得分和勋章保存在本机；本次词核见下方回顾。"
+      : world.checkpoint.x > 200
+        ? "重试保留补给位置、补给时当前词的已收字母及最新战术目标（目标奖励不重发）；补给后新增字母回退。得分、击破、用时和本次词核回顾重算，后续敌人重建。"
+        : "尚未记录补给点。重试从起点开始，战术目标保留（目标奖励不重发）；得分、击破、用时、当前词进度和本次词核回顾归零。",
+  );
+  $("result-stats").replaceChildren(
+    ...[
+      [String(world.score), "行动得分"],
+      [String(world.kills), "击破目标"],
+      [
+        Math.floor(world.time / 60) +
+          ":" +
+          String(Math.floor(world.time % 60)).padStart(2, "0"),
+        "行动用时",
+      ],
+    ].map(([value, label]) => {
+      const div = document.createElement("div"),
+        strong = document.createElement("strong"),
+        small = document.createElement("small");
+      strong.textContent = value;
+      small.textContent = label;
+      div.append(strong, small);
+      return div;
+    }),
+  );
+  $("word-recap").replaceChildren(
+    ...world.learned.map((w) => {
+      const el = document.createElement("span"),
+        zh = document.createElement("em");
+      el.textContent = w.en;
+      zh.textContent = w.zh;
+      el.append(zh);
+      return el;
+    }),
+  );
+  setText(
+    "result-primary",
+    won ? (endless ? "下一行动 →" : "再次挑战 →") : (world.checkpoint.x > 200 ? "从补给点重试 →" : "从起点重试 →"),
+  );
+  let scoreSaved = true;
+  try {
+    const key = bestKey(world.shortThrow, world.contract.specialization);
+    const previous = Number(localStorage.getItem(key) || 0);
+    const best = Math.max(world.score, world.contract.specialization && !Number.isFinite(previous) ? 0 : previous);
+    localStorage.setItem(key, String(best));
+    setText(
+      "best-score",
+      scoreLabel(world.shortThrow, world.contract.specialization, best.toLocaleString()),
+    );
+  } catch { scoreSaved = false; }
+  if (report.specialization) {
+    const saved = scoreSaved && report.recordSaved;
+    setText("result-description", (won ? "行动完成。本次词核见下方回顾。" : $("result-description").textContent) + (saved ? " 专精成绩与常规、其他专精分开保存。" : " 本次专精记录未能完整保存；本局目标和操作不受影响。"));
+  }
+  audioEndTimer = setTimeout(() => sound.pause(), 700);
+  $("result-primary").focus({ preventScroll: true });
+}
+function frame(now) {
+  if (screen !== "playing") return;
+  const elapsed = lastTime ? (now - lastTime) / 1000 : 0;
+  lastTime = now;
+  accumulator += Math.min(elapsed, 0.0667);
+  while (accumulator >= STEP && world.status === "playing") {
+    const stepInput = actionLatch.consume(inputState());
+    const rollRequested = !!(stepInput.rollPressed || (stepInput.roll && !world.previousInput.roll));
+    world.step(stepInput);
+    rollFeedback.observe(world, rollRequested);
+    handleEvents();
+    accumulator -= STEP;
+  }
+  renderer.render(world, clamp(accumulator / STEP, 0, 1));
+  if (now - hudTime > 65) {
+    updateHUD();
+    hudTime = now;
+  }
+  if (world.status !== "playing") {
+    finish();
+    return;
+  }
+  raf = requestAnimationFrame(frame);
+}
+
+const codes = new Set([
+  "KeyA",
+  "KeyD",
+  "KeyW",
+  "KeyS",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Space",
+  "KeyK",
+  "KeyZ",
+  "KeyJ",
+  "KeyX",
+  "KeyL",
+  "KeyC",
+  "ShiftLeft",
+  "ShiftRight",
+]);
+window.addEventListener("keydown", (e) => {
+  if (e.code === "KeyM" && !e.repeat && screen !== "menu") {
+    e.preventDefault();
+    toggleSound();
+    return;
+  }
+  if ((e.code === "KeyP" || e.code === "Escape") && !e.repeat) {
+    if (screen === "playing") pause();
+    else if (screen === "paused") resume();
+    return;
+  }
+  if (screen !== "playing" || !codes.has(e.code)) return;
+  e.preventDefault();
+  keys.add(e.code);
+  recordActionEdges();
+});
+window.addEventListener("keyup", (e) => {
+  keys.delete(e.code);
+  recordActionEdges();
+});
+window.addEventListener("blur", () => {
+  cleanInput();
+  pause();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    cleanInput();
+    pause();
+  }
+});
+window.addEventListener("pagehide", (event) => {
+  // Safari may send pagehide before visibilitychange. Preserve the live run
+  // for BFCache, but require an explicit resume gesture after restoration.
+  cleanInput();
+  if (screen === "playing") pause();
+  cancelAnimationFrame(raf);
+  raf = 0;
+  clearTimeout(audioEndTimer);
+  sound.pause();
+  if (!event.persisted) {
+    sound.destroy();
+    resizeObserver.disconnect();
+  }
+});
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  cleanInput();
+  sound.pause();
+  if (screen === "playing") pause();
+  renderer.resize();
+  world.viewW = renderer.width;
+  renderer.render(world, 1);
+});
+function toggleSound() {
+  sound.setMuted(!sound.muted);
+  $("audio-btn").textContent = sound.muted ? "×" : "♪";
+  $("audio-btn").setAttribute("aria-label", sound.muted ? "打开声音" : "静音");
+}
+$("audio-btn").textContent = sound.muted ? "×" : "♪";
+$("audio-btn").setAttribute("aria-label", sound.muted ? "打开声音" : "静音");
+$("audio-btn").addEventListener("click", toggleSound);
+$("pause-btn").addEventListener("click", pause);
+$("resume-btn").addEventListener("click", resume);
+$("short-throw").addEventListener("change", refreshMenuRecords);
+$("tactical-choice").addEventListener("change", () => {
+  if (screen !== "menu") return;
+  refreshTacticalChoice();
+});
+$("start-btn").addEventListener("click", () => {
+  endless = $("endless").checked;
+  begin();
+});
+$("restart-btn").addEventListener("click", () =>
+  begin(world.retryCheckpoint()),
+);
+document
+  .querySelectorAll(".menu-button")
+  .forEach((el) => el.addEventListener("click", menu));
+$("result-primary").addEventListener("click", () => {
+  if (world.status === "dead") begin(world.retryCheckpoint());
+  else {
+    if (endless) selectedStage = world.stage + 1;
+    begin(null, world.shortThrow, world.contract.specialization || "normal");
+  }
+});
+document.querySelectorAll("#operation-select button").forEach((el) =>
+  el.addEventListener("click", () => {
+    selectedStage = Number(el.dataset.stage);
+    refreshMenuRecords();
+    document.querySelectorAll("#operation-select button").forEach((b) => {
+      b.classList.toggle("selected", b === el);
+      b.setAttribute("aria-pressed", String(b === el));
+    });
+    setText("operation-title", OPERATIONS[selectedStage].name);
+    setText("operation-brief", OPERATIONS[selectedStage].subtitle);
+  }),
+);
+document.querySelectorAll("#difficulty-select button").forEach((el) =>
+  el.addEventListener("click", () => {
+    difficulty = el.dataset.difficulty;
+    refreshMenuRecords();
+    document.querySelectorAll("#difficulty-select button").forEach((b) => {
+      b.classList.toggle("selected", b === el);
+      b.setAttribute("aria-pressed", String(b === el));
+    });
+  }),
+);
+
+function canvasPoint(e) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: ((e.clientX - r.left) / r.width) * renderer.width,
+    y: ((e.clientY - r.top) / r.height) * HEIGHT,
+  };
+}
+function capturePointer(element, event) {
+  // Capture can be lost between a system gesture and this callback. Global releases
+  // below remain authoritative, so a cancelled pointer never leaves a held action.
+  try {
+    element.setPointerCapture(event.pointerId);
+  } catch {}
+}
+canvas.addEventListener("pointerdown", (e) => {
+  if (screen !== "playing" || e.pointerType === "touch" || mouse.down) return;
+  e.preventDefault();
+  capturePointer(canvas, e);
+  mouse = { ...canvasPoint(e), down: true, pointerId: e.pointerId };
+  recordActionEdges();
+});
+canvas.addEventListener("pointermove", (e) => {
+  if (mouse.down && e.pointerId === mouse.pointerId) {
+    Object.assign(mouse, canvasPoint(e));
+    recordActionEdges();
+  }
+});
+for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
+  canvas.addEventListener(event, (e) => {
+    if (e.pointerId !== mouse.pointerId) return;
+    mouse.down = false;
+    mouse.pointerId = null;
+    recordActionEdges();
+  });
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+const joystick = $("joystick");
+function moveJoystick(e) {
+  if (e.pointerId !== joystickId) return;
+  const rect = joystick.getBoundingClientRect(),
+    dx = e.clientX - rect.left - rect.width / 2,
+    dy = e.clientY - rect.top - rect.height / 2;
+  const limit = rect.width * 0.32,
+    distance = Math.hypot(dx, dy),
+    scale = distance > limit ? limit / distance : 1;
+  const x = (dx * scale) / limit,
+    y = (dy * scale) / limit;
+  touch.x = Math.abs(x) > 0.2 ? clamp(x * 1.5, -1, 1) : 0;
+  touch.y = Math.abs(y) > 0.6 ? Math.sign(y) : 0;
+  $("joy-knob").style.transform = `translate(${dx * scale}px,${dy * scale}px)`;
+}
+joystick.addEventListener("pointerdown", (e) => {
+  if (screen !== "playing" || joystickId !== null) return;
+  e.preventDefault();
+  joystickId = e.pointerId;
+  capturePointer(joystick, e);
+  moveJoystick(e);
+});
+joystick.addEventListener("pointermove", moveJoystick);
+for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
+  joystick.addEventListener(event, (e) => {
+    if (e.pointerId === joystickId) {
+      joystickId = null;
+      touch.x = touch.y = 0;
+      $("joy-knob").style.transform = "";
+    }
+  });
+
+for (const [id, action] of [
+  ["jump-touch", "jump"],
+  ["grenade-touch", "grenade"],
+  ["roll-touch", "roll"],
+]) {
+  const button = $(id),
+    pointers = new Set();
+  actionPointers.set(action, pointers);
+  button.addEventListener("pointerdown", (e) => {
+    if (screen !== "playing") return;
+    e.preventDefault();
+    capturePointer(button, e);
+    pointers.add(e.pointerId);
+    touch[action] = true;
+    button.classList.add("active");
+    recordActionEdges();
+  });
+  for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
+    button.addEventListener(event, (e) => {
+      pointers.delete(e.pointerId);
+      touch[action] = pointers.size > 0;
+      button.classList.toggle("active", touch[action]);
+      recordActionEdges();
+    });
+}
+const fire = $("fire-touch");
+fire.addEventListener("pointerdown", (e) => {
+  if (screen !== "playing" || fireId !== null) return;
+  e.preventDefault();
+  fireId = e.pointerId;
+  fireOrigin = { x: e.clientX, y: e.clientY };
+  capturePointer(fire, e);
+  touch.fire = true;
+  touch.aim = null;
+  fire.classList.add("active");
+  recordActionEdges();
+});
+fire.addEventListener("pointermove", (e) => {
+  if (e.pointerId !== fireId) return;
+  const dx = e.clientX - fireOrigin.x,
+    dy = e.clientY - fireOrigin.y;
+  if (Math.hypot(dx, dy) > 12) touch.aim = Math.atan2(dy, dx);
+  recordActionEdges();
+});
+for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
+  fire.addEventListener(event, (e) => {
+    if (e.pointerId === fireId) {
+      fireId = null;
+      touch.fire = false;
+      touch.aim = null;
+      fire.classList.remove("active");
+      recordActionEdges();
+    }
+  });
+for (const event of ["pointerup", "pointercancel"])
+  window.addEventListener(event, (e) => {
+    for (const [action, pointers] of actionPointers) {
+      pointers.delete(e.pointerId);
+      touch[action] = pointers.size > 0;
+      $(`${action}-touch`).classList.toggle("active", touch[action]);
+    }
+    if (e.pointerId === joystickId) {
+      joystickId = null;
+      touch.x = touch.y = 0;
+      $("joy-knob").style.transform = "";
+    }
+    if (e.pointerId === fireId) {
+      fireId = null;
+      touch.fire = false;
+      touch.aim = null;
+      fire.classList.remove("active");
+    }
+    if (e.pointerId === mouse.pointerId) {
+      mouse.down = false;
+      mouse.pointerId = null;
+    }
+    recordActionEdges();
+  });
+
+const resizeObserver = new ResizeObserver(() => {
+  renderer.resize();
+  world.viewW = renderer.width;
+  if (screen !== "playing") renderer.render(world, 1);
+});
+resizeObserver.observe($("viewport"));
+coarse.addEventListener("change", () => {
+  $("touch-controls").hidden = !coarse.matches || screen !== "playing";
+});
+
+$("start-btn").disabled = true;
+await renderer.load();
+renderer.resize();
+world.viewW = renderer.width;
+renderer.setWorld(world);
+renderer.render(world, 1);
+$("start-btn").disabled = false;
+refreshMenuRecords();
