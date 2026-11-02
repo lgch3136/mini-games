@@ -8,3 +8,6 @@
 @media(max-width:420px){.top{gap:8px}.top>div:first-child{max-width:100px}.top small{max-width:100px}}
 
 #art-status{font-size:11px;color:#a8c6bf;line-height:1.5;max-width:380px;margin-top:10px}.primary:disabled{cursor:wait;opacity:.6}
+
+/* Music settings stay in menu/pause, keeping combat HUD clear. */
+.music-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;font-size:11px;color:#b3cccb}.music-controls button{min-height:44px;min-width:85px;padding:8px 10px}.music-controls input{width:100px;min-height:44px;accent-color:#edbf6d}.music-controls label{white-space:nowrap}

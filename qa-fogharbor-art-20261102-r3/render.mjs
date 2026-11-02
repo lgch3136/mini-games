@@ -1,5 +1,7 @@
 import {Renderer as BasicRenderer} from './render-basic.mjs';
-import {loadArt,makeFrame,ART_BUDGET} from './art.mjs';
+import {loadArt,makeFrame,makeWalkFrames,makeRig,ART_BUDGET} from './art.mjs?v=fogharbor-r5';
+import {KeeperMotion} from './keeper-motion.mjs?v=fogharbor-r5';
+import {HarborLight} from './harbor-light.mjs?v=fogharbor-r5';
 const mix=(a,b,t)=>a+(b-a)*t;
 const TAU=Math.PI*2;
 const PORT_PROPS=[[-100,280,'dock'],[-135,520,'warehouse'],[1740,420,'warehouse'],[1720,800,'dock'],[850,1400,'dock'],[1370,1360,'cargo']];
@@ -11,7 +13,8 @@ export class Renderer{
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});if(!this.ctx)throw Error('此设备无法创建Canvas2D');
   this.basic=new BasicRenderer(canvas);this.status='loading';this.error='';this.frames={};this.world=null;this.drawList=[];
   this.slots=Array.from({length:ART_BUDGET.maxActors},()=>({entity:null,kind:'',x:0,y:0,feet:0}));
-  this.ghosts=Array.from({length:ART_BUDGET.maxDashGhosts},()=>({x:0,y:0,time:-100,key:'south'}));this.ghostCursor=0;this.lastGhost=-1;this.lastFire=0;this.muzzleAt=-100;
+  this.lampA={x:0,y:0};this.lampB={x:0,y:0};this.visibleBound=this.visible.bind(this);this.motion=new KeeperMotion();this.lighting=new HarborLight(canvasOf);
+  this.ghosts=Array.from({length:ART_BUDGET.maxDashGhosts},()=>({x:0,y:0,time:-100,frame:null,face:'south',phase:0,walk:0,dash:0,lean:0}));this.ghostCursor=0;this.lastGhost=-1;this.lastFire=0;this.muzzleAt=-100;
   this.reduced=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches||false;
   this.resize();
   this.ready=loadArt().then(images=>{this.images=images;this.buildArt();this.status='ready';this.basic=null;return true;}).catch(error=>{this.status='fallback';this.error=String(error.message||error);return false;});
@@ -21,15 +24,16 @@ export class Renderer{
   this.dpr=Math.min(globalThis.devicePixelRatio||1,2,Math.sqrt(ART_BUDGET.maxCanvasPixels/(this.width*this.height)));
   this.canvas.width=Math.max(1,Math.round(this.width*this.dpr));this.canvas.height=Math.max(1,Math.round(this.height*this.dpr));
   this.scale=Math.max(.65,Math.min(1.15,this.width/1050));
+  this.lighting?.resize(this.width,this.height);
   if(this.basic)Object.assign(this.basic,{width:this.width,height:this.height,dpr:this.dpr,scale:this.scale});
   // Cache only on a real size change, never make gradients inside the frame loop.
   const c=this.ctx;this.vignette=c.createRadialGradient(this.width/2,this.height/2,Math.min(this.width,this.height)*.3,this.width/2,this.height/2,Math.max(this.width,this.height)*.7);
   this.vignette.addColorStop(0,'#07192400');this.vignette.addColorStop(1,'#07192488');
  }
  buildArt(){
-  for(const [key,height]of Object.entries({south:70,north:70,east:70,west:70,chaser:49,ranged:57,charger:73,boss:138,lighthouse:150,dock:175,warehouse:200,cargo:96}))this.frames[key]=makeFrame(this.images,key,height,canvasOf);
+  for(const [key,height]of Object.entries({chaser:49,ranged:57,charger:73,boss:138,lighthouse:150,dock:175,warehouse:200,cargo:96}))this.frames[key]=makeFrame(this.images,key,height,canvasOf);
+  const walk=makeWalkFrames(this.images,canvasOf);this.walkFrames=walk.frames;this.idleFrames=walk.idle;this.rig=makeRig(this.images,canvasOf);
   const dim=canvasOf(this.frames.lighthouse.image.width,this.frames.lighthouse.image.height),dc=dim.getContext('2d');dc.filter='saturate(.35) brightness(.54)';dc.drawImage(this.frames.lighthouse.image,0,0);this.unlitTower={...this.frames.lighthouse,image:dim};
-  this.light=canvasOf(128,128);const l=this.light.getContext('2d'),g=l.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'#ffd99138');g.addColorStop(.3,'#ebb35d18');g.addColorStop(1,'#eeb56500');l.fillStyle=g;l.fillRect(0,0,128,128);
   this.shadow=canvasOf(80,40);const sc=this.shadow.getContext('2d'),sg=sc.createRadialGradient(40,20,2,40,20,40);sg.addColorStop(0,'#04121c99');sg.addColorStop(1,'#04121c00');sc.fillStyle=sg;sc.fillRect(0,0,80,40);
   this.makeWater();this.makeGround();
  }
@@ -56,7 +60,7 @@ export class Renderer{
   c.strokeStyle='#132832';c.lineWidth=14;c.strokeRect(7,7,1586,1186);c.strokeStyle='#677568';c.lineWidth=2;c.strokeRect(15,15,1570,1170);
   for(let x=30;x<1600;x+=100){c.fillStyle='#705e43';c.fillRect(x,2,12,22);c.fillRect(x,1176,12,22);c.fillStyle='#9a865e';c.fillRect(x+2,2,8,3);c.fillRect(x+2,1176,8,3);}
  }
- sprite(frame,x,feet,alpha=1,flip=false,lean=0,bob=0,hit=0){const c=this.ctx;c.save();c.translate(x,feet+bob);if(flip)c.scale(-1,1);if(lean)c.rotate(lean);c.globalAlpha=alpha;c.drawImage(frame.image,-frame.width/2,-frame.height,frame.width,frame.height);if(hit>0){c.globalAlpha=alpha*Math.min(.7,hit*5);c.drawImage(frame.hit,-frame.width/2,-frame.height,frame.width,frame.height);}c.restore();}
+ sprite(frame,x,feet,alpha=1,flip=false,lean=0,bob=0,hit=0){const c=this.ctx;c.save();c.translate(x,feet+bob);if(flip)c.scale(-1,1);if(lean)c.rotate(lean);c.globalAlpha=alpha;c.drawImage(frame.image,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);if(hit>0){c.globalAlpha=alpha*Math.min(.7,hit*5);c.drawImage(frame.hit,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);}c.restore();}
  circle(x,y,r,color){const c=this.ctx;c.fillStyle=color;c.beginPath();c.arc(x,y,r,0,TAU);c.fill();}
  visible(x,y,r=100){return Math.abs(x-this.cx)<this.width/this.scale/2+r&&Math.abs(y-this.cy)<this.height/this.scale/2+r;}
  direction(p){return Math.abs(p.dx)>Math.abs(p.dy)?p.dx<0?'west':'east':p.dy<0?'north':'south';}
@@ -65,19 +69,18 @@ export class Renderer{
    this.basic?.render(w,alpha);if(this.status==='fallback'){const c=this.ctx;c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle='#301d1ee8';c.fillRect(this.width/2-180,this.height-67,360,22);c.fillStyle='#ffcf9b';c.font='11px system-ui';c.textAlign='center';c.fillText('基础场景回退 · 新战场资源未载入',this.width/2,this.height-52);}return;
   }
   const c=this.ctx,W=this.width,H=this.height,p=w.player,s=this.scale;
-  if(this.world!==w){this.world=w;for(const ghost of this.ghosts)ghost.time=-100;this.lastGhost=-1;this.lastFire=p.fire;this.muzzleAt=-100;}
+  if(this.world!==w){this.world=w;for(const ghost of this.ghosts)ghost.time=-100;this.lastGhost=-1;this.lastFire=p.fire;this.muzzleAt=-100;this.motion.reset(p.x,p.y,w.time,p.dx,p.dy);}
   if(p.fire>this.lastFire+.05)this.muzzleAt=w.time;this.lastFire=p.fire;
-  this.cx=mix(p.px,p.x,alpha);this.cy=mix(p.py,p.y,alpha);const facing=this.direction(p);
-  if(!this.reduced&&p.dash>0&&w.time-this.lastGhost>.025){const g=this.ghosts[this.ghostCursor];g.x=this.cx;g.y=this.cy;g.time=w.time;g.key=facing;this.ghostCursor=(this.ghostCursor+1)%this.ghosts.length;this.lastGhost=w.time;}
+  this.cx=mix(p.px,p.x,alpha);this.cy=mix(p.py,p.y,alpha);const motion=this.motion.update(p,this.cx,this.cy,w.time,this.reduced);const facing=motion.face;this.lanternPoint(motion);
+  if(!this.reduced&&p.dash>0&&w.time-this.lastGhost>.025){const g=this.ghosts[this.ghostCursor];g.x=this.cx;g.y=this.cy;g.time=w.time;g.frame=this.poseFrame(facing,motion.phase);g.face=facing;g.phase=motion.phase;g.walk=motion.walk;g.dash=motion.dash;g.lean=motion.lean;this.ghostCursor=(this.ghostCursor+1)%this.ghosts.length;this.lastGhost=w.time;}
   c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle='#091f30';c.fillRect(0,0,W,H);c.save();c.translate(W/2,H/2);c.scale(s,s);c.translate(-this.cx,-this.cy);
   // Water is exclusively beyond the original 0..1600 / 0..1200 walkable rectangle.
   c.save();const drift=this.reduced?0:w.time*4;c.translate(drift,0);c.fillStyle=this.waterPattern;c.fillRect(this.cx-W/s-drift,this.cy-H/s,W/s*2,H/s*2);c.restore();
   c.drawImage(this.ground,0,0);
   // Background port structures are unreachable; do not suggest new solid collision in the arena.
   for(const [x,y,key]of PORT_PROPS)if(this.visible(x,y,220))this.sprite(this.frames[key],x,y,.85);
-  let lights=0;
-  for(const l of w.lamps){if(!this.visible(l.x,l.y,240))continue;if(l.lit&&lights<3){c.drawImage(this.light,l.x-170,l.y-150,340,300);lights++;}
-  }
+  const illumination=this.lighting.render(w,this.cx,this.cy,W,H,s,motion,this.visibleBound,this.reduced);
+  c.save();c.setTransform(this.dpr,0,0,this.dpr,0,0);c.globalCompositeOperation='screen';c.globalAlpha=.72;c.drawImage(illumination,0,0,W,H);c.restore();
   w.gems.each(g=>{if(!this.visible(g.x,g.y,12))return;c.save();c.translate(g.x,g.y);c.rotate(Math.PI/4);c.fillStyle='#412f20';c.fillRect(-5,-5,10,10);c.fillStyle='#e9bc64';c.fillRect(-3.5,-3.5,7,7);c.fillStyle='#fff0ba';c.fillRect(-2,-3,3,3);c.restore();});
   // Build a bounded Y-sorted list, reusing actor slot objects; player is not hidden inside a tower.
   this.drawList.length=0;let n=0;
@@ -86,19 +89,17 @@ export class Renderer{
   for(const l of w.lamps)if(this.visible(l.x,l.y,200)){const slot=this.slots[n++];slot.entity=l;slot.kind='tower';slot.x=l.x;slot.y=l.y;slot.feet=l.y+26;this.drawList.push(slot);}
   this.drawList.sort(footOrder);
   // Soft ground-light below characters, not a veil over threats.
-  c.drawImage(this.light,this.cx-100,this.cy-90,200,180);
-  for(const g of this.ghosts){const age=w.time-g.time;if(age>=0&&age<.16&&!this.reduced)this.sprite(this.frames[g.key],g.x,g.y,(1-age/.16)*.17);}
+
+  for(const g of this.ghosts){const age=w.time-g.time;if(age>=0&&age<.16&&!this.reduced){if(g.face==='south'||g.face==='north')this.rigKeeper(g.face,g.x,g.y,(1-age/.16)*.17,g);else this.sprite(g.frame,g.x,g.y,(1-age/.16)*.17);}}
   for(const a of this.drawList){const e=a.entity;
    if(a.kind==='tower'){
     let opacity=1;for(const other of this.drawList)if(other.kind!=='tower'&&Math.abs(other.x-a.x)<65&&other.y<a.feet&&other.y>a.feet-160){opacity=.28;break;}
     c.drawImage(this.shadow,a.x-55,a.feet-22,110,42);this.sprite(e.lit?this.frames.lighthouse:this.unlitTower,a.x,a.feet,opacity);
    }else if(a.kind==='player'){
-    c.drawImage(this.shadow,a.x-23,a.y-11,46,22);const moving=Math.hypot(p.x-p.px,p.y-p.py)>.03;
-    const bob=!this.reduced&&moving&&p.dash<=0?Math.sin(w.time*15)*1.4:0,lean=p.dash>0?p.dx*.08:0;
-    const blink=p.inv>0&&Math.floor(w.time*16)%2?.6:1;this.sprite(this.frames[facing],a.x,a.feet,blink,false,lean,bob);
-    // Grounded feet, scarf motion suggested by sway; four directions are static art, not invented walk frames.
-    if(moving&&!this.reduced){c.strokeStyle='#a1aaa229';c.lineWidth=2;c.beginPath();c.moveTo(a.x-p.dx*10,a.y);c.lineTo(a.x-p.dx*17,a.y-p.dy*6);c.stroke();}
-    if(w.time-this.muzzleAt<.07){this.circle(a.x,a.y-12,4,'#ffe1a1');}
+    c.drawImage(this.shadow,a.x-23,a.y-11,46,22);
+    const blink=p.inv>0&&Math.floor(w.time*16)%2?.6:1;
+    this.keeper(a.x,a.feet,blink,motion);
+    if(w.time-this.muzzleAt<.07)this.circle(a.x+motion.lightX,a.y+motion.lightY,3,'#ffe1a1');
    }else{
     const frame=this.frames[e.kind],movement=Math.hypot(e.x-e.px,e.y-e.py),bob=!this.reduced&&movement>.02?Math.sin(w.time*(e.kind==='chaser'?14:9)+e.id)*1.2:0;
     c.drawImage(this.shadow,a.x-e.r*1.2,a.y+e.r*.3,e.r*2.4,e.r);
@@ -118,6 +119,31 @@ export class Renderer{
   w.hostiles.each(b=>{this.circle(b.x,b.y,8,'#201b29');this.circle(b.x,b.y,6,'#e36c5c');this.circle(b.x,b.y,2.7,'#fff2bb');});
   c.restore();c.fillStyle=this.vignette;c.fillRect(0,0,W,H);this.bearings(w);
   if(w.flash>0){c.strokeStyle=`rgba(223,94,69,${Math.min(.75,w.flash*3)})`;c.lineWidth=14;c.strokeRect(5,5,W-10,H-10);}
+ }
+ poseFrame(face,phase){const frames=this.walkFrames?.[face];return frames?.[Math.floor(phase/4*frames.length)%frames.length]||null;}
+ keeper(x,feet,alpha,m){
+  const draw=(face,weight)=>{if(weight<=.001)return;if((face==='south'||face==='north')&&this.rig){this.rigKeeper(face,x,feet,alpha*weight,m);return;}const frames=this.walkFrames?.[face];
+   if(!frames?.length){this.sprite(this.frames[face],x,feet,alpha*weight);return;}
+   const phase=m.phase/4*frames.length,index=Math.floor(phase)%frames.length,fract=phase-Math.floor(phase),blend=fract*fract*(3-2*fract);
+   const walk=m.walk*(1-m.dash),idle=1-walk-m.dash,lean=this.reduced?0:m.lean;
+   if(idle>.001)this.sprite(this.idleFrames[face],x,feet,alpha*weight*idle,false,lean);
+   if(walk>.001){this.sprite(frames[index],x,feet,alpha*weight*walk*(1-blend),false,lean);this.sprite(frames[(index+1)%frames.length],x,feet,alpha*weight*walk*blend,false,lean);}
+   if(m.dash>.001)this.sprite(frames[Math.floor(frames.length/4)],x,feet,alpha*weight*m.dash,false,lean);
+  };
+  // Short pose cross-fades join actual limb frames; no whole-sprite bob substitutes for gait.
+  draw(m.previous,1-m.turn);draw(m.face,m.turn);
+ }
+ lampFor(face,m,out){const lean=this.reduced?0:m.lean;let x=0,y=0,rotate=lean;
+  if(face==='south'||face==='north'){const point=this.rig[face==='south'?'front_upper':'back_upper'].lantern;x=point.x;y=point.y;rotate+=this.reduced?0:Math.sin(m.phase*Math.PI/2)*.018*m.walk*(1-m.dash);}
+  else{const fs=this.walkFrames[face],phase=m.phase/4*fs.length,i=Math.floor(phase)%fs.length,f=phase-Math.floor(phase),blend=f*f*(3-2*f),walk=m.walk*(1-m.dash),idle=1-walk-m.dash,a=fs[i].lantern,b=fs[(i+1)%fs.length].lantern,d=fs[Math.floor(fs.length/4)].lantern,rest=this.idleFrames[face].lantern;x=rest.x*idle+(a.x*(1-blend)+b.x*blend)*walk+d.x*m.dash;y=rest.y*idle+(a.y*(1-blend)+b.y*blend)*walk+d.y*m.dash;}
+  out.x=x*Math.cos(rotate)-y*Math.sin(rotate);out.y=x*Math.sin(rotate)+y*Math.cos(rotate)+(face==='south'||face==='north'?m.dash*2:0);
+ }
+ lanternPoint(m){this.lampFor(m.previous,m,this.lampA);this.lampFor(m.face,m,this.lampB);m.lightX=mix(this.lampA.x,this.lampB.x,m.turn);m.lightY=mix(this.lampA.y,this.lampB.y,m.turn);}
+ rigKeeper(face,x,feet,alpha,m){const c=this.ctx,prefix=face==='south'?'front':'back',phase=m.phase*Math.PI/2,amount=m.walk*(1-m.dash),lean=this.reduced?0:m.lean;
+  const leg=(side,offset)=>{const f=this.rig[prefix+'_screen_'+side+'_leg'],wave=Math.sin(phase+offset),lift=Math.max(0,wave)*amount;c.save();c.translate(x+(side==='left'?-5:5),feet-33);c.rotate(lean+wave*.055*amount+(side==='left'?-.08:.06)*m.dash);c.scale(1,1-lift*.14-m.dash*(side==='left'?.12:.04));this.sprite(f,0,0,alpha);c.restore();};
+  if(Math.sin(phase)>0){leg('right',Math.PI);leg('left',0);}else{leg('left',0);leg('right',Math.PI);}
+  const body=this.rig[prefix+'_upper'];const shoulder=this.reduced?0:Math.sin(phase)*.018*amount;
+  this.sprite(body,x,feet+m.dash*2,alpha,false,lean+shoulder);
  }
  lampGuidance(w){const c=this.ctx;
   for(const l of w.lamps){if(!this.visible(l.x,l.y,120))continue;
