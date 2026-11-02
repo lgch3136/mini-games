@@ -1,5 +1,5 @@
 import { RelicFeedback, echoProgress, hourglassState, relicChoiceDescription } from "./relic-feedback.mjs?v=20261027-relic-r1";
-import { practiceProgress, typingCoach, practiceAdvice, reviewFeedback, reviewAdvice } from "./practice.mjs?v=20261010-result-fix-r1";
+import { practiceProgress, typingCoach, practiceAdvice, reviewFeedback, reviewAdvice } from "./practice.mjs?v=20261103-expedition-progress-r1";
 import { Journey, STEP } from "./sim.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   makeLexicon,

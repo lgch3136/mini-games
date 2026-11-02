@@ -1,8 +1,10 @@
 export function practiceProgress(g) {
   const goal = g.focusGoal || 0, words = g.stats.words;
   const target = goal || (g.mode === 'review' ? g.reviewTarget : 0);
-  return { goal, words, fraction: target ? Math.min(1, words / target) : Math.min(1, (g.depth + (g.phase === 'complete' ? 1 : 0)) / 9),
-    label: goal ? `静心练习 · ${words}/${goal} 词` : g.mode === 'review' ? `错词回练 · 本组 ${words}/${g.reviewTarget} 次` : `旅程 · 第 ${Math.min(9, g.depth + 1)} / 9 页`,
+  const expedition = g.mode === 'journey' && !goal && g.depth >= 9;
+  const page = g.depth % 9;
+  return { goal, words, fraction: target ? Math.min(1, words / target) : expedition ? (page + (g.phase === 'complete' ? 1 : 0)) / 9 : Math.min(1, (g.depth + (g.phase === 'complete' ? 1 : 0)) / 9),
+    label: expedition ? `远征第 ${Math.floor(g.depth / 9)} 轮 · 第 ${page + 1} / 9 页` : goal ? `静心练习 · ${words}/${goal} 词` : g.mode === 'review' ? `错词回练 · 本组 ${words}/${g.reviewTarget} 次` : `旅程 · 第 ${Math.min(9, g.depth + 1)} / 9 页`,
     stars: g.phase === 'complete' && goal ? 1 + Number(g.accuracy >= 95) + Number(g.stats.perfect === goal) : 0 };
 }
 export function typingCoach(g, { touch = false } = {}) {
