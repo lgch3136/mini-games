@@ -1,7 +1,7 @@
 import {WALK_FILES,WALK_FRAMES,RIG_PARTS} from './keeper-frames.mjs?v=fogharbor-r6';
 export const BEACON_VISUAL=Object.freeze({height:68,footOffset:12,lightX:-2*68/868,lightY:12-448*68/868});
 // Original generated resources. Unequal object crops are measured, never a guessed grid.
-export const ART_FILES={enemies:'assets/enemies-atlas-v1.webp',props:'assets/harbor-props-atlas-v1.webp',beacon:'assets/harbor-beacon-v1.webp',...WALK_FILES};
+export const ART_FILES={stone:'assets/harbor-stone-v2.webp',wood:'assets/harbor-wood-v2.webp',enemies:'assets/enemies-atlas-v1.webp',props:'assets/harbor-props-atlas-v1.webp',beacon:'assets/harbor-beacon-v1.webp',...WALK_FILES};
 export const CROPS={
  chaser:['enemies',112,80,455,474],ranged:['enemies',765,79,359,451],charger:['enemies',18,653,591,509],boss:['enemies',622,647,616,515],
  lighthouse:['beacon',189,304,688,868],dock:['props',646,196,583,485],warehouse:['props',51,685,601,524],cargo:['props',721,830,476,380],

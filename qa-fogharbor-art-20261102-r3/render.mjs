@@ -1,5 +1,6 @@
+import {makeHarborGround} from './harbor-ground.mjs?v=fogharbor-r7';
 import {Renderer as BasicRenderer} from './render-basic.mjs';
-import {loadArt,makeFrame,makeWalkFrames,makeRig,ART_BUDGET,BEACON_VISUAL} from './art.mjs?v=fogharbor-r6';
+import {loadArt,makeFrame,makeWalkFrames,makeRig,ART_BUDGET,BEACON_VISUAL} from './art.mjs?v=fogharbor-r7';
 import {KeeperMotion} from './keeper-motion.mjs?v=fogharbor-r5';
 import {HarborLight} from './harbor-light.mjs?v=fogharbor-r6';
 const mix=(a,b,t)=>a+(b-a)*t;
@@ -8,7 +9,7 @@ export const VISUAL_SCALE=Object.freeze({keeper:.56,chaser:38,ranged:46,charger:
 const PORT_PROPS=[[-100,280,'dock'],[-135,520,'warehouse'],[1740,420,'warehouse'],[1720,800,'dock'],[850,1400,'dock'],[1370,1360,'cargo']];
 const footOrder=(a,b)=>a.feet-b.feet;
 const canvasOf=(width,height)=>{const c=document.createElement('canvas');c.width=width;c.height=height;return c;};
-const hash=n=>(Math.imul(n+71,2654435761)>>>0)/4294967296;
+const hash=n=>{n=Math.imul(n^0x9e3779b9,0x85ebca6b);n=Math.imul(n^(n>>>13),0xc2b2ae35);return((n^(n>>>16))>>>0)/4294967296;};
 export class Renderer{
  constructor(canvas){
   this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});if(!this.ctx)throw Error('此设备无法创建Canvas2D');
@@ -43,26 +44,7 @@ export class Renderer{
   for(let i=0;i<180;i++){const x=hash(i*3)*256,y=hash(i*3+1)*256,len=8+hash(i*3+2)*42;c.strokeStyle=i%3?'#14394a':'#1b4351';c.lineWidth=i%4?1:2;c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+len*.4,y+2,x+len,y-1);c.stroke();}
   this.waterPattern=this.ctx.createPattern(this.water,'repeat');
  }
- makeGround(){
-  // Quiet broad surfaces rather than a high-frequency texture tiled under every actor.
-  this.ground=canvasOf(1600,1200);const c=this.ground.getContext('2d');c.fillStyle='#3d565b';c.fillRect(0,0,1600,1200);
-  // Flush irregular paving patches are walkable material, not walls or deep water.
-  for(let row=0;row<8;row++)for(let col=0;col<10;col++){const i=row*10+col,x=col*168-(row%2)*60,y=row*162;
-   c.fillStyle=['#3e575c','#40595d','#3a5359','#425b5e'][Math.floor(hash(i+19)*4)];c.fillRect(x+2,y+2,164,158);
-   c.strokeStyle='#354e543d';c.lineWidth=2;c.beginPath();c.moveTo(x+8,y+160);c.lineTo(x+160,y+160);c.stroke();}
-  // Sparse repair plates and rope scuffs, never dense scanning lines or a core cross.
-  for(let i=0;i<30;i++){const x=50+hash(i*7)*1500,y=40+hash(i*7+1)*1120;c.fillStyle='#52676838';c.fillRect(x,y,18+hash(i*7+2)*34,3);}
-  // Edge seawall belongs to the original rectangular boundary; everything inside stays walkable.
-  c.strokeStyle='#203b44';c.lineWidth=18;c.strokeRect(7,7,1586,1186);c.strokeStyle='#6c7b70';c.lineWidth=3;c.strokeRect(17,17,1566,1166);
-  for(let x=48;x<1600;x+=180){c.fillStyle='#60716b';c.fillRect(x,1,28,18);c.fillRect(x,1181,28,18);c.fillStyle='#82907b';c.fillRect(x+2,2,24,3);c.fillRect(x+2,1181,24,3);}
- }
- lampIslands(w){const c=this.ctx;for(let i=0;i<w.lamps.length;i++){const l=w.lamps[i];if(!this.visible(l.x,l.y,160))continue;c.save();c.translate(l.x,l.y);
-  c.fillStyle='#425b5a';c.beginPath();c.ellipse(0,0,107,88,0,0,TAU);c.fill();c.strokeStyle='#4b625e';c.lineWidth=1;c.stroke();
-  c.strokeStyle='#3d5659';c.lineWidth=2;c.beginPath();c.arc(0,0,93,0,TAU);c.stroke();
-  // Flat inlaid marker guides the eye to the actual lamp center, never suggests a collision wall.
-  c.fillStyle='#667463';for(let k=0;k<4;k++){c.save();c.rotate(k*TAU/4);c.fillRect(-3,98,6,12);c.restore();}
-  c.fillStyle='#53685f';c.font='bold 22px monospace';c.textAlign='center';c.fillText('0'+(i+1),0,128);c.restore();}
- }
+ makeGround(){this.ground=makeHarborGround(canvasOf,this.images);}
 
  sprite(frame,x,feet,alpha=1,flip=false,lean=0,bob=0,hit=0){const c=this.ctx;c.save();c.translate(x,feet+bob);if(flip)c.scale(-1,1);if(lean)c.rotate(lean);if(hit>0&&!this.reduced){const q=Math.min(1,hit/.12);c.scale(1+.07*q,1-.06*q);}c.globalAlpha=alpha;c.drawImage(frame.image,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);if(hit>0){c.globalAlpha=alpha*Math.min(.7,hit*5);c.drawImage(frame.hit,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);}c.restore();}
  circle(x,y,r,color){const c=this.ctx;c.fillStyle=color;c.beginPath();c.arc(x,y,r,0,TAU);c.fill();}
@@ -80,7 +62,7 @@ export class Renderer{
   c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle='#091f30';c.fillRect(0,0,W,H);c.save();c.translate(W/2,H/2);c.scale(s,s);c.translate(-this.cx,-this.cy);
   // Water is exclusively beyond the original 0..1600 / 0..1200 walkable rectangle.
   c.save();const drift=this.reduced?0:w.time*4;c.translate(drift,0);c.fillStyle=this.waterPattern;c.fillRect(this.cx-W/s-drift,this.cy-H/s,W/s*2,H/s*2);c.restore();
-  c.drawImage(this.ground,0,0);this.lampIslands(w);
+  c.drawImage(this.ground,0,0);
   // Background port structures are unreachable; do not suggest new solid collision in the arena.
   for(const [x,y,key]of PORT_PROPS)if(this.visible(x,y,220))this.sprite(this.frames[key],x,y,.85);
   const illumination=this.lighting.render(w,this.cx,this.cy,W,H,s,motion,this.visibleBound,this.reduced);
