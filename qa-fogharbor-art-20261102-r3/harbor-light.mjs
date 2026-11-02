@@ -1,3 +1,4 @@
+import {BEACON_VISUAL} from './art.mjs?v=fogharbor-r6';
 // Stylized Canvas light, NOT ray tracing. One bounded low-resolution underlay.
 export const LIGHT_LIMITS=Object.freeze({maxPixels:260000,maxHitLights:5,maxSources:13});
 const TAU=Math.PI*2;
@@ -10,8 +11,8 @@ export class HarborLight{
  glow(x,y,rx,ry,alpha=1){const c=this.ctx;c.globalAlpha=alpha;c.drawImage(this.halo,x-rx,y-ry,rx*2,ry*2);this.sources++;}
  render(w,cx,cy,width,height,scale,motion,visible,reduced=false){const c=this.ctx,k=this.ratio;this.sources=0;c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,this.surface.width,this.surface.height);c.setTransform(k*scale,0,0,k*scale,k*(width/2-cx*scale),k*(height/2-cy*scale));c.globalCompositeOperation='source-over';
   // Warm light follows the lantern hand; a softer ground pool follows the feet.
-  this.glow(cx+motion.lightX,cy+motion.lightY,70,56,.65);this.glow(cx,cy+6,115,72,.32);
-  for(let i=0;i<w.lamps.length;i++){const l=w.lamps[i];if(!l.lit||!visible(l.x,l.y,350))continue;this.glow(l.x,l.y,150,95,.35);c.save();c.translate(l.x-3,l.y-91);c.rotate((reduced?0:w.time*.38)+i*TAU/3);c.globalAlpha=.55;c.drawImage(this.beam,0,-64,290,128);c.restore();this.sources++;}
+  this.glow(cx+motion.lightX,cy+motion.lightY,42,34,.55);this.glow(cx,cy+6,64,40,.22);
+  for(let i=0;i<w.lamps.length;i++){const l=w.lamps[i];if(!l.lit||!visible(l.x,l.y,350))continue;this.glow(l.x,l.y,100,64,.3);c.save();c.translate(l.x+BEACON_VISUAL.lightX,l.y+BEACON_VISUAL.lightY);c.rotate((reduced?0:w.time*.38)+i*TAU/3);c.globalAlpha=.55;c.drawImage(this.beam,0,-44,210,88);c.restore();this.sources++;}
   let hits=0;for(const e of w.enemies.items){if(hits===LIGHT_LIMITS.maxHitLights)break;if(e.active&&e.hit>0&&visible(e.x,e.y,80)){this.glow(e.x,e.y-12,55,38,Math.min(.6,e.hit*4));hits++;}}
   c.globalAlpha=1;c.globalCompositeOperation='source-over';return this.surface;
  }

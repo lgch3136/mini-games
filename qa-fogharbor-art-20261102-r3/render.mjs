@@ -1,9 +1,10 @@
 import {Renderer as BasicRenderer} from './render-basic.mjs';
-import {loadArt,makeFrame,makeWalkFrames,makeRig,ART_BUDGET} from './art.mjs?v=fogharbor-r5';
+import {loadArt,makeFrame,makeWalkFrames,makeRig,ART_BUDGET,BEACON_VISUAL} from './art.mjs?v=fogharbor-r6';
 import {KeeperMotion} from './keeper-motion.mjs?v=fogharbor-r5';
-import {HarborLight} from './harbor-light.mjs?v=fogharbor-r5';
+import {HarborLight} from './harbor-light.mjs?v=fogharbor-r6';
 const mix=(a,b,t)=>a+(b-a)*t;
 const TAU=Math.PI*2;
+export const VISUAL_SCALE=Object.freeze({keeper:.56,chaser:38,ranged:46,charger:56,boss:104,beacon:68});
 const PORT_PROPS=[[-100,280,'dock'],[-135,520,'warehouse'],[1740,420,'warehouse'],[1720,800,'dock'],[850,1400,'dock'],[1370,1360,'cargo']];
 const footOrder=(a,b)=>a.feet-b.feet;
 const canvasOf=(width,height)=>{const c=document.createElement('canvas');c.width=width;c.height=height;return c;};
@@ -14,7 +15,7 @@ export class Renderer{
   this.basic=new BasicRenderer(canvas);this.status='loading';this.error='';this.frames={};this.world=null;this.drawList=[];
   this.slots=Array.from({length:ART_BUDGET.maxActors},()=>({entity:null,kind:'',x:0,y:0,feet:0}));
   this.lampA={x:0,y:0};this.lampB={x:0,y:0};this.visibleBound=this.visible.bind(this);this.motion=new KeeperMotion();this.lighting=new HarborLight(canvasOf);
-  this.ghosts=Array.from({length:ART_BUDGET.maxDashGhosts},()=>({x:0,y:0,time:-100,frame:null,face:'south',phase:0,walk:0,dash:0,lean:0}));this.ghostCursor=0;this.lastGhost=-1;this.lastFire=0;this.muzzleAt=-100;
+  this.ghosts=Array.from({length:ART_BUDGET.maxDashGhosts},()=>({x:0,y:0,time:-100,frame:null,face:'south',previous:'south',turn:1,phase:0,walk:0,dash:0,lean:0}));this.ghostCursor=0;this.lastGhost=-1;this.lastFire=0;this.muzzleAt=-100;
   this.reduced=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches||false;
   this.resize();
   this.ready=loadArt().then(images=>{this.images=images;this.buildArt();this.status='ready';this.basic=null;return true;}).catch(error=>{this.status='fallback';this.error=String(error.message||error);return false;});
@@ -31,7 +32,7 @@ export class Renderer{
   this.vignette.addColorStop(0,'#07192400');this.vignette.addColorStop(1,'#07192488');
  }
  buildArt(){
-  for(const [key,height]of Object.entries({chaser:49,ranged:57,charger:73,boss:138,lighthouse:150,dock:175,warehouse:200,cargo:96}))this.frames[key]=makeFrame(this.images,key,height,canvasOf);
+  for(const [key,height]of Object.entries({chaser:38,ranged:46,charger:56,boss:104,lighthouse:68,dock:125,warehouse:140,cargo:64}))this.frames[key]=makeFrame(this.images,key,height,canvasOf);
   const walk=makeWalkFrames(this.images,canvasOf);this.walkFrames=walk.frames;this.idleFrames=walk.idle;this.rig=makeRig(this.images,canvasOf);
   const dim=canvasOf(this.frames.lighthouse.image.width,this.frames.lighthouse.image.height),dc=dim.getContext('2d');dc.filter='saturate(.35) brightness(.54)';dc.drawImage(this.frames.lighthouse.image,0,0);this.unlitTower={...this.frames.lighthouse,image:dim};
   this.shadow=canvasOf(80,40);const sc=this.shadow.getContext('2d'),sg=sc.createRadialGradient(40,20,2,40,20,40);sg.addColorStop(0,'#04121c99');sg.addColorStop(1,'#04121c00');sc.fillStyle=sg;sc.fillRect(0,0,80,40);
@@ -43,24 +44,27 @@ export class Renderer{
   this.waterPattern=this.ctx.createPattern(this.water,'repeat');
  }
  makeGround(){
-  const tile=canvasOf(512,512),t=tile.getContext('2d');
-  for(let y=0;y<2;y++)for(let x=0;x<2;x++){t.save();t.translate(x?512:0,y?512:0);t.scale(x?-1:1,y?-1:1);t.drawImage(this.images.ground,0,0,256,256);t.restore();}
-  this.ground=canvasOf(1600,1200);const c=this.ground.getContext('2d');c.fillStyle='#394447';c.fillRect(0,0,1600,1200);c.globalAlpha=.15;c.fillStyle=c.createPattern(tile,'repeat');c.fillRect(0,0,1600,1200);c.globalAlpha=1;
-  // Flush timber walkways, not pits or collision barriers. Every interior pixel remains traversable.
-  const wood=(x,y,w,h,vertical=false)=>{c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.fillStyle='#283b3e';c.fillRect(x,y,w,h);
-   const extent=vertical?w:h;for(let n=0;n<extent;n+=17){const tone=hash(n+Math.floor(x+y));c.fillStyle=tone>.55?'#4a4a3c':'#3e443a';if(vertical)c.fillRect(x+n,y,15,h);else c.fillRect(x,y+n,w,15);
-    // Sparse board joins and paired nails, never dense full-length scanlines.
-    c.strokeStyle='#263536';c.lineWidth=1;for(let k=0;k<(vertical?h:w);k+=110){const j=k+(n%34?45:0);c.beginPath();if(vertical){c.moveTo(x+n,y+j);c.lineTo(x+n+15,y+j);}else{c.moveTo(x+j,y+n);c.lineTo(x+j,y+n+15);}c.stroke();c.fillStyle='#8b88764a';if(vertical){c.fillRect(x+n+3,y+j+3,1.5,1.5);c.fillRect(x+n+11,y+j+3,1.5,1.5);}else{c.fillRect(x+j+3,y+n+3,1.5,1.5);c.fillRect(x+j+3,y+n+11,1.5,1.5);}}}
-   c.strokeStyle='#647168';c.lineWidth=2;c.strokeRect(x+1,y+1,w-2,h-2);c.restore();};
-  wood(0,0,230,1200);wood(1370,0,230,1200);wood(0,1020,1600,180);
-  // Recessed drainage under continuous metal grates: visibly walkable, never fake deep water.
-  for(const x of [250,1328]){c.fillStyle='#102c37';c.fillRect(x,80,22,940);c.strokeStyle='#65716b';c.lineWidth=3;for(let y=80;y<1020;y+=9){c.beginPath();c.moveTo(x,y);c.lineTo(x+22,y);c.stroke();}c.strokeStyle='#283e45';c.lineWidth=3;c.strokeRect(x,80,22,940);}
-  // Wet scuffs, repairs and edge ironwork are fixed and low contrast.
-  for(let i=0;i<95;i++){const x=30+hash(i*5)*1540,y=25+hash(i*5+2)*1150;c.fillStyle=i%2?'#081c2820':'#86b4b20c';c.beginPath();c.ellipse(x,y,12+hash(i*5+1)*25,3+hash(i*5+3)*9,hash(i)*TAU,0,TAU);c.fill();}
-  c.strokeStyle='#132832';c.lineWidth=14;c.strokeRect(7,7,1586,1186);c.strokeStyle='#677568';c.lineWidth=2;c.strokeRect(15,15,1570,1170);
-  for(let x=30;x<1600;x+=100){c.fillStyle='#705e43';c.fillRect(x,2,12,22);c.fillRect(x,1176,12,22);c.fillStyle='#9a865e';c.fillRect(x+2,2,8,3);c.fillRect(x+2,1176,8,3);}
+  // Quiet broad surfaces rather than a high-frequency texture tiled under every actor.
+  this.ground=canvasOf(1600,1200);const c=this.ground.getContext('2d');c.fillStyle='#3d565b';c.fillRect(0,0,1600,1200);
+  // Flush irregular paving patches are walkable material, not walls or deep water.
+  for(let row=0;row<8;row++)for(let col=0;col<10;col++){const i=row*10+col,x=col*168-(row%2)*60,y=row*162;
+   c.fillStyle=['#3e575c','#40595d','#3a5359','#425b5e'][Math.floor(hash(i+19)*4)];c.fillRect(x+2,y+2,164,158);
+   c.strokeStyle='#354e543d';c.lineWidth=2;c.beginPath();c.moveTo(x+8,y+160);c.lineTo(x+160,y+160);c.stroke();}
+  // Sparse repair plates and rope scuffs, never dense scanning lines or a core cross.
+  for(let i=0;i<30;i++){const x=50+hash(i*7)*1500,y=40+hash(i*7+1)*1120;c.fillStyle='#52676838';c.fillRect(x,y,18+hash(i*7+2)*34,3);}
+  // Edge seawall belongs to the original rectangular boundary; everything inside stays walkable.
+  c.strokeStyle='#203b44';c.lineWidth=18;c.strokeRect(7,7,1586,1186);c.strokeStyle='#6c7b70';c.lineWidth=3;c.strokeRect(17,17,1566,1166);
+  for(let x=48;x<1600;x+=180){c.fillStyle='#60716b';c.fillRect(x,1,28,18);c.fillRect(x,1181,28,18);c.fillStyle='#82907b';c.fillRect(x+2,2,24,3);c.fillRect(x+2,1181,24,3);}
  }
- sprite(frame,x,feet,alpha=1,flip=false,lean=0,bob=0,hit=0){const c=this.ctx;c.save();c.translate(x,feet+bob);if(flip)c.scale(-1,1);if(lean)c.rotate(lean);c.globalAlpha=alpha;c.drawImage(frame.image,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);if(hit>0){c.globalAlpha=alpha*Math.min(.7,hit*5);c.drawImage(frame.hit,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);}c.restore();}
+ lampIslands(w){const c=this.ctx;for(let i=0;i<w.lamps.length;i++){const l=w.lamps[i];if(!this.visible(l.x,l.y,160))continue;c.save();c.translate(l.x,l.y);
+  c.fillStyle='#425b5a';c.beginPath();c.ellipse(0,0,107,88,0,0,TAU);c.fill();c.strokeStyle='#4b625e';c.lineWidth=1;c.stroke();
+  c.strokeStyle='#3d5659';c.lineWidth=2;c.beginPath();c.arc(0,0,93,0,TAU);c.stroke();
+  // Flat inlaid marker guides the eye to the actual lamp center, never suggests a collision wall.
+  c.fillStyle='#667463';for(let k=0;k<4;k++){c.save();c.rotate(k*TAU/4);c.fillRect(-3,98,6,12);c.restore();}
+  c.fillStyle='#53685f';c.font='bold 22px monospace';c.textAlign='center';c.fillText('0'+(i+1),0,128);c.restore();}
+ }
+
+ sprite(frame,x,feet,alpha=1,flip=false,lean=0,bob=0,hit=0){const c=this.ctx;c.save();c.translate(x,feet+bob);if(flip)c.scale(-1,1);if(lean)c.rotate(lean);if(hit>0&&!this.reduced){const q=Math.min(1,hit/.12);c.scale(1+.07*q,1-.06*q);}c.globalAlpha=alpha;c.drawImage(frame.image,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);if(hit>0){c.globalAlpha=alpha*Math.min(.7,hit*5);c.drawImage(frame.hit,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);}c.restore();}
  circle(x,y,r,color){const c=this.ctx;c.fillStyle=color;c.beginPath();c.arc(x,y,r,0,TAU);c.fill();}
  visible(x,y,r=100){return Math.abs(x-this.cx)<this.width/this.scale/2+r&&Math.abs(y-this.cy)<this.height/this.scale/2+r;}
  direction(p){return Math.abs(p.dx)>Math.abs(p.dy)?p.dx<0?'west':'east':p.dy<0?'north':'south';}
@@ -72,31 +76,32 @@ export class Renderer{
   if(this.world!==w){this.world=w;for(const ghost of this.ghosts)ghost.time=-100;this.lastGhost=-1;this.lastFire=p.fire;this.muzzleAt=-100;this.motion.reset(p.x,p.y,w.time,p.dx,p.dy);}
   if(p.fire>this.lastFire+.05)this.muzzleAt=w.time;this.lastFire=p.fire;
   this.cx=mix(p.px,p.x,alpha);this.cy=mix(p.py,p.y,alpha);const motion=this.motion.update(p,this.cx,this.cy,w.time,this.reduced);const facing=motion.face;this.lanternPoint(motion);
-  if(!this.reduced&&p.dash>0&&w.time-this.lastGhost>.025){const g=this.ghosts[this.ghostCursor];g.x=this.cx;g.y=this.cy;g.time=w.time;g.frame=this.poseFrame(facing,motion.phase);g.face=facing;g.phase=motion.phase;g.walk=motion.walk;g.dash=motion.dash;g.lean=motion.lean;this.ghostCursor=(this.ghostCursor+1)%this.ghosts.length;this.lastGhost=w.time;}
+  if(!this.reduced&&p.dash>0&&w.time-this.lastGhost>.025){const g=this.ghosts[this.ghostCursor];g.x=this.cx;g.y=this.cy;g.time=w.time;g.frame=this.poseFrame(facing,motion.phase);g.face=facing;g.previous=facing;g.phase=motion.phase;g.walk=motion.walk;g.dash=motion.dash;g.lean=motion.lean;this.ghostCursor=(this.ghostCursor+1)%this.ghosts.length;this.lastGhost=w.time;}
   c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle='#091f30';c.fillRect(0,0,W,H);c.save();c.translate(W/2,H/2);c.scale(s,s);c.translate(-this.cx,-this.cy);
   // Water is exclusively beyond the original 0..1600 / 0..1200 walkable rectangle.
   c.save();const drift=this.reduced?0:w.time*4;c.translate(drift,0);c.fillStyle=this.waterPattern;c.fillRect(this.cx-W/s-drift,this.cy-H/s,W/s*2,H/s*2);c.restore();
-  c.drawImage(this.ground,0,0);
+  c.drawImage(this.ground,0,0);this.lampIslands(w);
   // Background port structures are unreachable; do not suggest new solid collision in the arena.
   for(const [x,y,key]of PORT_PROPS)if(this.visible(x,y,220))this.sprite(this.frames[key],x,y,.85);
   const illumination=this.lighting.render(w,this.cx,this.cy,W,H,s,motion,this.visibleBound,this.reduced);
   c.save();c.setTransform(this.dpr,0,0,this.dpr,0,0);c.globalCompositeOperation='screen';c.globalAlpha=.72;c.drawImage(illumination,0,0,W,H);c.restore();
+  c.save();c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle=this.vignette;c.fillRect(0,0,W,H);c.restore();
   w.gems.each(g=>{if(!this.visible(g.x,g.y,12))return;c.save();c.translate(g.x,g.y);c.rotate(Math.PI/4);c.fillStyle='#412f20';c.fillRect(-5,-5,10,10);c.fillStyle='#e9bc64';c.fillRect(-3.5,-3.5,7,7);c.fillStyle='#fff0ba';c.fillRect(-2,-3,3,3);c.restore();});
   // Build a bounded Y-sorted list, reusing actor slot objects; player is not hidden inside a tower.
   this.drawList.length=0;let n=0;
-  for(const e of w.enemies.items)if(e.active&&this.visible(e.x,e.y,170)){const slot=this.slots[n++];slot.entity=e;slot.kind='enemy';slot.x=mix(e.px,e.x,alpha);slot.y=mix(e.py,e.y,alpha);slot.feet=slot.y+e.r*.7;this.drawList.push(slot);}
+  for(const e of w.enemies.items)if(e.active&&this.visible(e.x,e.y,170)){const slot=this.slots[n++];slot.entity=e;slot.kind='enemy';slot.x=mix(e.px,e.x,alpha);slot.y=mix(e.py,e.y,alpha);slot.feet=slot.y+this.frames[e.kind].height*.55;this.drawList.push(slot);}
   const hero=this.slots[n];hero.entity=p;hero.kind='player';hero.x=this.cx;hero.y=this.cy;hero.feet=this.cy;this.drawList.push(hero);n++;
-  for(const l of w.lamps)if(this.visible(l.x,l.y,200)){const slot=this.slots[n++];slot.entity=l;slot.kind='tower';slot.x=l.x;slot.y=l.y;slot.feet=l.y+26;this.drawList.push(slot);}
+  for(const l of w.lamps)if(this.visible(l.x,l.y,200)){const slot=this.slots[n++];slot.entity=l;slot.kind='tower';slot.x=l.x;slot.y=l.y;slot.feet=l.y+BEACON_VISUAL.footOffset;this.drawList.push(slot);}
   this.drawList.sort(footOrder);
   // Soft ground-light below characters, not a veil over threats.
 
-  for(const g of this.ghosts){const age=w.time-g.time;if(age>=0&&age<.16&&!this.reduced){if(g.face==='south'||g.face==='north')this.rigKeeper(g.face,g.x,g.y,(1-age/.16)*.17,g);else this.sprite(g.frame,g.x,g.y,(1-age/.16)*.17);}}
+  for(const g of this.ghosts){const age=w.time-g.time;if(age>=0&&age<.16&&!this.reduced)this.keeper(g.x,g.y,(1-age/.16)*.2,g);}
   for(const a of this.drawList){const e=a.entity;
    if(a.kind==='tower'){
-    let opacity=1;for(const other of this.drawList)if(other.kind!=='tower'&&Math.abs(other.x-a.x)<65&&other.y<a.feet&&other.y>a.feet-160){opacity=.28;break;}
-    c.drawImage(this.shadow,a.x-55,a.feet-22,110,42);this.sprite(e.lit?this.frames.lighthouse:this.unlitTower,a.x,a.feet,opacity);
+    let opacity=1;for(const other of this.drawList)if(other.kind!=='tower'&&Math.abs(other.x-a.x)<38&&other.y<a.feet&&other.y>a.feet-72){opacity=.28;break;}
+    c.drawImage(this.shadow,a.x-32,a.feet-12,64,22);this.sprite(e.lit?this.frames.lighthouse:this.unlitTower,a.x,a.feet,opacity);
    }else if(a.kind==='player'){
-    c.drawImage(this.shadow,a.x-23,a.y-11,46,22);
+    c.drawImage(this.shadow,a.x-15,a.y-6,30,12);
     const blink=p.inv>0&&Math.floor(w.time*16)%2?.6:1;
     this.keeper(a.x,a.feet,blink,motion);
     if(w.time-this.muzzleAt<.07)this.circle(a.x+motion.lightX,a.y+motion.lightY,3,'#ffe1a1');
@@ -113,15 +118,34 @@ export class Renderer{
   this.lampGuidance(w);
   // Attack intention stays ABOVE sprites/towers. It does not create new damage or warnings.
   this.telegraphs(w);
-  w.bullets.each(b=>{c.strokeStyle=p.pierce?'#70e2d4':'#dcae5b';c.lineWidth=p.pierce?5:3;c.beginPath();c.moveTo(b.x-b.vx*.035,b.y-b.vy*.035);c.lineTo(b.x,b.y);c.stroke();c.strokeStyle='#fff3bd';c.lineWidth=1.4;c.beginPath();c.moveTo(b.x-b.vx*.022,b.y-b.vy*.022);c.lineTo(b.x,b.y);c.stroke();this.circle(b.x,b.y,2.3,'#fff1bd');});
-  for(let k=0;k<p.orbit;k++){const angle=w.time*2.8+k*TAU/p.orbit,x=this.cx+Math.cos(angle)*68,y=this.cy+Math.sin(angle)*68;c.save();c.translate(x,y);c.rotate(angle);c.fillStyle='#153c44';c.fillRect(-5,-14,10,28);c.fillStyle='#d0b068';c.fillRect(-4,-13,8,26);c.fillStyle='#81e1d4';c.fillRect(-2,-10,4,20);c.restore();}
-  w.particles.each(q=>{c.globalAlpha=Math.max(0,q.life/.45);c.fillStyle=q.color;c.save();c.translate(q.x,q.y);c.rotate(q.life*7);c.fillRect(-2,-2,4,4);c.restore();});c.globalAlpha=1;
+  this.weaponFeedback(w);
+  this.burstFeedback(w);
   w.hostiles.each(b=>{this.circle(b.x,b.y,8,'#201b29');this.circle(b.x,b.y,6,'#e36c5c');this.circle(b.x,b.y,2.7,'#fff2bb');});
-  c.restore();c.fillStyle=this.vignette;c.fillRect(0,0,W,H);this.bearings(w);
+  c.restore();this.bearings(w);
   if(w.flash>0){c.strokeStyle=`rgba(223,94,69,${Math.min(.75,w.flash*3)})`;c.lineWidth=14;c.strokeRect(5,5,W-10,H-10);}
+ }
+ burstFeedback(w){const c=this.ctx;
+  // Existing engine bursts: death amber, dash teal, lit-lamp cream. Never infer deaths from recycling.
+  // A fixed rendering cap avoids an extra simulation pool.
+  let fragments=0;for(const q of w.particles.items){if(!q.active||fragments>=64)continue;fragments++;const fade=Math.max(0,q.life/.45);c.globalAlpha=fade;c.fillStyle=q.color;c.save();c.translate(q.x,q.y);c.rotate(q.life*7);c.fillRect(-3,-1.5,6,3);c.fillStyle='#ffe4a5';c.fillRect(-1,-1,2,2);c.restore();}c.globalAlpha=1;
+ }
+ weaponFeedback(w){const c=this.ctx,p=w.player;
+  w.bullets.each(b=>{const speed=Math.hypot(b.vx,b.vy)||1,dx=b.vx/speed,dy=b.vy/speed,piercing=b.left>0,tail=piercing?32:15;
+   // Existing shot directions expose multishot fans; no invented extra projectiles.
+   c.lineCap='round';c.strokeStyle='#172f35';c.lineWidth=piercing?7:5;c.beginPath();c.moveTo(b.x-dx*tail,b.y-dy*tail);c.lineTo(b.x,b.y);c.stroke();
+   c.strokeStyle=piercing?'#7ce7d4':'#edbf6a';c.lineWidth=piercing?4:3;c.stroke();
+   c.strokeStyle='#fff3b7';c.lineWidth=1.5;c.beginPath();c.moveTo(b.x-dx*9,b.y-dy*9);c.lineTo(b.x+dx*3,b.y+dy*3);c.stroke();
+   if(piercing){c.strokeStyle='#bff8e2';c.lineWidth=1;c.beginPath();c.moveTo(b.x-dx*15-dy*4,b.y-dy*15+dx*4);c.lineTo(b.x-dx*23,b.y-dy*23);c.lineTo(b.x-dx*15+dy*4,b.y-dy*15-dx*4);c.stroke();}
+  });c.lineCap='butt';
+  for(let k=0;k<p.orbit;k++){const angle=w.time*2.8+k*TAU/p.orbit;
+   // Trail sits on the original radius68 orbit, never expands its hit range.
+   if(!this.reduced){c.strokeStyle='#7cdcc850';c.lineWidth=7;c.beginPath();c.arc(this.cx,this.cy,68,angle-.55,angle-.08);c.stroke();c.strokeStyle='#e2c47690';c.lineWidth=2;c.stroke();}
+   const x=this.cx+Math.cos(angle)*68,y=this.cy+Math.sin(angle)*68;c.save();c.translate(x,y);c.rotate(angle);c.fillStyle='#17353b';c.beginPath();c.moveTo(-5,-14);c.lineTo(7,-9);c.lineTo(4,14);c.lineTo(-6,8);c.closePath();c.fill();c.fillStyle='#f4d58a';c.fillRect(-3,-11,6,22);c.fillStyle='#9cf1d9';c.fillRect(1,-10,2,18);c.restore();
+  }
  }
  poseFrame(face,phase){const frames=this.walkFrames?.[face];return frames?.[Math.floor(phase/4*frames.length)%frames.length]||null;}
  keeper(x,feet,alpha,m){
+  const c=this.ctx;c.save();c.translate(x,feet);c.scale(VISUAL_SCALE.keeper,VISUAL_SCALE.keeper);x=0;feet=0;
   const draw=(face,weight)=>{if(weight<=.001)return;if((face==='south'||face==='north')&&this.rig){this.rigKeeper(face,x,feet,alpha*weight,m);return;}const frames=this.walkFrames?.[face];
    if(!frames?.length){this.sprite(this.frames[face],x,feet,alpha*weight);return;}
    const phase=m.phase/4*frames.length,index=Math.floor(phase)%frames.length,fract=phase-Math.floor(phase),blend=fract*fract*(3-2*fract);
@@ -131,14 +155,14 @@ export class Renderer{
    if(m.dash>.001)this.sprite(frames[Math.floor(frames.length/4)],x,feet,alpha*weight*m.dash,false,lean);
   };
   // Short pose cross-fades join actual limb frames; no whole-sprite bob substitutes for gait.
-  draw(m.previous,1-m.turn);draw(m.face,m.turn);
+  draw(m.previous,1-m.turn);draw(m.face,m.turn);c.restore();
  }
  lampFor(face,m,out){const lean=this.reduced?0:m.lean;let x=0,y=0,rotate=lean;
   if(face==='south'||face==='north'){const point=this.rig[face==='south'?'front_upper':'back_upper'].lantern;x=point.x;y=point.y;rotate+=this.reduced?0:Math.sin(m.phase*Math.PI/2)*.018*m.walk*(1-m.dash);}
   else{const fs=this.walkFrames[face],phase=m.phase/4*fs.length,i=Math.floor(phase)%fs.length,f=phase-Math.floor(phase),blend=f*f*(3-2*f),walk=m.walk*(1-m.dash),idle=1-walk-m.dash,a=fs[i].lantern,b=fs[(i+1)%fs.length].lantern,d=fs[Math.floor(fs.length/4)].lantern,rest=this.idleFrames[face].lantern;x=rest.x*idle+(a.x*(1-blend)+b.x*blend)*walk+d.x*m.dash;y=rest.y*idle+(a.y*(1-blend)+b.y*blend)*walk+d.y*m.dash;}
   out.x=x*Math.cos(rotate)-y*Math.sin(rotate);out.y=x*Math.sin(rotate)+y*Math.cos(rotate)+(face==='south'||face==='north'?m.dash*2:0);
  }
- lanternPoint(m){this.lampFor(m.previous,m,this.lampA);this.lampFor(m.face,m,this.lampB);m.lightX=mix(this.lampA.x,this.lampB.x,m.turn);m.lightY=mix(this.lampA.y,this.lampB.y,m.turn);}
+ lanternPoint(m){this.lampFor(m.previous,m,this.lampA);this.lampFor(m.face,m,this.lampB);m.lightX=mix(this.lampA.x,this.lampB.x,m.turn)*VISUAL_SCALE.keeper;m.lightY=mix(this.lampA.y,this.lampB.y,m.turn)*VISUAL_SCALE.keeper;}
  rigKeeper(face,x,feet,alpha,m){const c=this.ctx,prefix=face==='south'?'front':'back',phase=m.phase*Math.PI/2,amount=m.walk*(1-m.dash),lean=this.reduced?0:m.lean;
   const leg=(side,offset)=>{const f=this.rig[prefix+'_screen_'+side+'_leg'],wave=Math.sin(phase+offset),lift=Math.max(0,wave)*amount;c.save();c.translate(x+(side==='left'?-5:5),feet-33);c.rotate(lean+wave*.055*amount+(side==='left'?-.08:.06)*m.dash);c.scale(1,1-lift*.14-m.dash*(side==='left'?.12:.04));this.sprite(f,0,0,alpha);c.restore();};
   if(Math.sin(phase)>0){leg('right',Math.PI);leg('left',0);}else{leg('left',0);leg('right',Math.PI);}

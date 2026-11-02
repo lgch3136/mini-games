@@ -1,9 +1,10 @@
-import {WALK_FILES,WALK_FRAMES,RIG_PARTS} from './keeper-frames.mjs?v=fogharbor-r5';
+import {WALK_FILES,WALK_FRAMES,RIG_PARTS} from './keeper-frames.mjs?v=fogharbor-r6';
+export const BEACON_VISUAL=Object.freeze({height:68,footOffset:12,lightX:-2*68/868,lightY:12-448*68/868});
 // Original generated resources. Unequal object crops are measured, never a guessed grid.
-export const ART_FILES={enemies:'assets/enemies-atlas-v1.webp',props:'assets/harbor-props-atlas-v1.webp',ground:'assets/ground-texture-v1.webp',...WALK_FILES};
+export const ART_FILES={enemies:'assets/enemies-atlas-v1.webp',props:'assets/harbor-props-atlas-v1.webp',beacon:'assets/harbor-beacon-v1.webp',...WALK_FILES};
 export const CROPS={
  chaser:['enemies',112,80,455,474],ranged:['enemies',765,79,359,451],charger:['enemies',18,653,591,509],boss:['enemies',622,647,616,515],
- lighthouse:['props',100,9,485,663],dock:['props',646,196,583,485],warehouse:['props',51,685,601,524],cargo:['props',721,830,476,380],
+ lighthouse:['beacon',189,304,688,868],dock:['props',646,196,583,485],warehouse:['props',51,685,601,524],cargo:['props',721,830,476,380],
 };
 export const ART_BUDGET={maxActors:164,maxDashGhosts:5,maxLightDraws:13,groundCachePixels:1600*1200,maxCanvasPixels:2400000};
 export function loadArt(ImageClass=Image){
@@ -16,7 +17,7 @@ export function makeFrame(images,key,height,canvasFactory){
  const surface=canvasFactory(Math.ceil(width*scale),Math.ceil(height*scale)),c=surface.getContext('2d');
  c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(images[sheet],x,y,w,h,0,0,surface.width,surface.height);
  const hit=canvasFactory(surface.width,surface.height),hc=hit.getContext('2d');hc.drawImage(surface,0,0);hc.globalCompositeOperation='source-in';hc.fillStyle='#fff2cb';hc.fillRect(0,0,hit.width,hit.height);
- return {image:surface,hit,width,height};
+ return {image:surface,hit,width,height,...(key==='lighthouse'?{anchorX:343*height/868,anchorY:864*height/868}:{})};
 }
 
 export function makeWalkFrames(images,canvasFactory){

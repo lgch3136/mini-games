@@ -1,7 +1,7 @@
 import {Sound} from "./audio.mjs";
 import {HarborMusic} from "./music.mjs?v=fogharbor-r5";
 import {World,STEP,UPGRADES} from './engine.mjs';
-import {Renderer} from './render.mjs?v=fogharbor-r5';
+import {Renderer} from './render.mjs?v=fogharbor-r6';
 import {readRecord,saveRecord} from './storage.mjs';
 const $=id=>document.getElementById(id);
 try{
@@ -17,7 +17,7 @@ try{
   $('start').disabled=true;artStatus.textContent='正在载入原创战场素材…';
   renderer.ready.then(ok=>{
    $('start').disabled=false;
-   artStatus.textContent=ok?'原创战场动作与灯光 r5 · 完整实玩验收待完成':'战场素材未载入：'+renderer.error+'。可使用基础场景回退，不代表新美术加载成功。';
+   artStatus.textContent=ok?'原创战场画面 r6 · 完整实玩验收待完成':'战场素材未载入：'+renderer.error+'。可使用基础场景回退，不代表新美术加载成功。';
    if(!ok)$('start').firstChild.textContent='基础场景试玩 ';
   });
  }
