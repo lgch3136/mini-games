@@ -615,13 +615,13 @@ function renderRoutePlanning(route, redrawMap = true) {
   $id('route-warning-' + route).textContent = warnings.length ? '顺序待调整 · ' + warnings.join('；')
     : view.rows.length ? '此拟采顺序的中心方向可通；不是命中、用时或达标保证，仍须按序拼词。' : '仅做承接前试算，不自动出钩，也不自动补前置矿。';
   $id('route-warning-' + route).dataset.blocked = String(warnings.length > 0);
-  $id('route-detail-' + route).textContent = routePointDetail(plan, draft.focus);
+  $id('route-detail-' + route).textContent = '查看详情：' + routePointDetail(plan, draft.focus);
   const selected = draft.steps.find(step => step.key === draft.actionKey);
   const actionItem = plan.items.find(item => item.routeKey === draft.actionKey);
   const actionName = actionItem ? routeItemName(actionItem) + mineralValueView(actionItem).amount : '';
   const discard = $id('route-discard-' + route);
   discard.disabled = !actionItem;
-  discard.textContent = actionItem ? `${actionName}：${selected?.mode === 'discard' ? '改拟送达' : '改拟 X 舍矿'}` : '先点击矿值，再改拟 X';
+  discard.textContent = actionItem ?  `已选操作：${actionName}：${selected?.mode === 'discard' ? '改拟送达' : '改拟 X 舍矿'}` : '先点击矿值选定，再改拟 X';
   $id('route-clear-' + route).disabled = !draft.steps.length;
 }
 function focusRoutePoint(route, key) {
