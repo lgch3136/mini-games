@@ -41,18 +41,16 @@ export class Renderer{
  makeGround(){
   const tile=canvasOf(512,512),t=tile.getContext('2d');
   for(let y=0;y<2;y++)for(let x=0;x<2;x++){t.save();t.translate(x?512:0,y?512:0);t.scale(x?-1:1,y?-1:1);t.drawImage(this.images.ground,0,0,256,256);t.restore();}
-  this.ground=canvasOf(1600,1200);const c=this.ground.getContext('2d');c.fillStyle=c.createPattern(tile,'repeat');c.fillRect(0,0,1600,1200);c.fillStyle='#0a283745';c.fillRect(0,0,1600,1200);
+  this.ground=canvasOf(1600,1200);const c=this.ground.getContext('2d');c.fillStyle='#394447';c.fillRect(0,0,1600,1200);c.globalAlpha=.15;c.fillStyle=c.createPattern(tile,'repeat');c.fillRect(0,0,1600,1200);c.globalAlpha=1;
   // Flush timber walkways, not pits or collision barriers. Every interior pixel remains traversable.
   const wood=(x,y,w,h,vertical=false)=>{c.save();c.beginPath();c.rect(x,y,w,h);c.clip();c.fillStyle='#283b3e';c.fillRect(x,y,w,h);
    const extent=vertical?w:h;for(let n=0;n<extent;n+=17){const tone=hash(n+Math.floor(x+y));c.fillStyle=tone>.55?'#4a4a3c':'#3e443a';if(vertical)c.fillRect(x+n,y,15,h);else c.fillRect(x,y+n,w,15);
     // Sparse board joins and paired nails, never dense full-length scanlines.
     c.strokeStyle='#263536';c.lineWidth=1;for(let k=0;k<(vertical?h:w);k+=110){const j=k+(n%34?45:0);c.beginPath();if(vertical){c.moveTo(x+n,y+j);c.lineTo(x+n+15,y+j);}else{c.moveTo(x+j,y+n);c.lineTo(x+j,y+n+15);}c.stroke();c.fillStyle='#8b88764a';if(vertical){c.fillRect(x+n+3,y+j+3,1.5,1.5);c.fillRect(x+n+11,y+j+3,1.5,1.5);}else{c.fillRect(x+j+3,y+n+3,1.5,1.5);c.fillRect(x+j+3,y+n+11,1.5,1.5);}}}
    c.strokeStyle='#647168';c.lineWidth=2;c.strokeRect(x+1,y+1,w-2,h-2);c.restore();};
-  wood(0,0,230,1200);wood(1370,0,230,1200);wood(0,1020,1600,180);wood(230,470,1140,88);wood(230,850,1140,76);wood(365,210,110,810,true);wood(1125,210,110,810,true);
+  wood(0,0,230,1200);wood(1370,0,230,1200);wood(0,1020,1600,180);
   // Recessed drainage under continuous metal grates: visibly walkable, never fake deep water.
   for(const x of [250,1328]){c.fillStyle='#102c37';c.fillRect(x,80,22,940);c.strokeStyle='#65716b';c.lineWidth=3;for(let y=80;y<1020;y+=9){c.beginPath();c.moveTo(x,y);c.lineTo(x+22,y);c.stroke();}c.strokeStyle='#283e45';c.lineWidth=3;c.strokeRect(x,80,22,940);}
-  // A quiet inlaid navigation rose, not another HUD target or hazard.
-  c.save();c.translate(800,650);c.strokeStyle='#8f92733a';c.lineWidth=2;for(const radius of [90,99]){c.beginPath();c.arc(0,0,radius,0,TAU);c.stroke();}for(let i=0;i<8;i++){const a=i*TAU/8;c.beginPath();c.moveTo(Math.cos(a)*42,Math.sin(a)*42);c.lineTo(Math.cos(a)*88,Math.sin(a)*88);c.stroke();}c.restore();
   // Wet scuffs, repairs and edge ironwork are fixed and low contrast.
   for(let i=0;i<95;i++){const x=30+hash(i*5)*1540,y=25+hash(i*5+2)*1150;c.fillStyle=i%2?'#081c2820':'#86b4b20c';c.beginPath();c.ellipse(x,y,12+hash(i*5+1)*25,3+hash(i*5+3)*9,hash(i)*TAU,0,TAU);c.fill();}
   c.strokeStyle='#132832';c.lineWidth=14;c.strokeRect(7,7,1586,1186);c.strokeStyle='#677568';c.lineWidth=2;c.strokeRect(15,15,1570,1170);
@@ -79,29 +77,27 @@ export class Renderer{
   for(const [x,y,key]of PORT_PROPS)if(this.visible(x,y,220))this.sprite(this.frames[key],x,y,.85);
   let lights=0;
   for(const l of w.lamps){if(!this.visible(l.x,l.y,240))continue;if(l.lit&&lights<3){c.drawImage(this.light,l.x-170,l.y-150,340,300);lights++;}
-   c.strokeStyle=l.lit?'#cbaa6766':'#779f9780';c.lineWidth=l.lit?2:1.5;c.setLineDash(l.lit?[]:[5,10]);c.beginPath();c.arc(l.x,l.y,75,0,TAU);c.stroke();c.setLineDash([]);
-   if(!l.lit&&l.progress>0){c.strokeStyle='#f5ce80';c.lineWidth=4;c.beginPath();c.arc(l.x,l.y,75,-Math.PI/2,-Math.PI/2+l.progress/3*TAU);c.stroke();}
   }
   w.gems.each(g=>{if(!this.visible(g.x,g.y,12))return;c.save();c.translate(g.x,g.y);c.rotate(Math.PI/4);c.fillStyle='#412f20';c.fillRect(-5,-5,10,10);c.fillStyle='#e9bc64';c.fillRect(-3.5,-3.5,7,7);c.fillStyle='#fff0ba';c.fillRect(-2,-3,3,3);c.restore();});
   // Build a bounded Y-sorted list, reusing actor slot objects; player is not hidden inside a tower.
   this.drawList.length=0;let n=0;
   for(const e of w.enemies.items)if(e.active&&this.visible(e.x,e.y,170)){const slot=this.slots[n++];slot.entity=e;slot.kind='enemy';slot.x=mix(e.px,e.x,alpha);slot.y=mix(e.py,e.y,alpha);slot.feet=slot.y+e.r*.7;this.drawList.push(slot);}
-  const hero=this.slots[n];hero.entity=p;hero.kind='player';hero.x=this.cx;hero.y=this.cy;hero.feet=this.cy+15;this.drawList.push(hero);n++;
+  const hero=this.slots[n];hero.entity=p;hero.kind='player';hero.x=this.cx;hero.y=this.cy;hero.feet=this.cy;this.drawList.push(hero);n++;
   for(const l of w.lamps)if(this.visible(l.x,l.y,200)){const slot=this.slots[n++];slot.entity=l;slot.kind='tower';slot.x=l.x;slot.y=l.y;slot.feet=l.y+26;this.drawList.push(slot);}
   this.drawList.sort(footOrder);
   // Soft ground-light below characters, not a veil over threats.
   c.drawImage(this.light,this.cx-100,this.cy-90,200,180);
-  for(const g of this.ghosts){const age=w.time-g.time;if(age>=0&&age<.16&&!this.reduced)this.sprite(this.frames[g.key],g.x,g.y+15,(1-age/.16)*.17);}
+  for(const g of this.ghosts){const age=w.time-g.time;if(age>=0&&age<.16&&!this.reduced)this.sprite(this.frames[g.key],g.x,g.y,(1-age/.16)*.17);}
   for(const a of this.drawList){const e=a.entity;
    if(a.kind==='tower'){
     let opacity=1;for(const other of this.drawList)if(other.kind!=='tower'&&Math.abs(other.x-a.x)<65&&other.y<a.feet&&other.y>a.feet-160){opacity=.28;break;}
     c.drawImage(this.shadow,a.x-55,a.feet-22,110,42);this.sprite(e.lit?this.frames.lighthouse:this.unlitTower,a.x,a.feet,opacity);
    }else if(a.kind==='player'){
-    c.drawImage(this.shadow,a.x-23,a.y+3,46,22);const moving=Math.hypot(p.x-p.px,p.y-p.py)>.03;
+    c.drawImage(this.shadow,a.x-23,a.y-11,46,22);const moving=Math.hypot(p.x-p.px,p.y-p.py)>.03;
     const bob=!this.reduced&&moving&&p.dash<=0?Math.sin(w.time*15)*1.4:0,lean=p.dash>0?p.dx*.08:0;
     const blink=p.inv>0&&Math.floor(w.time*16)%2?.6:1;this.sprite(this.frames[facing],a.x,a.feet,blink,false,lean,bob);
     // Grounded feet, scarf motion suggested by sway; four directions are static art, not invented walk frames.
-    if(moving&&!this.reduced){c.strokeStyle='#a1aaa229';c.lineWidth=2;c.beginPath();c.moveTo(a.x-p.dx*10,a.y+15);c.lineTo(a.x-p.dx*17,a.y+15-p.dy*6);c.stroke();}
+    if(moving&&!this.reduced){c.strokeStyle='#a1aaa229';c.lineWidth=2;c.beginPath();c.moveTo(a.x-p.dx*10,a.y);c.lineTo(a.x-p.dx*17,a.y-p.dy*6);c.stroke();}
     if(w.time-this.muzzleAt<.07){this.circle(a.x,a.y-12,4,'#ffe1a1');}
    }else{
     const frame=this.frames[e.kind],movement=Math.hypot(e.x-e.px,e.y-e.py),bob=!this.reduced&&movement>.02?Math.sin(w.time*(e.kind==='chaser'?14:9)+e.id)*1.2:0;
@@ -111,8 +107,9 @@ export class Renderer{
     this.sprite(frame,a.x,a.feet,1,e.kind==='charger'&&p.x<e.x,lean,bob,e.hit);
    }
   }
-  // Lamp labels below danger overlays and away from the main top HUD.
-  for(const l of w.lamps)if(this.visible(l.x,l.y,100)){c.font='11px system-ui';c.textAlign='center';c.fillStyle=l.lit?'#d5bd86':'#aebcac';c.fillText(l.lit?'港灯长明':'圈内停留 3 秒',l.x,l.y+91);}
+  // Stand on the actual simulation center, not the tower front or text baseline.
+  // Goal information is above solid art but always below damage telegraphs / bullets.
+  this.lampGuidance(w);
   // Attack intention stays ABOVE sprites/towers. It does not create new damage or warnings.
   this.telegraphs(w);
   w.bullets.each(b=>{c.strokeStyle=p.pierce?'#70e2d4':'#dcae5b';c.lineWidth=p.pierce?5:3;c.beginPath();c.moveTo(b.x-b.vx*.035,b.y-b.vy*.035);c.lineTo(b.x,b.y);c.stroke();c.strokeStyle='#fff3bd';c.lineWidth=1.4;c.beginPath();c.moveTo(b.x-b.vx*.022,b.y-b.vy*.022);c.lineTo(b.x,b.y);c.stroke();this.circle(b.x,b.y,2.3,'#fff1bd');});
@@ -121,6 +118,18 @@ export class Renderer{
   w.hostiles.each(b=>{this.circle(b.x,b.y,8,'#201b29');this.circle(b.x,b.y,6,'#e36c5c');this.circle(b.x,b.y,2.7,'#fff2bb');});
   c.restore();c.fillStyle=this.vignette;c.fillRect(0,0,W,H);this.bearings(w);
   if(w.flash>0){c.strokeStyle=`rgba(223,94,69,${Math.min(.75,w.flash*3)})`;c.lineWidth=14;c.strokeRect(5,5,W-10,H-10);}
+ }
+ lampGuidance(w){const c=this.ctx;
+  for(const l of w.lamps){if(!this.visible(l.x,l.y,120))continue;
+   c.strokeStyle=l.lit?'#cbaa6780':'#d0c6a9';c.lineWidth=l.lit?1.5:2;c.setLineDash(l.lit?[]:[6,9]);c.beginPath();c.arc(l.x,l.y,75,0,TAU);c.stroke();c.setLineDash([]);
+   if(!l.lit){
+    if(l.progress>0){c.strokeStyle='#ffe0a3';c.lineWidth=4;c.beginPath();c.arc(l.x,l.y,75,-Math.PI/2,-Math.PI/2+l.progress/3*TAU);c.stroke();}
+    c.strokeStyle='#dbd5bd';c.lineWidth=1.5;c.beginPath();c.arc(l.x,l.y,6,0,TAU);c.stroke();
+    for(let k=0;k<4;k++){const a=k*TAU/4;c.beginPath();c.moveTo(l.x+Math.cos(a)*9,l.y+Math.sin(a)*9);c.lineTo(l.x+Math.cos(a)*13,l.y+Math.sin(a)*13);c.stroke();}
+    c.strokeStyle='#b5b7a280';c.lineWidth=1;c.beginPath();c.moveTo(l.x,l.y+78);c.lineTo(l.x,l.y+84);c.stroke();
+   }
+   c.font='11px system-ui';c.textAlign='center';c.fillStyle=l.lit?'#d5bd86':'#d2cfb9';c.fillText(l.lit?'港灯长明':'圈内停留 3 秒',l.x,l.y+97);
+  }
  }
  telegraphs(w){const c=this.ctx,p=w.player;
   w.enemies.each(e=>{if(e.phase!=='windup'||!this.visible(e.x,e.y,350))return;const a=Math.atan2(e.ty-e.y,e.tx-e.x);c.save();c.strokeStyle='#ffad7ab0';c.fillStyle='#e5725320';c.lineWidth=2;
