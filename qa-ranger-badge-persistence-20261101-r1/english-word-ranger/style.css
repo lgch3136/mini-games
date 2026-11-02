@@ -1542,3 +1542,42 @@ kbd {
 #tactical-pause { font-size: 12px; line-height: 1.6; }
 
 #tactical-boss-note:not([hidden]) { display: block; margin-top: 5px; font-size: 9px; line-height: 1.4; color: #dfc98d; }
+
+/* Menu access: one existing scroll area; guides follow controls, never overlay them. */
+#menu .menu-copy > .keyboard-guide,
+#menu .menu-copy > .mobile-guide {
+  position: static;
+  inset: auto;
+  transform: none;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 18px 0 0;
+  padding: 0;
+}
+#menu .menu-copy > .keyboard-guide {
+  gap: 8px 14px;
+  line-height: 1.7;
+}
+#menu .menu-copy > .mobile-guide {
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+#menu .menu-bottom {
+  flex-wrap: wrap;
+}
+#menu #operation-record:not(:empty),
+#menu #best-score:not(:empty) {
+  display: block;
+  background: #102c35;
+  color: #e3eddb;
+  border: 1px solid #719286;
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
