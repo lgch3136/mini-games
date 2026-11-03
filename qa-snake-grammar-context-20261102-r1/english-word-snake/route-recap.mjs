@@ -17,7 +17,10 @@ export class CoilRoute {
       this.pickups.push({label: event.label.toUpperCase(), x: event.x, y: event.y, step});
   }
   summary(game) {
-    return {won: game.won, steps: game.steps, hits: game.hits,
+    return {comparisonScope: JSON.stringify([
+      "coil-segments-v1", game.challenge, game.cols, game.rows, game.arena,
+      game.speedSetting, game.mode, this.points[0], this.body,
+    ]), won: game.won, steps: game.steps, hits: game.hits,
       letters: this.pickups.length, pickups: this.pickups.map(p => ({...p}))};
   }
 }
@@ -32,6 +35,24 @@ export function comparisonText(current, previous) {
   if (!comparable(current, previous))
     return `${prior}未同为完成 3/3，不比较总步数优劣。`;
   return `${prior}两局均完成：本次${delta(current.steps - previous.steps, '步')}，${delta(current.hits - previous.hits, '次碰撞')}；不代表最佳路线。`;
+}
+// Derived only from completed observations in the same in-memory challenge/rules.
+// A partial attempt or missing/invalid event series cannot establish a baseline.
+export function segmentComparison(current, previous) {
+  if (!current || !previous || !comparable(current, previous) || !current.comparisonScope ||
+      current.comparisonScope !== previous.comparisonScope) return null;
+  const valid = attempt => Array.isArray(attempt.pickups) && attempt.pickups.length === 3 &&
+    Number.isSafeInteger(attempt.steps) && attempt.steps >= 0 &&
+    attempt.pickups.every((p, i, list) => p && p.label === 'ARC'[i] &&
+      Number.isSafeInteger(p.step) && p.step > (i ? list[i - 1].step : 0) &&
+      p.step <= attempt.steps && Number.isInteger(p.x) && Number.isInteger(p.y));
+  if (!valid(current) || !valid(previous) || current.pickups.some((p, i) =>
+      p.x !== previous.pickups[i].x || p.y !== previous.pickups[i].y)) return null;
+  return current.pickups.map((p, i) => {
+    const steps = p.step - (i ? current.pickups[i - 1].step : 0);
+    const previousSteps = previous.pickups[i].step - (i ? previous.pickups[i - 1].step : 0);
+    return {label: p.label, steps, previousSteps, difference: steps - previousSteps};
+  });
 }
 export function routeAdvice(route) {
   const a = route.points[0], b = route.points[1];
@@ -88,12 +109,15 @@ export function renderRouteRecap(container, route, current, previous, doc = docu
     : '线与箭头是本次实际走向；虚线是初始身体，不是结束时的身体。', 'route-key');
   text('p', '○ 起点 · 绿线去 A / 棕线去 R / 蓝线去 C · ■ 停下位置（未取字时）', 'route-key');
   const list=doc.createElement('ol'); list.className='route-pickups';
+  const segments = segmentComparison(current, previous);
   let last=0;
   for(let i=0;i<3;i++) {
     const item=doc.createElement('li'), p=route.pickups[i];
     item.textContent=p ? `${p.label}：第 ${p.step} 步取到（距${i ? route.pickups[i-1].label : '起点'} ${p.step-last} 步）` : `${'ARC'[i]}：未取到`;
     if (p && comparable(current, previous) && previous.pickups[i]?.label === p.label)
       item.textContent += ` · 上局第 ${previous.pickups[i].step} 步`;
+    if (p && segments)
+      item.textContent += `；上局本段 ${segments[i].previousSteps} 步，本段${delta(segments[i].difference, '步')}`;
     if(p) last=p.step;
     list.append(item);
   }

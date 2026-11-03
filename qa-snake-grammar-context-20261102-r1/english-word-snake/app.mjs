@@ -1,5 +1,5 @@
-import { renderRouteRecap } from "./route-recap.mjs?v=20261025-route-learning-r2";
-import { COIL_CHALLENGE, createCoilGame } from "./coil.mjs?v=20261025-route-learning-r2";
+import { renderRouteRecap } from "./route-recap.mjs?v=20261103-route-segment-r1";
+import { COIL_CHALLENGE, createCoilGame } from "./coil.mjs?v=20261103-route-segment-r1";
 import { EXPEDITIONS, PACED_CHALLENGE, PACED_LENGTHS, expeditionProgress } from "./expedition.mjs?v=20261019-paced-expedition-r1-local";
 import {
   SnakeGame,

@@ -1,5 +1,5 @@
 import { SnakeGame } from "./engine.mjs?v=20261027-turn-control-r1";
-import { CoilRoute } from "./route-recap.mjs?v=20261025-route-learning-r2";
+import { CoilRoute } from "./route-recap.mjs?v=20261103-route-segment-r1";
 export const COIL_CHALLENGE = "coil-choice-r1";
 // Observe only after the unchanged engine resolves actual movement and collection.
 class CoilGame extends SnakeGame {
