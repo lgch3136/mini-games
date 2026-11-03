@@ -1,8 +1,9 @@
+import {SHOT_VISUAL,shotDistance,drawShot} from './projectile-visual.mjs?v=fogharbor-r8';
 import {makeHarborGround} from './harbor-ground.mjs?v=fogharbor-r7';
 import {Renderer as BasicRenderer} from './render-basic.mjs';
 import {loadArt,makeFrame,makeWalkFrames,makeRig,ART_BUDGET,BEACON_VISUAL} from './art.mjs?v=fogharbor-r7';
 import {KeeperMotion} from './keeper-motion.mjs?v=fogharbor-r5';
-import {HarborLight} from './harbor-light.mjs?v=fogharbor-r6';
+import {HarborLight} from './harbor-light.mjs?v=fogharbor-r8';
 const mix=(a,b,t)=>a+(b-a)*t;
 const TAU=Math.PI*2;
 export const VISUAL_SCALE=Object.freeze({keeper:.56,chaser:38,ranged:46,charger:56,boss:104,beacon:68});
@@ -18,6 +19,7 @@ export class Renderer{
   this.lampA={x:0,y:0};this.lampB={x:0,y:0};this.visibleBound=this.visible.bind(this);this.motion=new KeeperMotion();this.lighting=new HarborLight(canvasOf);
   this.ghosts=Array.from({length:ART_BUDGET.maxDashGhosts},()=>({x:0,y:0,time:-100,frame:null,face:'south',previous:'south',turn:1,phase:0,walk:0,dash:0,lean:0}));this.ghostCursor=0;this.lastGhost=-1;this.lastFire=0;this.muzzleAt=-100;
   this.reduced=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches||false;
+  this.shotPatch=canvasOf(96,96);this.shotCtx=this.shotPatch.getContext('2d');this.bodyMask=canvasOf(96,96);this.bodyMaskCtx=this.bodyMask.getContext('2d');this.maskKeeper=false;
   this.resize();
   this.ready=loadArt().then(images=>{this.images=images;this.buildArt();this.status='ready';this.basic=null;return true;}).catch(error=>{this.status='fallback';this.error=String(error.message||error);return false;});
  }
@@ -46,7 +48,7 @@ export class Renderer{
  }
  makeGround(){this.ground=makeHarborGround(canvasOf,this.images);}
 
- sprite(frame,x,feet,alpha=1,flip=false,lean=0,bob=0,hit=0){const c=this.ctx;c.save();c.translate(x,feet+bob);if(flip)c.scale(-1,1);if(lean)c.rotate(lean);if(hit>0&&!this.reduced){const q=Math.min(1,hit/.12);c.scale(1+.07*q,1-.06*q);}c.globalAlpha=alpha;c.drawImage(frame.image,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);if(hit>0){c.globalAlpha=alpha*Math.min(.7,hit*5);c.drawImage(frame.hit,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);}c.restore();}
+ sprite(frame,x,feet,alpha=1,flip=false,lean=0,bob=0,hit=0){if(this.maskKeeper&&alpha<=0)return;const c=this.ctx;c.save();c.translate(x,feet+bob);if(flip)c.scale(-1,1);if(lean)c.rotate(lean);if(hit>0&&!this.reduced){const q=Math.min(1,hit/.12);c.scale(1+.07*q,1-.06*q);}c.globalAlpha=this.maskKeeper?1:alpha;c.drawImage(frame.image,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);if(hit>0){c.globalAlpha=alpha*Math.min(.7,hit*5);c.drawImage(frame.hit,-(frame.anchorX??frame.width/2),-(frame.anchorY??frame.height),frame.width,frame.height);}c.restore();}
  circle(x,y,r,color){const c=this.ctx;c.fillStyle=color;c.beginPath();c.arc(x,y,r,0,TAU);c.fill();}
  visible(x,y,r=100){return Math.abs(x-this.cx)<this.width/this.scale/2+r&&Math.abs(y-this.cy)<this.height/this.scale/2+r;}
  direction(p){return Math.abs(p.dx)>Math.abs(p.dy)?p.dx<0?'west':'east':p.dy<0?'north':'south';}
@@ -77,6 +79,7 @@ export class Renderer{
   this.drawList.sort(footOrder);
   // Soft ground-light below characters, not a veil over threats.
 
+  this.orbitFeedback(w,-1);
   for(const g of this.ghosts){const age=w.time-g.time;if(age>=0&&age<.16&&!this.reduced)this.keeper(g.x,g.y,(1-age/.16)*.2,g);}
   for(const a of this.drawList){const e=a.entity;
    if(a.kind==='tower'){
@@ -100,7 +103,7 @@ export class Renderer{
   this.lampGuidance(w);
   // Attack intention stays ABOVE sprites/towers. It does not create new damage or warnings.
   this.telegraphs(w);
-  this.weaponFeedback(w);
+  this.weaponFeedback(w,motion);
   this.burstFeedback(w);
   w.hostiles.each(b=>{this.circle(b.x,b.y,8,'#201b29');this.circle(b.x,b.y,6,'#e36c5c');this.circle(b.x,b.y,2.7,'#fff2bb');});
   c.restore();this.bearings(w);
@@ -111,15 +114,20 @@ export class Renderer{
   // A fixed rendering cap avoids an extra simulation pool.
   let fragments=0;for(const q of w.particles.items){if(!q.active||fragments>=64)continue;fragments++;const fade=Math.max(0,q.life/.45);c.globalAlpha=fade;c.fillStyle=q.color;c.save();c.translate(q.x,q.y);c.rotate(q.life*7);c.fillRect(-3,-1.5,6,3);c.fillStyle='#ffe4a5';c.fillRect(-1,-1,2,2);c.restore();}c.globalAlpha=1;
  }
- weaponFeedback(w){const c=this.ctx,p=w.player;
-  w.bullets.each(b=>{const speed=Math.hypot(b.vx,b.vy)||1,dx=b.vx/speed,dy=b.vy/speed,piercing=b.left>0,tail=piercing?32:15;
-   // Existing shot directions expose multishot fans; no invented extra projectiles.
-   c.lineCap='round';c.strokeStyle='#172f35';c.lineWidth=piercing?7:5;c.beginPath();c.moveTo(b.x-dx*tail,b.y-dy*tail);c.lineTo(b.x,b.y);c.stroke();
-   c.strokeStyle=piercing?'#7ce7d4':'#edbf6a';c.lineWidth=piercing?4:3;c.stroke();
-   c.strokeStyle='#fff3b7';c.lineWidth=1.5;c.beginPath();c.moveTo(b.x-dx*9,b.y-dy*9);c.lineTo(b.x+dx*3,b.y+dy*3);c.stroke();
-   if(piercing){c.strokeStyle='#bff8e2';c.lineWidth=1;c.beginPath();c.moveTo(b.x-dx*15-dy*4,b.y-dy*15+dx*4);c.lineTo(b.x-dx*23,b.y-dy*23);c.lineTo(b.x-dx*15+dy*4,b.y-dy*15-dx*4);c.stroke();}
-  });c.lineCap='butt';
-  for(let k=0;k<p.orbit;k++){const angle=w.time*2.8+k*TAU/p.orbit;
+ weaponFeedback(w,motion=this.motion){const c=this.ctx,x=this.cx-48,y=this.cy-64;
+  // Only our projectiles use this 96px patch. Threats, XP and guidance never enter it.
+  c.save();c.beginPath();c.rect(this.cx-this.width/this.scale,this.cy-this.height/this.scale,this.width/this.scale*2,this.height/this.scale*2);c.rect(x,y,96,96);c.clip('evenodd');
+  w.bullets.each(b=>drawShot(c,b));c.restore();
+  const q=this.shotCtx;q.setTransform(1,0,0,1,0,0);q.clearRect(0,0,96,96);q.save();q.translate(-x,-y);
+  w.bullets.each(b=>{const tail=Math.min(shotDistance(b),32)+8;if(b.x+tail<x||b.x-tail>x+96||b.y+tail<y||b.y-tail>y+96)return;drawShot(q,b);});
+  // Reuse the exact current pose geometry. Union visible pose parts rather than an oversized circle.
+  q.restore();const mask=this.bodyMaskCtx;mask.setTransform(1,0,0,1,0,0);mask.clearRect(0,0,96,96);mask.save();mask.translate(-x,-y);this.ctx=mask;this.maskKeeper=true;
+  try{this.keeper(this.cx,this.cy,1,motion);}finally{this.ctx=c;this.maskKeeper=false;mask.restore();}
+  q.save();q.setTransform(1,0,0,1,0,0);q.globalCompositeOperation='destination-out';q.globalAlpha=1;q.drawImage(this.bodyMask,0,0);q.restore();
+  c.drawImage(this.shotPatch,x,y,96,96);this.orbitFeedback(w,1);
+ }
+ orbitFeedback(w,side){const c=this.ctx,p=w.player;
+  for(let k=0;k<p.orbit;k++){const angle=w.time*2.8+k*TAU/p.orbit;const front=Math.sin(angle)>=0;if((side<0&&front)||(side>0&&!front))continue;
    // Trail sits on the original radius68 orbit, never expands its hit range.
    if(!this.reduced){c.strokeStyle='#7cdcc850';c.lineWidth=7;c.beginPath();c.arc(this.cx,this.cy,68,angle-.55,angle-.08);c.stroke();c.strokeStyle='#e2c47690';c.lineWidth=2;c.stroke();}
    const x=this.cx+Math.cos(angle)*68,y=this.cy+Math.sin(angle)*68;c.save();c.translate(x,y);c.rotate(angle);c.fillStyle='#17353b';c.beginPath();c.moveTo(-5,-14);c.lineTo(7,-9);c.lineTo(4,14);c.lineTo(-6,8);c.closePath();c.fill();c.fillStyle='#f4d58a';c.fillRect(-3,-11,6,22);c.fillStyle='#9cf1d9';c.fillRect(1,-10,2,18);c.restore();
