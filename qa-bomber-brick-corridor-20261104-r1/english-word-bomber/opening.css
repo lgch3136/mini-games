@@ -1,0 +1,7 @@
+.opening-entry { display: block; margin: 12px auto 0; min-height: 44px; }
+#opening-result, #menu { justify-content: flex-start; overflow-y: auto; }
+#menu .panel { flex-shrink: 0; margin: auto; }
+#opening-result .panel { flex-shrink: 0; margin: auto; }
+#opening-result button { min-height: 44px; }
+#opening-result .btn-row { flex-wrap: wrap; }
+.opening-mode #stats .chips:first-child { visibility: hidden; }

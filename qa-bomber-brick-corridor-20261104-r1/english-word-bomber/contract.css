@@ -1,0 +1,6 @@
+/* Isolated experiment: reuse overlay and native-button behavior. */
+.contract-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.contract-grid button { display:flex; flex-direction:column; gap:10px; padding:16px; min-width:0; }
+.contract-grid span { font-size:14px; line-height:1.5; overflow-wrap:anywhere; }
+#contract button:focus-visible { outline:3px solid #f8d66d; outline-offset:3px; }
+@media(max-width:520px) { .contract-grid { grid-template-columns:1fr; } #contract .panel { max-height:88vh; overflow-y:auto; } }
