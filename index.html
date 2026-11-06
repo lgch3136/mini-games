@@ -33,6 +33,9 @@
 .latest-version-retained{border-color:#60718d;background:#101b2d;color:#e3eaf6}
 
 .entry-kind{display:block;color:#9fb7ce;font:12px/1.5 system-ui;margin-bottom:6px}.version-note{max-width:780px;margin:16px auto 0;color:#a9bfd0;font:13px/1.7 system-ui}.latest-version-link{padding:10px 12px}.latest-version-link small{font-size:12px}
+
+/* Dates belong to the linked version, not the lobby edit. */
+.game-update-badge{position:absolute;top:10px;left:10px;z-index:3;display:flex;flex-direction:column;gap:2px;max-width:calc(100% - 20px);box-sizing:border-box;padding:6px 9px;border:1px solid #a7d4ea88;border-radius:8px;background:#071724ed;color:#eff9ff;font:600 12px/1.35 system-ui;box-shadow:0 2px 8px #0005;pointer-events:none}.game-update-badge>span{font-size:10px;color:#bdd5e4;font-weight:400}.game-update-badge time{white-space:nowrap}.candidate-update-date{color:#9fd4c5;font:600 12px/1.4 system-ui}.version-dates-note{max-width:780px;margin:8px auto;color:#a9bfd0;font:12px/1.6 system-ui}
 </style>
 </head>
 <body>
@@ -41,12 +44,12 @@
     <span class="eyebrow">YOUR POCKET ARCADE</span>
     <h1>好玩，就再来一局</h1>
     <p class="sub">16 款各有性格的小游戏，把碎片时间变成一点进步</p>
-  <p class="version-note">版本整理 · 2026/11/06：主卡保留原有入口和记录；下方列出目前可确认已部署的公开候选，候选不等于验收通过的正式升级。其他版本默认收起，点击即可展开。</p></header>
+  <p class="version-note">版本整理 · 2026/11/06：主卡保留原有入口和记录；下方列出目前可确认已部署的公开候选，候选不等于验收通过的正式升级。其他版本默认收起，点击即可展开。</p><p class="version-dates-note">更新日期按对应入口版本运行文件的上线记录标注（北京时间），不是集锦页面的修改日期。主入口与公开候选分开标注；上线不代表完整验收。</p></header>
 
   <section id="fogharbor-playtest" aria-labelledby="fogharbor-playtest-title" style="margin:24px 0;padding:18px;border:1px solid #557e85;border-radius:16px;background:#101e29;color:#e7f0ed">
     <h2 id="fogharbor-playtest-title" style="margin:0 0 12px;font:700 21px/1.4 system-ui">新作试玩 · 雾港守灯人</h2>
-    <figure style="margin:0 0 12px;max-width:520px">
-      <img src="https://lgch3136.github.io/mini-games/fogharbor-lamplighter-playtest-20261102-r1/assets/cover.png" alt="雾港守灯人 · AI 原创概念封面，非实机画面" width="1672" height="940" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px">
+    <figure style="margin:0 0 12px;max-width:520px;position:relative">
+      <span class="game-update-badge"><span>试玩更新</span><time datetime="2026-11-03">2026-11-03</time></span><img src="https://lgch3136.github.io/mini-games/fogharbor-lamplighter-playtest-20261102-r1/assets/cover.png" alt="雾港守灯人 · AI 原创概念封面，非实机画面" width="1672" height="940" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px">
       <figcaption style="margin-top:6px;font:12px/1.5 system-ui;color:#bccbd2">原创概念封面 · 非实机画面</figcaption>
     </figure>
     <p style="margin:8px 0;font:14px/1.7 system-ui">自动迎敌、走位冲刺，点亮三座港灯并选择火力升级。试玩版，平衡与多设备体验仍在测试。</p>
@@ -72,7 +75,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="emberwild-test-v4/index-direct-flight-20261017.html?v=20261017-direct-flight-r1" data-cat="action">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/emberwild.webp" alt="余烬旷野 · AI 原创概念封面，非实机画面" width="960" height="540" loading="eager" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/emberwild.webp" alt="余烬旷野 · AI 原创概念封面，非实机画面" width="960" height="540" loading="eager" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-10-18">2026-10-18</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">10/17 · 狮鹫重设计</span>
         <h2>余烬旷野</h2>
@@ -81,7 +84,7 @@
         <div class="meta"><span>⌨️ WASD 移动 · F 挥剑 · Shift 闪避</span><span>空格跳跃 · E 互动 · B 背包 · Tab 目标</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-emberwild-outpost-delivery-20261023-r1/index.html?v=20261023-outpost-delivery-copyfix-r2-qa"><strong>公开候选 · 未全验</strong><span>哨站送信 r2</span><small>独立候选 · 保存提示修订 · 3D实玩待验 · 原卡仍进入原版</small></a>
+      <a class="latest-version-link" href="qa-emberwild-outpost-delivery-20261023-r1/index.html?v=20261023-outpost-delivery-copyfix-r2-qa"><span class="candidate-update-date">候选更新 · 2026-10-24</span><strong>公开候选 · 未全验</strong><span>哨站送信 r2</span><small>独立候选 · 保存提示修订 · 3D实玩待验 · 原卡仍进入原版</small></a>
       <details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（13）</summary><div class="emberwild-qa-history-list" role="region" aria-label="余烬旷野其他版本" tabindex="0"><a class="emberwild-qa-link" href="emberwild-test-v4/index-story-reconstruction-20261018.html?v=20261019-cast-pose-recovery-r1"><span class="emberwild-qa-kicker">历史候选</span>第一章试玩 <small>施法肩膀姿势残留代码修复 · 保留地面判定与启动重试 · 沿用第一章预览存档 · 外观/GPU/帧率未验收</small></a>
       <a class="emberwild-qa-link" href="qa-emberwild-guard-reactions-20261022-r3/index.html?v=20261022-guard-reactions-r3"><span class="emberwild-qa-kicker">实验预览</span>守卫失力预览 r3 <small>肩肘失力后淡出，非跪倒 · 独立存档写入 · 性能长尾与旧地面穿入保留 · WebGL/动作/帧率未验收 · 正式版未替换</small></a>
       <a class="emberwild-qa-link" href="qa-traveler-motion-20261016/index.html">10/16 · 新人物动作试玩 <small>旅行者 A/B · 五段原动作 · 未并入正式版</small><small>独立实验 · 仅离线检查 · 浏览器 / GPU / 帧率未验收</small></a>
@@ -99,10 +102,10 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="qa-typebound-valid-rewards-20261029-v2/qa-typebound-valid-rewards-20261029-v2/game/index.html?v=20261029-valid-rewards-v2" data-cat="casual">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/typebound.webp" alt="键旅 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/typebound.webp" alt="键旅 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-11-03">2026-11-03</time></span></div>
       <div class="info"><span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">有效奖励 · 有限发布</span><h2>键旅</h2><p class="en">TYPEBOUND</p><p class="desc">逐字战斗与遗物取舍。满血时不再抽到只有即时治疗的篝火；连续奖励按刚选的遗物重算收益，逐步构建自己的冒险路线。</p><div class="meta"><span>⌨️ 英文打字 + 空格施法</span><span>桌面首章实玩 · 移动端未验</span></div></div>
     </a>
-      <a class="latest-version-link" href="qa-typebound-route-intel-20261104-r1/game/index.html"><strong>公开候选 · 未全验</strong><span>路线情报 r1 · 11/04</span><small>桌面展开、敌情匹配与滚动保存续行局部复核；手机、完整战斗与存档恢复未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（10）</summary><div class="emberwild-qa-history-list" role="region" aria-label="键旅其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-typebound-valid-rewards-20261029-v2/qa-typebound-valid-rewards-20261029-v2/game/index.html?v=20261029-valid-rewards-v2"><strong>历史候选 · 见原验证说明</strong><span>有效奖励 + 远征轮次 / 页数修订</span><small>沿用此 QA 记录 · 暂停辅助九页与远征首节点已有实证；新远征进度文字仍未实见 · 低血回复、存档与手机未验</small></a>
+      <a class="latest-version-link" href="qa-typebound-route-intel-20261104-r1/game/index.html"><span class="candidate-update-date">候选更新 · 2026-11-04</span><strong>公开候选 · 未全验</strong><span>路线情报 r1 · 11/04</span><small>桌面展开、敌情匹配与滚动保存续行局部复核；手机、完整战斗与存档恢复未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（10）</summary><div class="emberwild-qa-history-list" role="region" aria-label="键旅其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-typebound-valid-rewards-20261029-v2/qa-typebound-valid-rewards-20261029-v2/game/index.html?v=20261029-valid-rewards-v2"><strong>历史候选 · 见原验证说明</strong><span>有效奖励 + 远征轮次 / 页数修订</span><small>沿用此 QA 记录 · 暂停辅助九页与远征首节点已有实证；新远征进度文字仍未实见 · 低血回复、存档与手机未验</small></a>
       <a class="emberwild-qa-link" href="english-typebound/index.html?v=20261010-result-fix-r1"><span class="emberwild-qa-kicker">原正式版 · 回滚入口</span>键旅原版</a>
       <a class="emberwild-qa-link" href="qa-typebound-relic-feedback-20261027-r1/game/index.html?v=20261027-relic-feedback-r1"><span class="emberwild-qa-kicker">公开试玩候选 · 局部实玩</span><strong>键旅 · 回声战术反馈 r1</strong><span>15次暂停辅助 · 回声0/3→1/3→2/3→触发归零、基础共鸣+16/回声页加成+12与结束状态已核 · 局部8/8/8/9/NV · 缓时砂/秒数/手机/FPS待验</span></a>
       <a class="emberwild-qa-link" href="qa-typebound-practice-clarity-20261025-r2/game/index.html?v=qa-typebound-practice-clarity-20261025-r2"><span class="emberwild-qa-kicker">独立候选 · 待实玩</span><strong>打字魔法 · 错词回练直达 r2</strong><span>一键进入回练 · 练习不再显示九节点地图与战斗血条 · 沿用 r1 独立记录 · 实际布局与普通操作待验</span></a>
@@ -116,10 +119,10 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-echo-ring/index.html?v=20260930-quality-r5" data-cat="action">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/echo.webp" alt="回响边界 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/echo.webp" alt="回响边界 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info"><span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">新作</span><h2>回响边界</h2><p class="en">ECHO RING</p><p class="desc">只能向圆心开火，自己的回弹也会成为危险。细腻涟漪、穿行擦弹与连击共鸣，在一圈回响里挑战高分。</p><div class="meta"><span>⌨️ WASD + J / 空格</span><span>📱 双手操控</span></div></div>
     </a>
-      <a class="latest-version-link" href="qa-echo-shield-choice-20261103-r1/english-echo-ring/index.html"><strong>公开候选 · 未全验</strong><span>护盾抉择 r1 · 11/03</span><small>桌面自然满槽 R 修盾与 E 清弹两分支局部复核；整局结算、手机与长期平衡未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（7）</summary><div class="emberwild-qa-history-list" role="region" aria-label="回响边界其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-echo-feedback-20261029-r1/english-echo-ring/index.html?v=20261029-feedback-r1"><strong>历史候选 · 见原验证说明</strong><span>决策反馈 r1</span><small>受击扣能、最终护盾与充能提示 · 沿用原练习 QA 记录 · 90 秒流程、手动 E 完整链及音频未验 · 原主卡入口不变</small></a>
+      <a class="latest-version-link" href="qa-echo-shield-choice-20261103-r1/english-echo-ring/index.html"><span class="candidate-update-date">候选更新 · 2026-11-03</span><strong>公开候选 · 未全验</strong><span>护盾抉择 r1 · 11/03</span><small>桌面自然满槽 R 修盾与 E 清弹两分支局部复核；整局结算、手机与长期平衡未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（7）</summary><div class="emberwild-qa-history-list" role="region" aria-label="回响边界其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-echo-feedback-20261029-r1/english-echo-ring/index.html?v=20261029-feedback-r1"><strong>历史候选 · 见原验证说明</strong><span>决策反馈 r1</span><small>受击扣能、最终护盾与充能提示 · 沿用原练习 QA 记录 · 90 秒流程、手动 E 完整链及音频未验 · 原主卡入口不变</small></a>
       <a class="emberwild-qa-link" href="qa-echo-action-practice-20261027-r2/english-echo-ring/index.html?v=20261027-action-practice-r2"><span class="emberwild-qa-kicker">公开试玩候选 · 桌面局部复核</span><strong>回响边界 · 双动作练习 r2</strong><span>自愿横移与迎弹穿行练习 · 不计成绩 · 1188×848 桌面键盘完成及返回重开已实玩 · 触屏、音频/FPS、90秒与手动E完整链待验</span></a>
       <a class="emberwild-qa-link" href="qa-echo-hit-learning-20261026-r1/english-echo-ring/index.html?v=20261026-hit-learning-r1"><span class="emberwild-qa-kicker">独立候选 · 局部复核</span><strong>回响边界 · 受击来源学习 r1</strong><span>受击显示来源大类：回弹 / 敌人碰撞 · 不改伤害或原描边 · 两类自然受击与结果重试已复核 · 近帧竞争及 90 秒待验</span></a>
       <a class="emberwild-qa-link" href="qa-echo-resonance-20261019/english-echo-ring/index.html?v=20261019-resonance-window-r1"><span class="emberwild-qa-kicker">历史候选</span>共鸣余时预览 <small>独立成绩与设置 · 正式版未替换</small></a>
@@ -130,18 +133,18 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-apex-drive/index.html?v=20260930-quality-r5" data-cat="racing">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/apex.webp" alt="团团卡丁 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/apex.webp" alt="团团卡丁 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info"><span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">升级</span><h2>团团卡丁</h2><p class="en">APEX DRIVE · MOCHI RALLY</p><p class="desc">带上兔兔，甩一个漂亮的弯。短漂深漂、点按小喷、连喷与断位；三条糖果色赛道，五位对手，双槽道具攻防。</p><div class="meta"><span>⌨️ 方向 + Shift · 点 W 小喷</span><span>📱 自动油门 · 独立小喷键</span></div></div>
     </a>
-      <a class="latest-version-link" href="qa-kart-signed-progress-20261102-r1/english-apex-drive/index.html?v=qa-kart-signed-progress-20261102-r1"><strong>公开候选 · 未全验</strong><span>有符号赛程 · 独立 QA r1</span><small>标准 / 脉冲模式纪录分开 · 新 QA 不读取或迁移正式记录 · 3D、驾驶体验与收益未验</small></a>
+      <a class="latest-version-link" href="qa-kart-signed-progress-20261102-r1/english-apex-drive/index.html?v=qa-kart-signed-progress-20261102-r1"><span class="candidate-update-date">候选更新 · 2026-11-02</span><strong>公开候选 · 未全验</strong><span>有符号赛程 · 独立 QA r1</span><small>标准 / 脉冲模式纪录分开 · 新 QA 不读取或迁移正式记录 · 3D、驾驶体验与收益未验</small></a>
     <details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（1）</summary><div class="emberwild-qa-history-list" role="region" aria-label="团团卡丁其他版本" tabindex="0"><a href="english-apex-drive/index.html?v=20260930-quality-r5" class="emberwild-qa-link">原版入口 · 保留当前记录</a></div></details></div>
 
     <div class="emberwild-card-group">
     <a class="card" href="english-signal-strike/index.html?v=20260930-quality-r5" data-cat="action">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/signal.webp" alt="零界突围 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/signal.webp" alt="零界突围 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info"><span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">新作</span><h2>零界突围</h2><p class="en">SIGNAL STRIKE</p><p class="desc">四张行动地图：岸港、赤铜铸造厂、潮汐泵站与星图机库。侧翼包抄、长距交火和折线突进，各有不同的掩体路线。</p><div class="meta"><span>⌨️ WASD + 鼠标</span><span>📱 移动 / 瞄准 / 开火</span></div></div>
     </a>
-      <a class="latest-version-link" href="qa-signal-reload-hint-20261104-r1/english-signal-strike/index.html"><strong>公开候选 · 未全验</strong><span>无备弹恢复提示 r1 · 11/04</span><small>已部署的提示修订；实际 3D HUD、自然换枪与补给恢复链未验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（4）</summary><div class="emberwild-qa-history-list" role="region" aria-label="零界突围其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-signal-target-identity-20261103-r2/english-signal-strike/index.html?v=qa-signal-target-identity-20261103-r2"><strong>历史候选 · 见原验证说明</strong><span>目标名称与当前两侧状态 r2</span><small>保留应急换匣与续关计时规则 · 独立记录，不迁移旧 QA · 3D、实际字体与小屏未验</small></a>
+      <a class="latest-version-link" href="qa-signal-reload-hint-20261104-r1/english-signal-strike/index.html"><span class="candidate-update-date">候选更新 · 2026-11-04</span><strong>公开候选 · 未全验</strong><span>无备弹恢复提示 r1 · 11/04</span><small>已部署的提示修订；实际 3D HUD、自然换枪与补给恢复链未验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（4）</summary><div class="emberwild-qa-history-list" role="region" aria-label="零界突围其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-signal-target-identity-20261103-r2/english-signal-strike/index.html?v=qa-signal-target-identity-20261103-r2"><strong>历史候选 · 见原验证说明</strong><span>目标名称与当前两侧状态 r2</span><small>保留应急换匣与续关计时规则 · 独立记录，不迁移旧 QA · 3D、实际字体与小屏未验</small></a>
       <a class="emberwild-qa-link" href="qa-signal-checkpoint-time-20261101-r1/english-signal-strike/index.html?v=qa-signal-checkpoint-time-20261101-r1"><strong>原 QA · 保留旧记录入口</strong><span>此前候选记录</span><small>继续访问原 QA 记录；不迁移至新试玩。</small></a>
       <a class="emberwild-qa-link" href="qa-signal-interrupt-feedback-20261023-r1/english-signal-strike/index.html?v=20261023-interrupt-feedback-r1-qa"><span class="emberwild-qa-kicker">实验预览</span>哨兵打断偏转 r1 <small>仅真实打断后的模型朝向反馈 · 不新增硬直 · 独立记录与声音 · WebGL与实际观感未验 · 正式版未替换</small></a>
       <a class="emberwild-qa-link" href="qa-signal-melee-occlusion-20261023-r1/english-signal-strike/index.html?v=20261023-melee-occlusion-r1-qa"><span class="emberwild-qa-kicker">隔离候选 QA</span>近战掩体遮挡候选 r1 <small>仅蜘蛛近战结算尊重实体掩体 · 无遮挡仍为16伤害 · 独立记录 · 3D实玩待验 · 正式版未替换</small></a>
@@ -149,7 +152,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-moonblade/index.html?v=20260930-quality-r5" data-cat="action">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/moonblade.webp" alt="月影忍途 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/moonblade.webp" alt="月影忍途 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">新作</span>
         <h2>月影忍途</h2>
@@ -158,12 +161,12 @@
         <div class="meta"><span>⌨️ A/D+空格+J</span><span>📱 双手操控</span></div>
       </div>
     </a>
-      <a class="latest-version-link latest-version-retained" href="english-moonblade/index.html?v=20260930-quality-r5"><strong>当前原版 · 暂无可推荐新候选</strong><span>现有正式入口</span><small>暂无确定的新候选，维持原版 · 原卡仍进入原版</small></a>
+      <a class="latest-version-link latest-version-retained" href="english-moonblade/index.html?v=20260930-quality-r5"><span class="candidate-update-date">原版更新 · 2026-09-30</span><strong>当前原版 · 暂无可推荐新候选</strong><span>现有正式入口</span><small>暂无确定的新候选，维持原版 · 原卡仍进入原版</small></a>
     <details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（1）</summary><div class="emberwild-qa-history-list" role="region" aria-label="月影忍途其他版本" tabindex="0"><a href="english-moonblade/index.html?v=20260930-quality-r5" class="emberwild-qa-link">原版入口 · 保留当前记录</a></div></details></div>
 
     <div class="emberwild-card-group">
     <a class="card" href="english-word-ranger/index.html?v=20261019-checkpoint-copy-r1" data-cat="action">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/ranger.webp" alt="单词突击队 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/ranger.webp" alt="单词突击队 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-10-19">2026-10-19</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><span class="badge hot">10/19 · 重试说明</span>
         <h2>单词突击队</h2>
@@ -172,7 +175,7 @@
         <div class="meta"><span>⌨️ A/D+空格+J</span><span>📱 支持</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-ranger-radio-encounter-20261104-r1/english-word-ranger/index.html"><strong>公开候选 · 未全验</strong><span>呼援哨点 r1 · 11/04</span><small>友好档桌面抢哨 / 先地面两分支局部复核；标准难度、手机与连续手感未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（9）</summary><div class="emberwild-qa-history-list" role="region" aria-label="单词突击队其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-ranger-badge-persistence-20261101-r1/english-word-ranger/index.html?v=qa-ranger-badge-persistence-20261101-r1"><strong>历史候选 · 见原验证说明</strong><span>专精徽记 + 菜单可达性修订</span><small>沿用此 QA 记录 · 桌面开始按钮、徽记与焦点局部已验 · 窄屏、完整流程未全验 · 正式入口不变</small></a>
+      <a class="latest-version-link" href="qa-ranger-radio-encounter-20261104-r1/english-word-ranger/index.html"><span class="candidate-update-date">候选更新 · 2026-11-04</span><strong>公开候选 · 未全验</strong><span>呼援哨点 r1 · 11/04</span><small>友好档桌面抢哨 / 先地面两分支局部复核；标准难度、手机与连续手感未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（9）</summary><div class="emberwild-qa-history-list" role="region" aria-label="单词突击队其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-ranger-badge-persistence-20261101-r1/english-word-ranger/index.html?v=qa-ranger-badge-persistence-20261101-r1"><strong>历史候选 · 见原验证说明</strong><span>专精徽记 + 菜单可达性修订</span><small>沿用此 QA 记录 · 桌面开始按钮、徽记与焦点局部已验 · 窄屏、完整流程未全验 · 正式入口不变</small></a>
       <a class="emberwild-qa-link" href="qa-ranger-tactical-choice-20261028-r1/english-word-ranger/index.html?v=20261028-tactical-choice-r1"><span class="emberwild-qa-kicker">公开试玩候选 · 局部复核</span><strong>单词突击队 · 战术专精 r1</strong><span>8次暂停辅助，踩击2个不同敌人0→1→2、生命5→6与本局踏击标识已见 · 普通重试保留，常规新局归零，本轮未结算 · 翻滚/全6行动/徽记持久化/手机/音效/FPS待验</span></a>
       <a class="emberwild-qa-link" href="qa-ranger-checkpoint-word-20261026-r1/english-word-ranger/index.html?v=20261026-checkpoint-word-r1"><span class="emberwild-qa-kicker">独立候选 · 局部复核</span><strong>单词突击队 · 补给词前缀 r1</strong><span>恢复补给时当前词前缀 · 补给后新增字母回退 · 保留最新战术目标 · 普通输入两次恢复与再拾字已复核 · 完整词及后段待验</span></a>
       <a class="emberwild-qa-link" href="qa-ranger-shield-commitment-20261022-r2/english-word-ranger/index.html?v=20261022-shield-commitment-r2-qa"><span class="emberwild-qa-kicker">实验预览</span>盾向锁定预览 r2 <small>原有 0.42 秒预告内方向锁定 · 独立成绩与声音 · 未实玩验收 · 正式版未替换</small></a>
@@ -185,7 +188,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-word-fury/index.html?v=20260930-quality-r5" data-cat="action">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/fury.webp" alt="单词斗魂 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/fury.webp" alt="单词斗魂 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><span class="badge hot">重制</span>
         <h2>单词斗魂</h2>
@@ -194,14 +197,14 @@
         <div class="meta"><span>⌨️ WASD+JKUI</span><span>📱 双手操控</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-fury-mei-roll-20261103-r2/english-word-fury/index.html"><strong>公开候选 · 未全验</strong><span>美怡翻滚 r2 · 11/03</span><small>已部署的独立动作候选；实际 3D 动作、接地、战斗接触及连续手感未验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（3）</summary><div class="emberwild-qa-history-list" role="region" aria-label="单词斗魂其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-fury-fighter-motion-20261103-r2/english-word-fury/index.html?v=qa-fury-fighter-motion-20261103-r2"><strong>历史候选 · 见原验证说明</strong><span>凌风单角色造型 / 动作样板 r2</span><small>保留指定课专项复练 · 另两人原样 · 独立记录，不迁移旧 QA · 低多边形样板，WebGL、脚滑与实战接触未验</small></a>
+      <a class="latest-version-link" href="qa-fury-mei-roll-20261103-r2/english-word-fury/index.html"><span class="candidate-update-date">候选更新 · 2026-11-03</span><strong>公开候选 · 未全验</strong><span>美怡翻滚 r2 · 11/03</span><small>已部署的独立动作候选；实际 3D 动作、接地、战斗接触及连续手感未验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（3）</summary><div class="emberwild-qa-history-list" role="region" aria-label="单词斗魂其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-fury-fighter-motion-20261103-r2/english-word-fury/index.html?v=qa-fury-fighter-motion-20261103-r2"><strong>历史候选 · 见原验证说明</strong><span>凌风单角色造型 / 动作样板 r2</span><small>保留指定课专项复练 · 另两人原样 · 独立记录，不迁移旧 QA · 低多边形样板，WebGL、脚滑与实战接触未验</small></a>
       <a class="emberwild-qa-link" href="qa-fury-match-winner-20261101-r1/english-word-fury/index.html?v=qa-fury-match-winner-20261101-r1"><strong>原 QA · 保留旧记录入口</strong><span>此前候选记录</span><small>继续访问原 QA 记录；不迁移至新试玩。</small></a>
       <a class="emberwild-qa-link" href="qa-fury-targeted-drill-20261103-r1/english-word-fury/index.html?v=qa-fury-targeted-drill-20261103-r1"><strong>专项复练 QA · 原造型 / 独立记录</strong><span>指定四课，专项不计课程与成绩</span><small>新人物样板也保留此练习；两套 QA 记录不互通。真实操作与学习收益未验。</small></a>
     </div></details></div>
 
     <div class="emberwild-card-group">
     <a class="card" href="english-word-bomber/index.html?v=20261019-recap-label-r1" data-cat="puzzle">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/bomber.webp" alt="英语炸弹人 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/bomber.webp" alt="英语炸弹人 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-10-19">2026-10-19</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">10/19 · 结算表述修复</span>
         <h2>英语炸弹人</h2>
@@ -210,7 +213,7 @@
         <div class="meta"><span>⌨️ 方向键+空格</span><span>📱 支持</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-bomber-delayed-trial-20261104-r1/english-word-bomber/index.html"><strong>公开候选 · 未全验</strong><span>MAP 延迟装置试炼 r1 · 11/04</span><small>仅适用于至少 900×650 的游戏内容区域；实际两装置路线未验，较小窗口请使用原有入口。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（11）</summary><div class="emberwild-qa-history-list" role="region" aria-label="英语炸弹人其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-bomber-contract-experiment-20261102-r1/english-word-bomber/index.html?v=qa-bomber-contract-experiment-20261102-r1"><strong>历史候选 · 见原验证说明</strong><span>首次跨关合约实验 r1</span><small>首关后选 4 / 6 字合约；6 字下一关成功额外 +100 · 独立实验记录 · 分支完整通关与收益未全验 · 原主卡入口不变</small></a>
+      <a class="latest-version-link" href="qa-bomber-delayed-trial-20261104-r1/english-word-bomber/index.html"><span class="candidate-update-date">候选更新 · 2026-11-04</span><strong>公开候选 · 未全验</strong><span>MAP 延迟装置试炼 r1 · 11/04</span><small>仅适用于至少 900×650 的游戏内容区域；实际两装置路线未验，较小窗口请使用原有入口。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（11）</summary><div class="emberwild-qa-history-list" role="region" aria-label="英语炸弹人其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-bomber-contract-experiment-20261102-r1/english-word-bomber/index.html?v=qa-bomber-contract-experiment-20261102-r1"><strong>历史候选 · 见原验证说明</strong><span>首次跨关合约实验 r1</span><small>首关后选 4 / 6 字合约；6 字下一关成功额外 +100 · 独立实验记录 · 分支完整通关与收益未全验 · 原主卡入口不变</small></a>
       <a class="emberwild-qa-link" href="qa-bomber-record-feedback-20261101-r1/english-word-bomber/index.html?v=qa-bomber-record-feedback-20261101-r1"><span class="emberwild-qa-kicker">原 QA · 保留旧记录入口</span><strong>结算纪录反馈</strong><span>继续访问原 QA 记录，不迁移至新实验。</span></a>
       <a class="emberwild-qa-link" href="qa-bomber-exit-choice-20261027-r1/english-word-bomber/index.html?v=20261027-exit-choice-r1"><span class="emberwild-qa-kicker">独立候选 · 暂停辅助专项</span><strong>字母轰炸机 · 短护换藏门线索 r1</strong><span>词齐敌清后可选放弃短护换定位；不暂停、不保护，仍须炸砖进门 · 单局实证交换→炸门→安全补给→下一关短段，非无辅助难度或全量验收</span></a>
       <a class="emberwild-qa-link" href="qa-bomber-result-clarity-20261025-r2/english-word-bomber/index.html?v=qa-bomber-result-clarity-20261025-r2"><span class="emberwild-qa-kicker">独立候选 · 待实玩</span><strong>字母轰炸机 · 终局结果与目标说明 r2</strong><span>明确生命耗尽、未完成目标与纪录区别 · 含可选路径练习 · 实际布局与普通操作待验</span></a>
@@ -225,7 +228,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-word-miner/index.html?v=20260930-quality-r5" data-cat="casual">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/miner.webp" alt="英语挖金子 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/miner.webp" alt="英语挖金子 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">NEW</span>
         <h2>英语挖金子</h2>
@@ -234,7 +237,7 @@
         <div class="meta"><span>⌨️ 空格发射</span><span>📱 点按</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-miner-feedback-lifecycle-20261101-r1/english-word-miner/index.html?v=qa-miner-feedback-lifecycle-20261101-r1"><strong>公开候选 · 未全验</strong><span>规划详情 / 已选操作对象区分</span><small>沿用此 QA 记录，规则不变 · 新规划文字实际布局与窄屏未验 · 正式入口不变</small></a>
+      <a class="latest-version-link" href="qa-miner-feedback-lifecycle-20261101-r1/english-word-miner/index.html?v=qa-miner-feedback-lifecycle-20261101-r1"><span class="candidate-update-date">候选更新 · 2026-11-03</span><strong>公开候选 · 未全验</strong><span>规划详情 / 已选操作对象区分</span><small>沿用此 QA 记录，规则不变 · 新规划文字实际布局与窄屏未验 · 正式入口不变</small></a>
       <details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（10）</summary><div class="emberwild-qa-history-list" role="region" aria-label="英语挖金子其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-miner-contract-planning-20261027-r1/english-word-miner/index.html?v=20261027-contract-planning-r1"><span class="emberwild-qa-kicker">公开试玩候选 · 局部复核</span><strong>英语挖矿 · 委托矿值规划 r1</strong><span>暂停辅助规划选择、取消保留、键盘对象稳定与实收94已核 · 本次委托未通关 · 深图实采/无辅助/手机待验</span></a>
       <a class="emberwild-qa-link" href="qa-miner-contract-routes-20261026-r1/english-word-miner/index.html?v=20261026-contract-routes-r1"><span class="emberwild-qa-kicker">公开试玩候选 · 局部复核</span><strong>英语挖矿 · 首店委托矿路 r1</strong><span>首店可选浅层散采/深脉整采 · 原普通继续保留 · 仅初级桌面 · 试验不记普通纪录 · 两路线局部实玩</span></a>
       <a class="emberwild-qa-link" href="qa-miner-resource-decision-20261025-r2/english-word-miner/index.html?v=qa-miner-resource-decision-20261025-r2"><span class="emberwild-qa-kicker">独立候选 · 待实玩</span><strong>英语挖矿 · 雷管取舍反馈 r2</strong><span>实际货物取舍与剩余目标分开显示 · 规则不变 · 实际辨识与普通操作待验</span></a>
@@ -249,7 +252,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-word-breaker/index.html?v=20261011-breaker-letter-r1" data-cat="casual">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/breaker.webp" alt="英语打砖块 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/breaker.webp" alt="英语打砖块 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-10-11">2026-10-11</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">10/11 · 字母清晰度</span>
         <h2>英语打砖块</h2>
@@ -258,7 +261,7 @@
         <div class="meta"><span>⌨️ ←→+空格</span><span>📱 拖动</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-breaker-full-health-feedback-20261101-r1/english-word-breaker/index.html?v=qa-breaker-full-health-feedback-20261101-r1"><strong>公开候选 · 未全验</strong><span>满血续关提示</span><small>满血进入下一关首次发球时说明保留召回；不扩展交换条件 · QA独立存档，不迁移正式纪录 · 原主卡入口不变</small></a>
+      <a class="latest-version-link" href="qa-breaker-full-health-feedback-20261101-r1/english-word-breaker/index.html?v=qa-breaker-full-health-feedback-20261101-r1"><span class="candidate-update-date">候选更新 · 2026-11-01</span><strong>公开候选 · 未全验</strong><span>满血续关提示</span><small>满血进入下一关首次发球时说明保留召回；不扩展交换条件 · QA独立存档，不迁移正式纪录 · 原主卡入口不变</small></a>
       <details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（7）</summary><div class="emberwild-qa-history-list" role="region" aria-label="英语打砖块其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-breaker-bonus-window-20261026-r1/english-word-breaker/index.html?v=20261026-bonus-window-r1"><span class="emberwild-qa-kicker">独立候选 · 局部复核</span><strong>英语打砖块 · 召回增益窗口 r1</strong><span>召回时显示增益余量与选角耗时 · 不延长增益或改变物理 · 单 F 余量到结束、发射恢复已实玩 · W 与 320px 待验</span></a>
       <a class="emberwild-qa-link" href="qa-breaker-aim-decision-20261025-r1/english-word-breaker/index.html?v=qa-breaker-aim-decision-20261025-r1"><span class="emberwild-qa-kicker">独立候选 · 待实玩</span><strong>英语打砖块 · 首碰方向预览 r1</strong><span>召回持球时显示当前局面首碰预览 · 不预测反弹或局面变化 · 实际用途与布局待验</span></a>
       <a class="emberwild-qa-link" href="qa-breaker-precision-20261019/index.html?v=20261019-precision-r2"><span class="emberwild-qa-kicker">历史候选</span>精准蓄能预览 <small>独立记录 · 正式版未替换</small></a>
@@ -270,7 +273,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-temple-dash/index.html?v=20260930-quality-r5" data-cat="action">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/temple.webp" alt="遗迹词途 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/temple.webp" alt="遗迹词途 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><h2>遗迹词途</h2>
         <p class="en">TEMPLE DASH · 音速远征</p>
@@ -278,14 +281,14 @@
         <div class="meta"><span>⌨️ 方向键组合</span><span>📱 双指 / 轻扫</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-temple-route-preview-20261103-r1/english-temple-dash/index.html?v=qa-temple-route-preview-20261103-r1"><strong>公开候选 · 未全验</strong><span>岔路当前落点 / 状态预览 r1</span><small>原路线与奖励不变 · 文字放不下回原提示 · 独立记录，不迁移旧 QA · 11px 可读窗口、3D 与决策帮助未验</small></a>
+      <a class="latest-version-link" href="qa-temple-route-preview-20261103-r1/english-temple-dash/index.html?v=qa-temple-route-preview-20261103-r1"><span class="candidate-update-date">候选更新 · 2026-11-03</span><strong>公开候选 · 未全验</strong><span>岔路当前落点 / 状态预览 r1</span><small>原路线与奖励不变 · 文字放不下回原提示 · 独立记录，不迁移旧 QA · 11px 可读窗口、3D 与决策帮助未验</small></a>
       <details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（2）</summary><div class="emberwild-qa-history-list" role="region" aria-label="遗迹词途其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-temple-speed-records-20261101-r1/english-temple-dash/index.html?v=qa-temple-speed-records-20261101-r1"><strong>原 QA · 保留旧记录入口</strong><span>此前候选记录</span><small>继续访问原 QA 记录；不迁移至新试玩。</small></a>
       <a class="emberwild-qa-link" href="qa-temple-scene-landmarks-20261025-r2/english-temple-dash/index.html?v=20261025-scene-landmarks-r2-qa"><span class="emberwild-qa-kicker">独立场景候选 · 待实玩</span><strong>遗迹词途 · 三地场景 r2</strong><span>默认节奏远征同步生效；真实GPU、画面、触控、音画与FPS待验，非正式质量通过。</span></a>
     </div></details></div>
 
     <div class="emberwild-card-group">
     <a class="card" href="qa-thunder-escort-reserve-20261029-r1-1/english-thunder-fighter/index.html?v=20261029-escort-reserve-r1.1" data-cat="action">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/thunder.webp" alt="雷霆战机 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/thunder.webp" alt="雷霆战机 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-10-29">2026-10-29</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><h2>雷霆战机</h2>
         <p class="en">英语风暴</p>
@@ -293,7 +296,7 @@
         <div class="meta"><span>⌨️ WASD+J</span><span>桌面局部实玩 · 移动端未验</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-thunder-coast-20261103-r1/english-thunder-fighter/index.html"><strong>公开候选 · 未全验</strong><span>海岸衔接 r1 · 11/03</span><small>已部署的背景视觉候选；精确衔接、回退、完整关卡与手机未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（15）</summary><div class="emberwild-qa-history-list" role="region" aria-label="雷霆战机其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-thunder-reward-receipts-20261102-r4/english-thunder-fighter/index.html?v=qa-thunder-reward-receipts-20261102-r4"><strong>历史候选 · 见原验证说明</strong><span>奖励回执 r4 · 分数布局修正</span><small>1180×757 桌面本次答案+勋章+强化并发：顶部背板分离可读、到期消失 · 窄屏/长题/长数字不足空间仍沿用 r2，重叠未改善 · QA独立存档，不迁移正式纪录 · 原主卡入口不变</small></a>
+      <a class="latest-version-link" href="qa-thunder-coast-20261103-r1/english-thunder-fighter/index.html"><span class="candidate-update-date">候选更新 · 2026-11-03</span><strong>公开候选 · 未全验</strong><span>海岸衔接 r1 · 11/03</span><small>已部署的背景视觉候选；精确衔接、回退、完整关卡与手机未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（15）</summary><div class="emberwild-qa-history-list" role="region" aria-label="雷霆战机其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-thunder-reward-receipts-20261102-r4/english-thunder-fighter/index.html?v=qa-thunder-reward-receipts-20261102-r4"><strong>历史候选 · 见原验证说明</strong><span>奖励回执 r4 · 分数布局修正</span><small>1180×757 桌面本次答案+勋章+强化并发：顶部背板分离可读、到期消失 · 窄屏/长题/长数字不足空间仍沿用 r2，重叠未改善 · QA独立存档，不迁移正式纪录 · 原主卡入口不变</small></a>
       <a class="emberwild-qa-link" href="english-thunder-fighter/index.html?v=20260930-quality-r5"><span class="emberwild-qa-kicker">原正式版 · 回滚入口</span>雷霆战机原版</a>
       <a class="emberwild-qa-link" href="qa-thunder-boss-practice-20261026-r1/english-thunder-fighter/index.html?v=20261026-boss-practice-r1"><span class="emberwild-qa-kicker">公开试玩候选 · 局部复核</span><strong>雷霆战机 · 已遇首领重练 r1</strong><span>已遇且未击破首领失败后可选 · 满血清场演练不计纪录 · 普通路线保留 · 暂停辅助桌面实玩</span></a>
       <a class="emberwild-qa-link" href="qa-thunder-airport-landmarks-20261025-r3/english-thunder-fighter/index.html?v=qa-thunder-airport-landmarks-20261025-r3"><span class="emberwild-qa-kicker">独立候选 · 待实玩</span><strong>雷霆战机 · 空港地标与辨识 r3</strong><span>侧区立体设施、状态收束与武器晶体遮挡修订 · 机制节奏不变 · 真实画面待验</span></a>
@@ -312,7 +315,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-word-snake/index.html?v=20260930-quality-r5" data-cat="puzzle">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/snake.webp" alt="贪吃蛇背单词 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/snake.webp" alt="贪吃蛇背单词 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><h2>贪吃蛇背单词</h2>
         <p class="en">WORD SNAKE</p>
@@ -320,7 +323,7 @@
         <div class="meta"><span>⌨️ 方向键 + 空格</span><span>📱 滑动 / 方向盘</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-snake-word-order-20261104-r1/english-word-snake/word-order.html"><strong>公开候选 · 未全验</strong><span>双词取序短关 r1 · 11/04</span><small>桌面 CAT 先 / DOG 先两局暂停辅助完成；独立静音短关，不是完整游戏升级，连续操作与手机未验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（7）</summary><div class="emberwild-qa-history-list" role="region" aria-label="贪吃蛇背单词其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-snake-grammar-context-20261102-r1/english-word-snake/index.html?v=20261102-grammar-context-r1"><strong>历史候选 · 见原验证说明</strong><span>语法语境 + ARC 分段路线复盘</span><small>沿用此 QA 记录 · 暂停辅助同关 18 / 32 步分段差异已核 · cat 题提示与重试、小屏和无辅助体验仍未验</small></a>
+      <a class="latest-version-link" href="qa-snake-word-order-20261104-r1/english-word-snake/word-order.html"><span class="candidate-update-date">候选更新 · 2026-11-04</span><strong>公开候选 · 未全验</strong><span>双词取序短关 r1 · 11/04</span><small>桌面 CAT 先 / DOG 先两局暂停辅助完成；独立静音短关，不是完整游戏升级，连续操作与手机未验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（7）</summary><div class="emberwild-qa-history-list" role="region" aria-label="贪吃蛇背单词其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-snake-grammar-context-20261102-r1/english-word-snake/index.html?v=20261102-grammar-context-r1"><strong>历史候选 · 见原验证说明</strong><span>语法语境 + ARC 分段路线复盘</span><small>沿用此 QA 记录 · 暂停辅助同关 18 / 32 步分段差异已核 · cat 题提示与重试、小屏和无辅助体验仍未验</small></a>
       <a class="emberwild-qa-link" href="qa-snake-turn-control-20261027-r1/english-word-snake/index.html?v=20261027-turn-control-r1"><span class="emberwild-qa-kicker">公开修复候选 · 桌面局部复核</span><strong>字母花园 · 转向可靠性修复 r1</strong><span>5次暂停辅助 · 快速两转按序、反向拒绝、暂停/菜单新局清队列已见 · 局部8/NV/7/8/NV · 同帧/精确格心极限、触屏、无辅助、FPS待验 · 非新增玩法轮</span></a>
       <a class="emberwild-qa-link" href="qa-snake-route-learning-20261025-r2/english-word-snake/index.html?v=20261025-route-learning-r2-qa"><span class="emberwild-qa-kicker">独立候选 · 待实玩</span><strong>贪吃蛇背单词 · 盘身路线回顾 r2</strong><span>固定 ARC 结算可看本局路线与取字步数 · 同图重试对照 · 实际辨识与普通操作待验</span></a>
       <a class="emberwild-qa-link" href="qa-snake-paced-expedition-20261019/english-word-snake/index.html?v=20261019-paced-expedition-r2-qa"><span class="emberwild-qa-kicker">历史候选</span>渐进五词实验 <small>可选 3→4→5→6→7 字母路线 · 独立记录与设置 · 正式版未替换</small></a>
@@ -331,7 +334,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-flappy-word/index.html?v=20260930-quality-r5" data-cat="casual">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/flappy.webp" alt="飞鸟背单词 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/flappy.webp" alt="飞鸟背单词 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-09-30">2026-09-30</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><h2>飞鸟背单词</h2>
         <p class="en">FLAPPY WORDS</p>
@@ -339,7 +342,7 @@
         <div class="meta"><span>🖱 点击起飞</span><span>📱 点按</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-flappy-detour-choice-20261104-r1/qa-flappy-first-flight-20261019/index.html"><strong>公开候选 · 未全验</strong><span>偏航取字 r1 · 11/04</span><small>限定桌面首个下侧气泡两分支局部复核；上侧、后期、完整词、手机与无辅助手感未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（10）</summary><div class="emberwild-qa-history-list" role="region" aria-label="飞鸟背单词其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-flappy-recovery-glide-20261102-r1/qa-flappy-first-flight-20261019/index.html"><strong>历史候选 · 见原验证说明</strong><span>恢复段滑翔实验 r1</span><small>恢复练习可按住 G 滑翔，仍须取 A 并穿中心出口 · 独立实验记录 · 成功出口与触控未验 · 原主卡入口不变</small></a>
+      <a class="latest-version-link" href="qa-flappy-detour-choice-20261104-r1/qa-flappy-first-flight-20261019/index.html"><span class="candidate-update-date">候选更新 · 2026-11-04</span><strong>公开候选 · 未全验</strong><span>偏航取字 r1 · 11/04</span><small>限定桌面首个下侧气泡两分支局部复核；上侧、后期、完整词、手机与无辅助手感未全验。 独立 QA 记录；原记录仍从主卡进入。</small></a><details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（10）</summary><div class="emberwild-qa-history-list" role="region" aria-label="飞鸟背单词其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-flappy-recovery-glide-20261102-r1/qa-flappy-first-flight-20261019/index.html"><strong>历史候选 · 见原验证说明</strong><span>恢复段滑翔实验 r1</span><small>恢复练习可按住 G 滑翔，仍须取 A 并穿中心出口 · 独立实验记录 · 成功出口与触控未验 · 原主卡入口不变</small></a>
       <a class="emberwild-qa-link" href="qa-flappy-reward-rail-20261101-r3/qa-flappy-first-flight-20261019/index.html?v=qa-flappy-reward-rail-20261101-r3"><span class="emberwild-qa-kicker">原 QA · 保留旧记录入口</span><strong>奖励与按钮安全区 r3</strong><span>继续访问原 QA 记录，不迁移至新实验。</span></a>
       <a class="emberwild-qa-link" href="flappy-word-rematch-prototype-r1-20261027/qa-flappy-first-flight-20261019/index.html?v=20261027-word-rematch-r1"><span class="emberwild-qa-kicker">独立候选 · 局部复核</span><strong>飞鸟背单词 · 同词重挑战 r1</strong><span>普通拼词失败后自选同词从零重飞 · 暂停辅助下初级7字母完整实飞，重练归零/防误开已核 · 其余难度、手机、无辅助平衡与学习效果待验</span></a>
       <a class="emberwild-qa-link" href="flappy-unfinished-word-review-r1-20261026/qa-flappy-first-flight-20261019/index.html?v=flappy-unfinished-word-review-r1-20261026"><span class="emberwild-qa-kicker">独立候选 · 局部复核</span><strong>飞鸟背单词 · 未完词复习 r1</strong><span>普通拼词失败后按需复习当前未完成词 · 默认折叠 · 整词接续、复习开合与短窗重试已实玩 · 学习效果及其他模式待验</span></a>
@@ -353,7 +356,7 @@
 
     <div class="emberwild-card-group">
     <a class="card" href="english-word-beat/index.html?v=20261010-audio-resume-r1" data-cat="casual">
-      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/beat.webp" alt="英语节奏大师 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span></div>
+      <div class="art art-cover game-cover"><img src="shared/game-covers-20261019/beat.webp" alt="英语节奏大师 · AI 原创概念封面，非实机画面" width="960" height="540" loading="lazy" decoding="async"><span class="art-label">原创概念封面 · 非实机</span><span class="game-update-badge" title="主入口版本最近运行文件变更的部署成功日期（北京时间）；候选另标日期"><span>主入口更新</span><time datetime="2026-10-11">2026-10-11</time></span></div>
       <div class="info">
         <span class="entry-kind">原有入口 · 保留原记录</span><span class="badge new">10/11 · 暂停恢复修复</span>
         <h2>英语节奏大师</h2>
@@ -362,7 +365,7 @@
         <div class="meta"><span>⌨️ 7K 键音</span><span>📱 多点触控</span></div>
       </div>
     </a>
-      <a class="latest-version-link" href="qa-wordbeat-failure-phrase-20261025-r1/english-word-beat/index.html?v=20261025-failure-phrase-r1-qa"><strong>公开候选 · 未全验</strong><span>失败后回段练 r1</span><small>失败后练刚才所在段 · 段练后从头重试原挑战 · 沿用段练 QA 记录 · 失败回段练与返程局部实测 · 音频/FPS未验 · 原卡仍进入原版</small></a>
+      <a class="latest-version-link" href="qa-wordbeat-failure-phrase-20261025-r1/english-word-beat/index.html?v=20261025-failure-phrase-r1-qa"><span class="candidate-update-date">候选更新 · 2026-10-26</span><strong>公开候选 · 未全验</strong><span>失败后回段练 r1</span><small>失败后练刚才所在段 · 段练后从头重试原挑战 · 沿用段练 QA 记录 · 失败回段练与返程局部实测 · 音频/FPS未验 · 原卡仍进入原版</small></a>
       <details class="emberwild-qa-history version-history"><summary>其他版本与历史试玩（6）</summary><div class="emberwild-qa-history-list" role="region" aria-label="英语节奏大师其他版本" tabindex="0"><a class="emberwild-qa-link" href="qa-wordbeat-practice-retry-20261019/english-word-beat/index.html?v=20261019-practice-retry-r1-qa"><span class="emberwild-qa-kicker">历史候选</span>完整练习重试预览 <small>独立成绩与设置 · 正式版未替换</small></a>
       <a class="emberwild-qa-link" href="qa-wordbeat-result-coaching-20261020-r1/english-word-beat/index.html?v=20261020-result-coaching-r1-qa"><span class="emberwild-qa-kicker">实验预览</span>练习结算建议试玩 <small>完成练习后建议同曲再奏 · 独立成绩与设置 · 待浏览器验收 · 正式版未替换</small></a>
       <a class="emberwild-qa-link" href="qa-wordbeat-hold-feedback-20261021-r2/english-word-beat/index.html?v=20261021-hold-feedback-r2-qa"><span class="emberwild-qa-kicker">实验预览</span>长条中断定位 r2 <small>实际轨键与中断类别 · 独立成绩与设置 · 未实玩验收 · 正式版未替换</small></a>
