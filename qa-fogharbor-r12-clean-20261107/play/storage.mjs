@@ -1,0 +1,3 @@
+export const SAVE_KEY='qa-fogharbor-clean-20261107-r12:v1';
+export function readRecord(storage){try{let r=JSON.parse(storage.getItem(SAVE_KEY));if(r?.schema===1&&Number.isInteger(r.wins)&&r.wins>=0&&r.wins<1e6&&Number.isInteger(r.bestKills)&&r.bestKills>=0&&r.bestKills<1e7)return{schema:1,wins:r.wins,bestKills:r.bestKills};}catch{}return{schema:1,wins:0,bestKills:0};}
+export function saveRecord(storage,old,w){const r={schema:1,wins:old.wins+(w.status==='won'?1:0),bestKills:Math.max(old.bestKills,w.kills)};try{storage.setItem(SAVE_KEY,JSON.stringify(r));return{record:r,saved:true};}catch{return{record:r,saved:false};}}
