@@ -526,7 +526,7 @@ try {
 } catch (e) {
   text("loading", "3D 画面未能启动。需要 WebGL 2 与完整角色资源，可刷新重试或返回合集。 ");
   $("loading").setAttribute("role", "alert");
-  const back = document.createElement("a"); back.href = "../"; back.textContent = "返回游戏合集"; $("loading").append(back);
+  const back = document.createElement("a"); back.href = $("collection-link").href; back.textContent = "返回游戏合集"; $("loading").append(back);
   text("status", e.message);
   console.error(e);
 }
