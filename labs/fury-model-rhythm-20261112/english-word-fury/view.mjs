@@ -1,18 +1,15 @@
-import { impactProfile, paintImpact } from "./impact-feedback.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import { sampleWave, geometry as waveGeometry } from "./wave-sequence.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import { sampleJab, geometry as jabGeometry } from "./jab-sequence.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import { spriteFrame, frameGeometry } from "./sprite-motion.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js?v=qa-fury-model-rhythm-20261112-r2";
-import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js?v=qa-fury-model-rhythm-20261112-r2";
-import { ankle } from "./motion.mjs?v=qa-fury-model-rhythm-20261112-r2";
+import { impactProfile, paintImpact } from "./impact-feedback.mjs?v=qa-fury-model-rhythm-20261112-r3";
+import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js?v=qa-fury-model-rhythm-20261112-r3";
+import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js?v=qa-fury-model-rhythm-20261112-r3";
+import { ankle } from "./motion.mjs?v=qa-fury-model-rhythm-20261112-r3";
 import {
   ROSTER,
   lerp,
   clamp,
   hurtbox,
   attackBox,
-} from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import { PosePair } from "./render-state.mjs?v=qa-fury-model-rhythm-20261112-r2";
+} from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r3";
+import { PosePair } from "./render-state.mjs?v=qa-fury-model-rhythm-20261112-r3";
 const Y = new THREE.Vector3(0, 1, 0),
   Z = new THREE.Vector3(0, 0, 1),
   v = new THREE.Vector3(),
@@ -150,19 +147,8 @@ export class ArenaView {
         this.cache.set(c.id, model.scene);
       }),
     );
-    this.spriteTexture = await textureLoader.loadAsync(new URL('./assets/lin-original-sprite-atlas-r1.png', import.meta.url).href);
-    this.spriteTexture.colorSpace = THREE.SRGBColorSpace;
-    this.spriteTexture.minFilter = THREE.LinearFilter;
-    this.spriteTexture.magFilter = THREE.LinearFilter;
-    this.spriteTexture.generateMipmaps = false;
-    this.jabTexture=await textureLoader.loadAsync(new URL('./assets/lin-jab-8-candidate.png',import.meta.url).href);
-    this.jabTexture.colorSpace=THREE.SRGBColorSpace;
-    this.jabTexture.minFilter=this.jabTexture.magFilter=THREE.LinearFilter;
-    this.jabTexture.generateMipmaps=false;
-    this.waveTexture=await textureLoader.loadAsync(new URL('./assets/lin-wave-planted-r2.png',import.meta.url).href);
-    this.waveTexture.colorSpace=THREE.SRGBColorSpace;
-    this.waveTexture.minFilter=this.waveTexture.magFilter=THREE.LinearFilter;
-    this.waveTexture.generateMipmaps=false;
+    // Combat uses one complete model per character. Partial sprite experiments
+    // stay in the separate atlas lab; never swap render families mid-action.
     this.ready = true;
   }
   select(ids) {
@@ -186,11 +172,7 @@ export class ArenaView {
       });
       this.scene.add(root);
       this.models[i] = { root, parts, id, trail: [], posePair: new PosePair() };
-      if (id === 0 && this.spriteTexture) {
-        const sprite = new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:this.spriteTexture,transparent:true,alphaTest:.55,depthWrite:false,toneMapped:false,side:THREE.DoubleSide}));
-        sprite.frustumCulled=false;
-        this.scene.add(sprite); this.models[i].sprite=sprite; root.visible=false;
-      }
+
     });
   }
   resize() {
@@ -306,22 +288,10 @@ export class ArenaView {
     shadow.position.set(root.position.x, -0.01, -0.12);
     shadow.scale.setScalar(clamp(1 - f.y * 0.12, 0.65, 1));
     shadow.material.opacity = 0.42 * clamp(1 - f.y * 0.15, 0.3, 1);
-    if (model.sprite) {
-      const sprite=model.sprite,wave=sampleWave(f),seq=wave===-1?0:sampleJab(f),index=wave!==null&&wave>=0?`wave-${wave}`:seq===null?spriteFrame(f):`jab-${seq}`;
-      sprite.visible=index!==null;root.visible=index===null;
-      if(index===null)return;
-      const g=wave!==null&&wave>=0?waveGeometry(wave):seq===null?frameGeometry(index):jabGeometry(seq);
-      const texture=wave!==null&&wave>=0?this.waveTexture:seq===null?this.spriteTexture:this.jabTexture;
-      if(texture&&sprite.material.map!==texture){sprite.material.map=texture;sprite.material.needsUpdate=true;}
-      if (model.spriteIndex!==index) {
-        const uv=sprite.geometry.attributes.uv;
-        uv.setXY(0,g.u0,g.v1);uv.setXY(1,g.u1,g.v1);uv.setXY(2,g.u0,g.v0);uv.setXY(3,g.u1,g.v0);uv.needsUpdate=true;
-        model.spriteIndex=index;
-      }
-      sprite.scale.set(g.width*f.c.size*f.facing,g.height*f.c.size,1);
-      sprite.position.set(root.position.x+g.offsetX*f.c.size*f.facing,root.position.y+g.offsetY*f.c.size,.8);
-      // A pose atlas is not a continuous roll animation. Keep this limitation visible in QA.
-    }
+    // Keep the complete selected GLB through idle, every move, hurt and dodge.
+    root.visible = true;
+    if (model.sprite) model.sprite.visible = false;
+
   }
   screen(x, y) {
     return [

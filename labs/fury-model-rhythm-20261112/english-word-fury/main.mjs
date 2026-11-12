@@ -1,15 +1,15 @@
-import { rhythm } from "./rhythm.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import { rememberCombat, storedMedal } from "./dojo.mjs?v=qa-fury-model-rhythm-20261112-r2";
+import { rhythm } from "./rhythm.mjs?v=qa-fury-model-rhythm-20261112-r3";
+import { rememberCombat, storedMedal } from "./dojo.mjs?v=qa-fury-model-rhythm-20261112-r3";
 import {
   Fight,
   ROSTER,
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import { ArenaView } from "./view.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import { FuryAudio } from "./sound.mjs?v=qa-fury-model-rhythm-20261112-r2";
-import { FighterSnapshots } from "./render-state.mjs?v=qa-fury-model-rhythm-20261112-r2";
+} from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r3";
+import { ArenaView } from "./view.mjs?v=qa-fury-model-rhythm-20261112-r3";
+import { FuryAudio } from "./sound.mjs?v=qa-fury-model-rhythm-20261112-r3";
+import { FighterSnapshots } from "./render-state.mjs?v=qa-fury-model-rhythm-20261112-r3";
 const fighterSnapshots = new FighterSnapshots();
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
@@ -787,6 +787,6 @@ try {
   setText("start-btn", "载入失败，请刷新");
 }
 
-function refreshDojoRecord() { setText("dojo-record", storedMedal(`qa-fury-model-rhythm-20261112-r2:fury-dojo-v1-${hero}-${$("difficulty").value}`)); }
+function refreshDojoRecord() { setText("dojo-record", storedMedal(`qa-fury-model-rhythm-20261112-r3:fury-dojo-v1-${hero}-${$("difficulty").value}`)); }
 $("difficulty").addEventListener("change", refreshDojoRecord);
 refreshDojoRecord();
