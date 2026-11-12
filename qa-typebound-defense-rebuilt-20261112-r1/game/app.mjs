@@ -396,7 +396,7 @@ function persist(record = false) {
   }
   set("record-status", storageFailed
     ? "本机保存失败：本次数据仅留在当前页面，关闭后可能丢失。旧版记录未改动。"
-    : "错键恢复提示 r1 · 独立试玩记录，不迁移旧版成绩。旧版数据未改动。");
+    : "防御预览重做版 r1 · 独立试玩记录，不迁移旧版成绩。旧版数据未改动。");
   countWords();
 }
 function updateReview(e) {

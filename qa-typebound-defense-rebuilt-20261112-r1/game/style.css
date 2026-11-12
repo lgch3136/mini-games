@@ -2220,3 +2220,17 @@ kbd {
 #word-swap { min-height:44px; padding:6px 12px; border:1px solid #a8cfc555; border-radius:8px; background:#173b3c; color:#e6f0da; font:inherit; }
 #word-swap:disabled { opacity:.6; }
 #word-order-note { font-size:11px; line-height:1.4; }
+
+/* Defense-preview feedback: explicit contrast, including short mobile viewports. */
+#defense-preview { color:#f6f4de; background:#163d39; border:1px solid #8db9a8; border-radius:8px; padding:10px 12px; font-size:15px; line-height:1.6; min-height:0; overflow-wrap:anywhere; }
+#defense-preview[hidden] { display:none; }
+/* Keep primary entry ahead of optional practice and long explanatory content. */
+.menu-copy { align-self:start; }
+.menu h1 { margin:10px 0; font-size:48px; }
+.menu h1 span { margin-top:5px; }
+.menu .headline { font-size:18px; margin:8px 0; }
+.menu .checkpoint-card { margin:10px 0; padding:10px 12px; }
+.menu .checkpoint-card h3 { font-size:15px; margin-bottom:4px; }
+.menu .checkpoint-card p { margin-bottom:5px; }
+.menu .checkpoint-card > small { font-size:11px; line-height:1.4; margin-top:5px; }
+.menu #start { width:100%; margin:8px 0; }

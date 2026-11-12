@@ -44,10 +44,18 @@
         <div class="menu-copy">
           <p class="eyebrow"><i></i> 防御预览重做版 r1 · 独立试玩 · 未完整验收</p>
           <h1>键旅<span>TYPEBOUND</span></h1>
-          <p class="headline">把单词写成法术，<br />把练习走成冒险。</p>
-          <p class="lead">
-            看得见速度，也听得见节奏。<br />有效计时、平均字速与准确率，让每次练习都有回响。
-          </p>
+          <p class="headline">把单词写成法术，把练习走成冒险。</p>
+          <section class="checkpoint-card" aria-labelledby="checkpoint-title">
+            <h3 id="checkpoint-title">把旅程留在下一页</h3>
+            <p id="checkpoint-summary" role="status" aria-live="polite">正在检查本机暂存…</p>
+            <div class="checkpoint-actions">
+              <button id="checkpoint-resume" class="primary" hidden>继续暂存旅程 ↗</button>
+              <button id="checkpoint-discard" class="secondary" hidden>放弃这份暂存</button>
+              <button id="checkpoint-cancel" hidden>保留暂存</button>
+              <button id="checkpoint-refresh" hidden>重试读取</button>
+            </div>
+            <small>仅此浏览器保存。领取后若关闭或崩溃，须重新开始；到下一个地图节点可再次暂存。</small>
+          </section>
           <div class="setup">
             <label
               >英文词库<select id="level">
@@ -76,20 +84,9 @@
               ></label
             >
           </fieldset>
+          <button class="primary" id="start">翻开旅程 <span>↗</span></button>
           <div class="warmup-card"><div><strong>初次来访？从八词开始</strong><span>无伤害 · 跟随亮键 · 有清晰终点</span></div><button id="warmup-start">八词热身 ↗</button></div>
           <label class="practice-choice">静心练习目标<select id="focus-goal"><option value="8">8 词 · 一页小练习</option><option value="20">20 词 · 专注挑战</option><option value="0">自由练习 · 完整旅程</option></select></label>
-          <section class="checkpoint-card" aria-labelledby="checkpoint-title">
-            <h3 id="checkpoint-title">把旅程留在下一页</h3>
-            <p id="checkpoint-summary" role="status" aria-live="polite">正在检查本机暂存…</p>
-            <div class="checkpoint-actions">
-              <button id="checkpoint-resume" class="primary" hidden>继续暂存旅程 ↗</button>
-              <button id="checkpoint-discard" class="secondary" hidden>放弃这份暂存</button>
-              <button id="checkpoint-cancel" hidden>保留暂存</button>
-              <button id="checkpoint-refresh" hidden>重试读取</button>
-            </div>
-            <small>仅此浏览器保存。领取后若关闭或崩溃，须重新开始；到下一个地图节点可再次暂存。</small>
-          </section>
-          <button class="primary" id="start">翻开旅程 <span>↗</span></button>
           <div class="menu-foot">
             <button id="review-start">
               错词回练 <b id="review-count">0</b></button
