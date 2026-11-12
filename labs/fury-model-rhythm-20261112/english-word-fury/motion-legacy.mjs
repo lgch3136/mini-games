@@ -1,4 +1,4 @@
-import { clamp, lerp, total } from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r3";
+import { clamp, lerp, total } from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r4";
 const PI = Math.PI;
 const smooth = (t) => {
   t = clamp(t, 0, 1);
@@ -6,6 +6,21 @@ const smooth = (t) => {
 };
 const mix = (a, b, t) => a.map((v, i) => lerp(v, b[i], t));
 const add = (a, b) => a.map((v, i) => v + b[i]);
+// Sole-contact envelope for the published original Mei shoe (part-local XY).
+// Keep the rigid mesh and roll timing unchanged; only a rolling Mei foot whose
+// visible shoe would cross the ground gets a small IK target correction.
+// The nine outline points enclose every XY vertex of the identical shoe meshes.
+const MEI_ROLL_SHOE_PROFILE = [
+  [-.142, .115], [-.128, .010], [.328, .010], [.330, .040],
+  [.315, .065], [.282, .115], [.053, .255], [-.113, .255], [-.129, .190],
+];
+function meiRollFootHeight(angle) {
+  const sin = Math.sin(angle), cos = Math.cos(angle);
+  let lowest = Infinity;
+  for (const [x, y] of MEI_ROLL_SHOE_PROFILE)
+    lowest = Math.min(lowest, x * sin + y * cos);
+  return 0.00001 - lowest;
+}
 export function ik(a, b, l1, l2, bend = 1) {
   const delta = b.map((v, i) => v - a[i]),
     actual = Math.hypot(...delta),
@@ -286,6 +301,7 @@ export function pose(f, alpha = 1) {
     }
     p = blendPose(upright, p, tuck);
     p.footAngleF = p.footAngleB = Math.atan2(Math.sin(a), Math.cos(a)) * tuck;
+    if (f.id === 1) p.meiRollGrounding = true;
   }
   // Feet follow the roll continuously instead of snapping at an arbitrary height.
   if (f.state !== "roll")
@@ -317,6 +333,10 @@ export function solvePose(p) {
   p.handF = reach(p.shoulderF, p.handF, 1.139, 0.04001);
   p.handB = reach(p.shoulderB, p.handB, 1.139, 0.04001);
   for (const s of ["F", "B"]) {
+    // Applied again after render interpolation: rotating a shoe between two
+    // legal endpoints can otherwise put its toe below the ground mid-frame.
+    if (p.meiRollGrounding)
+      p["foot" + s][1] = Math.max(p["foot" + s][1], meiRollFootHeight(p["footAngle" + s] || 0));
     const target = ankle(p, s);
     const constrained = reach(p["hip" + s], target, 1.539, 0.00001);
     p["foot" + s] = add(
@@ -333,6 +353,10 @@ export function solvePose(p) {
 
 export function interpolatePose(old, current, alpha) {
   const p = { ...current };
+  // A throw/hit can interrupt a roll before its soles are upright. Keep the
+  // outgoing roll's contact envelope during that one interpolated pose pair.
+  // Do not carry the marker into a later unrelated non-roll pose.
+  if (old.meiRollGrounding) p.meiRollGrounding = true;
   for (const k of ["hip", "chest", "head", "handF", "handB", "footF", "footB"])
     p[k] = mix(old[k], current[k], alpha);
   for (const s of ["F", "B"]) {
@@ -341,5 +365,7 @@ export function interpolatePose(old, current, alpha) {
       b = current[k] || 0;
     p[k] = a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * alpha;
   }
-  return solvePose(p);
+  const solved = solvePose(p);
+  if (!current.meiRollGrounding) delete solved.meiRollGrounding;
+  return solved;
 }

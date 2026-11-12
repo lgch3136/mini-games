@@ -1,6 +1,6 @@
-import { sampleJab, geometry as jabGeometry, contact as jabContact, JAB_FRAMES } from "./jab-sequence.mjs?v=qa-fury-model-rhythm-20261112-r3";
-import {FRAMES,spriteFrame,frameGeometry,worldContact,actionCoverage} from './sprite-motion.mjs?v=qa-fury-model-rhythm-20261112-r3';
-import {fighter,MOVES,total,attackBox} from './combat.mjs?v=qa-fury-model-rhythm-20261112-r3';
+import { sampleJab, geometry as jabGeometry, contact as jabContact, JAB_FRAMES } from "./jab-sequence.mjs?v=qa-fury-model-rhythm-20261112-r4";
+import {FRAMES,spriteFrame,frameGeometry,worldContact,actionCoverage} from './sprite-motion.mjs?v=qa-fury-model-rhythm-20261112-r4';
+import {fighter,MOVES,total,attackBox} from './combat.mjs?v=qa-fury-model-rhythm-20261112-r4';
 const $=id=>document.getElementById(id),c=$('canvas'),ctx=c.getContext('2d'),img=new Image();
 img.src=new URL('./assets/lin-original-sprite-atlas-r1.png',import.meta.url).href;
 const jabImg=new Image();jabImg.src=new URL("./assets/lin-jab-8-candidate.png",import.meta.url).href;await Promise.all([img.decode(),jabImg.decode()]);

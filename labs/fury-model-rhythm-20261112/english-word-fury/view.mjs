@@ -1,15 +1,16 @@
-import { impactProfile, paintImpact } from "./impact-feedback.mjs?v=qa-fury-model-rhythm-20261112-r3";
-import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js?v=qa-fury-model-rhythm-20261112-r3";
-import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js?v=qa-fury-model-rhythm-20261112-r3";
-import { ankle } from "./motion.mjs?v=qa-fury-model-rhythm-20261112-r3";
+export const MODEL_FILES = Object.freeze({lin:"lin-rig-v4.glb",mei:"mei-rig-art-20261103.glb",shan:"shan-rig-art-20261104.glb"});
+import { impactProfile, paintImpact } from "./impact-feedback.mjs?v=qa-fury-model-rhythm-20261112-r4";
+import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js?v=qa-fury-model-rhythm-20261112-r4";
+import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js?v=qa-fury-model-rhythm-20261112-r4";
+import { ankle } from "./motion.mjs?v=qa-fury-model-rhythm-20261112-r4";
 import {
   ROSTER,
   lerp,
   clamp,
   hurtbox,
   attackBox,
-} from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r3";
-import { PosePair } from "./render-state.mjs?v=qa-fury-model-rhythm-20261112-r3";
+} from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r4";
+import { PosePair } from "./render-state.mjs?v=qa-fury-model-rhythm-20261112-r4";
 const Y = new THREE.Vector3(0, 1, 0),
   Z = new THREE.Vector3(0, 0, 1),
   v = new THREE.Vector3(),
@@ -131,7 +132,7 @@ export class ArenaView {
     await Promise.all(
       ROSTER.map(async (c) => {
         const model = await this.loader.loadAsync(
-          new URL(`./assets/${c.id}-rig-${c.id === "lin" ? "v4" : "v3"}.glb`, import.meta.url).href,
+          new URL(`./assets/${MODEL_FILES[c.id]}`, import.meta.url).href,
         );
         model.scene.traverse((o) => {
           if (!o.isMesh) return;
@@ -264,7 +265,7 @@ export class ArenaView {
       const ft = parts["foot" + s];
       if (ft) {
         ft.position.set(...p["foot" + s]);
-        ft.rotation.set(0, 0, p["footAngle" + s]);
+        ft.rotation.set(0, p["footYaw" + s] || 0, p["footAngle" + s]);
       }
       const contact = this.footShadows[f.side * 2 + (s === "F" ? 0 : 1)],
         lift = root.position.y + p["foot" + s][1] * f.c.size;

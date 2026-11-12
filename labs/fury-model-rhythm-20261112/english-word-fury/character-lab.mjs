@@ -1,5 +1,5 @@
-import {ArenaView} from './view.mjs?v=qa-fury-model-rhythm-20261112-r3';
-import {fighter,MOVES,total} from './combat.mjs?v=qa-fury-model-rhythm-20261112-r3';
+import {ArenaView} from './view.mjs?v=qa-fury-model-rhythm-20261112-r4';
+import {fighter,MOVES,total} from './combat.mjs?v=qa-fury-model-rhythm-20261112-r4';
 const $=id=>document.getElementById(id),status=$('status');
 let view,playing=true,angled=false,time=0,tick=0;
 try {

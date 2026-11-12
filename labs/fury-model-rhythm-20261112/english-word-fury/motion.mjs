@@ -1,5 +1,5 @@
-import { pose as legacyPose, interpolatePose as legacyInterpolate } from "./motion-legacy.mjs?v=qa-fury-model-rhythm-20261112-r3";
-import { clamp, lerp, total } from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r3";
+import { pose as legacyPose, interpolatePose as legacyInterpolate } from "./motion-legacy.mjs?v=qa-fury-model-rhythm-20261112-r4";
+import { clamp, lerp, total } from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r4";
 const PI = Math.PI;
 const smooth = (t) => {
   t = clamp(t, 0, 1);
@@ -51,12 +51,54 @@ function blendPose(a, b, t) {
     if (b[k]) p[k] = mix(a[k], b[k], t);
   return p;
 }
+// Grounded heavy kick only: chamber, turn and extend, re-chamber, then set down.
+// The existing move's startup/active/recovery windows remain the timing source.
+function roundhousePose(base, frame, m) {
+  const end = total(m), activeEnd = m.startup + m.active;
+  const controls = (values) => ({ ...base, footAngleF: 0, footAngleB: 0,
+    footYawB: 0, ...values, footB: [...base.footB] });
+  const chamber = controls({
+    hip: [-0.15, 1.38, 0], chest: [-0.14, 2.34, 0], head: [-0.09, 2.63, 0],
+    footF: [0.45, 0.85, 0.48],
+    handF: [0.45, 2.36, 0.38], handB: [0.05, 2.44, -0.12],
+    twist: -0.16, hipTwist: -0.10, footAngleF: -0.34, footYawB: 0.32,
+  });
+  const strike = controls({
+    hip: [0.25, 1.40, 0], chest: [-0.12, 2.28, 0], head: [-0.07, 2.57, 0],
+    footF: [m.range - 0.30, m.y - 0.16, 0.22],
+    handF: [0.16, 2.34, 0.36], handB: [-0.10, 2.42, -0.12],
+    twist: 0.40, hipTwist: 0.65, footAngleF: -0.10, footYawB: 0.72,
+  });
+  const recoil = controls({
+    hip: [-0.07, 1.39, 0], chest: [-0.12, 2.34, 0], head: [-0.07, 2.63, 0],
+    footF: [0.45, 0.82, 0.45],
+    handF: [0.45, 2.39, 0.38], handB: [0.08, 2.44, -0.12],
+    twist: 0.06, hipTwist: 0.18, footAngleF: -0.28, footYawB: 0.42,
+  });
+  const keys = [
+    [0, controls({})],
+    [m.startup * 0.60, chamber],
+    [m.startup, strike],
+    [activeEnd, strike],
+    [activeEnd + m.recovery * 0.38, recoil],
+    [end, controls({})],
+  ];
+  const at = clamp(frame, 0, end);
+  let i = 1;
+  while (i < keys.length - 1 && at > keys[i][0]) i++;
+  const [aTime, a] = keys[i - 1], [bTime, b] = keys[i];
+  const weight = smooth((at - aTime) / Math.max(0.00001, bTime - aTime));
+  const p = blendPose(a, b, weight);
+  for (const key of ["twist", "hipTwist", "footAngleF", "footAngleB", "footYawB"])
+    p[key] = lerp(a[key] || 0, b[key] || 0, weight);
+  return p;
+}
 export function pose(f, alpha = 1) {
   if (f.id !== undefined && f.id !== 0) return legacyPose(f, alpha);
   // The actor's animation time stops with hitstop; background and effects do not.
   const t = f.stateFrame / 60,
     base = stance(f, t);
-  let p = base;
+  let p = base, groundedRoundhouse = false;
   if (f.crouch) {
     p = blendPose(
       p,
@@ -150,7 +192,10 @@ export function pose(f, alpha = 1) {
     const y = m.y,
       reach = m.range || 1.25;
     let hit = {};
-    if (["jab", "punch", "lowPunch", "airPunch"].includes(m.pose)) {
+    if (m.pose === "highKick" && f.y <= 0.025 && !f.crouch && !f.down) {
+      p = roundhousePose(base, af, m);
+      groundedRoundhouse = true;
+    } else if (["jab", "punch", "lowPunch", "airPunch"].includes(m.pose)) {
       // Render-only transfer: loaded rear leg, hip drive, then extension.
       // Collision timing/range stay entirely in combat.mjs.
       const load = af < strike ? Math.sin(Math.PI * clamp(af / strike, 0, 1)) : 0;
@@ -316,7 +361,7 @@ export function pose(f, alpha = 1) {
     p.footAngleF = p.footAngleB = Math.atan2(Math.sin(a), Math.cos(a)) * tuck;
   }
   // Feet follow the roll continuously instead of snapping at an arbitrary height.
-  if (f.state !== "roll")
+  if (f.state !== "roll" && !groundedRoundhouse)
     for (const s of ["F", "B"])
       if (!(s === "B" && f.action && ["jab", "punch", "lowPunch", "airPunch"].includes(f.action.spec.pose)))
         p["footAngle" + s] = -0.2 * smooth(p["foot" + s][1] / 0.7);
@@ -376,6 +421,11 @@ export function interpolatePose(old, current, alpha) {
       a = old[k] || 0,
       b = current[k] || 0;
     p[k] = a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * alpha;
+    const yawKey = "footYaw" + s;
+    if (old[yawKey] !== undefined || current[yawKey] !== undefined) {
+      const from = old[yawKey] || 0, to = current[yawKey] || 0;
+      p[yawKey] = from + Math.atan2(Math.sin(to - from), Math.cos(to - from)) * alpha;
+    }
   }
   return solvePose(p);
 }

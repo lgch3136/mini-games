@@ -1,1 +1,0 @@
-export const BUILD_INFO=Object.freeze({version:'R22-ANIMATION-QA',model:'20-A02',portrait:'model20-a02',saveNamespace:'emberwild-r22-animation-qa:',localOnly:false,originalSourceRestored:false,gpuAcceptance:false,nativeAudioAcceptance:false});
