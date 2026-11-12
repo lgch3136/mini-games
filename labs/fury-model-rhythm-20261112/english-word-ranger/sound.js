@@ -8,7 +8,7 @@ export class Soundtrack {
     this.step = 0;
     this.intense = false;
     try {
-      this.muted = localStorage.getItem("qa-fury-model-rhythm-20261112-r1:mini-games-muted") === "1";
+      this.muted = localStorage.getItem("qa-fury-model-rhythm-20261112-r2:mini-games-muted") === "1";
     } catch {
       this.muted = false;
     }
@@ -191,7 +191,7 @@ export class Soundtrack {
   async setMuted(value) {
     this.muted = value;
     try {
-      localStorage.setItem("qa-fury-model-rhythm-20261112-r1:mini-games-muted", value ? "1" : "0");
+      localStorage.setItem("qa-fury-model-rhythm-20261112-r2:mini-games-muted", value ? "1" : "0");
     } catch {}
     if (value) {
       const running = this.running;

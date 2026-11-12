@@ -1,4 +1,4 @@
-import { DojoCourse, TargetedDrill } from "./dojo.mjs?v=qa-fury-model-rhythm-20261112-r1";
+import { DojoCourse, TargetedDrill } from "./dojo.mjs?v=qa-fury-model-rhythm-20261112-r2";
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
 export const VERSION = "20260918-play-r1";
 export const clamp = (x, a, b) => Math.max(a, Math.min(b, x));

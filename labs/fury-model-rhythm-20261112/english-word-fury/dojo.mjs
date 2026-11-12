@@ -50,7 +50,7 @@ export function rememberCombat(game, storage) {
   if (game.drill) return report;
   try {
     storage ||= globalThis.localStorage;
-    const key = `qa-fury-model-rhythm-20261112-r1:fury-dojo-v1-${game.f[0].id}-${game.difficulty}`;
+    const key = `qa-fury-model-rhythm-20261112-r2:fury-dojo-v1-${game.f[0].id}-${game.difficulty}`;
     const old = JSON.parse(storage.getItem(key) || '{}');
     const stars = Number.isFinite(old?.stars) ? Math.max(0, Math.min(3, old.stars)) : 0;
     const lessons = Number.isFinite(old?.lessons) ? Math.max(0, Math.min(4, old.lessons)) : 0;

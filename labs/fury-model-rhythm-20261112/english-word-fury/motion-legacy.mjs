@@ -1,4 +1,4 @@
-import { clamp, lerp, total } from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r1";
+import { clamp, lerp, total } from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r2";
 const PI = Math.PI;
 const smooth = (t) => {
   t = clamp(t, 0, 1);

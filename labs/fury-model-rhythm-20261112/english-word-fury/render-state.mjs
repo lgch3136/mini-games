@@ -1,4 +1,4 @@
-import { pose, interpolatePose } from './motion.mjs?v=qa-fury-model-rhythm-20261112-r1';
+import { pose, interpolatePose } from './motion.mjs?v=qa-fury-model-rhythm-20261112-r2';
 const POSE_FIELDS = ['id', 'stateFrame', 'state', 'crouch', 'down', 'facing', 'freeze', 'rollDirection', 'vx', 'walkPhase', 'y'];
 
 // Fixed-size display snapshots avoid copying input Sets, statistics, command

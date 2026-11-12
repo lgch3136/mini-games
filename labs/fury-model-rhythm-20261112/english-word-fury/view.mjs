@@ -1,17 +1,18 @@
-import { sampleWave, geometry as waveGeometry } from "./wave-sequence.mjs?v=qa-fury-model-rhythm-20261112-r1";
-import { sampleJab, geometry as jabGeometry } from "./jab-sequence.mjs?v=qa-fury-model-rhythm-20261112-r1";
-import { spriteFrame, frameGeometry } from "./sprite-motion.mjs?v=qa-fury-model-rhythm-20261112-r1";
-import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js?v=qa-fury-model-rhythm-20261112-r1";
-import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js?v=qa-fury-model-rhythm-20261112-r1";
-import { ankle } from "./motion.mjs?v=qa-fury-model-rhythm-20261112-r1";
+import { impactProfile, paintImpact } from "./impact-feedback.mjs?v=qa-fury-model-rhythm-20261112-r2";
+import { sampleWave, geometry as waveGeometry } from "./wave-sequence.mjs?v=qa-fury-model-rhythm-20261112-r2";
+import { sampleJab, geometry as jabGeometry } from "./jab-sequence.mjs?v=qa-fury-model-rhythm-20261112-r2";
+import { spriteFrame, frameGeometry } from "./sprite-motion.mjs?v=qa-fury-model-rhythm-20261112-r2";
+import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js?v=qa-fury-model-rhythm-20261112-r2";
+import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js?v=qa-fury-model-rhythm-20261112-r2";
+import { ankle } from "./motion.mjs?v=qa-fury-model-rhythm-20261112-r2";
 import {
   ROSTER,
   lerp,
   clamp,
   hurtbox,
   attackBox,
-} from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r1";
-import { PosePair } from "./render-state.mjs?v=qa-fury-model-rhythm-20261112-r1";
+} from "./combat.mjs?v=qa-fury-model-rhythm-20261112-r2";
+import { PosePair } from "./render-state.mjs?v=qa-fury-model-rhythm-20261112-r2";
 const Y = new THREE.Vector3(0, 1, 0),
   Z = new THREE.Vector3(0, 0, 1),
   v = new THREE.Vector3(),
@@ -222,7 +223,7 @@ export class ArenaView {
       this.effects.push({
         ...e,
         age: 0,
-        duration: e.type === "hit" ? 0.32 : e.type === "land" ? 0.22 : 0.35,
+        duration: e.type === "hit" ? impactProfile(e, this.reducedMotion).duration : e.type === "land" ? 0.22 : 0.35,
       });
       if (this.effects.length > 36) this.effects.shift();
     }
@@ -465,7 +466,9 @@ export class ArenaView {
         c.beginPath();
         c.arc(0, 0, r * (0.3 + t * 0.8), -0.9, 3.9);
         c.stroke();
-      } else if (e.type === "hit" || e.type === "clash") {
+      } else if (e.type === "hit") {
+        paintImpact(c, e, scale, this.reducedMotion);
+      } else if (e.type === "clash") {
         const glow = c.createRadialGradient(0, 0, 0, 0, 0, r * 1.7);
         glow.addColorStop(0, "rgba(255,222,143,.38)");
         glow.addColorStop(1, "rgba(255,172,90,0)");
