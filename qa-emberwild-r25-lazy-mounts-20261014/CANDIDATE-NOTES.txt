@@ -1,0 +1,12 @@
+R25-LAZY-MOUNTS-QA
+Baseline: d3afa4d207f72f3aab6b8202e573e15cca65c3d1 / R24-PLAYABLE-QA-FINAL-V2
+Scope: mount controller and mount menu; game scene and visual settings unchanged.
+Mount initialization issues zero asset requests; only explicitly requested unlocked kind is loaded. Completion never auto-summons. Re-press once ready.
+30-second timeout; at most one explicit retry, gated on cleanup completion. Genuine cleanup faults remain visible/quarantined.
+Native stream reads own/release reader locks. Concurrent error/dispose and late native parser/image paths tested.
+23 lifecycle cases pass plus menu state suite. Real Three r185 and native GLTFLoader used. Published low-tier GLBs parsed and ridden with image decoder stub; flat synthetic terrain.
+No standard-tier asset parse, actual texture decode, WebGL/GPU upload, whole-game visual, Mac FPS or touch-device acceptance.
+Dot browser failed the unchanged R24 baseline with WebGL disabled on 2026-10-14. No security/GPU settings changed.
+Experimental spatial batching is NOT included: sampled low-tier triangle savings increased draw submissions; no proven GPU benefit.
+Original mature-PBR-pair-A character, lighting, pixel ratio, ground jump and save namespace retained.
+No promise of stable FPS improvement. R24 and main game entry remain available.

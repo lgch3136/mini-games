@@ -1,0 +1,1 @@
+export const BUILD_INFO=Object.freeze({version:'R23-CHARACTER-QA',model:'mature-PBR-pair-A',portrait:'model20-a02',saveNamespace:'emberwild-r23-character-qa:',localOnly:false,originalSourceRestored:false,gpuAcceptance:false,nativeAudioAcceptance:false});

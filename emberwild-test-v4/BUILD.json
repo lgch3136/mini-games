@@ -1,0 +1,254 @@
+{
+  "product": "Emberwild / 余烬旷野",
+  "candidate": "r9-material-and-scene-internal-candidate",
+  "entry": "app/index.html",
+  "acceptance": "完整运行候选；CPU 离线验证，真实浏览器 WebGL/GPU 尚未验收",
+  "dynamicAssetContract": {
+    "families": {
+      "characters": "r8",
+      "nature": "r8",
+      "architecture": "r9"
+    },
+    "qualityTiers": [
+      "standard",
+      "low"
+    ],
+    "librariesLoadedPerRun": 3,
+    "groundRegions": [
+      "camp",
+      "route",
+      "fallback"
+    ]
+  },
+  "verificationLimits": [
+    "CPU scene captures approximate the actual exported Three lighting state; no native WebGL appearance/FPS acceptance",
+    "No physical mouse/touch, browser-layout or speaker audition acceptance"
+  ],
+  "files": [
+    {
+      "path": "app/ASSET-NOTICES.txt",
+      "bytes": 1035,
+      "sha256": "be0bcbc06069e39777b10f8f52a960ce9a230f0825ad9a9f81db90d2ac930d94"
+    },
+    {
+      "path": "app/README.md",
+      "bytes": 3807,
+      "sha256": "82c3b05d72a0afa58cb4890783791506aab64050799989c768dcc859924c02e9"
+    },
+    {
+      "path": "app/action-effects-r8.mjs",
+      "bytes": 22697,
+      "sha256": "f5264b9ac2ac56cc0d7186bcf6295a822d2a6529bc7f5c4ee6c1811fb1873d87"
+    },
+    {
+      "path": "app/assets/architecture-low-r9.glb",
+      "bytes": 3458776,
+      "sha256": "cf213e76bd028d320c0815dd5d51a8d6f89f8aff138d6c036669c22601ddd17e"
+    },
+    {
+      "path": "app/assets/architecture-standard-r9.glb",
+      "bytes": 5603444,
+      "sha256": "199375acacfd25ef55399fb669be3734c8d24941c34a4651fcb5adf4a590b5cf"
+    },
+    {
+      "path": "app/assets/characters-low-r8.glb",
+      "bytes": 2134648,
+      "sha256": "3de42985a1bf9467cd359d677eefc0652b1ea1426e4f7c4096837817b8190b36"
+    },
+    {
+      "path": "app/assets/characters-standard-r8.glb",
+      "bytes": 4045960,
+      "sha256": "22f3897de45a98cf197975312c801ca5d049e01e5835e8dd389186493b632e5e"
+    },
+    {
+      "path": "app/assets/nature-low-r8.glb",
+      "bytes": 1081704,
+      "sha256": "b4d20fbc973025d0182534aed20d3133ebc9f8ea09516159c57f985337ee7a15"
+    },
+    {
+      "path": "app/assets/nature-r8/ground-camp-low.png",
+      "bytes": 1823285,
+      "sha256": "f75f60a3f6c387b5b0d70e1c6afe24df1613bfbeeff3d16b0b762789c73bd638"
+    },
+    {
+      "path": "app/assets/nature-r8/ground-camp-standard.png",
+      "bytes": 7304225,
+      "sha256": "434c2bda7fd9580bbf607066ad09affdadd6259b2ce20ebfe76b6a0c789101fb"
+    },
+    {
+      "path": "app/assets/nature-r8/ground-fallback-low.png",
+      "bytes": 31481,
+      "sha256": "b577308de91c4d38752b68a89c13aaf062262763943e7f474ac17e152fe861ac"
+    },
+    {
+      "path": "app/assets/nature-r8/ground-fallback-standard.png",
+      "bytes": 123458,
+      "sha256": "b6cc785cdb605357687952d60c89e93e4fb1f4deb3265d4329155ba041d0b831"
+    },
+    {
+      "path": "app/assets/nature-r8/ground-route-low.png",
+      "bytes": 478138,
+      "sha256": "e407aecc7cbb0970a893cfd48e04dd3aa0999405a3cc7c043d20b06f98e6a9ae"
+    },
+    {
+      "path": "app/assets/nature-r8/ground-route-standard.png",
+      "bytes": 1901909,
+      "sha256": "a3ad9ddf2a3ab7587695389e4d6b98b3d926f03652eaf8111c47d30ad0d9c198"
+    },
+    {
+      "path": "app/assets/nature-standard-r8.glb",
+      "bytes": 2713644,
+      "sha256": "8143e24545c5449643fa4ff8cb73f877308eb4bb9554bb14dc236e779d489d92"
+    },
+    {
+      "path": "app/assets/textures-r7/soil-normal-512-r7.png",
+      "bytes": 702606,
+      "sha256": "56e0d0caff9e5826d3984cbbba9e8fde8bd18414640b97f70e3b736b416354b0"
+    },
+    {
+      "path": "app/assets/textures-r7/soil-roughness-256-r7.png",
+      "bytes": 60466,
+      "sha256": "d4a9c7a0181fe5dff13f896c20b3a6ac07af7d7fde29014c210c54777375cb4e"
+    },
+    {
+      "path": "app/assets/ui-r8/items-skills-atlas.webp",
+      "bytes": 43568,
+      "sha256": "4506b8660494d1cbcbae66e3da3a02c7d7ede8dc086f7b48d6c12390e320c40d"
+    },
+    {
+      "path": "app/camera-clearance-r8.mjs",
+      "bytes": 3522,
+      "sha256": "425a3eb741bd34c950a01e21371174f54aa7c2749f0661daed2d223b29ce12e9"
+    },
+    {
+      "path": "app/camp-cover-r8.mjs",
+      "bytes": 4415,
+      "sha256": "36c5cbe5ee8c337619fcec0ce2ac7db76fd4233a84ee2675c9308973d1825805"
+    },
+    {
+      "path": "app/core-rpg.mjs",
+      "bytes": 2029,
+      "sha256": "76cd582058b0030a540943923c9049bdbb017b39d0854e5a57c070e8703b81ba"
+    },
+    {
+      "path": "app/game.mjs",
+      "bytes": 58128,
+      "sha256": "e329670b4c871bce6ea0aa9765a9f626dbee25b60d1ed684035a36f37e5dacbd"
+    },
+    {
+      "path": "app/ground-r8.mjs",
+      "bytes": 3695,
+      "sha256": "bcb7eb958a31ac8bbe8875a66e08a43e61a963485892625e34329259624edf62"
+    },
+    {
+      "path": "app/hero-presentation-r8.mjs",
+      "bytes": 10164,
+      "sha256": "28bde044ee6fe4aee5da20bde8d39b0ba3a4e649857d7493b079e197d43c7482"
+    },
+    {
+      "path": "app/index.html",
+      "bytes": 2896,
+      "sha256": "07251a654f3ed274dbd320e06af082bfe5b0c38c281879e0579bee3dfc700fa8"
+    },
+    {
+      "path": "app/light-budget.mjs",
+      "bytes": 911,
+      "sha256": "141a6452dae1fc05f4802b04820ac2efba9522daaf4266c13d6f3f8d224d38cd"
+    },
+    {
+      "path": "app/light-effects-r8.mjs",
+      "bytes": 19046,
+      "sha256": "b51a658a8bccab3f364c431ce308e935928c117e86cc6b01fe5da42d8c510f63"
+    },
+    {
+      "path": "app/minimap.mjs",
+      "bytes": 7477,
+      "sha256": "4b8b2f3d3e21cb93ff01c49173c72dec4175cc3c01830775b54e7c646208f008"
+    },
+    {
+      "path": "app/music.mjs",
+      "bytes": 16674,
+      "sha256": "eb312684f0be5a1cd9a0e6d81b73eec12154b9cd31353a3789f340bf945a0c19"
+    },
+    {
+      "path": "app/quality.mjs",
+      "bytes": 467,
+      "sha256": "b408052b7600620b0f321f0aa32f05b1fcbb76ecba94eb0eaf76487fe01fbd79"
+    },
+    {
+      "path": "app/rig-support-r8.mjs",
+      "bytes": 1127,
+      "sha256": "1dab5f663d1b5511b862460738d0b548b21116d2760ff132a277490a0f917eb0"
+    },
+    {
+      "path": "app/rpg-controls-r7.mjs",
+      "bytes": 6493,
+      "sha256": "c5034321b4d57348b29d2a99f990536f689b64642c2e09da0b92ebec6e016cfd"
+    },
+    {
+      "path": "app/rpg-state.mjs",
+      "bytes": 13335,
+      "sha256": "0d23c67bfd17bb2da5609a2a3acadc003d3258d0ee3fe4d5b17b321295a1bae5"
+    },
+    {
+      "path": "app/rpg-ui-r8.css",
+      "bytes": 23228,
+      "sha256": "e6d8da30c87db6703e54bf89c7b0441e640004081ac54628ac3fcda49b45d573"
+    },
+    {
+      "path": "app/rpg-ui-r8.mjs",
+      "bytes": 41184,
+      "sha256": "b46d22ff9d74f61bc4bd82dfd38208f68390b2a52738915e10f9e44eed587778"
+    },
+    {
+      "path": "app/scene-lighting-r9.mjs",
+      "bytes": 3371,
+      "sha256": "5fe7b8415e868083ab54b105e5a27609237cab7b910c3695a9f94685e18abf50"
+    },
+    {
+      "path": "app/stream-cover-r9.mjs",
+      "bytes": 2544,
+      "sha256": "968ea123a3b376dfe0b1d29c305e375f64e290ec6e33e9ea39e4cf2f74b50f8b"
+    },
+    {
+      "path": "app/style.css",
+      "bytes": 5130,
+      "sha256": "7c957ef3934f79054ffcc75189c43773935077193573bc06821294589c8047e0"
+    },
+    {
+      "path": "app/vendor/BufferGeometryUtils.js",
+      "bytes": 37637,
+      "sha256": "5f76ff28be936bb281c241a292bb075bbd574d3bf0ca23f4f00896f74181ddd1"
+    },
+    {
+      "path": "app/vendor/GLTFLoader.js",
+      "bytes": 114961,
+      "sha256": "e2ab44d6c6fcad49651bb708cc443f779af0471d66a4cf8ff8f8e34c414a6634"
+    },
+    {
+      "path": "app/vendor/LICENSE",
+      "bytes": 1081,
+      "sha256": "8b378ebe60e2fe500158cb0ac71cb5e8b7d92953c2abcc63a0eb90499653b5bc"
+    },
+    {
+      "path": "app/vendor/SkeletonUtils.js",
+      "bytes": 11551,
+      "sha256": "d5fc069c345d2eb93b5f93da485c75135000e50965e71ed12d4bdc3cfe9c9144"
+    },
+    {
+      "path": "app/vendor/three.core.min.js",
+      "bytes": 385386,
+      "sha256": "05b2609338c76cd65daf74f3ac515bc9a5045e1b3b33edc07d8c9bd55250fa90"
+    },
+    {
+      "path": "app/vendor/three.module.min.js",
+      "bytes": 365552,
+      "sha256": "86bcee248b64f44bcfc23c331ae74619061957d59cab040171dcb6fb5900beb6"
+    },
+    {
+      "path": "app/visual-r8.mjs",
+      "bytes": 2790,
+      "sha256": "79edd1854679c7ff4dbeacf5ddb9203f43095edb2cc8e9490e308540fcee1505"
+    }
+  ]
+}

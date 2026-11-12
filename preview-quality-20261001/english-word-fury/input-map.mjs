@@ -1,0 +1,21 @@
+// Keyboard bindings are shared by real input and the dojo's displayed hints.
+export const P1_KEYS = Object.freeze({
+  KeyA: "left",
+  KeyD: "right",
+  KeyW: "up",
+  KeyS: "down",
+  ShiftLeft: "guard",
+  ShiftRight: "guard",
+  KeyJ: "A",
+  KeyK: "B",
+  KeyU: "C",
+  KeyI: "D",
+  KeyL: "roll",
+  KeyO: "blow",
+  Space: "wave",
+  KeyE: "upper",
+  KeyQ: "rush",
+  KeyR: "super",
+  KeyF: "max",
+  KeyT: "grab",
+});

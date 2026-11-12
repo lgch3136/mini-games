@@ -1,0 +1,8 @@
+SHADOW-AB-QA-20261015
+Baseline f4d4776c5c1020b9d54ac7a16331dafa93964ae6, runtime tree 63462e3f95c98e2623ccea47de21f09bb781d70a.
+Isolated opt-in QA; no real-GPU acceptance. Not a performance upgrade. Publication is tracked separately.
+Manual frozen shadow A/B/A2, opt-in exact perf=1. No automatic diagnostic, movement, unlock, quality change or telemetry.
+Dedicated save namespace emberwild-shadow-ab-qa-20261015:; no migration from R25.
+Character/assets/vendor/mount controller remain R25 blob identities. Pixel/GPU/probe modules reused byte-for-byte.
+Text-only result copy is user initiated; no external transmission. Clipboard failure exposes selectable JSON.
+Full runtime must reuse the pinned R25 tree; release overlay alone is not a playable bundle.

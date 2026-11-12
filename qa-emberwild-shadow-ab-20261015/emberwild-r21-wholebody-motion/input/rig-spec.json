@@ -1,0 +1,752 @@
+{
+  "revision": "r21-original-proposal-1",
+  "status": "local prototype contract, dimensions may change only with communicated revision",
+  "units": "meters",
+  "worldUp": "+Y",
+  "forward": "+Z",
+  "characterLeft": "-X",
+  "restAxes": "Each node local axes match parent/world in rest: translation only, identity quaternion. Rotations radians, XYZ intrinsic when Euler interface used; quaternion preferred.",
+  "heightTarget": 2.1,
+  "rootMotion": "hero is physics translation/facing only; visual lean and twist pelvis/spine/chest, not root vertical offsets",
+  "nodes": [
+    {
+      "name": "hero",
+      "parent": null,
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "root"
+    },
+    {
+      "name": "pelvis",
+      "parent": "hero",
+      "translation": [
+        0,
+        1.02,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "spine",
+      "parent": "pelvis",
+      "translation": [
+        0,
+        0.18,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "chest",
+      "parent": "spine",
+      "translation": [
+        0,
+        0.25,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "neck",
+      "parent": "chest",
+      "translation": [
+        0,
+        0.27,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "head",
+      "parent": "neck",
+      "translation": [
+        0,
+        0.15,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "clavicleL",
+      "parent": "chest",
+      "translation": [
+        -0.15,
+        0.16,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "upperArmL",
+      "parent": "clavicleL",
+      "translation": [
+        -0.21,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "elbowL",
+      "parent": "upperArmL",
+      "translation": [
+        -0.07,
+        -0.31,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "wristL",
+      "parent": "elbowL",
+      "translation": [
+        -0.06,
+        -0.3,
+        0.015
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "handL",
+      "parent": "wristL",
+      "translation": [
+        0,
+        -0.055,
+        0.02
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "upperLegL",
+      "parent": "pelvis",
+      "translation": [
+        -0.14,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "kneeL",
+      "parent": "upperLegL",
+      "translation": [
+        0,
+        -0.46,
+        0.035
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "ankleL",
+      "parent": "kneeL",
+      "translation": [
+        0,
+        -0.45,
+        -0.015
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "toeL",
+      "parent": "ankleL",
+      "translation": [
+        0,
+        -0.065,
+        0.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "pauldronL",
+      "parent": "clavicleL",
+      "translation": [
+        -0.19,
+        0.04,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "secondary"
+    },
+    {
+      "name": "hipPanelL",
+      "parent": "pelvis",
+      "translation": [
+        -0.16,
+        -0.06,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "secondary"
+    },
+    {
+      "name": "spellSocketL",
+      "parent": "handL",
+      "translation": [
+        0,
+        -0.03,
+        0.08
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "attachment"
+    },
+    {
+      "name": "clavicleR",
+      "parent": "chest",
+      "translation": [
+        0.15,
+        0.16,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "upperArmR",
+      "parent": "clavicleR",
+      "translation": [
+        0.21,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "elbowR",
+      "parent": "upperArmR",
+      "translation": [
+        0.07,
+        -0.31,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "wristR",
+      "parent": "elbowR",
+      "translation": [
+        0.06,
+        -0.3,
+        0.015
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "handR",
+      "parent": "wristR",
+      "translation": [
+        0,
+        -0.055,
+        0.02
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "upperLegR",
+      "parent": "pelvis",
+      "translation": [
+        0.14,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "kneeR",
+      "parent": "upperLegR",
+      "translation": [
+        0,
+        -0.46,
+        0.035
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "ankleR",
+      "parent": "kneeR",
+      "translation": [
+        0,
+        -0.45,
+        -0.015
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "toeR",
+      "parent": "ankleR",
+      "translation": [
+        0,
+        -0.065,
+        0.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "deform"
+    },
+    {
+      "name": "pauldronR",
+      "parent": "clavicleR",
+      "translation": [
+        0.19,
+        0.04,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "secondary"
+    },
+    {
+      "name": "hipPanelR",
+      "parent": "pelvis",
+      "translation": [
+        0.16,
+        -0.06,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "secondary"
+    },
+    {
+      "name": "spellSocketR",
+      "parent": "handR",
+      "translation": [
+        0,
+        -0.03,
+        0.08
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "attachment"
+    },
+    {
+      "name": "swordSocketR",
+      "parent": "handR",
+      "translation": [
+        0,
+        -0.03,
+        0.07
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "attachment"
+    },
+    {
+      "name": "backSocket",
+      "parent": "chest",
+      "translation": [
+        0.1,
+        0.1,
+        -0.18
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "attachment"
+    },
+    {
+      "name": "mountSocket",
+      "parent": "pelvis",
+      "translation": [
+        0,
+        -0.04,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "attachment"
+    },
+    {
+      "name": "capeUpper",
+      "parent": "chest",
+      "translation": [
+        0,
+        0.13,
+        -0.18
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "secondary"
+    },
+    {
+      "name": "capeLower",
+      "parent": "capeUpper",
+      "translation": [
+        0,
+        -0.21,
+        -0.015
+      ],
+      "rotation": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "kind": "secondary"
+    }
+  ],
+  "meshSpace": "bind vertices world Y-up, inverseBindMatrix inverse of each world rest node transform",
+  "socketPolicy": "Explicit adapter to legacy spell/melee/mount; no old node count assumption",
+  "skinPolicy": "maximum four normalized influences per vertex, deform/secondary nodes only; rigid plates follow own pauldron nodes; cloth upper-back separated from arm socket",
+  "lodPolicy": "same named nodes, transforms and attachments both tiers; geometry/texture LOD only"
+}

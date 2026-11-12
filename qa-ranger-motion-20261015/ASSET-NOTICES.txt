@@ -1,0 +1,18 @@
+人物动作试验：仅前向起停；非正式游戏更新
+
+Character geometry, outfit, textures and source animation:
+Quaternius — Standard editions of Universal Base Characters, Modular Character Outfits – Fantasy, and Universal Animation Library.
+License: CC0 1.0 Universal Public Domain Dedication.
+Official source pages:
+https://quaternius.itch.io/universal-base-characters
+https://quaternius.itch.io/modular-character-outfits-fantasy
+https://quaternius.itch.io/universal-animation-library
+License terms: https://creativecommons.org/publicdomain/zero/1.0/
+Pack notice: licenses/QUATERNIUS-CC0.txt
+The runtime includes a locally adapted Ranger configuration and forward sprint/contact motion. Quaternius does not endorse this trial.
+
+Rendering and glTF loading:
+Three.js and accompanying loaders/utilities, copyright 2010–2026 Three.js authors.
+MIT license: see licenses/THREE-MIT.txt, reproduced in full.
+
+This folder contains compiled browser runtime and assets only. It is an isolated experiment, not an accepted game or performance update. Browser/WebGL, GPU, frame-rate and uninterrupted-playback acceptance are outstanding.

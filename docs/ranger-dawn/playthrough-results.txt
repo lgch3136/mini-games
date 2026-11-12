@@ -1,0 +1,172 @@
+{
+  "stage": 0,
+  "width": 960,
+  "status": "won",
+  "time": 34.86,
+  "hp": 6,
+  "kills": 14,
+  "words": 1,
+  "damage": 3,
+  "metrics": {
+    "shots": 539,
+    "hits": 43,
+    "blockedShots": 182,
+    "jumps": 21,
+    "rolls": 0,
+    "peakBullets": 20,
+    "peakParticles": 130
+  }
+}
+{
+  "stage": 1,
+  "width": 960,
+  "status": "won",
+  "time": 37.22,
+  "hp": 6,
+  "kills": 17,
+  "words": 1,
+  "damage": 5,
+  "metrics": {
+    "shots": 581,
+    "hits": 56,
+    "blockedShots": 175,
+    "jumps": 21,
+    "rolls": 0,
+    "peakBullets": 21,
+    "peakParticles": 99
+  }
+}
+{
+  "stage": 2,
+  "width": 960,
+  "status": "won",
+  "time": 36,
+  "hp": 6,
+  "kills": 19,
+  "words": 2,
+  "damage": 3,
+  "metrics": {
+    "shots": 558,
+    "hits": 63,
+    "blockedShots": 202,
+    "jumps": 22,
+    "rolls": 0,
+    "peakBullets": 19,
+    "peakParticles": 103
+  }
+}
+{
+  "stage": 3,
+  "width": 960,
+  "status": "won",
+  "time": 35.91,
+  "hp": 6,
+  "kills": 18,
+  "words": 2,
+  "damage": 2,
+  "metrics": {
+    "shots": 557,
+    "hits": 52,
+    "blockedShots": 193,
+    "jumps": 21,
+    "rolls": 0,
+    "peakBullets": 19,
+    "peakParticles": 101
+  }
+}
+{
+  "stage": 6,
+  "width": 960,
+  "status": "won",
+  "time": 38.88,
+  "hp": 6,
+  "kills": 18,
+  "words": 2,
+  "damage": 2,
+  "metrics": {
+    "shots": 608,
+    "hits": 51,
+    "blockedShots": 224,
+    "jumps": 25,
+    "rolls": 0,
+    "peakBullets": 16,
+    "peakParticles": 103
+  }
+}
+{
+  "stage": 9,
+  "width": 960,
+  "status": "won",
+  "time": 39.6,
+  "hp": 6,
+  "kills": 18,
+  "words": 2,
+  "damage": 2,
+  "metrics": {
+    "shots": 620,
+    "hits": 52,
+    "blockedShots": 193,
+    "jumps": 23,
+    "rolls": 0,
+    "peakBullets": 19,
+    "peakParticles": 103
+  }
+}
+
+{
+  "stage": 0,
+  "width": 540,
+  "status": "won",
+  "time": 36.32,
+  "hp": 6,
+  "kills": 14,
+  "words": 1,
+  "damage": 2,
+  "metrics": {
+    "shots": 563,
+    "hits": 38,
+    "blockedShots": 160,
+    "jumps": 21,
+    "rolls": 0,
+    "peakBullets": 18,
+    "peakParticles": 103
+  }
+}
+{
+  "stage": 1,
+  "width": 540,
+  "status": "won",
+  "time": 38.67,
+  "hp": 6,
+  "kills": 17,
+  "words": 2,
+  "damage": 4,
+  "metrics": {
+    "shots": 605,
+    "hits": 56,
+    "blockedShots": 186,
+    "jumps": 23,
+    "rolls": 0,
+    "peakBullets": 18,
+    "peakParticles": 92
+  }
+}
+{
+  "stage": 2,
+  "width": 540,
+  "status": "won",
+  "time": 36.94,
+  "hp": 6,
+  "kills": 19,
+  "words": 2,
+  "damage": 2,
+  "metrics": {
+    "shots": 573,
+    "hits": 62,
+    "blockedShots": 169,
+    "jumps": 21,
+    "rolls": 0,
+    "peakBullets": 18,
+    "peakParticles": 120
+  }
+}

@@ -1,0 +1,15 @@
+@import url('./rpg-ui-r12.css');
+/* Explicit, transient target locking. Health remains above the action. */
+.rpg-target-frame.is-locked{border-color:#e4c876;box-shadow:inset 0 0 0 2px #51452a,0 3px 10px #0007}
+.rpg-lock-target{min-height:28px;padding:3px 8px;margin-top:4px;font:11px system-ui;color:#f2dda0;background:#393627;border:1px solid #927c48;border-radius:4px;touch-action:manipulation}
+.rpg-lock-target[aria-pressed='true']{background:#55482b;border-color:#d0b76b}
+.rpg-target-frame .rpg-unit-heading{flex-wrap:wrap;gap:2px 6px}
+.rpg-target-frame.is-lock-invalid .rpg-unit-state{white-space:normal;color:#f0b78d;line-height:1.35}
+.rpg-target-frame.is-lock-invalid{border-color:#bc865a}
+@media(pointer:coarse){.rpg-lock-target{min-height:44px;min-width:72px}}
+@media(max-width:650px){.rpg-lock-target{font-size:10px;padding:3px 5px}.rpg-target-frame .rpg-unit-state{font-size:8px}}
+@media(max-height:620px) and (pointer:coarse){
+ .rpg-panel-open .rpg-target-frame .rpg-unit-footer{display:block}
+ .rpg-panel-open .rpg-lock-target{width:100%;min-width:0;min-height:44px;font-size:9px;margin-top:4px}
+ .rpg-panel-open .rpg-target-frame.is-lock-invalid .rpg-unit-state{font-size:8px;line-height:1.35}
+}

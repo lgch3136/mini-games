@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Word Ranger · 输入和生命周期测试</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background: #102e36;
+        color: #d5e7c4;
+        font: 13px system-ui;
+        margin: 0;
+        padding: 14px;
+      }
+      button {
+        padding: 10px 16px;
+        background: #cfe0bd;
+        color: #17413e;
+        border: 0;
+        border-radius: 4px;
+        margin-bottom: 12px;
+        cursor: pointer;
+      }
+      iframe {
+        width: 100%;
+        height: 620px;
+        border: 1px solid #5f877955;
+        border-radius: 6px;
+      }
+      pre {
+        white-space: pre-wrap;
+        line-height: 1.8;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="run">运行真实页面输入测试</button>
+    <pre id="report">
+键盘、同时触点、取消触点、暂停、重开、返回菜单。通过 DOM 事件驱动正式页面，不修改游戏状态。</pre
+    >
+    <iframe
+      id="subject"
+      src="../index.html?ui-test=20260905"
+      title="正式游戏页面"
+    ></iframe>
+    <script type="module" src="ui.mjs"></script>
+  </body>
+</html>

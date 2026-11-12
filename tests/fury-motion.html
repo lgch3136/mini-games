@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  />
+  <title>Fury joint inspection</title>
+  <style>
+    body {
+      margin: 0;
+      background: #17242c;
+      color: #ede0bd;
+      font: 14px system-ui;
+    }
+    header {
+      padding: 14px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    select,
+    button,
+    input {
+      font: inherit;
+    }
+    button,
+    select {
+      padding: 6px;
+    }
+    #arena {
+      position: relative;
+      width: min(100%, 960px);
+      aspect-ratio: 16/9;
+      margin: auto;
+      background: url("../english-word-fury/assets/harbor-dusk-v2.webp")
+        center/100% 100%;
+    }
+    canvas {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      inset: 0;
+    }
+    pre {
+      white-space: pre-wrap;
+      margin: 16px auto;
+      max-width: 960px;
+      font-size: 12px;
+    }
+    p {
+      margin: 8px 16px;
+    }
+  </style>
+  <header>
+    <b>关节姿势检查 · 非实战</b
+    ><select id="hero" aria-label="人物">
+      <option value="0">凌风</option>
+      <option value="1">赤绫</option>
+      <option value="2">铁岳</option></select
+    ><select id="pose" aria-label="动作">
+      <option>idle</option>
+      <option>crouch</option>
+      <option>walk</option>
+      <option>run</option>
+      <option>guard</option>
+      <option>kick</option>
+      <option>highKick</option>
+      <option>sweep</option>
+      <option>upper</option>
+      <option>wave</option>
+      <option>roll</option>
+      <option>down</option></select
+    ><label
+      >帧 <input id="frame" type="number" min="0" max="60" value="0" /></label
+    ><button id="play">播放</button><button id="scan">翻滚接地扫描</button
+    ><label><input id="joints" type="checkbox" />关节点</label>
+  </header>
+  <p>
+    生产模型、姿势和渲染代码；用受控姿势检查两侧朝向。播放不会开启声音，离开页面会释放
+    WebGL。
+  </p>
+  <div id="arena"><canvas id="model"></canvas><canvas id="fx"></canvas></div>
+  <pre id="report">载入模型…</pre>
+  <script type="module" src="fury-motion.mjs"></script>
+</html>

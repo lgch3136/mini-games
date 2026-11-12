@@ -1,0 +1,12 @@
+/* Explicit paused observation only. The full overlay keeps intercepting pointer input. */
+#pause-view-help { font-size: 12px; line-height: 1.6; margin: 12px auto 0; max-width: 430px; }
+#paused .btn-row { flex-wrap: wrap; }
+#paused.battlefield-view { background: transparent; backdrop-filter: none; padding: 6px; align-items: flex-start; overflow: hidden; }
+#paused.battlefield-view #pause-panel { max-width: calc(100% - 4px); margin: 0 auto; padding: 6px 10px; border: 1px solid #ffe1a76b; border-radius: 10px; background: #171106f5; }
+#paused.battlefield-view #pause-title { font-size: 13px !important; line-height: 18px; letter-spacing: 0; text-shadow: none; }
+#paused.battlefield-view #pause-view-help { display: none; }
+#paused.battlefield-view .btn-row { margin-top: 4px; gap: 6px; }
+#paused.battlefield-view .btn-row button { min-height: 44px; margin: 0; padding: 6px 10px !important; font-size: 12px !important; letter-spacing: 0; }
+#game-wrap.paused-battlefield-view #hud,
+#game-wrap.paused-battlefield-view #touch-controls { visibility: hidden; }
+#paused button:focus-visible { outline: 2px solid #fff2cf; outline-offset: 2px; }

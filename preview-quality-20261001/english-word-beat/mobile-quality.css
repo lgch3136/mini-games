@@ -1,0 +1,167 @@
+/* Full-sized touch controls, song-level finish, and visible feedback hierarchy. */
+body { background:radial-gradient(ellipse at 30% 0,#263057,#10101e 60%,#070910); }
+.panel { padding:20px 22px 28px; }
+#menu .panel h1 { letter-spacing:-.02em; }
+#menu .sub { color:#c1c7e0; line-height:1.75; margin:12px auto; }
+.menu-cover { width:100%; height:120px; border-radius:18px; object-position:center 45%; }
+#menu .scale-map { display:none; }
+.session-settings { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:12px; margin:14px 0 8px; font-size:12px; color:#c1c8df; text-align:left }
+.session-settings select { min-width:0; }
+.timing-settings { text-align:left; background:#9392d812; border:1px solid #b7b9df25; padding:12px; border-radius:12px; font-size:12px; margin:8px 0; color:#c3c8dd }
+.timing-settings summary { cursor:pointer; min-height:24px; }
+.timing-settings output { float:right; font-variant-numeric:tabular-nums; color:#91dbf8; }
+.timing-settings label { display:block; margin:13px 0 5px; }
+.timing-settings input { width:100%; min-height:44px; accent-color:#a9b9fb; }
+.timing-settings p { line-height:1.7; color:#a8b6d0; }
+.star-guide { color:#c3bc9c; font-size:11px; margin:13px 0 5px; }
+.song-progress { position:absolute; left:22px; right:22px; bottom:12px; display:flex; align-items:center; gap:12px; color:#bcd9e9; font-size:11px; }
+.song-progress i { height:3px; flex:1; background:#c3edff25; overflow:hidden; border-radius:5px; }
+.song-progress em { display:block; height:100%; background:linear-gradient(90deg,#78caff,#d3bdfe); transform-origin:left; }
+.result-stars { color:#f1d78c; font-size:38px; letter-spacing:.15em; margin:15px 0; }
+.result-achievement { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:4px 12px; margin:15px 0; }
+.result-achievement .result-stars { margin:0; }
+#result-star-rule { color:#b8aed0; font-size:11px; line-height:1.4; }
+.result-timing { color:#a5bad8; font-size:12px; margin-top:16px; }
+.result-advice { color:#d2d8ec; font-size:13px; line-height:1.8; text-align:left; padding:14px; margin:12px 0; border:1px solid #a9b9e133; background:#c4cdff08; border-radius:14px; }
+#pause-btn,#mute-btn,#exit-btn { min-height:44px; padding:7px 11px; border-radius:12px; }
+button.difficulty,.seg-btn,select { min-height:44px; }
+.btn-main { min-height:50px; border-radius:16px; background:linear-gradient(135deg,#6f8ee6,#7065bd); }
+button,select,input { touch-action:manipulation; }
+@media (max-width:600px) and (orientation:portrait) {
+  .panel { padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 24px); max-width:100%; }
+  .menu-cover { height:108px; }
+  #menu .keys,.judge-guide { display:none; }
+  #menu .opt-row { margin-top:12px; gap:10px; }
+  #song-select { width:100%; font-size:16px; }
+  select { font-size:16px; }
+  .diff-row { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:14px; }
+  button.difficulty { padding:8px 5px; font-size:11px; }
+  .seg-btn { font-size:13px; padding:8px 15px; }
+  #menu .btn-main { width:100%; margin-top:10px; }
+  .top { top:max(8px,env(safe-area-inset-top)); left:12px; right:12px; flex-wrap:wrap; gap:7px; }
+  .top > .chips:first-child { width:calc(100% - 60px); font-size:12px; }
+  .top > .chips:last-child { width:100%; justify-content:flex-end; }
+  .top .chip:nth-child(2),.top .chip:nth-child(4) { display:none; }
+  .life-wrap { max-width:50px; }
+  #word-bar { top:calc(max(8px,env(safe-area-inset-top)) + 82px); width:auto; max-width:calc(100% - 28px); }
+  #wb-word { font-size:16px; }
+  #wb-zh { font-size:12px; }
+  .song-progress { bottom:max(13px,env(safe-area-inset-bottom)); left:20px; right:20px; }
+  #feedback { white-space:normal; width:max-content; text-align:center; line-height:1.5; font-size:12px; }
+  .btn-row { flex-wrap:wrap; }
+}
+@media (max-height:480px) and (orientation:landscape) {
+  #pause-btn,#mute-btn,#exit-btn { min-height:44px; }
+  #word-bar { top:52px; }
+  #menu .panel { padding:10px 16px; }
+}
+.quick-note,#instrument-status { font-size:12px; line-height:1.6; color:#b4c9df; margin:8px 0 14px; }
+.advanced-play { margin-top:16px; text-align:left; border-top:1px solid #aabbe030; }
+.advanced-play > summary { min-height:48px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#cedbef; }
+.advanced-play #start-btn { display:block; margin:12px auto; }
+#retry-audio { min-height:44px; margin:6px auto; }
+.word-recap { font-size:14px; line-height:1.75; padding:12px; margin:12px 0; border-left:3px solid #f3c76d; background:#d4b46c12; text-align:left; color:#f4e5c5; }
+#retry-word[hidden] { display:none; }
+#retry-word { width:100%; }
+/* The highway and keybed share one orthographic space. Feedback sits below the strike line. */
+#feedback { top:auto; bottom:5px; font-size:11px; padding:3px 8px; border:0; background:#080e1eee; }
+.song-progress { bottom:auto; top:108px; font-size:10px; opacity:.85; }
+#play-instrument { display:none; }
+#word-bar { top:58px; display:flex; align-items:center; gap:9px; max-width:calc(100% - 28px); padding:5px 10px; white-space:nowrap; }
+#wb-kind { max-width:110px; text-overflow:ellipsis; overflow:hidden; font-size:10px; }
+#wb-zh { margin:0; }
+@media (max-width:600px) and (orientation:portrait) {
+  #menu .menu-cover { height:72px; margin-bottom:8px; }
+  #menu .panel { padding-top:max(12px,env(safe-area-inset-top)); }
+  #menu .panel h1 { font-size:28px; }
+  #menu .sub { margin:10px auto; font-size:13px; line-height:1.55; }
+  #menu #quick-start { min-height:52px; }
+  .top { flex-wrap:nowrap; left:8px; right:8px; gap:5px; }
+  .top > .chips:first-child { width:auto; flex:1; font-size:11px; }
+  .top > .chips:last-child { width:auto; gap:4px; }
+  .top .chip { padding:3px 5px; }
+  .top #capsules { display:none; }
+  .life-wrap { max-width:30px; }
+  #pause-btn,#mute-btn,#exit-btn { min-width:44px; padding:7px 6px; }
+  #word-bar { top:calc(max(8px,env(safe-area-inset-top)) + 48px); left:12px; right:12px; transform:none; max-width:none; gap:6px; justify-content:center; }
+  #wb-kind { display:none; }
+  #wb-word { font-size:17px; }
+  #wb-zh { font-size:12px; }
+  .song-progress { top:calc(max(8px,env(safe-area-inset-top)) + 89px); bottom:auto; }
+  #feedback { bottom:3px; font-size:10px; }
+}
+
+/* The live playfield is a quiet wood/ivory instrument, with rhythm owning the HUD. */
+.companion-choice {display:grid;gap:8px;margin:12px 0;color:#bfc9ba;font-size:12px;}
+.companion-choice label {display:flex;align-items:center;gap:8px;min-height:44px;}
+.companion-choice input {width:20px;height:20px;accent-color:#bfa36d;}
+.companion-choice .btn-sub {min-height:44px;justify-self:start;font-size:12px;padding:8px 12px;}
+
+/* All resting screens share the instrument materials without changing the live HUD. */
+body:has(#menu:not(.hidden)),body:has(#paused:not(.hidden)),body:has(#over:not(.hidden)) {background:radial-gradient(ellipse at 30% 0,#244342,#102b2e 60%,#081b20);}
+#game-wrap:has(#menu:not(.hidden)),#game-wrap:has(#paused:not(.hidden)),#game-wrap:has(#over:not(.hidden)) {border-color:#ad986852;background:#102128;box-shadow:0 12px 42px #07191b66;}
+#menu,#paused {background:radial-gradient(ellipse at 50% 15%,#244342 0%,#102b2e 58%,#081b20 100%);color:#f0e5ca;color-scheme:dark;scrollbar-color:#526f68 #102b2e;}
+#menu .panel h1,#paused .panel h1 {color:#f0e5ca;text-shadow:0 2px 0 #081b2066;}
+#menu .panel h1 small,#menu .panel::before {color:#c9b584;}
+#menu .sub,#paused .sub,#menu .quick-note,#menu #instrument-status,#menu .opt-hint,#menu #song-detail {color:#c5d2c6;}
+#menu .menu-cover {display:block;width:auto;max-width:100%;margin-left:auto;margin-right:auto;object-fit:contain;object-position:center;background:#102128;border-color:#ad986852;box-shadow:inset 0 1px 0 #ead8a610;}
+#menu .btn-main,#paused .btn-main {color:#173135;background:linear-gradient(180deg,#eadcb7,#c1a66c);border:1px solid #f0dfb4;box-shadow:inset 0 1px 0 #fff5d9,0 4px 0 #6d5b3738,0 7px 16px #07191b55;}
+#menu .btn-main:hover,#paused .btn-main:hover {box-shadow:inset 0 1px 0 #fff5d9,0 5px 0 #6d5b3738,0 9px 18px #07191b66;}
+#menu .btn-sub,#paused .btn-sub,#menu .seg-btn,#menu .difficulty,#menu select {color:#e9ddbf;background:#244441;border-color:#9d875e;}
+#menu .btn-sub,#paused .btn-sub {min-height:44px;}
+#menu .seg-btn.selected,#menu .difficulty.selected {color:#173135;background:linear-gradient(180deg,#eadcb7,#c1a66c);border-color:#f0dfb4;box-shadow:inset 0 1px 0 #fff5d9,0 2px 6px #07191b55;}
+#menu .btn-sub:hover,#paused .btn-sub:hover,#menu .seg-btn:hover,#menu .difficulty:hover {border-color:#ead59a;}
+#menu :is(button,select,input,summary,a):focus-visible,#paused button:focus-visible {outline:2px solid #ead59a;outline-offset:3px;}
+#menu .advanced-play {border-top-color:#af94654d;}
+#menu .advanced-play > summary,#menu .opt-label,#menu .session-settings,#menu .companion-choice {color:#c5d2c6;}
+#menu .timing-settings {color:#c5d2c6;background:#203e3b;border-color:#a88d5c45;}
+#menu .timing-settings summary {min-height:44px;display:flex;align-items:center;justify-content:space-between;}
+#menu .timing-settings output,#menu .star-guide {color:#d5b879;}
+#menu .timing-settings p {color:#c5d2c6;}
+#menu .timing-settings input,#menu .companion-choice input {accent-color:#c4a369;}
+#menu :is(#score-source,.instrument-source) {color:#d5b879;border-bottom-color:#d5b87966;}
+#menu :is(#score-source,.instrument-source):hover {color:#f0e5ca;border-color:currentColor;}
+#menu .keys span {color:#e9ddbf;background:#244441;border-color:#9d875e;}
+#menu .j.p {color:#e0c88e;background:#bca16c18;border-color:#bca16c66;}
+#menu .j.g {color:#c6d7bb;background:#9dbd8f18;border-color:#9dbd8f66;}
+#menu .j.o {color:#bbd5cc;background:#8fbeb018;border-color:#8fbeb066;}
+@media (max-width:600px) and (orientation:portrait) {
+  #menu .menu-cover {height:136px;}
+}
+@media (max-height:480px) and (orientation:landscape) {
+  #menu .menu-cover {display:none;}
+  #menu .panel::before {content:"WORD BEAT · 4K / 5K / 7K";}
+}
+
+/* The final note settles into the same teal, ivory and brass as the instrument. */
+#over {align-items:flex-start;background:radial-gradient(ellipse at 50% 15%,#244342 0%,#102b2e 58%,#081b20 100%);color:#f0e5ca;color-scheme:dark;scrollbar-color:#526f68 #102b2e;}
+#over .panel {flex-shrink:0;margin:auto;}
+#over .btn-sub {min-height:44px;}
+#over .btn-row {flex-wrap:wrap;align-items:center;}
+#over .btn-row .btn-main {margin-top:0;}
+@media (max-height:480px) and (orientation:landscape) {
+  #over .panel {padding-top:14px;padding-bottom:18px;}
+  #over #over-title {font-size:28px;line-height:1.2;}
+  #over .word-recap {font-size:13px;line-height:1.5;padding:10px;margin:10px 0;}
+  #over #retry-word {margin-top:0;}
+}
+#over-kicker {color:#bca16c;letter-spacing:4px;font-size:12px;margin-bottom:6px;}
+#over-title {font-size:32px;color:#f0e5ca;text-shadow:0 2px 0 #081b2066;}
+#over #over-stats > div {background:#132f30;border-color:#af94654d;box-shadow:inset 0 1px 0 #ead8a610;}
+#over #over-stats span,#over #result-star-rule,#over .result-timing {color:#b2c9be;}
+#over #over-stats b {color:#f0e5ca;}
+#over .result-stars {color:#d5b879;}
+#over .word-recap {color:#f0e5ca;border-left-color:#c4a369;background:#dfc68b0c;}
+#over .result-advice {color:#cfddd2;background:#203e3b;border-color:#a88d5c45;}
+#over .btn-main {color:#173135;background:linear-gradient(180deg,#eadcb7,#c1a66c);border:1px solid #f0dfb4;box-shadow:inset 0 1px 0 #fff5d9,0 4px 0 #6d5b3738,0 7px 16px #07191b55;}
+#over .btn-main:hover {box-shadow:inset 0 1px 0 #fff5d9,0 5px 0 #6d5b3738,0 9px 18px #07191b66;}
+#over .btn-sub {color:#e9ddbf;background:#244441;border-color:#9d875e;}
+#over button:focus-visible {outline:2px solid #ead59a;outline-offset:3px;}
+#hud .chip {border-color:#9cae9c40;color:#d7dfcf;background:#12272dd9;}
+#hud button {border-color:#a497734d;background:#152b32;color:#dce4d5;}
+#word-bar {border-color:#b9aa7a55;background:#182f35e8;color:#e1d8bc;}
+#wb-word .got {color:#d7c185;}
+#wb-word .next {color:#f1e8ca;}
+#feedback {color:#d7ddc8;}
+.song-progress {color:#aebfae;}
+.song-progress em {background:#bb9e67;}

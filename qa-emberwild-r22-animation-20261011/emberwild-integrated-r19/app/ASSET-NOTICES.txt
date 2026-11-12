@@ -1,0 +1,12 @@
+Emberwild / 余烬旷野 — Runtime asset and dependency notices
+
+Three.js and the included example utilities use the MIT license. The complete MIT license is included at vendor/LICENSE, relative to this notice.
+
+The character head and neck use modified graphical data from the MakeHuman core base mesh as an anatomical topology foundation. This graphical asset is licensed under CC0 1.0 Universal. No MakeHuman application code is included or required.
+Public asset source: https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
+Public license and graphical-asset distinction: https://github.com/makehumancommunity/makehuman/blob/master/LICENSE.md
+The complete CC0 text is included at LICENSE-MAKEHUMAN-ASSETS.txt, relative to this notice.
+
+Other game code, geometry, character and outfit designs, technical materials, texture derivatives, portraits, icons and synthesized music were made for this project. Some visual inputs and their derivatives were created with generative AI; exclusive copyright is not claimed for generated content.
+
+No Blizzard or World of Warcraft media, commercial recordings or commercial sample libraries are included.

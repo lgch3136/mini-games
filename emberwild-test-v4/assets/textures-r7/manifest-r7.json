@@ -1,0 +1,132 @@
+{
+  "version": "gameplay-scene-r7",
+  "generator": "Blender 4.3.2 Cycles CPU node baking",
+  "sourcePolicy": "Original imagegen PNGs retained unchanged. Runtime outputs are technical Blender-derived maps.",
+  "periodization": "Four shifted samples blended by sin-squared UV weights; no claim that imagegen originals are seamless.",
+  "sets": {
+    "soil": {
+      "source": "references/gameplay-scene-r7/trail-soil-source-r7.png",
+      "sourceSha256": "3ed3babb1292858bcc61bc528b3df2a05b79ff054bca076d1459b4f2a4d7b750",
+      "standard": {
+        "albedo": "soil-albedo-512-r7.png",
+        "normal": "soil-normal-512-r7.png",
+        "roughness": "soil-roughness-256-r7.png"
+      },
+      "low": {
+        "albedo": "soil-albedo-256-r7.png"
+      },
+      "normalScale": [
+        0.65,
+        0.65
+      ],
+      "tileWorldUnits": 2,
+      "albedoLinearRange": [
+        0.42,
+        0.99
+      ],
+      "files": {
+        "soil-albedo-512-r7.png": {
+          "size": [
+            512,
+            512
+          ],
+          "bytes": 287030,
+          "sha256": "638a25339663136ddf7f6e437db548194911db5bb6233cafc42f0eab4fc4ee5d",
+          "estimatedRgba8MipBytes": 1398101
+        },
+        "soil-normal-512-r7.png": {
+          "size": [
+            512,
+            512
+          ],
+          "bytes": 702606,
+          "sha256": "56e0d0caff9e5826d3984cbbba9e8fde8bd18414640b97f70e3b736b416354b0",
+          "estimatedRgba8MipBytes": 1398101
+        },
+        "soil-roughness-256-r7.png": {
+          "size": [
+            256,
+            256
+          ],
+          "bytes": 60466,
+          "sha256": "d4a9c7a0181fe5dff13f896c20b3a6ac07af7d7fde29014c210c54777375cb4e",
+          "estimatedRgba8MipBytes": 349525
+        },
+        "soil-albedo-256-r7.png": {
+          "size": [
+            256,
+            256
+          ],
+          "bytes": 75195,
+          "sha256": "3e1506029fd25cae76e825a0af35746cc8b7958f21ad9925c60bb2028f2c6437",
+          "estimatedRgba8MipBytes": 349525
+        }
+      }
+    },
+    "bark": {
+      "source": "references/gameplay-scene-r7/alder-bark-source-r7.png",
+      "sourceSha256": "f6b3d52690fddeedda37c4784f76fe25069ae96f7684118ffd9ea300f59524eb",
+      "standard": {
+        "albedo": "bark-albedo-512-r7.png",
+        "normal": "bark-normal-512-r7.png",
+        "roughness": "bark-roughness-256-r7.png"
+      },
+      "low": {
+        "albedo": "bark-albedo-256-r7.png"
+      },
+      "normalScale": [
+        0.8,
+        0.8
+      ],
+      "tileWorldUnits": null,
+      "albedoLinearRange": null,
+      "files": {
+        "bark-albedo-512-r7.png": {
+          "size": [
+            512,
+            512
+          ],
+          "bytes": 508212,
+          "sha256": "90a2de27d39a4944e164e9b065a8f022e2116587039925e25ce32a7d661ed650",
+          "estimatedRgba8MipBytes": 1398101
+        },
+        "bark-normal-512-r7.png": {
+          "size": [
+            512,
+            512
+          ],
+          "bytes": 746211,
+          "sha256": "42ece1dd1d802b2230bdc90cc118c38c7d18cba760cf092d134caa7fb4165b68",
+          "estimatedRgba8MipBytes": 1398101
+        },
+        "bark-roughness-256-r7.png": {
+          "size": [
+            256,
+            256
+          ],
+          "bytes": 57156,
+          "sha256": "5e365b8b71183412c2a981c2438558bfa181e8ef8d3860807a49d9d541f361f7",
+          "estimatedRgba8MipBytes": 349525
+        },
+        "bark-albedo-256-r7.png": {
+          "size": [
+            256,
+            256
+          ],
+          "bytes": 129193,
+          "sha256": "21d7bb8748952e897731224f3d5276c5ded3c54fa86b437534e99995986d1b73",
+          "estimatedRgba8MipBytes": 349525
+        }
+      }
+    }
+  },
+  "normalNote": "Luminance-derived relief, not scanned height. OpenGL +Y tangent normals; runtime soil UV handedness retains existing negative normalScale.y.",
+  "budget": {
+    "standardSoilTextures": 3,
+    "standardSoilRgba8MipBytes": 3145728,
+    "lowSoilTextures": 1,
+    "lowSoilRgba8MipBytes": 349525,
+    "soilReplacesExistingMaps": true,
+    "noExtraGeometry": true
+  }
+}

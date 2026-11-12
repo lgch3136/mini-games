@@ -1,0 +1,31 @@
+Emberwild / 余烬旷野 — r15 asset and dependency notices
+
+Three.js and the included example utilities use the MIT license. The runtime copy is ../emberwild-test-v4/vendor/LICENSE; the editable-source copy is LICENSE-THREE.txt.
+
+Game code, environment/architecture geometry, original creature and outfit design, technical material derivatives and musical score were authored for this project. The redesigned hero head/neck uses the CC0 MakeHuman core base mesh as an anatomical topology foundation, modified and textured for this project. Original generated references and texture/icon inputs are retained in the editable source where available. The botanical source is original AI-generated project material; technical atlases and alpha masks are reproducible derivations. Generated content is not claimed to have exclusive copyright.
+
+The earlier cloth/leather/stone maps are preserved direct technical inputs. Their unavailable upstream generated originals are expressly recorded in docs/input-dependencies.json and are not claimed to have been recovered. Retained r9 architecture GLBs are exact direct inputs to the r10 camp merger, with earlier editable authoring source currently unavailable after workspace recovery. The only newly introduced external geometry foundation is the MakeHuman CC0 base mesh noted below; no commercial recording/sample library is used.
+
+Character design, generated material references and project-specific modeling are original; the CC0 head/neck foundation is credited separately. No World of Warcraft assets or official Blizzard content are used. The music uses deterministic local synthesis.
+
+The two wildlife rigs, loot pouch, material and ranged-spell icons and technical texture atlases are original project assets built from original generated reference/material inputs with Blender-authored geometry, UVs and animation. The stoneback profile shares the boar rig; it is not a third independently authored creature model. Creature portraits render those exact runtime GLBs.
+
+The runtime contains no private storage identities, authoring Blends, generated references or research dumps. CPU evidence uses actual production geometry with approximate lighting, materials and transparency; it is not native browser WebGL, GPU/FPS or real-device acceptance.
+
+MakeHuman core basemesh (graphical asset, CC0 1.0 Universal)
+Source: https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
+Asset license and source/asset distinction: https://github.com/makehumancommunity/makehuman/blob/master/LICENSE.md
+Original OBJ SHA-256: 8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c
+Full CC0 text: LICENSE-MAKEHUMAN-ASSETS.txt. Only graphical data is used; no MakeHuman application code is included or required.
+
+R14 Mosscrest stag and Dawnkite gryphon: original task-authored Blender topology, UVs, skeletons and clips reconstructed from retained authoring records. Runtime materials use a NEW original built-in imagegen concept/material sheet generated 2026-10-08; no old GLB byte identity is claimed. No additional third-party mount geometry or texture library is used. The new material source SHA-256 is 83c3f1b9aa3a37e8921ddc9178b9a3cf737b2acfa87f0aecb745e5ec032b0f20. Reconstructed geometry and new materials require fresh runtime/visual verification.
+
+R15 coherent art rebuild: the hero retains the published R12 face/eyes and original hair surfaces, with new tailored garment topology, five clothing skins and original generated material derivatives. A focused retained-hair correction reverses ear-side trimming/reprojection that produced deep shadow artifacts; all other garment data remains unchanged. Warden Aive uses newly generated original face/material inputs and a reconstructed CC0-based head plus original outfit, hair, glove and lantern geometry. Her actual hand control owns the lantern. The camp ground kit uses new original leaf/stone inputs, exact published bark as a declared input, opaque contour geometry and authored split normals conformed to the terrain. Forest and ground-color revisions are new reproducible derivatives of exact published R13 inputs; the recovered planting module is identified separately in source records. No lost original authoring file or historical acceptance is silently reused.
+
+R15 UI hero/Warden portraits are studio renders of the final selected-tier runtime meshes. They are intentional production UI image assets, not gameplay screenshots. CPU scene comparisons use the same scene/camera conversion and the pinned Three hemisphere-diffuse equation for both versions, with normal-map/display/shadow approximations still disclosed in evidence. No native WebGL, GPU, FPS or device acceptance is claimed.
+
+R16 original authoring: rebuilt irregular rock forms and shaped camp shelter, asymmetric woody tree forms, hero layered hair and back collar/mantle. Original generated wood/canvas and directed hair-color inputs are baked into runtime atlases. Existing third-party asset licenses above continue to apply. No Warcraft media is used.
+
+R19 internal candidate: full character libraries use the frozen new hero garment geometry and embedded original project texture derivatives. Nonhero character library members and all flora, camp, mount and ground libraries retain their existing versions. R19 hero UI portraits are expected from the same selected-tier final mesh. CPU/Blender evidence does not certify browser rendering, GPU performance or intersection-free motion. Prepared QA candidate. Deployment approval and browser acceptance are separate gates.
+
+QA staging: only selected R19 runtime modules and both-tier character/portrait assets are carried here. Unchanged runtime dependencies are referenced from the sibling emberwild-test-v4 directory. QA saves use a candidate-only namespace and do not import, migrate, clear or overwrite production saves.

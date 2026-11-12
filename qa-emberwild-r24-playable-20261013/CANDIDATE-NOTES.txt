@@ -1,0 +1,15 @@
+EMBERWILD R24 · Ground-mount jump playable QA · final v2 (2026-10-13)
+
+New default gameplay: ground-mount (stag) jump with charge, airborne pose and landing recovery, using Space or touch jump. Holding the input does not repeatedly launch. Gryphon flight behavior remains unchanged. Existing collision restrictions remain; this is not obstacle-vaulting.
+
+Baseline: lgch3136/mini-games commit 32536db11250466d3ec009b81bdae85c3a4c2134. This package contains only already-public runtime plus newly authored runtime changes. It does not restore lost original private authoring sources.
+
+All existing model, texture, animation, rig and other asset bytes are retained. Character identity, normal rendering DPR, lights, materials and normal shadow settings are unchanged.
+
+Saves stay in emberwild-r23-performance-qa:. Production saves are not read or migrated.
+
+Existing performance and pixel A/B diagnostics remain optional (perf=1). The pixel diagnostic no longer queries SAMPLES inside sampled-frame timing. Validation occurs at phase boundaries and guarded events, preserving cancellation, exact state restoration, copy/report and context/shadow/drawing-buffer safeguards. This does not establish a normal gameplay FPS improvement. The first gameplay dt after final restoration may still include recovery delay capped at 33ms, as in the original runtime.
+
+Verification: CPU logic, simulated input/UI, bounded HTTP, syntax, static references and packaging checks are separate from native browser testing. No real browser 3D scene, native input behavior, Mac/Radeon FPS, audio or physical-touch acceptance is claimed. The supported cloud browser could not create a WebGL context on the existing public baseline.
+
+Publication status is recorded outside the runtime; the integration task prepares this package locally without publishing it.

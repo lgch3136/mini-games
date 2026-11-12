@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190" role="img" aria-labelledby="title desc">
+  <title id="title">单词突击队 WORD RANGER</title>
+  <desc id="desc">原创横版英语闯关游戏标志</desc>
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b473b"/>
+      <stop offset="1" stop-color="#0b241d"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe6a0"/>
+      <stop offset="1" stop-color="#d18a32"/>
+    </linearGradient>
+  </defs>
+  <path d="M20 52 76 12h568l56 40v86l-56 40H76l-56-40z" fill="url(#plate)" stroke="#f4d37a" stroke-width="5"/>
+  <path d="M83 34h554l34 25v72l-34 25H83l-34-25V59z" fill="none" stroke="#527d69" stroke-width="3"/>
+  <g transform="translate(68 53)" fill="none" stroke="url(#gold)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 66h72l23-22h34"/>
+    <path d="M38 66 25 26h49l9 40M48 26V8M66 26V8"/>
+    <circle cx="112" cy="44" r="12"/>
+  </g>
+  <text x="392" y="91" fill="#f8f3df" font-family="PingFang SC,Microsoft YaHei,sans-serif" font-size="49" font-weight="900" text-anchor="middle" letter-spacing="10">单词突击队</text>
+  <text x="397" y="133" fill="url(#gold)" font-family="Arial Black,Arial,sans-serif" font-size="30" font-weight="900" text-anchor="middle" letter-spacing="9">WORD RANGER</text>
+</svg>

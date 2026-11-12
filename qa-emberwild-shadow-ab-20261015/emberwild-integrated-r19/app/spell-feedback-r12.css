@@ -1,0 +1,24 @@
+.spell-cast-feedback-r12{position:absolute;z-index:6;left:50%;bottom:154px;transform:translateX(-50%);display:grid;grid-template-columns:1fr auto;gap:5px 12px;width:min(260px,calc(100% - 40px));padding:9px 13px;border:1px solid #c6ab71;border-radius:7px;color:#f7e6c2;background:#172624ee;box-shadow:0 4px 16px #0005;font:12px system-ui;pointer-events:none}
+.spell-cast-feedback-r12[hidden],.spell-intro-r12[hidden]{display:none}.spell-cast-name-r12{font-weight:700}.spell-cast-time-r12{font-variant-numeric:tabular-nums}.spell-cast-feedback-r12 progress{grid-column:1/-1;width:100%;height:7px;accent-color:#eac176}.spell-cast-feedback-r12 small{grid-column:1/-1;font-size:10px;color:#c8ceb5;text-align:center}
+.spell-intro-r12{position:absolute;z-index:7;right:24px;bottom:160px;max-width:min(325px,calc(100% - 48px));padding:12px 14px;border:1px solid #ad9360;border-radius:8px;background:#1c2925f5;color:#eddfbd;font:12px/1.6 system-ui;box-shadow:0 6px 20px #0005}.spell-intro-r12 p{margin:0 0 10px}.spell-intro-r12 button{min-height:40px;padding:8px 12px;margin-right:8px;background:#314a3b;color:#fae8bf;border:1px solid #a68c58;border-radius:5px;touch-action:manipulation}.spell-intro-r12 button:focus-visible{outline:3px solid #ffdc85;outline-offset:3px}
+@media(pointer:coarse){.spell-cast-feedback-r12{bottom:max(327px,calc(env(safe-area-inset-bottom) + 314px))}.spell-intro-r12{right:12px;bottom:max(325px,calc(env(safe-area-inset-bottom) + 313px));max-width:calc(100% - 48px)}.spell-intro-r12 button{min-height:44px}}
+@media(max-width:560px){.spell-cast-feedback-r12{width:220px}.spell-intro-r12{font-size:11px}}
+/* Short touch viewports reserve the right health rail and bottom thumb controls. */
+@media(max-height:500px) and (pointer:coarse){
+ .spell-cast-feedback-r12{top:132px;bottom:auto;width:min(220px,calc(100% - 170px));padding:6px 10px;gap:3px 8px;font-size:11px}
+ .spell-cast-feedback-r12 small{display:none}
+ .spell-intro-r12{top:70px;bottom:auto;left:12px;right:auto;width:min(325px,calc(100% - 132px));max-width:calc(100% - 132px);max-height:calc(100vh - 222px);max-height:calc(100svh - 222px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:8px 10px}
+ .spell-intro-r12 p{margin-bottom:6px;font-size:11px;line-height:1.45}
+ .spell-intro-r12 button{min-height:44px;padding:7px 10px;margin-right:5px}
+ .spell-intro-visible-r12 .rpg-unit-frames{top:70px;left:auto;right:8px;width:94px;display:flex;flex-direction:column;gap:6px}
+ .spell-intro-visible-r12 .rpg-unit-frame,.spell-intro-visible-r12 .rpg-target-frame{display:block;flex:none;width:94px;min-height:44px;padding:4px;border-radius:4px}
+ .spell-intro-visible-r12 .rpg-portrait-ring{display:contents}
+ .spell-intro-visible-r12 .rpg-portrait,.spell-intro-visible-r12 .rpg-unit-footer{display:none}
+ .spell-intro-visible-r12 .rpg-unit-level{left:4px;top:4px;right:auto;bottom:auto;min-width:17px;height:17px;padding:0;font-size:9px}
+ .spell-intro-visible-r12 .rpg-unit-heading{padding-left:21px;margin-bottom:3px;display:block}
+ .spell-intro-visible-r12 .rpg-target-frame .rpg-unit-heading{padding-right:20px}
+ .spell-intro-visible-r12 .rpg-clear-target{right:-4px}
+ .spell-intro-visible-r12 .rpg-unit-name{font-size:10px;line-height:12px}.spell-intro-visible-r12 .rpg-unit-state{font-size:8px;line-height:9px}.spell-intro-visible-r12 .rpg-player-frame .rpg-unit-state{display:none}
+ .spell-intro-visible-r12 .rpg-unit-health{height:13px}.spell-intro-visible-r12 .rpg-unit-health-text{font-size:9px}
+ .spell-intro-visible-r12 .rpg-map,.spell-intro-visible-r12 #quest,.spell-intro-visible-r12 #compass{visibility:hidden}
+}
