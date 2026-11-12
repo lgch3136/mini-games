@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>字母花园 · 碰撞回看练习 r1</title>
+<link rel="stylesheet" href="relay.css?v=20261108-clean-relay-r1">
+<main><h1 id="page-title">三图无伤接力</h1><p>先后挑战<strong>原图 → 左右镜像 → 上下镜像</strong>。每图按 A → R → C 取字，三图合用<strong>60步</strong>，任意一次身体或护栏碰撞即结束。</p>
+<p>方向键或 WASD，每次走一格，长按不连走。松手可观察，不限思考时间。新候选，尚待实玩；无音频，不保存成绩或星星。</p>
+<p id="drill-banner" role="status" hidden>单图练习 · 可退回刚才一步，换个方向再试。碰撞后会说明上一步起点、方向和撞到的位置，退回一步时保留提示，成功走出下一步后清除；回岔路或重练会清除。退步后可重看刚退的一步（包含碰撞结果）；只保留一步，选择新的有效走法或回岔路会清除重看。还可记住当前岔路，再多次回到这里尝试不同走法；只保留一处，新记会替换旧处。暂停时不能记或返回，重练与退出会清空。退步只保留最近一步；退回后先走一步才能再退。不计接力成绩。</p><p id="metrics"></p><canvas id="board" tabindex="0" aria-label="ARC 三图接力场地" aria-describedby="board-state"></canvas><p id="board-state"></p><p id="status" role="status" aria-live="polite"></p>
+<div class="pad" aria-label="单步方向控制"><button data-direction="3" aria-label="向上一步">↑</button><button data-direction="2" aria-label="向左一步">←</button><button data-direction="1" aria-label="向下一步">↓</button><button data-direction="0" aria-label="向右一步">→</button></div>
+<div class="bar"><button id="start">开始接力</button><button id="next" hidden>进入下一图</button><button id="pause" hidden>暂停</button><button id="reset">放弃本轮，重新开始三图</button><label><input id="grid" type="checkbox" checked>显示格线</label></div>
+<div class="bar"><button id="drill-start" hidden>练习刚失败的这一图</button><button id="drill-undo" hidden disabled aria-describedby="drill-banner">退回刚才一步</button><button id="drill-bookmark" hidden disabled aria-describedby="drill-banner">记住当前岔路</button><button id="drill-return" hidden disabled aria-describedby="drill-banner">回到已记岔路</button><button id="drill-redo" hidden disabled aria-describedby="drill-banner">重看刚退的一步</button><button id="drill-retry" hidden>重练本图</button><button id="drill-exit" hidden>退出练习，查看原接力结果</button></div>
+<section id="drill-summary" hidden><h2>本次单图练习</h2><p id="drill-result"></p></section>
+<section id="summary" hidden><h2>本轮已过关路线</h2><ol id="results"></ol></section>
+<details><summary>规则与暂停</summary><p>每一步使用原游戏转向、碰撞、取字和成长规则。不能直接掉头；无效方向不耗步数。取字后蛇身会增长，碰到后续字母不会提前收下。最后一个 C 恰好在第60步拿到也算成功。镜像图保持相同规则和距离，但需要重新判断方向。</p><p>过图后先停住，由你点击进入下一图，剩余步数不会补满。Esc、离开窗口或隐藏页面会暂停；返回后点继续，不会自动走格。点击重新开始会清空本轮所有进度。失败后可单独练习刚失败的原图或镜像图，从该图原始盘面开始、不限步数，碰撞后仍会停下，但可退回刚才一步换方向。取字和完成后也可退回最近一步，字母、身体、步数和路线一同恢复；不能连续退多步。暂停时不能退步。可重练或退出查看原接力结果。练习不能恢复接力、不保存成绩或星星。旧不限步逐格练习仍保留原三心和护栏救援规则；正式接力规则不变。</p></details>
+<nav><a href="practice.html">先玩不限步逐格练习</a><a href="index.html">此候选的实时模式</a><a href="../index.html">候选首页</a></nav>
+</main><script type="module" src="relay-app.mjs?v=20261112-drill-redo-r1"></script></html>
