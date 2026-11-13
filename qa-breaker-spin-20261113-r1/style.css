@@ -1,0 +1,20 @@
+*{box-sizing:border-box}body{margin:0;background:#07131d;color:#e8f5f4;font:15px/1.6 system-ui,sans-serif;background-image:radial-gradient(ellipse at 20% 0%,#17434b 0,transparent 55%)}main{max-width:960px;margin:auto;padding:24px 20px}header{display:flex;justify-content:space-between;align-items:center}h1{font-size:34px;letter-spacing:4px;margin:0}small{color:#8eb8be}a{color:#abebec}h2{font-size:23px;margin:0 0 10px}button,select{font:inherit;min-height:44px;padding:9px 18px;border-radius:10px;border:1px solid #49757d;color:#e2f5f3;background:#193840;cursor:pointer}button:hover{background:#24505a}button:disabled{opacity:.42;cursor:default}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #f9c666;outline-offset:3px}#start,#fire{background:#98e2c7;color:#122f30;font-weight:750}.intro{margin:20px 0;display:grid;gap:3px;font-size:13px;color:#9abac1;border-left:3px solid #eab566;padding:6px 14px}.intro strong{color:#f8d293}.card{border:1px solid #395c67;border-radius:20px;padding:26px;background:linear-gradient(130deg,#16363d,#0a1d2c);box-shadow:0 18px 45px #0005}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.row label{display:flex;gap:10px;align-items:center}.keys{color:#b1cbd1;font-size:13px}.hud{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;background:#16313c;border:1px solid #385560;border-radius:12px 12px 0 0}#goal{color:#a6f3d8}#stats{font-variant-numeric:tabular-nums}.court{position:relative;background:#07121d;max-width:720px;margin:auto}canvas{display:block;width:100%;height:auto;touch-action:none;outline-offset:-4px}#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#06121df0;text-align:center;padding:22px}#overlay .row{justify-content:center}.controls{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:14px 0}#aimbox{padding:10px 16px;background:#142b34;border:1px solid #375a64;border-radius:10px;max-width:720px;margin:auto}#aimbox label{display:flex;align-items:center;gap:12px}input{flex:1;min-width:70px;accent-color:#a6f3d8}output{min-width:40px}#notice{min-height:24px;text-align:center;color:#f7d08b}footer{font-size:12px;color:#89a4ae;margin-top:22px}[hidden]{display:none!important}@media(max-width:520px){main{padding:14px 10px}h1{font-size:27px}.card{padding:18px}.hud{font-size:12px;gap:5px}.hud button{padding:5px 10px}.controls button{padding:7px 10px;font-size:13px}#overlay h2{font-size:22px}#overlay button{font-size:12px;padding:6px 10px}#aimbox label{font-size:13px}.intro{margin:12px 0}}
+
+/* Stable play layout: launching/recalling never removes the aim row. */
+body.in-game main{padding:8px 12px}
+body.in-game header,body.in-game .intro,body.in-game footer{display:none}
+body.in-game #play{display:flex;flex-direction:column;gap:6px}
+body.in-game .hud{padding:8px 12px}
+body.in-game .controls{margin:0;min-height:44px}
+body.in-game #aimbox{width:100%;max-width:720px;padding:8px 12px}
+body.in-game #aimbox input{min-height:24px}
+body.in-game #aimbox[data-state="playing"]{border-color:#36505b}
+body.in-game #notice{margin:0;height:48px;line-height:24px;display:grid;align-content:center}
+body.in-game #play>.keys{margin:0;font-size:12px;line-height:20px}
+body.in-game .court{width:min(720px,100%)}
+@media(min-height:650px){body.in-game .court{width:min(720px,100%,calc((100dvh - 384px)*1.24137931))}}
+@media(max-width:480px) and (min-height:650px){body.in-game .court{width:100%}}
+
+@media(max-width:520px){body.in-game .hud{display:grid;grid-template-columns:minmax(0,1fr) auto}body.in-game .hud strong{grid-column:1/-1;min-height:20px}}
+
+#spin{flex:none;min-width:20px;width:20px;height:20px}label:has(#spin){min-height:44px;cursor:pointer}
