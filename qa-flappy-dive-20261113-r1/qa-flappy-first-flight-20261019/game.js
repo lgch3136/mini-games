@@ -457,7 +457,7 @@ function gameOver() {
     '<div class="stat-row"><span>🔥 最高连击</span><b>x' + Game.maxCombo + '</b></div>' +
     '<div class="stat-row"><span>羽翼徽章</span><b>' + Math.floor(Game.passedPipes/8) + ' · 完美 ' + Game.perfectPipes + '</b></div>' +
     '<div class="stat-row"><span>🚩 关卡</span><b>' + Game.level + '</b></div>' +
-    '<div class="stat-row"><span>单盾蓄羽最高分</span><b>' + scoreText(hsResult.value) + scoreSaveNotice(hsResult.status) + '</b></div>' +
+    '<div class="stat-row"><span>' + ($id('dive-option').checked ? '收翼俯冲最高分（独立）' : '原操作最高分') + '</span><b>' + scoreText(hsResult.value) + scoreSaveNotice(hsResult.status) + '</b></div>' +
     '<div class="stat-row"><span>旧规则最高分（只读）</span><b>' + scoreText(loadLegacyHS()) + '</b></div>';
   $id('over').classList.remove('hidden');
 }
