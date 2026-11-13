@@ -417,7 +417,7 @@ function wordBank() {
 /* ---------------- 状态 ---------------- */
 const Game = {
   state: 'menu',
-  build: 'qa-wordbeat-shift-layout-20261112-r2',
+  build: 'qa-wordbeat-miss-coach-20261113-r1',
   phraseId: '', phraseRun: null, phraseTempo: 1,
   session: 'song', timingOffset: 0, timingErrors: [], laneMistakes: [0,0,0,0,0,0,0], completed: false,
   difficulty: 'medium',
@@ -1536,7 +1536,7 @@ function gameOver() {
   $id('failure-phrase').classList.add('hidden');
   $id('over-record').classList.add('hidden');
   if (Game.phraseRun) { showPhraseResult(); return; }
-  const key = `qa-wordbeat-shift-layout-20261112-r2-highscore-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
+  const key = `qa-wordbeat-miss-coach-20261113-r1-highscore-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
   let high = 0, previousHigh = 0, newRecord = false, recordReadKnown = false;
   try {
     high = Number(localStorage.getItem(key) || 0);
@@ -1576,7 +1576,7 @@ function gameOver() {
   $id('retry-btn').textContent = Game.completed ? '同曲再奏' : '再试这首曲目';
   $id('practice-retry').classList.toggle('hidden', Game.completed || Game.session === 'practice');
   try {
-    const masteryKey = `qa-wordbeat-shift-layout-20261112-r2-mastery-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
+    const masteryKey = `qa-wordbeat-miss-coach-20261113-r1-mastery-${Game.songId}-${Game.keyMode}-${Game.difficulty}-${Game.session}`;
     localStorage.setItem(masteryKey, String(Math.max(Math.max(0, Math.min(3, Number(localStorage.getItem(masteryKey)) || 0)), recap.stars)));
   } catch {}
   $id('retry-btn').focus?.({ preventScroll: true });
@@ -2113,10 +2113,10 @@ function retryInPractice() {
   canvas.focus?.({ preventScroll: true });
 }
 function savePlayPrefs() {
-  try { localStorage.setItem('qa-wordbeat-shift-layout-20261112-r2-play-prefs-v1', JSON.stringify({ keyMode: Game.keyMode, session: Game.session, timingOffset: Game.timingOffset })); } catch {}
+  try { localStorage.setItem('qa-wordbeat-miss-coach-20261113-r1-play-prefs-v1', JSON.stringify({ keyMode: Game.keyMode, session: Game.session, timingOffset: Game.timingOffset })); } catch {}
 }
 try {
-  const prefs = JSON.parse(localStorage.getItem('qa-wordbeat-shift-layout-20261112-r2-play-prefs-v1') || '{}');
+  const prefs = JSON.parse(localStorage.getItem('qa-wordbeat-miss-coach-20261113-r1-play-prefs-v1') || '{}');
   if ([4,5,7].includes(prefs.keyMode)) Game.keyMode = prefs.keyMode;
   if (['song','practice','endless'].includes(prefs.session)) Game.session = prefs.session;
   if (Number.isFinite(prefs.timingOffset)) Game.timingOffset = clamp(prefs.timingOffset, -.2, .2);
