@@ -954,7 +954,7 @@ function renderResult() {
   $("practice-stars").hidden = !g.focusGoal;
   set("practice-stars", "★".repeat(progress.stars) + "☆".repeat(3 - progress.stars));
   $("practice-stars").setAttribute("aria-label", `${progress.stars} 星：完成目标、95%准确率、全程无错各一星`);
-  set("practice-advice", g.mode === "review" ? reviewAdvice(g, review) : practiceAdvice(g));
+  set("practice-advice", g.frostfire ? "本局错词仅在下方展示，不加入错词本。可重新开始实验再练习，或回菜单关闭实验进入原模式。" : g.mode === "review" ? reviewAdvice(g, review) : practiceAdvice(g));
   const win = g.phase === "complete",
     reviewDone = g.mode === "review" && win;
   set(
@@ -981,7 +981,7 @@ function renderResult() {
   );
   set(
     "result-copy",
-    `${g.mode === "review" ? `本组完成 ${g.stats.words}/${g.reviewTarget} 次输入，其中 ${g.stats.perfect} 次全程无错` : `完成 ${g.stats.words} 个单词，其中 ${g.stats.perfect} 个全程无错`}；最高 ${g.stats.bestCombo} 连词。${review.size ? g.mode === "review" ? `还有 ${review.size} 个词待回练，可在本页继续练习。` : `${review.size} 个错词待回练；本机保存状态见下方。` : "没有待复习错词，带着这份节奏继续吧。"}`,
+    `${g.mode === "review" ? `本组完成 ${g.stats.words}/${g.reviewTarget} 次输入，其中 ${g.stats.perfect} 次全程无错` : `完成 ${g.stats.words} 个单词，其中 ${g.stats.perfect} 个全程无错`}；最高 ${g.stats.bestCombo} 连词。${g.frostfire ? "霜火实验不保存成绩或错词；下方仅为本局词语展示。" : review.size ? g.mode === "review" ? `还有 ${review.size} 个词待回练，可在本页继续练习。` : `${review.size} 个错词待回练；本机保存状态见下方。` : "没有待复习错词，带着这份节奏继续吧。"}`,
   );
   statsView("result-stats");
   $("result-words").replaceChildren();
@@ -999,7 +999,8 @@ function renderResult() {
   if (!seen.size)
     $("result-words").append(el("p", "下一次，从第一个字母开始。"));
   $("continue").hidden = !win || g.mode === "review" || !!g.focusGoal;
-  $("result-review").disabled = !review.size;
+  $("result-review").disabled = g.frostfire || !review.size;
+  $("result-review").textContent = g.frostfire ? "实验错词不入库" : "错词回练";
   persist(true);
 }
 function focusTyping() {
