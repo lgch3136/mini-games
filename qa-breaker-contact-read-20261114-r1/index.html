@@ -1,0 +1,12 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>双阵接力 · 击球读线 r1</title><link rel="stylesheet" href="style.css?v=20261114-contact-r1"></head><body><main>
+<header><div><small>WORD BREAKER / 2026-11-14 · 击球读线 r1</small><h1>双阵接力</h1></div><a href="../index.html">返回合集</a></header>
+<section class="intro"><strong>独立重建试验版，不是原双阵版本的恢复。</strong><span>旧版及其进度保留。本版无存档，不包含旧版全部道具与关卡。</span></section>
+<section id="setup" class="card"><h2>让弹球在两座字母阵之间接力</h2><p>按 <b>C → D → A → O → T → G</b> 击中亮起的字母。暗色字母只反弹，不扣分。接住挡板中央，累计 3 次获得一次召回。</p><div class="row"><label>球速 <select id="speed"><option value="250">慢练 · 250</option><option value="320">标准 · 320</option></select></label><label><input id="spin" type="checkbox"> 滑板加旋（可选）</label><button id="start">开始短关</button></div><p>开启加旋：接球瞬间左右移动挡板，会在原接触角度上增加同向偏转；停住后不加旋。球速、生命和召回不变。接球后，挡板旁短线显示这一次反弹方向：金色实线是加旋后方向，灰色虚线是未加旋对照；无旋时显示青色实线。短线不预告后续碰墙或撞砖。</p><p class="keys">A / D 或左右键移动 · 空格发射 · R 召回 · Q / E 调角 · T 瞄向当前字母 · P 暂停。触屏可拖动球场，使用下方按钮。</p></section>
+<section id="play" hidden>
+<div class="hud"><strong id="goal"></strong><span id="stats"></span><button id="pause">暂停</button></div>
+<div class="court"><canvas id="game" width="720" height="580" tabindex="0" aria-label="双阵弹球球场，使用方向键移动，空格发射"></canvas><div id="overlay" hidden><h2 id="result"></h2><p id="summary"></p><div class="row"><button id="resume">继续</button><button id="retry">重新短关</button><button id="menu">回菜单</button></div></div></div>
+<div class="controls"><button id="fire">发射 · 空格</button><button id="recall">召回 · R</button><button id="target">瞄向字母 · T</button></div>
+<div id="aimbox"><label>发射角度 <input id="aim" type="range" min="-60" max="60" value="0"><output id="angle">0°</output></label><small>收球后可调角；虚线只预览初始方向，不保证反弹命中。</small></div>
+<p id="notice" role="status">准备好后发射。</p><p class="keys">拖动 / A D 移板 · 空格发射 · R 召回 · Q E 调角 · T 瞄准 · P 暂停</p>
+</section><footer>原生 2D 矢量球场 · 无外部字体或图片 · 玩法、触控与视觉待独立实玩验收</footer>
+<script type="module" src="main.mjs?v=20261114-contact-r1"></script></main></body></html>
