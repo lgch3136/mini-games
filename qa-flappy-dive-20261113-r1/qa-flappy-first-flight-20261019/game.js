@@ -441,6 +441,7 @@ function gameOver() {
   syncGamePresentation();
   SFX.over();clearGlideInput();
   const hsResult = saveHS();
+  $id('over-score-mode').textContent = $id('dive-option').checked ? '收翼俯冲模式 · 独立成绩，不与原操作最高分合并' : '原操作模式 · 独立成绩，不与收翼俯冲最高分合并';
   const copy = damageCopy(Game.lastDamage);
   const detail = Game.lastDamage?.kind === 'wrong-answer' ? ` · 选了 ${Game.lastDamage.selected}，正确是 ${Game.lastDamage.answer}` : '';
   $id('over-cause').textContent = '最后受伤：' + copy.reason + detail;
@@ -1116,6 +1117,7 @@ function loadHS() { return readScore(hsKey()); }
 function loadLegacyHS() { return readScore(legacyHSKey()); }
 function scoreText(value) { return value === null ? '读取失败' : String(value); }
 function updateHighscoreDisplay() {
+  $id('hs-mode-label').textContent = $id('dive-option').checked ? '收翼俯冲最高分（独立）' : '原操作最高分';
   $id('hs-value').textContent = scoreText(loadHS());
   $id('legacy-hs-value').textContent = scoreText(loadLegacyHS());
 }
