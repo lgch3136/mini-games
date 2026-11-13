@@ -1943,10 +1943,10 @@ function render() {
     drawBombs();
     drawTrialBombStatus();
     drawEnemies();
-    drawTrialProximity();
     if (Game.state !== 'dying' || Math.floor(Game.time * 10) % 2 === 0) drawPlayer();
     drawFlames();
     drawParticles();
+    drawTrialProximity();
   }
   ctx.restore();
   if (!reducedMotion.matches && Game.flash > 0) {
@@ -2427,14 +2427,19 @@ function trialEnemyProximity(e) {
   }
   return null;
 }
+// The urgent badge leans away from the player's silhouette while retaining the enemy anchor.
+function trialProximityBadge(e,d) {
+  const side = Game.player.px > e.px ? -1 : 1;
+  return {x:e.px+(d<=1?side*24:0), y:e.py-24};
+}
 function drawTrialProximity() {
   if (!Game.trial || !['playing','paused'].includes(Game.state)) return;
   for(const e of Game.enemies) {
     const d=trialEnemyProximity(e);
     if(d===null) continue;
-    // Do not overwrite the corridor, bomb previews, letters, or player silhouette.
-    // Badge stays attached above the threat instead of suggesting an escape direction.
-    const x=e.px, y=e.py-24;
+    // Small badge rendered after actors/particles: the player sprite cannot paint over it.
+    // Urgent only: a half-cell lateral offset away from the player reduces overlap.
+    const {x,y}=trialProximityBadge(e,d);
     ctx.save();ctx.fillStyle=d<=1?'#ff6a55':'#ffd16b';
     ctx.strokeStyle='#142132';ctx.lineWidth=2;
     ctx.beginPath();ctx.moveTo(x,y-7);ctx.lineTo(x+7,y+5);ctx.lineTo(x-7,y+5);ctx.closePath();ctx.fill();ctx.stroke();
