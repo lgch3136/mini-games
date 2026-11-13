@@ -1944,27 +1944,6 @@ function render() {
     ctx.restore();
   }
 
-  if (Game.judgement && Game.judgement.until > Game.time) {
-    const holdBreakStyle = Game.judgement.style === 'hold-break';
-    const life = clamp((Game.judgement.until - Game.time) / .48, 0, 1);
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, life * 2.5);
-    ctx.translate(W / 2, H * .29);
-    ctx.scale(1 + (1 - life) * .16, 1 + (1 - life) * .16);
-    ctx.shadowColor = Game.judgement.color; ctx.shadowBlur = 22;
-    ctx.fillStyle = Game.judgement.color; ctx.strokeStyle = 'rgba(5,7,18,.88)'; ctx.lineWidth = holdBreakStyle ? 3 : 7;
-    if (holdBreakStyle) ctx.lineJoin = 'round';
-    ctx.font = '950 36px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.strokeText(Game.judgement.text, 0, 0); ctx.fillText(Game.judgement.text, 0, 0);
-    if (Game.judgement.timing) {
-      ctx.shadowBlur = 8; ctx.lineWidth = holdBreakStyle ? 2 : 3;
-      ctx.font = '800 11px ui-monospace, monospace';
-      const timingY = holdBreakStyle ? 36 : 27;
-      ctx.strokeText(Game.judgement.timing, 0, timingY); ctx.fillText(Game.judgement.timing, 0, timingY);
-    }
-    ctx.restore();
-  }
-
   const chartTime = now();
   const firstPending = firstPendingNote();
   if (firstPending) {
@@ -2058,6 +2037,28 @@ function render() {
   }
 
   drawParticles();
+  // Feedback is the final HUD layer: falling notes and particles cannot cover it.
+  if (Game.judgement && Game.judgement.until > Game.time) {
+    const holdBreakStyle = Game.judgement.style === 'hold-break';
+    const life = clamp((Game.judgement.until - Game.time) / .48, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, life * 2.5);
+    ctx.translate(W / 2, H * .29);
+    ctx.scale(1 + (1 - life) * .16, 1 + (1 - life) * .16);
+    ctx.shadowColor = Game.judgement.color; ctx.shadowBlur = 22;
+    ctx.fillStyle = Game.judgement.color; ctx.strokeStyle = 'rgba(5,7,18,.88)'; ctx.lineWidth = holdBreakStyle ? 3 : 7;
+    if (holdBreakStyle) ctx.lineJoin = 'round';
+    ctx.font = '950 36px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.strokeText(Game.judgement.text, 0, 0); ctx.fillText(Game.judgement.text, 0, 0);
+    if (Game.judgement.timing) {
+      ctx.shadowBlur = 8; ctx.lineWidth = holdBreakStyle ? 2 : 3;
+      ctx.font = '800 11px ui-monospace, monospace';
+      const timingY = holdBreakStyle ? 36 : 27;
+      ctx.strokeText(Game.judgement.timing, 0, timingY); ctx.fillText(Game.judgement.timing, 0, timingY);
+    }
+    ctx.restore();
+  }
+
   ctx.restore();
 }
 function shade(hex, k) {
