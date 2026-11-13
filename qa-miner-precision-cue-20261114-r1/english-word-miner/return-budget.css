@@ -1,0 +1,7 @@
+/* Use the existing held-cargo row. No new overlay, controls, or physical board size. */
+#contract-reference[data-urgency="late"] { color:#ffd0c7; font-weight:800; }
+#contract-reference[data-urgency="tight"] { color:#ffe69b; font-weight:700; }
+#return-budget-announcement { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; border:0; }
+#dynamite-action-label { font-variant-numeric:tabular-nums; }
+#dynamite-btn { max-width:48%; }
+#contract-reference { overflow-wrap:anywhere; }
