@@ -1,0 +1,6 @@
+.dual-entry { display:block; margin:12px auto 0; min-height:44px; }
+#menu, #dual-result { overflow-y:auto; justify-content:flex-start; }
+#menu .panel, #dual-result .panel { flex-shrink:0; margin:auto; }
+#dual-result .btn-row { flex-wrap:wrap; }
+#dual-result button { min-height:44px; }
+#dual-contract-btn:disabled { opacity:.55; cursor:not-allowed; }
