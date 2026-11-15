@@ -1,0 +1,1 @@
+export function canvasBudget(t,n,a=1,s=1.75,r=24e5){const o=Number.isFinite(t)&&t>0?t:1,i=Number.isFinite(n)&&n>0?n:1,u=Number.isFinite(a)&&a>0?a:1,e=Math.min(u,s,Math.sqrt(r/(o*i)));return{ratio:e,width:Math.max(1,Math.floor(o*e)),height:Math.max(1,Math.floor(i*e))}}
