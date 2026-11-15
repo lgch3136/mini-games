@@ -1,0 +1,26 @@
+/* Fixed MAP trial only. Ordinary HUD and opening layouts retain their rules. */
+#qa-build-identity {font:11px/1.35 system-ui;overflow-wrap:anywhere}
+#trial-choice,#trial-result {overflow-y:auto;justify-content:flex-start}
+#trial-choice .panel,#trial-result .panel {flex-shrink:0;margin:auto}
+.trial-choices {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.trial-choices button {min-height:116px;padding:14px;border:1px solid #66869e;border-radius:14px;background:#162739;color:#e9f5ff;font:inherit;cursor:pointer}
+.trial-choices b,.trial-choices span {display:block;margin:5px 0}
+.trial-choices b {font-size:21px;color:#fde68a}
+#trial-result .btn-row {flex-wrap:wrap}
+#trial-choice button,#trial-result button {min-height:44px}
+.trial-mode #stats .chips:first-child {visibility:hidden}
+#trial-readout {display:none}
+.trial-mode #trial-readout {display:flex;position:absolute;left:5%;right:5%;top:66px;justify-content:center;gap:10px;align-items:center;text-align:center;font:600 12px/1.3 system-ui;color:#dff6ff;pointer-events:none}
+#trial-action {color:#fde68a;white-space:nowrap}
+.trial-mode #bomb-btn {font-size:19px}
+.trial-mode.paused-battlefield-view #trial-readout {visibility:hidden}
+@media (max-width:540px) {.trial-choices{grid-template-columns:1fr;gap:8px;margin:12px 0}.trial-choices button{min-height:90px}}
+@media (max-width:600px) and (orientation:portrait) {.trial-mode #trial-readout{top:calc(110px + env(safe-area-inset-top));font-size:10px;line-height:14px;flex-direction:column;gap:1px}}
+@media (orientation:landscape) and (max-height:600px) {.trial-mode #trial-readout{left:8px;right:auto;top:172px;width:140px;font-size:10px;line-height:14px;flex-direction:column;gap:4px;text-align:left;align-items:flex-start}.trial-mode #trial-action{white-space:normal}}
+
+
+.trial-area-note {font:12px/1.5 system-ui;color:#fbd38d;margin:10px auto;max-width:440px}
+.trial-choices button:disabled,#trial-retry:disabled {opacity:.5;cursor:not-allowed}
+#paused.battlefield-view #trial-area-pause {display:none}
+/* Only the gated trial moves feedback off the maze. One 20px line ends at104. */
+.trial-mode #feedback {top:84px;bottom:auto;font-size:11px;line-height:14px;padding:2px 10px;border-width:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

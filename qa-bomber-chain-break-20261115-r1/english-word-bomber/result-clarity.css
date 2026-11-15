@@ -1,0 +1,32 @@
+/* Result presentation only. No gameplay, HUD, canvas or input geometry changes. */
+#over .panel { flex-shrink:0; width:100%; max-width:560px; margin:auto; padding:16px; }
+#over-kicker { color:#d9c49b; letter-spacing:2px; font-size:12px; margin-bottom:6px; }
+#over-title { font-size:32px; color:#fecaca; text-shadow:none; }
+#over-outcome { margin:6px 0 0; color:#fee2e2; font-size:17px; font-weight:800; }
+#over #over-objective { margin:10px auto; color:#f2dfb6; line-height:1.65; overflow-wrap:anywhere; }
+#over-record { margin:10px auto; max-width:420px; padding:7px 10px; border:1px solid #cba458; border-radius:10px; background:#4a3416; color:#ffe2a3; font-size:13px; line-height:1.6; }
+#over #run-medal { width:56px; margin-top:8px; }
+#over #over-recap { margin:3px auto; font-size:12px; }
+#over .btn-row { flex-wrap:wrap; margin-top:10px; }
+#over .btn-row .btn-main { margin-top:0; }
+#over-stats b { overflow-wrap:anywhere; }
+@media(max-width:380px) {
+ #over .panel { padding:12px 4px; }
+ #over-title { font-size:28px; }
+ #over-stats { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+ #over-stats b { font-size:16px; }
+ #over #over-objective { font-size:12px; }
+ #over-record { font-size:12px; }
+ #over .btn-row { gap:8px; }
+ #over #retry-btn { padding:10px 24px !important; }
+ #over #menu-btn { padding:9px 18px; }
+}
+@media(orientation:landscape) and (max-height:440px) {
+ #over .panel { padding:8px; }
+ #over-title { font-size:26px; }
+ #over-outcome { margin-top:3px; font-size:15px; }
+ #over #over-objective { margin:5px auto; }
+ #over-stats { margin-top:6px; }
+ #over-record { margin:6px auto; padding:3px 8px; }
+ #over #run-medal { width:36px; margin-top:3px; }
+}

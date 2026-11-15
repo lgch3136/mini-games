@@ -1,0 +1,41 @@
+/* Independent QA presentation; no changes to world coordinates or physics. */
+#guard-control {
+  position: absolute; top: 56px; left: 12px; right: 12px;
+  min-height: 44px; display: flex; justify-content: center; align-items: center; gap: 10px;
+  font-size: 12px; color: #c6f5e3;
+}
+#guard-btn {
+  pointer-events: auto; min-height: 44px; padding: 5px 13px; border-radius: 10px;
+  border: 1px solid #77d9b1; background: #183d35; color: #dcfff0;
+  font: 700 12px system-ui; cursor: pointer; touch-action: manipulation;
+}
+#guard-btn:disabled { opacity: .68; cursor: default; }
+#guard-status { min-width: 150px; font-variant-numeric: tabular-nums; }
+#guard-btn:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
+@media (max-width: 600px) and (orientation: portrait) {
+  #word-bar { margin-top: calc(48px + env(safe-area-inset-top)); padding: 3px 10px; }
+  #wb-word { font-size: 15px; } #wb-zh { font-size: 10px; }
+  .mission-strip { top: calc(90px + env(safe-area-inset-top)); font-size: 10px; line-height: 14px; }
+  #guard-control { top: calc(108px + env(safe-area-inset-top)); left: 6px; right: 6px; gap: 6px; font-size: 10px; }
+  #guard-btn { padding: 4px 7px; font-size: 11px; }
+  #guard-status { min-width: 0; }
+}
+/* Compact landscape reserves side zones even below the baseline's 601px breakpoint. */
+@media (orientation: landscape) and (max-height: 600px) {
+  #game-wrap { width:100vw; height:100dvh; aspect-ratio:auto; border:0; border-radius:0; }
+  #game { width:min(calc(100vw - 300px),calc(100dvh * 1.25)); height:auto; aspect-ratio:880/704; left:50%; top:50%; transform:translate(-50%,-50%); }
+  #stats { left:max(8px,env(safe-area-inset-left)); right:auto; top:max(4px,env(safe-area-inset-top)); width:140px; flex-wrap:wrap; gap:4px; }
+  #stats .chips { gap:3px; } #stats .chip { padding:3px 4px; font-size:10px; }
+  #pause-btn,#mute-btn { padding:3px 7px; }
+  #word-bar { position:absolute; left:8px; top:86px; margin:0; width:140px; padding:3px; }
+  #wb-kind { display:none; } #wb-word { font-size:14px; letter-spacing:2px; } #wb-zh { font-size:10px; }
+  .mission-strip,.build-strip { left:8px; right:auto; width:140px; text-align:left; font-size:10px; line-height:1.35; }
+  .mission-strip { top:128px; } .build-strip { top:237px; }
+  #guard-control { top:174px; left:8px; right:auto; width:140px; flex-direction:column; align-items:stretch; gap:3px; font-size:10px; }
+  #guard-btn { padding:3px 5px; } #guard-status { min-width:0; text-align:center; }
+  #feedback { left:8px; transform:none; bottom:8px; width:140px; padding:4px; white-space:normal; text-align:left; font-size:10px; }
+  #touch-controls { display:flex; left:auto; right:max(4px,env(safe-area-inset-right)); top:0; bottom:0; width:144px; height:auto; flex-direction:column-reverse; justify-content:space-between; align-items:center; padding:8px 0; }
+  .tc-pad { width:144px; height:136px; } #up-btn,#down-btn { left:49px; } #right-btn { left:97px; } #down-btn { top:84px; }
+  #bomb-btn { flex:none; }
+  .overlay { align-items:flex-start; } .panel { margin:auto; } .menu-cover { max-height:25dvh; object-fit:cover; }
+}

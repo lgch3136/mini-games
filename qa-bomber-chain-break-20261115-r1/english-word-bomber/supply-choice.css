@@ -1,0 +1,5 @@
+/* Supply selection clarity only; no global style changes. */
+#supply button:disabled { cursor: not-allowed; border-style: dashed; background: #253035; color: #c4cdd0; }
+#supply button:disabled span { color: #bac5ca; }
+#supply button:focus-visible { outline: 3px solid #f8d66d; outline-offset: 3px; }
+#supply-note { margin: 16px 0; }
