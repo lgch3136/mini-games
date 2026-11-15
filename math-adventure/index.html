@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数学探险队 · 从看懂到独立做题</title><style>body{margin:0;padding:16px;background:#eaf0e9}body>#math-adventure{max-width:1040px;margin:auto}@media(max-width:600px){body{padding:0}}</style></head><body>
+<div id="math-adventure" lang="zh-CN"></div>
+<style>
+#math-adventure{--ink:#243e43;--muted:#607579;--paper:#fffdf6;--surface:#fff;--green:#207665;--mint:#e4f3e7;--line:#dbe6df;--orange:#f3aa54;--blue:#78bdd7;--pink:#edb2ac;--purple:#b5a6db;color-scheme:light;color:var(--ink);font:17px/1.65 ui-rounded,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--paper);border-radius:24px;overflow:hidden;max-width:100%;text-align:left;box-sizing:border-box}
+#math-adventure *{box-sizing:border-box}
+#math-adventure button,#math-adventure input{font:inherit}
+#math-adventure button{cursor:pointer;touch-action:manipulation}
+#math-adventure button:focus-visible,#math-adventure input:focus-visible{outline:3px solid #d27a2b;outline-offset:4px}
+#math-adventure button:disabled{cursor:default;opacity:.5}
+#math-adventure h1,#math-adventure h2,#math-adventure h3,#math-adventure p{margin:0}
+#math-adventure .ma-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 24px;background:var(--mint);flex-wrap:wrap}
+#math-adventure .ma-brand{font-size:18px;font-weight:750;letter-spacing:.04em}
+#math-adventure .ma-top-actions{display:flex;gap:8px;flex-wrap:wrap}
+#math-adventure .ma-link{border:0;background:transparent;color:var(--green);padding:8px 10px;min-height:44px;font-size:14px;border-radius:12px}
+#math-adventure .ma-link:hover{background:#d3e9d8}
+#math-adventure .ma-main{padding:24px;max-width:900px;margin:auto}
+#math-adventure .ma-kicker{font-size:13px;letter-spacing:.09em;color:var(--muted);font-weight:600}
+#math-adventure h1{font-size:clamp(24px,4vw,32px);line-height:1.35;font-weight:750;margin:5px 0 16px}
+#math-adventure h2{font-size:22px;line-height:1.45;font-weight:700}
+#math-adventure .ma-progress{display:flex;gap:5px;margin:0 0 20px}
+#math-adventure .ma-dot{height:5px;background:#e2e9e3;border-radius:8px;flex:1}
+#math-adventure .ma-dot.on{background:var(--green)}
+#math-adventure .ma-guide{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+#math-adventure .ma-avatar{font-size:36px;width:60px;flex:0 0 60px;aspect-ratio:1;display:grid;place-items:center;background:#ffebce;border-radius:22px 22px 22px 7px}
+#math-adventure .ma-speech{font-size:19px;line-height:1.65;max-width:640px}
+#math-adventure .ma-scene{background:#f1f6ef;border-radius:20px;padding:24px 22px;margin:14px 0 20px;min-height:220px;position:relative}
+#math-adventure .ma-caption{font-size:14px;color:var(--muted);text-align:center;margin-top:12px}
+#math-adventure .ma-question{font-size:20px;font-weight:650;margin:18px 0 12px}
+#math-adventure .ma-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#math-adventure .ma-choice{background:var(--surface);border:2px solid var(--line);border-radius:16px;padding:14px 12px;min-height:64px;line-height:1.4;color:var(--ink);font-size:18px;font-weight:600;transition:transform .15s,border-color .15s}
+#math-adventure .ma-choice:hover:not(:disabled){transform:translateY(-2px);border-color:#8ebbaa}
+#math-adventure .ma-choice.right{background:#e0f3df;border-color:var(--green)}
+#math-adventure .ma-choice.try{background:#fff3dd;border-color:#dbac62}
+#math-adventure .ma-feedback{margin-top:14px;padding:13px 16px;background:#fff0d4;border-radius:14px;color:#69491a;line-height:1.7}
+#math-adventure .ma-feedback.success{background:#e1f2df;color:#285e35}
+#math-adventure .ma-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}
+#math-adventure .ma-primary{background:var(--green);color:#fff;border:0;border-radius:15px;min-height:52px;padding:12px 24px;font-weight:650;font-size:18px;box-shadow:0 4px 0 #155247}
+#math-adventure .ma-primary:active{transform:translateY(2px);box-shadow:0 2px 0 #155247}
+#math-adventure .ma-secondary{background:#fff;border:2px solid var(--line);color:var(--ink);border-radius:14px;min-height:48px;padding:9px 17px;font-weight:600}
+#math-adventure .ma-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px}
+#math-adventure .ma-statement{background:#fff;border-radius:13px;padding:10px 15px;margin:10px auto;max-width:550px;text-align:center}
+#math-adventure .ma-cups{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:9px;margin:24px 0 8px;align-items:end}
+#math-adventure .ma-cup{height:108px;border:3px solid #799d98;border-top:0;border-radius:3px 3px 17px 17px;background:#fff;position:relative;overflow:hidden;display:flex;align-items:end;padding:0;color:var(--ink);min-width:0}
+#math-adventure .ma-juice{width:100%;height:var(--fill);background:var(--orange);transition:height .35s ease}
+#math-adventure .ma-cup-label{position:absolute;inset:0;display:grid;place-items:center;font-size:18px;font-weight:650;pointer-events:none}
+#math-adventure .ma-cup:disabled{opacity:1}
+#math-adventure .ma-cup.empty{border-style:dashed;background:transparent}
+#math-adventure .ma-bracket{display:grid;grid-template-columns:3fr 5fr;gap:10px;font-size:14px;text-align:center}
+#math-adventure .ma-bracket span{border-top:2px solid #7b9994;padding-top:5px}
+#math-adventure .ma-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}
+#math-adventure .ma-row-name{min-width:80px;font-size:16px;font-weight:600}
+#math-adventure .ma-items{display:flex;gap:7px;flex-wrap:wrap;align-items:center;min-height:48px}
+#math-adventure .ma-token{font-size:30px;line-height:1.3;min-width:39px;min-height:44px;display:grid;place-items:center;border:0;background:transparent;padding:2px;position:relative}
+#math-adventure .ma-token.add{background:#ffe7b5;border-radius:10px}
+#math-adventure .ma-token.faded{opacity:.18;filter:grayscale(1)}
+#math-adventure .ma-counter{display:inline-block;background:#fff;padding:5px 12px;border-radius:10px;font-weight:650;margin-left:auto}
+#math-adventure .ma-recipe{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-weight:600;font-size:17px}
+#math-adventure .ma-supply{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;margin:18px 0}
+#math-adventure .ma-supply .ma-items{gap:2px}
+#math-adventure .ma-supply .ma-token{font-size:25px;min-width:30px}
+#math-adventure .ma-svg{display:block;width:100%;max-width:620px;margin:auto;touch-action:pan-y}
+#math-adventure .ma-svg text{font-family:inherit;fill:var(--ink);font-size:16px}
+#math-adventure .ma-svg .ma-small{font-size:13px}
+#math-adventure .ma-slider{display:block;width:100%;accent-color:var(--green);margin:16px 0 4px;min-height:36px;cursor:ew-resize}
+#math-adventure .ma-range-label{display:block;text-align:center;font-size:14px}
+#math-adventure .ma-water{display:grid;grid-template-columns:repeat(11,1fr);gap:3px;max-width:500px;margin:12px auto}
+#math-adventure .ma-water i{aspect-ratio:1.6;background:#79bdd8;border-radius:3px}
+#math-adventure .ma-salt-pieces{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:14px auto}
+#math-adventure .ma-salt-piece{height:28px;width:28px;border-radius:6px;background:#f2be62;display:grid;place-items:center;font-size:13px;font-style:normal}
+#math-adventure .ma-salt-piece.new{background:#bd9ada}
+#math-adventure .ma-track{position:relative;background:#dbe9d9;height:58px;border-radius:14px;margin:8px 22px 26px}
+#math-adventure .ma-distance{height:100%;background:#b3d4ad;border-radius:14px;transition:width .6s}
+#math-adventure .ma-racer{position:absolute;left:var(--pos);top:4px;transform:translateX(-50%);font-size:34px;transition:left .6s}
+#math-adventure .ma-finish{position:absolute;right:-18px;top:7px;font-size:27px}
+#math-adventure .ma-road-ticks{position:absolute;inset:0;display:grid;grid-template-columns:repeat(24,1fr);pointer-events:none}
+#math-adventure .ma-road-ticks i{border-right:1px solid #5f875526;margin:7px 0}
+#math-adventure .ma-days{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:5px;margin:24px 0}
+#math-adventure .ma-day{border:0;border-radius:10px;min-height:66px;background:#fff;display:grid;place-content:center;gap:3px;font-size:18px;color:var(--ink)}
+#math-adventure .ma-day.read{background:#cddfc7}
+#math-adventure .ma-day.picked{background:#ffdda3}
+#math-adventure .ma-day small{font-size:12px}
+#math-adventure .ma-books{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:540px;margin:14px auto}
+#math-adventure .ma-book{border-radius:8px 14px 14px 8px;border-left:8px solid #527f72;background:#d3e7dd;text-align:center;padding:24px 8px;min-height:130px;font-size:17px;font-weight:600}
+#math-adventure .ma-book.rest{background:#f4ddab;border-color:#b98d47}
+#math-adventure .ma-book span{font-size:30px;display:block}
+#math-adventure .ma-machines{display:grid;gap:10px}
+#math-adventure .ma-machine{display:grid;grid-template-columns:1fr 1.5fr 1fr;align-items:center;gap:8px;text-align:center}
+#math-adventure .ma-machine strong{font-size:20px}
+#math-adventure .ma-machine-middle{background:#dbe6dd;border-radius:12px;padding:14px 8px;font-size:15px}
+#math-adventure .ma-map{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-top:24px}
+#math-adventure .ma-island{position:relative;border:2px solid var(--line);border-radius:22px;padding:22px 15px;background:#fff;text-align:left;color:var(--ink);min-height:180px}
+#math-adventure .ma-island:hover{border-color:#72a994;transform:translateY(-2px)}
+#math-adventure .ma-island-icon{font-size:38px;display:block;margin-bottom:10px}
+#math-adventure .ma-island strong{font-size:18px;display:block}
+#math-adventure .ma-island small{font-size:14px;color:var(--muted);display:block;margin-top:5px}
+#math-adventure .ma-earned{position:absolute;right:12px;top:13px;color:var(--green);font-size:13px}
+#math-adventure .ma-win{text-align:center;padding:16px 0}
+#math-adventure .ma-sticker{font-size:74px;line-height:1.3;margin:12px}
+#math-adventure .ma-win p{max-width:520px;margin:14px auto;font-size:19px}
+#math-adventure .ma-adult{font-size:16px;line-height:1.85}
+#math-adventure .ma-adult details{background:white;border-radius:12px;padding:14px 16px;margin:12px 0}
+#math-adventure .ma-adult summary{cursor:pointer;font-weight:650}
+#math-adventure .ma-adult a{color:var(--green);text-decoration:underline}
+#math-adventure .ma-adult p{margin:10px 0}
+#math-adventure .ma-tag{font-size:13px;padding:4px 9px;border-radius:8px;background:#fff;color:var(--green)}
+#math-adventure .ma-foldboard{position:relative;max-width:100%;margin:auto}
+#math-adventure .ma-treasure{position:absolute;border:0;background:transparent;color:#266443;border-radius:3px;font-size:22px;padding:0;display:grid;place-items:center;min-width:0;min-height:0}
+#math-adventure .ma-treasure:hover{background:#ffffff66}
+#math-adventure .ma-foldcell{cursor:pointer;fill:transparent;stroke:transparent;stroke-width:0}
+#math-adventure .ma-foldcell:hover{fill:#ffffff55}
+#math-adventure .ma-clone{transform-origin:0 0;animation:ma-clone .65s ease-out both}
+@keyframes ma-clone{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:600px){#math-adventure .ma-main{padding:20px 16px}#math-adventure .ma-top{padding:12px 16px}#math-adventure .ma-scene{padding:20px 12px}#math-adventure .ma-choices{grid-template-columns:1fr}#math-adventure .ma-choice{min-height:52px;padding:11px}#math-adventure .ma-map{grid-template-columns:repeat(2,minmax(0,1fr))}#math-adventure .ma-avatar{width:46px;flex-basis:46px;font-size:30px}#math-adventure .ma-speech{font-size:18px}#math-adventure .ma-cups{gap:5px}#math-adventure .ma-cup{height:85px;border-width:2px}#math-adventure .ma-cup-label{font-size:15px}#math-adventure .ma-supply{grid-template-columns:42px 1fr auto;gap:6px}#math-adventure .ma-supply .ma-counter{font-size:14px;padding:3px 6px}#math-adventure .ma-supply .ma-token{font-size:23px;min-width:25px}#math-adventure .ma-days{gap:3px}#math-adventure .ma-day{min-height:58px;font-size:16px}#math-adventure .ma-day small{font-size:11px}}
+@media(prefers-reduced-motion:reduce){#math-adventure *,#math-adventure *::before{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+#math-adventure .ma-route{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 20px;font-size:13px}
+#math-adventure .ma-route span{background:#e8ede6;padding:5px 9px;border-radius:9px;color:#5d7367}
+#math-adventure .ma-route span.active{background:#207665;color:#fff}
+#math-adventure .ma-exam-intro{color:#607579;margin-bottom:16px}
+#math-adventure .ma-paper{background:#fff;border:1px solid #dbe6df;border-radius:18px;padding:22px;margin:18px 0;font-size:20px;line-height:1.85}
+#math-adventure .ma-paper .ma-svg{max-width:340px;margin:18px auto 0}
+#math-adventure .ma-field{display:grid;gap:7px;margin:16px 0;font-size:17px}
+#math-adventure .ma-field span{font-weight:600}
+#math-adventure .ma-field input,#math-adventure .ma-field select,#math-adventure .ma-field textarea{width:100%;min-width:0;min-height:50px;border:2px solid #dbe6df;border-radius:12px;padding:10px 13px;color:#243e43;background:white;box-sizing:border-box}
+#math-adventure .ma-field input,#math-adventure .ma-field select,#math-adventure .ma-field textarea{font-family:inherit;font-size:18px;line-height:1.5}
+#math-adventure .ma-field textarea{resize:vertical}
+#math-adventure .ma-answer-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+#math-adventure .ma-notice{font-size:13px;color:#66766c;line-height:1.6}
+#math-adventure .ma-repair{background:#fff0d4;border-radius:16px;padding:18px;margin-top:18px}
+#math-adventure .ma-repair p{margin-top:8px}
+#math-adventure .ma-bridge{display:grid;gap:14px;background:#eef5ec;border-radius:18px;padding:22px;margin:18px 0;text-align:center;font-size:19px}
+#math-adventure .ma-bridge>span{font-size:26px;color:#207665}
+#math-adventure .ma-checks{display:grid;gap:8px;margin:20px 0}
+#math-adventure .ma-checks>div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:white;border-radius:12px;padding:14px 16px}
+#math-adventure .ma-checks strong{color:#207665}
+#math-adventure .ma-solution{font-size:16px;max-width:550px}
+#math-adventure .ma-solution summary{cursor:pointer;color:#207665;padding:10px 0}
+#math-adventure .ma-earned{position:static;display:block;margin-top:9px;line-height:1.4}
+#math-adventure #ma-exam-form>.ma-primary{margin-top:16px}
+#math-adventure .ma-choices{grid-template-columns:1fr}
+#math-adventure .ma-choice{text-align:left;font-size:17px;min-height:54px}
+#math-adventure .ma-record-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;padding:15px;background:white;border-radius:14px}
+@media(max-width:600px){#math-adventure .ma-answer-fields{grid-template-columns:1fr}#math-adventure .ma-paper{padding:16px;font-size:18px}#math-adventure .ma-route{gap:5px;font-size:12px}#math-adventure .ma-route span{padding:4px 6px}}
+
+#math-adventure .picnic-main{max-width:900px;margin:auto}
+#math-adventure .picnic-progress{display:flex;justify-content:space-between;gap:12px;color:#667c73;font-size:14px;margin-bottom:14px}
+#math-adventure .picnic-story{display:flex;align-items:center;gap:16px;margin:20px 0 24px}
+#math-adventure .picnic-story>span{font-size:46px;flex-shrink:0}
+#math-adventure .picnic-story p{font-size:22px;line-height:1.75;margin:0}
+#math-adventure .picnic-story strong{color:#207665}
+#math-adventure .picnic-world{background:#f0f5e9;border-radius:24px;padding:22px;text-align:center}
+#math-adventure .picnic-scene-heading{font-weight:700;font-size:20px;margin:0 0 15px;color:#426052}
+#math-adventure .picnic-eight{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;max-width:none;margin:auto}
+#math-adventure .picnic-three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;max-width:540px;margin:auto}
+#math-adventure .picnic-card{min-width:0;text-align:center}
+#math-adventure .picnic-bag-static,#math-adventure .picnic-bag-button{display:flex;flex-direction:column;align-items:center;padding:4px 4px 8px;background:transparent;border:2px solid transparent;border-radius:16px;width:100%;box-sizing:border-box;color:#243e43;font-family:inherit}
+#math-adventure .picnic-bag-button{cursor:pointer;background:#fffdf5;border-color:#c3cdb7;transition:background .15s,transform .15s}
+#math-adventure .picnic-bag-button:not(:disabled):hover{background:#fff4cf;border-color:#8b9c6c;transform:translateY(-2px)}
+#math-adventure .picnic-bag-button:disabled{cursor:default;opacity:1}
+#math-adventure .picnic-bag-button:focus-visible,#math-adventure .picnic-take:focus-visible{outline:3px solid #207665;outline-offset:3px}
+#math-adventure .picnic-pal{font-size:30px;line-height:1.15;min-height:4px}
+#math-adventure .picnic-bag-svg{display:block;width:100%;max-width:112px;height:auto;margin:-2px auto 0}
+#math-adventure .picnic-three .picnic-bag-svg{max-width:150px}
+#math-adventure .picnic-card-label{font-size:16px;line-height:1.5;color:#667668}
+#math-adventure .picnic-card-count{font-size:19px;font-weight:700;line-height:1.5}
+#math-adventure .picnic-take{background:#fff;border:1px solid #cbd6c5;border-radius:9px;padding:8px 12px;font:inherit;font-size:15px;cursor:pointer;margin-top:9px;min-height:40px;color:#526758}
+#math-adventure .picnic-take:disabled{opacity:.4;cursor:default}
+#math-adventure .picnic-scene-note{font-size:18px;margin:16px 0 0;font-weight:600}
+#math-adventure .picnic-basket{max-width:420px;margin:0 auto 16px;padding:12px;background:#fffdf5;border-radius:14px;border-bottom:5px solid #ddbd83}
+#math-adventure .picnic-basket strong{font-size:18px}
+#math-adventure .picnic-loose{display:flex;justify-content:center;gap:4px;margin-top:7px}
+#math-adventure .picnic-loose svg{width:40px;max-width:14%;height:44px}
+#math-adventure .picnic-empty-orange{opacity:.13}
+#math-adventure .picnic-instruction{font-size:19px;color:#47604c;margin:0 0 18px;font-weight:600}
+#math-adventure .picnic-check{margin-top:16px;text-align:center}
+#math-adventure .picnic-total{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px;font-size:21px}
+#math-adventure #picnic-answer{width:90px;min-width:0;min-height:52px;font:inherit;text-align:center;border:2px solid #c4d4c4;border-radius:10px;background:#fff;color:#243e43;padding:8px;box-sizing:border-box}
+#math-adventure .picnic-equations{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;padding-top:18px;font-size:18px;color:#207665}
+#math-adventure .picnic-fraction-view .picnic-card{border-bottom:4px solid #b9cdb6;border-radius:12px}
+#math-adventure .picnic-fraction-view .picnic-known{background:#fff0d6;border-bottom-color:#db9c34}
+#math-adventure .picnic-legend{display:flex;justify-content:center;gap:12px 22px;flex-wrap:wrap;margin:20px 0 15px;font-size:16px}
+#math-adventure .picnic-legend span:first-child{color:#9d641f}
+#math-adventure .picnic-fraction-sentence{font-size:20px;line-height:1.8;margin:16px 0 0}
+#math-adventure .picnic-fraction-sentence strong{font-size:27px;color:#b16c0e}
+#math-adventure .picnic-footer .ma-primary{font-size:17px}
+@media(max-width:600px){#math-adventure .picnic-story{gap:10px;margin:16px 0 20px}#math-adventure .picnic-story>span{font-size:34px}#math-adventure .picnic-story p{font-size:19px}#math-adventure .picnic-world{padding:15px 9px;border-radius:18px}#math-adventure .picnic-eight{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 3px}#math-adventure .picnic-three{gap:5px}#math-adventure .picnic-pal{font-size:25px}#math-adventure .picnic-card-label{font-size:13px}#math-adventure .picnic-card-count{font-size:15px}#math-adventure .picnic-take{font-size:13px;padding:5px 7px}#math-adventure .picnic-scene-heading{font-size:18px}#math-adventure .picnic-scene-note{font-size:16px}#math-adventure .picnic-instruction{font-size:17px}#math-adventure .picnic-footer{align-items:stretch}#math-adventure .picnic-footer>.ma-primary{width:100%}#math-adventure .picnic-progress{font-size:13px}#math-adventure .picnic-total{gap:10px;font-size:18px}}
+@media(prefers-reduced-motion:reduce){#math-adventure .picnic-bag-button{transition:none}}
+
+#math-adventure .st-world{background:#f0f5e9;border-radius:22px;padding:22px;margin:20px 0;text-align:center}
+#math-adventure .st-world h2{font-size:21px;margin:0 0 16px;line-height:1.6}
+#math-adventure .st-world .ma-svg{max-width:600px;margin:0 auto 15px;width:100%;height:auto}
+#math-adventure .st-note{font-size:17px;line-height:1.8;color:#516b5d;margin:16px 0 0}
+#math-adventure .st-two,#math-adventure .st-three,#math-adventure .st-four,#math-adventure .st-recipe,#math-adventure .st-stock{display:grid;gap:14px;margin:14px 0;grid-template-columns:repeat(2,minmax(0,1fr))}
+#math-adventure .st-three,#math-adventure .st-recipe,#math-adventure .st-stock{grid-template-columns:repeat(3,minmax(0,1fr))}
+#math-adventure .st-four{grid-template-columns:repeat(4,minmax(0,1fr))}
+#math-adventure .st-tray{border-radius:15px;padding:15px;background:#fffcf4;border:1px solid #dce3d0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:12px;font-size:20px}
+#math-adventure .st-tray>strong{font-size:17px;color:#4d6656}
+#math-adventure .st-tray-tail{font-size:16px;color:#65735c}
+#math-adventure .st-dots{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;align-items:center}
+#math-adventure .st-dot{display:inline-flex;flex-shrink:0;width:25px;height:25px;border-radius:50%;background:#73a9bd;box-shadow:inset 0 0 0 2px #ffffffa8;align-items:center;justify-content:center}
+#math-adventure .st-dot.red{background:#d78a76}#math-adventure .st-dot.gold{background:#e4b85b}#math-adventure .st-dot.blue{background:#70a5bf}
+#math-adventure .st-dot:has(svg){width:38px;height:38px;background:transparent;box-shadow:none}
+#math-adventure .st-dot svg{width:100%;height:100%}
+#math-adventure .st-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0}
+#math-adventure .st-actions .ma-secondary{font-size:16px;min-height:48px;line-height:1.5}
+#math-adventure .st-cookie-pick{border:2px solid transparent;border-radius:50%;padding:2px;background:transparent;cursor:pointer;width:50px;height:50px}
+#math-adventure .st-cookie-pick svg{width:100%;height:100%}
+#math-adventure .picked{outline:3px solid #258365;outline-offset:1px}
+#math-adventure .st-cookie-pick:disabled{opacity:1;cursor:default}
+#math-adventure .st-groups{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+#math-adventure .st-group{padding:10px 6px;border:1px solid #c0d2c4;border-radius:10px;max-width:100px;display:flex;flex-direction:column;gap:9px;min-width:55px;background:#f9fcf6}
+#math-adventure .st-group small{font-size:13px;color:#597260}
+#math-adventure .st-group b{font-size:15px}
+#math-adventure .st-group .st-dot{width:13px;height:13px}
+#math-adventure .st-select-group{padding:16px 8px;display:flex;flex-direction:column;gap:12px;align-items:center;border:1px solid #bdcdbd;border-radius:14px;background:#fffdf6;font:inherit;font-size:16px;color:#365848;cursor:pointer}
+#math-adventure .st-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:14px;margin:20px 0}
+#math-adventure .st-form .ma-field{margin:0}
+#math-adventure .st-form>.ma-secondary{min-height:52px;font-size:17px;grid-column:1/-1;justify-self:start}
+#math-adventure .st-needed{display:flex;gap:14px;justify-content:center;margin:18px 0}
+#math-adventure .st-needed .st-dot{width:36px;height:36px}
+#math-adventure .st-dot.missing{background:transparent;border:2px dashed #7397a7;box-shadow:none;box-sizing:border-box}
+#math-adventure .st-sack{font-size:45px;color:#b59b62}
+#math-adventure .st-slider{display:block;font-size:18px;font-weight:600;text-align:left;margin:12px 0}
+#math-adventure .st-slider input{display:block;width:100%;margin:20px 0;accent-color:#267860;min-height:36px;touch-action:pan-y}
+#math-adventure .st-nine{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#math-adventure .st-mass-part{min-height:85px;border:1px solid #aebeb7;border-radius:12px;font:inherit;font-size:19px;padding:12px;color:#35545a;cursor:pointer}
+#math-adventure .st-mass-part small{display:block;font-size:13px;margin-top:7px}
+#math-adventure .st-mass-part.water{background:#c9e5ec}#math-adventure .st-mass-part.salt{background:#f3df9f}
+#math-adventure .st-mass-cells{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:430px;margin:auto}
+#math-adventure .st-mass-cells i{display:block;width:16px;height:16px;border-radius:2px;border:1px solid #9db6be;box-sizing:border-box;flex-shrink:0}
+#math-adventure .st-mass-cells .water{background:#b4d6e4}#math-adventure .st-mass-cells .salt{background:#edcb78;border-color:#cfac5e}
+#math-adventure .st-water-groups{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+#math-adventure .st-water-groups>div{background:#fffdf5;border:1px solid #becdc1;padding:7px;border-radius:7px}
+#math-adventure .st-water-groups small{display:block;font-size:12px;margin-bottom:5px;color:#63715d}
+#math-adventure .st-water-groups .st-mass-cells{max-width:none;flex-wrap:nowrap}
+#math-adventure .st-water-groups .st-mass-cells i{width:12px;height:12px}
+#math-adventure .st-big{font-size:23px;font-weight:700;color:#3d6951;margin:20px 0}
+#math-adventure .st-original-mass{border:3px solid #6d9b76;border-radius:14px;padding:14px}
+#math-adventure .st-original-mass .st-tray{margin-bottom:10px}
+#math-adventure .st-new-mass{border:2px dashed #c5b18d;padding:14px;margin-top:20px;border-radius:14px;font-size:16px;color:#7b6c52}
+#math-adventure .st-new-mass .st-mass-cells{margin-top:10px}
+#math-adventure .st-ratio-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px}
+#math-adventure .st-ratio-row>b{font-size:32px}
+#math-adventure .st-paper-cells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));max-width:420px;margin:18px auto;border:2px dashed #6b7f6a;padding:3px}
+#math-adventure .st-paper-cells button{aspect-ratio:1;border:1px solid #7c927b;background:#f5efd9;min-width:0;font-size:20px;cursor:pointer;padding:0;color:#246340}
+#math-adventure .st-paper-cells .green{background:#b0d4b1}
+#math-adventure .st-paper-cells .picked{outline:none;box-shadow:inset 0 0 0 3px #308156}
+#math-adventure .st-book{background:#fffaf0;border:3px solid #8b9d7e;border-radius:10px 24px 24px 10px;padding:18px;box-shadow:5px 5px 0 #d1dabc}
+#math-adventure .st-book-title{font-size:20px;font-weight:700;margin-bottom:16px}
+#math-adventure .st-book-part{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 7px;border:1px solid #a9c1b8;border-radius:8px;font:inherit;font-size:17px;color:#435f52;min-width:0}
+#math-adventure button.st-book-part{cursor:pointer}
+#math-adventure .st-book-part.read{background:#bdd9e1}#math-adventure .st-book-part.unread{background:#fff5dc;border-style:dashed}
+#math-adventure .st-page-lines{display:block;width:70%;height:62px;background:repeating-linear-gradient(to bottom,transparent 0,transparent 10px,#7e9a8b66 11px,#7e9a8b66 12px)}
+#math-adventure .st-calendar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#math-adventure .st-calendar .st-day-card{font:inherit;font-size:17px;min-height:85px;border:1px solid #c3cec2;background:#f8f5eb;border-radius:12px;padding:12px;color:#496553;cursor:pointer}
+#math-adventure .st-calendar .st-day-card span{display:block;font-size:14px;margin-top:8px}
+#math-adventure .st-calendar .past{background:#d9dfd4;color:#6d756b}
+#math-adventure .st-calendar .future{border-style:dashed;background:#fff1c9}
+#math-adventure .st-calendar .picked{background:#beddbd;border-style:solid;outline:none}
+#math-adventure .st-day-token{display:inline-block;background:#e4c98a;padding:8px;border-radius:6px;font-size:15px;margin:3px}
+#math-adventure .st-machine-lane{display:grid;grid-template-columns:1fr 20px 1.4fr 20px 1fr;align-items:center;gap:8px;margin:20px 0}
+#math-adventure .st-machine-lane>div{background:#fffdf5;padding:15px 8px;border-radius:12px;min-width:0}
+#math-adventure .st-machine-lane small{font-size:14px;display:block;margin-bottom:10px;color:#687b68}
+#math-adventure .st-machine-lane strong{font-size:28px}
+#math-adventure .st-machine-box{font-size:30px;border:2px solid #a1baa5}
+#math-adventure .st-machine-box b{display:block;font-size:21px;margin-top:8px}
+#math-adventure .st-unit-ruler{height:50px;max-width:350px;margin:8px auto;border:2px solid #8ba18d;border-radius:8px;background:#f0f5eb;width:280px;max-width:100%}
+#math-adventure .st-unit-ruler>span{display:flex;height:100%;align-items:center;justify-content:center;background:#b5d4a6;border-right:2px solid #77956c;box-sizing:border-box}
+#math-adventure .st-split-two{display:flex;gap:3px;border:2px solid #8eaa84;border-radius:8px;background:#eaf0e5;margin:20px 0;padding:4px}
+#math-adventure .st-split-two span{flex:1;padding:20px 8px;background:#c8ddb5;min-width:0;font-size:20px}
+@media(max-width:600px){#math-adventure .st-world{padding:16px 10px;border-radius:18px}#math-adventure .st-world h2{font-size:18px}#math-adventure .st-note{font-size:16px}#math-adventure .st-two,#math-adventure .st-three,#math-adventure .st-four,#math-adventure .st-recipe,#math-adventure .st-stock{gap:7px}#math-adventure .st-tray{padding:12px 6px;font-size:17px;gap:10px}#math-adventure .st-tray>strong{font-size:15px}#math-adventure .st-tray-tail{font-size:14px}#math-adventure .st-dot{width:20px;height:20px}#math-adventure .st-dots{gap:4px}#math-adventure .st-dot:has(svg){width:31px;height:31px}#math-adventure .st-four{grid-template-columns:repeat(2,minmax(0,1fr))}#math-adventure .st-form{grid-template-columns:1fr}#math-adventure .st-book{padding:10px}#math-adventure .st-book-title{font-size:17px}#math-adventure .st-book-part{font-size:14px;padding:12px 4px}#math-adventure .st-book-part strong{font-size:13px}#math-adventure .st-machine-lane{gap:4px;grid-template-columns:1fr 12px 1.2fr 12px 1fr}#math-adventure .st-machine-lane small{font-size:11px}#math-adventure .st-machine-lane strong{font-size:22px}#math-adventure .st-machine-box b{font-size:17px}#math-adventure .st-machine-lane>div{padding:12px 4px}#math-adventure .st-nine{gap:7px}#math-adventure .st-mass-part{padding:10px 4px;font-size:16px}#math-adventure .st-mass-part small{font-size:11px}#math-adventure .st-split-two span{font-size:17px;padding:16px 2px}#math-adventure .st-ratio-row{gap:8px}#math-adventure .st-cookie-pick{width:46px;height:46px}#math-adventure .st-groups{gap:5px}#math-adventure .st-group{min-width:48px;padding:8px 4px}#math-adventure .st-group .st-dot{width:11px;height:11px}}
+
+#math-adventure .st-finished{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin:12px 0}#math-adventure .st-finished p{width:100%;font-size:16px;margin:0;color:#61755d}#math-adventure .st-finished .ma-svg{width:100px;margin:0;flex-shrink:0}
+
+#math-adventure .st-road{margin:20px 18px 34px}#math-adventure .st-road-head,#math-adventure .st-road-ends{display:flex;justify-content:space-between;gap:12px;font-size:17px;margin:12px 0}#math-adventure .st-road-head{margin-bottom:26px}#math-adventure .st-road-track{position:relative;height:16px;border-radius:9px;background:repeating-linear-gradient(to right,#bccdb9 0,#bccdb9 calc(100% / 24 - 1px),#fff calc(100% / 24 - 1px),#fff calc(100% / 24))}#math-adventure .st-car{position:absolute;width:44px;height:32px;bottom:0;transform:translateX(-50%);color:#ce806b}#math-adventure .st-car.blue{color:#5a96b3}#math-adventure .st-car svg{display:block;width:100%;height:100%}#math-adventure .st-hour-parts{display:grid;margin:0 0 16px;gap:3px}#math-adventure .st-hour-parts span{font-size:13px;border-bottom:5px solid #cd826d;padding:0 0 6px;color:#62735f}#math-adventure .st-hour-parts.blue span{border-color:#6399b2}#math-adventure .st-road-distance{font-size:19px;font-weight:700;margin:10px 0;color:#356c53}#math-adventure .st-sack{font-size:24px}@media(max-width:600px){#math-adventure .st-road{margin-left:12px;margin-right:12px}#math-adventure .st-road-head,#math-adventure .st-road-ends{font-size:15px}#math-adventure .st-hour-parts{gap:2px}#math-adventure .st-hour-parts span{font-size:10px}}
+
+#math-adventure .st-tray>div{max-width:100%}
+
+#math-adventure .st-calendar div.st-day-card{cursor:default}
+@media(max-width:600px){#math-adventure .st-water-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}#math-adventure .st-water-groups>div{padding:7px 3px}#math-adventure .st-water-groups .st-mass-cells{gap:2px}#math-adventure .st-water-groups .st-mass-cells i{width:8px;height:10px}}
+
+</style>
+<script>
+(() => {
+const root=document.getElementById('math-adventure');
+const lessons=[
+ {id:'juice',icon:'🍊',name:'野餐分橘子',sub:'先分好3袋，再备齐8袋',badge:'野餐小帮手',tip:'先知道每袋有几个，再求全部有几个。'},
+ {id:'cookies',icon:'🍪',name:'饼干分享会',sub:'“多一半”到底多多少',badge:'比较高手',tip:'“比谁多”，就先看谁。'},
+ {id:'factory',icon:'📿',name:'彩珠手链工坊',sub:'每条用几颗，还缺几颗',badge:'配方达人',tip:'哪种材料用完，就用它确定份数。'},
+ {id:'cake',icon:'🍰',name:'蛋糕切切乐',sub:'一刀切出指定的面积',badge:'面积魔法师',tip:'三角形复制一块，面积就翻倍。'},
+ {id:'salt',icon:'🧪',name:'盐水实验室',sub:'找到一直没变的东西',badge:'不变量侦探',tip:'只加盐，水一直没变。'},
+ {id:'race',icon:'🏎️',name:'森林赛车场',sub:'跑得快，用时会怎样',badge:'速度观察员',tip:'同一段路，跑得快，用时少。'},
+ {id:'fold',icon:'📄',name:'折纸藏宝图',sub:'折一折，再数一数',badge:'格子探险家',tip:'比较面积，要保留原纸这张底图。'},
+ {id:'book',icon:'📚',name:'故事书小站',sub:'同一本书，已读和未读',badge:'时间管理员',tip:'还要的时间，不包括已经用过的时间。'},
+ {id:'machines',icon:'🤖',name:'数字机器工坊',sub:'认识输入，再倒着找数字',badge:'等值工程师',tip:'结果一样，原来的数可能不同。'}
+];
+const initial=()=>({version:3,records:{},exam:'original',examState:cleanChallenge(),bridgePassed:false,bridgeChoice:null,bridgeFeedback:'',lesson:'juice',step:0,mode:'play',done:[],passed:false,feedback:'',selected:null,wrong:0,hint:false,v:{storyRevision:1,story:{},picnicRevision:1,oranges:[0,0,0],picnicFilled:[],picnicAnswer:'',picnicFlat:false,poured:0,filled:[],half:[],extra:false,batches:0,supplement:0,foot:25,clone:false,waterGroup:11,saltAdded:false,raceHour:0,foldStage:0,shaded:[],days:[],bookSplit:false,robot:0}});
+const storageKey='math-adventure-structure-v3'+(/[?&]qa=1(?:&|$)/.test(window.location?.search||'')?'-qa':'');
+let s=initial();let speaking=false;
+const $=sel=>root.querySelector(sel);
+const lesson=()=>lessons.find(x=>x.id===s.lesson)||lessons[0];
+const escape=t=>String(t).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+function restore(raw){const z=raw?.privateContent||raw;if(z?.version!==3||!lessons.some(x=>x.id===z.lesson))return;s={...initial(),...z,v:{...initial().v,...z.v}};s.done=Array.isArray(z.done)?z.done.filter(x=>lessons.some(l=>l.id===x)):[];s.step=Math.max(0,Math.min(pages()[s.lesson].length-1,Number(z.step)||0));if(!['play','map','adult','bridge','exam','summary','records'].includes(s.mode))s.mode='play';s.records=z.records&&typeof z.records==='object'?z.records:{};s.examState={...cleanChallenge(),...z.examState};if(!['original','near','far','review'].includes(s.exam))s.exam='original';if(((z.v?.picnicRevision!==1&&s.lesson==='juice')||(z.v?.storyRevision!==1&&s.lesson!=='juice'))&&s.mode==='play'){s.step=0;resetStep();}}
+
+function save(){try{localStorage.setItem(storageKey,JSON.stringify(s));}catch{}try{window.openai?.setWidgetState({modelContent:{当前故事:lesson().name,步骤:s.step+1,已完成:s.done},privateContent:s})?.catch(()=>{});}catch{}}
+const choice=(label,right,feedback)=>({label,right,feedback});
+const q=(title,line,question,choices,hint,kind='quiz')=>({title,line,question,choices,hint,kind});
+function allPages(){return {
+juice:picnicPages(),
+...Object.fromEntries(Object.keys(STORY_META).map(id=>[id,storyPages(id)]))
+};}
+function pages(){return allPages();}
+// Inserted inside the game closure by build.py. All tasks and checks run locally.
+const field=(label,answer,unit='',type='number')=>({label,answer,unit,type});
+const rel=(prompt,good,other1,other2)=>({prompt,options:[other1,good,other2],correct:1});
+const task=(body,relation,fields,hints,solution,extra={})=>({body,relation,fields,hints,solution,...extra});
+const BANK={
+juice:{
+ bridge:['野餐时，3袋橘子一共6个。你先分出每袋2个，再准备8袋，一共16个。','题目里，“全部的3/8是6个”也是说：3份共6个，求8份有多少个。','为什么先算6÷3？','6个是3份合起来的，平均分开才能知道1份有几个。','因为题目里只要有分数就先除。','因为全部只有3份。'],
+ original:task('一批石子600吨。水泥是石子的4/5，水泥又是沙子的3/8。水泥、沙子各多少吨？',rel('“水泥是沙子的3/8”，谁是完整的8份？','沙子','水泥','石子'),[field('水泥',480,'吨'),field('沙子',1280,'吨')],['先接好关系：石子 → 水泥；再由水泥找沙子。','600×4/5得到水泥；这批水泥对应沙子的3份。','沙子分8格，其中3格标水泥的吨数。先求1格，再求8格。'],'水泥600×4/5＝480；沙子480÷3×8＝1280。',{notice:'同类训练：照片中“3/8”的分子被遮挡，这里明确按3/8出题，暂不记为原卷已订正。',source:'条件明确的同类题'}),
+ near:task('一瓶果汁的3/5是240毫升。整瓶有多少毫升？',rel('240毫升对应几份？','3份','5份','1份'),[field('整瓶果汁',400,'毫升')],['先指出240对应的是部分还是全部。','5个等大的格子，其中3格合起来240。','先求240÷3，再取5份。'],'240÷3×5＝400毫升。'),
+ far:task('一瓶果汁原有500毫升，喝掉3/5。还剩多少毫升？',rel('这次500毫升对应什么？','整瓶5份','喝掉的3份','剩下的2份'),[field('剩下',200,'毫升')],['这次已经知道全部，不需要倒着找整瓶。','把整瓶分5份，喝3份，还剩2份。','先求500÷5，再取剩下的2份。'],'500÷5×2＝200。已知全部求部分，方向和上一题不同。'),
+ review:task('一箱零件已取出2/7，取出的有84个。原有多少个？',rel('84个对应几份？','2份','7份','5份'),[field('原有',294,'个')],['找出已知数量属于哪一部分。','7份中取走2份。','84÷2，再乘7。'],'84÷2×7＝294个。')
+},
+cookies:{
+ bridge:['熊熊4块，兔兔比它多一半，所以兔兔是6块。','题目里的“看书比游戏多一半”，以游戏次数为基准。','“甲比乙多一半”，多出的一半按谁算？','按乙算；甲是乙的1又1/2。','按甲算；乙是甲的一半。','按甲乙合起来算。'],
+ original:task('正常每分钟眨眼24次。写字时是正常的3/4，又是看书时的6/5。看书时比玩游戏时多1/2。写字、看书、游戏各是多少次？',rel('最后一句“多1/2”，以哪种状态为基准？','玩游戏','看书','正常'),[field('写字',18,'次/分'),field('看书',15,'次/分'),field('玩游戏',10,'次/分')],['这三句话比较的对象不同。先把“正常→写字→看书”连好。','先求写字。写字对应6份，看书对应5份。','最后把游戏画2格，看书画3格。不要直接减去看书次数的一半。'],'24×3/4＝18；18÷6/5＝15；15÷(1＋1/2)＝10。'),
+ near:task('红绳比蓝绳长1/4，红绳20厘米。蓝绳长多少厘米？',rel('“长1/4”按谁的长度算？','蓝绳','红绳','两条绳的总长'),[field('蓝绳',16,'厘米')],['先确定谁是4份。','蓝绳4份，红绳5份。','20是5份，先求1份，再取4份。'],'20÷5×4＝16厘米。'),
+ far:task('甲的邮票比乙少1/4。甲有18枚，乙有多少枚？',rel('甲18枚对应乙的几分之几？','3/4','1/4','5/4'),[field('乙',24,'枚')],['这次是“少”，先保留乙的完整1。','甲对应1－1/4，也就是3/4。','18对应3份，乙有4份。'],'18÷3×4＝24枚。少1/4，不是拿18直接加1/4。'),
+ review:task('红珠比蓝珠多2/3。红珠25颗，蓝珠多少颗？',rel('完整的3份是谁？','蓝珠','红珠','两种珠子的总数'),[field('蓝珠',15,'颗')],['先确定“比谁多”里的谁。','蓝珠3份，红珠5份。','25对应5份，再取3份。'],'25÷5×3＝15颗。')
+},
+factory:{
+ bridge:['一条手链用3颗黄珠。6颗黄珠用完，能做2条；红珠剩2颗，蓝珠还要补4颗。','工地换成水泥、黄沙、石子，比较的是质量。黄沙600吨对应配方里的3份。','为什么不能用600÷(2＋3＋5)？','600只是黄沙的量，黄沙只占3份。','因为所有比都不能先加份数。','因为600是三种材料的总量。'],
+ original:task('混凝土中水泥、黄沙、石子的比是2∶3∶5。三种材料各有600吨。黄沙全部用完时，水泥还剩多少吨？石子需要补多少吨？',rel('黄沙600吨，对应配方中的几份？','3份','10份','1份'),[field('水泥剩余',200,'吨'),field('石子需补',400,'吨')],['“各600吨”是三份库存，不是一批配料总量600。','黄沙3份用完，先求一份。水泥需2份，石子需5份。','剩余＝原有－用掉；补充＝需要－原有。'],'一份600÷3＝200。水泥用400，剩200；石子需1000，补400。'),
+ near:task('水泥∶沙∶石子＝1∶2∶3，各有300吨。沙全部用完时，水泥剩多少？石子需补多少？',rel('300吨沙对应几份？','2份','6份','3份'),[field('水泥剩余',150,'吨'),field('石子需补',150,'吨')],['先找全部用完的材料。','沙2份是300吨。','按同样的一份大小，分别计算1份和3份。'],'一份150；水泥用150剩150；石子需450补150。'),
+ far:task('营养粉按奶粉∶谷粉∶豆粉＝3∶4∶5混合，各有8袋。谷粉全部用完，奶粉剩几袋？豆粉需补几袋？',rel('用哪种材料确定一份的大小？','谷粉','奶粉','三种库存总和'),[field('奶粉剩余',2,'袋'),field('豆粉需补',2,'袋')],['换了材料名称，配方思路仍然相同。','谷粉4份是8袋，每份2袋。','奶粉需3份，豆粉需5份，再和各自8袋的库存比。'],'一份2袋。奶粉用6剩2；豆粉需10补2。'),
+ review:task('甲、乙、丙材料按2∶3∶4混合，各有450千克。乙用完时，甲剩多少？丙补多少？',rel('450千克对应几份？','3份','9份','4份'),[field('甲剩余',150,'千克'),field('丙需补',150,'千克')],['先锁定乙。','450对应3份。','先求一份，再计算2份与4份。'],'一份150，甲用300剩150；丙需600补150。')
+},
+cake:{
+ bridge:['两块相同三角形拼起来，正好是左半个长方形。','所以一个三角形占整块1/4时，它的底边要占1/2。','面积1∶3，为什么不能把底边也分成1∶3？','三角形面积要除以2，底边比不能直接当面积比。','因为三角形永远占长方形的一半。','因为所有面积比都等于长度比。'],
+ original:task('把一个长方形分成一个三角形和一个梯形，面积比为1∶3。从左上角A连到底边一点B，B应放在哪里？',rel('三角形占整个长方形的多少？','1/4','1/3','1/2'),[field('左下角到B，占整条底边的',.5,'','fraction')],['先把三角形和梯形的份数合起来。','三角形与长方形等高，但三角形面积要除以2。','把三角形复制一块。拼成的长方形面积是三角形的2倍。'],'三角形占1/4，底边须占1/2；把A与底边中点相连。',{figure:'rectangle'}),
+ near:task('同样从左上角连到底边，三角形与梯形面积比为1∶4。三角形底边占整条底边的多少？',rel('三角形占总面积的多少？','1/5','1/4','2/5'),[field('底边占比',.4,'','fraction')],['总面积一共5份。','三角形是总面积1/5。','底边占比应是面积占比的2倍。'],'三角形占1/5，底边占2/5。'),
+ far:task('一块长方形花圃，把左上角连到底边的四分之一处。左侧三角形与剩下梯形的面积比是多少？',rel('这里给出的1/4是什么？','底边长度的占比','三角形面积的占比','梯形面积的占比'),[field('三角形∶梯形',1/7,'','ratio')],['这次已知的是底边，要反过来求面积。','三角形占整个长方形的1/4再除以2。','三角形占1/8，另一块占7/8，再写两块的比。'],'三角形占1/8，梯形占7/8，所以面积比1∶7。',{figure:'quarter'}),
+ review:task('长方形分成三角形和梯形，面积比为1∶2。仍从左上角连到底边，三角形底边应占整条底边的多少？',rel('三角形占总面积的多少？','1/3','1/2','2/3'),[field('底边占比',2/3,'','fraction')],['一共3份。','三角形占总面积1/3。','把三角形的面积占比乘2，才得到底边占比。'],'底边占2/3。')
+},
+salt:{
+ bridge:['我们重新分组同一份水，找到了前后盐的差。','15克是新增盐，原来的盐也还在瓶中。','为什么要先让两幅图中的水一样多？','只加盐，水没变，才能用同一把尺比较盐。','因为盐和水的质量永远相等。','因为15克就是后来全部的盐。'],
+ original:task('原来盐的质量是水的1/11。加入15克盐后，盐占盐水质量的1/9。原来有盐水多少克？',rel('前后保持不变的是？','水的质量','盐的质量','盐水的总质量'),[field('原有盐水',480,'克')],['原盐∶水＝1∶11。后来“盐占盐水1/9”，水占其余8份。','把水统一看作88份：原盐8份，后来盐11份。','新增的3份是15克。先求每份，再数原来盐和水一共有几份。'],'每份15÷3＝5克；原来盐8份、水88份，共96份，所以480克。'),
+ near:task('原盐∶水＝1∶9。加入10克盐后，盐占盐水的1/6。原来盐水多少克？',rel('加入后盐∶水是多少？','1∶5','1∶6','5∶6'),[field('原有盐水',125,'克')],['盐水有6份，其中盐1份，水几份？','把水统一成45份，比较原盐与后来盐。','原盐5份，后来9份，差4份对应10克；原盐水50份。'],'每份2.5克，原来50份，共125克。'),
+ far:task('糖与水原来是1∶4。加入10克糖后，糖占糖水的1/3。原来有糖水多少克？',rel('哪种量可以连接前后两次比例？','水','糖','糖水总量'),[field('原有糖水',50,'克')],['材料名称变了，但仍然只加溶质、不加水。','后来糖∶水＝1∶2。把水都看成4份。','原糖1份，后来2份，新增1份是10克。原糖水5份。'],'原水40克、糖10克，共50克。'),
+ review:task('原盐∶水＝1∶7，加入12克盐后，盐占盐水的1/5。原来盐水多少克？',rel('后来盐∶水是多少？','1∶4','1∶5','4∶5'),[field('原有盐水',128,'克')],['先把盐占盐水改成盐与水的比。','同一份水看作28份，原盐4份，后来盐7份。','新增3份12克，每份4克，原盐水32份。'],'32×4＝128克。')
+},
+race:{
+ bridge:['一起跑1小时，快车走4段，慢车走3段。','先写比较对象的名字，再写对应数字。','同样的路程，速度与时间为什么不能直接用同一个顺序的比？','跑得快的每小时走得多，但全程用时少。','跑得快的一定用时更多。','路程相同，时间也一定相同。'],
+ original:task('从A城到B城，快车要6小时，慢车要8小时。求慢车与快车的时间比，以及快车与慢车的速度比。',rel('两问的对象顺序怎样？','第一问慢∶快；第二问快∶慢','两问都是慢∶快','两问都是快∶慢'),[field('慢车∶快车的时间',4/3,'','ratio'),field('快车∶慢车的速度',4/3,'','ratio')],['先把每一问前后的名字抄出来。','慢∶快用时是8∶6；速度用同样时间走的路程比较。','同路程速度是时间的倒数；快∶慢速度为1/6∶1/8。'],'时间8∶6＝4∶3；速度1/6∶1/8＝4∶3。'),
+ near:task('同一路程，快车4小时，慢车6小时。分别求慢∶快的时间比、快∶慢的速度比。',rel('哪辆车速度大？','快车','慢车','一样大'),[field('慢∶快时间比',1.5,'','ratio'),field('快∶慢速度比',1.5,'','ratio')],['先写比较对象。','慢车6、快车4。','时间6∶4；快∶慢速度为1/4∶1/6。'],'两问都是3∶2，所比较的量与顺序不同。'),
+ far:task('同一个空水池，甲管3小时注满，乙管5小时注满。求甲∶乙的注水速度比、甲∶乙的用时比。',rel('这次两问的对象顺序是？','都是甲∶乙','速度甲∶乙，时间乙∶甲','都是乙∶甲'),[field('甲∶乙速度比',5/3,'','ratio'),field('甲∶乙时间比',3/5,'','ratio')],['两问的对象顺序没有换，不能照抄上一题“两问一样”。','用时少的甲管注得更快。','速度1/3∶1/5；时间3∶5。'],'速度5∶3，用时3∶5。这次两个比互为倒数。'),
+ review:task('同一路程，快车5小时，慢车7小时。求快∶慢的时间比、快∶慢的速度比。',rel('这两问先写谁？','都先写快车','都先写慢车','第一问快，第二问慢'),[field('快∶慢时间比',5/7,'','ratio'),field('快∶慢速度比',7/5,'','ratio')],['名字顺序相同，比较的量不同。','时间先写5后写7。','速度先写1/5后写1/7。'],'时间5∶7，速度7∶5。')
+},
+fold:{
+ bridge:['先利用右边的正方形找到原纸高度，再找阴影的宽和高。','2/7是左条占整张纸的面积，不是阴影的宽和高都占2/7。','算阴影占原纸多少，分母该看哪一块？','整张原纸的面积','只看左侧小长方形','只看折叠后露出的纸'],
+ original:task('如图把右上角折下，右侧形成正方形。左边小长方形面积占原纸2/7。再折起左下角，求绿色阴影占原纸的几分之几。',rel('确定原纸的高，先用哪个条件？','右侧是正方形，宽和高相等','把原纸直接当正方形','把2/7直接平方'),[field('阴影占原纸',6/35,'','fraction')],['设原纸宽7格，左边宽2格。','右侧正方形边长5格，因此原纸高5格。','左下折起的区域高2格，阴影高3格。先求阴影面积，再除原面积。'],'阴影2×3＝6；原纸7×5＝35；所以6/35。',{figure:'fold',paper:[7,2]}),
+ near:task('按同样方法折纸。左边长方形面积占原纸1/4，右边折成正方形。再折起左下角，阴影占原纸多少？',rel('若原纸宽4格、左边宽1格，原纸高几格？','3格','4格','1格'),[field('阴影占比',1/6,'','fraction')],['右侧宽4－1。','原纸高3，阴影宽1、高3－1。','阴影面积1×2，原面积4×3。'],'2/12＝1/6。',{figure:'fold',paper:[4,1]}),
+ far:task('同样折法，左条占原纸1/5。右边是正方形，再折左下角。求阴影占原纸的比例。',rel('阴影的高怎样得到？','原纸高减去左条宽','原纸宽减去左条高','直接取原纸高的1/5'),[field('阴影占比',3/20,'','fraction')],['设原纸宽5、左条宽1。','右侧正方形边长4，原纸高4。','阴影宽1高3，原面积5×4。'],'阴影3，原面积20，所以3/20。',{figure:'fold',paper:[5,1]}),
+ review:task('同样折法，左条占原纸2/9，右侧是正方形。再次折起左下角后，阴影占原纸多少？',rel('若原纸宽9、左条宽2，原纸高是多少？','7','9','2'),[field('阴影占比',10/63,'','fraction')],['先找右侧正方形边长。','原高7，阴影高7－2。','阴影2×5，原纸9×7。'],'10/63。',{figure:'fold',paper:[9,2]})
+},
+book:{
+ bridge:['同一本书分成页数相同的3段。每天读得一样多，每段要用的天数也一样。','题目问“还要”，只数未读的那一段；问“一共”，才数从头到尾的所有天数。','已经读过的6天，要算进“还需要”吗？','不算，“还需要”从现在往后数。','要算，因为读书总共用9天。','只算其中一半。'],
+ original:task('王海6天读了200页，占全书的2/3。这本书多少页？照这样的速度，读完还需要几天？',rel('“还需要”对应哪一部分？','剩下的1/3','已经读的2/3','整本书'),[field('全书',300,'页'),field('还需要',3,'天')],['200页对应2份，6天也对应2份。','先分别求1份的页数和天数。','全书3份，剩下1份。不要把总用时填到还需要。'],'全书200÷2×3＝300页；每份6÷2＝3天，剩1份需3天。'),
+ near:task('4天读了全书2/5。照此速度，还需要几天？',rel('剩下几份？','3份','2份','5份'),[field('还需要',6,'天')],['全书5份，已读2份。','4天对应2份。','一份2天，剩3份。'],'4÷2×3＝6天。'),
+ far:task('修路队9天修了全长的3/4。照这个速度，修完整条路一共需要几天？',rel('这次问“一共”，要数几份？','4份','1份','3份'),[field('一共需要',12,'天')],['这次问总时间，不是剩余时间。','9天对应3份。','一份3天，完整道路4份。'],'9÷3×4＝12天。'),
+ review:task('6天完成一项工作的3/5。照这个速度，剩下的工作还要几天？',rel('6天对应什么？','已完成的3份','剩下的2份','全部5份'),[field('还要',4,'天')],['把工作分5份。','已经3份，剩2份。','一份6÷3＝2天。'],'还要2×2＝4天。')
+},
+machines:{
+ bridge:['不同机器把不同的输入，变成同一个输出。','给共同结果取一个方便的正数，反过来求每个输入。','为什么a×2/3＝1时，a比1大？','a只拿出一部分就等于1，a原来必须更多。','因为乘法一定越乘越大。','因为2/3大于1。'],
+ original:task('按正数范围比较：a×2/3＝b÷2/5＝c÷2/3＝2÷(2/d)。把a、b、c、d从大到小排列。',rel('最后一个式子2÷(2/d)等于什么？','d','2d','1/d'),[field('从大到小','a>d>c>b','','order')],['原卷仅写非零。这里明确按小学题通常使用的正数范围。','共同结果设为1，反过来求a、b、c、d。','a＝3/2，b＝2/5，c＝2/3，d＝1，再比较。'],'正数范围：a＞d＞c＞b。',{notice:'原卷缺少“正数”条件，本题已补充。'}),
+ near:task('正数 x×3/4＝y÷2/3＝z。把x、y、z从大到小排列。',rel('若共同结果为1，x应比1怎样？','大','小','相等'),[field('从大到小','x>z>y','','order')],['先令共同结果为1。','x只取3/4得到1；y除以2/3得到1。','x＝4/3，z＝1，y＝2/3。'],'x＞z＞y。'),
+ far:task('甲拿出自己贴纸的1/2，乙拿出自己贴纸的2/3，拿出的都是12张。两人原来各有几张？',rel('哪人原来更多？','甲','乙','一样多'),[field('甲原有',24,'张'),field('乙原有',18,'张')],['拿出同样多，不代表原有一样多。','甲的1/2是12；乙的2/3是12。','分别求完整1：甲12÷1/2，乙12÷2/3。'],'甲24张，乙18张。拿出的比例更小，原来的量反而更大。'),
+ review:task('正数 u×4/5＝v÷3/4＝w。把u、v、w从大到小排列。',rel('若共同结果为1，v是多少？','3/4','4/3','1'),[field('从大到小','u>w>v','','order')],['令共同结果为1。','u＝5/4，v＝3/4，w＝1。','先按大于1、等于1、小于1分类。'],'u＞w＞v。')
+}
+};
+const FLOW_NAMES=['动手看懂','讲清关系','原题重做','举一反三','隔天再试'];
+const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+function recordFor(id=s.lesson){return s.records[id]||(s.records[id]={game:false,bridge:false,checks:{},finishedDay:null,reviews:[]});}
+function cleanChallenge(){return {answers:[],reason:'',attempts:0,hints:0,passed:false,feedback:'',type:'',assisted:false,firstTry:false,note:''};}
+function reviewTask(id,n){
+ if(!n)return BANK[id].review;
+ const a=n+4;
+ if(id==='juice')return task(`一桶饮料的2/5是${a*20}毫升。整桶多少毫升？`,rel('已知量对应几份？','2份','5份','3份'),[field('整桶',a*50,'毫升')],['先找已知量对应的份数。','2份已知，整桶5份。','先除以2求1份，再乘5。'],`${a*20}÷2×5＝${a*50}毫升。`);
+ if(id==='cookies')return task(`姐姐的贴纸比妹妹多1/2。姐姐有${a*3}张，妹妹有多少张？`,rel('完整的2份是谁？','妹妹','姐姐','两人合计'),[field('妹妹',a*2,'张')],['找“比谁多”里的谁。','妹妹2份，姐姐3份。','已知姐姐3份，先求1份。'],`${a*3}÷3×2＝${a*2}张。`);
+ if(id==='factory')return task(`甲乙丙按2∶3∶5混合，各有${a*30}千克，乙用完。甲剩多少？丙需补多少？`,rel('已知库存对应乙的几份？','3份','10份','5份'),[field('甲剩余',a*10,'千克'),field('丙需补',a*20,'千克')],['先锁定乙。','乙3份，用库存除以3。','计算甲用2份、丙用5份，再与库存比较。'],`每份${a*10}；甲剩${a*10}，丙补${a*20}。`);
+ if(id==='cake')return task(`三角形与梯形面积比1∶${a}。从长方形左上角连到底边，三角形底边占整条底边多少？`,rel('三角形占整个长方形多少？',`1/${a+1}`,`1/${a}`,`2/${a+1}`),[field('底边占比',2/(a+1),'','fraction')],['总份数要相加。','三角形占总面积的1份。','底边占比是面积占比的2倍。'],`底边占2/${a+1}。`);
+ if(id==='salt')return task(`糖∶水原来1∶4，加入${a*2}克糖后，糖占糖水1/3。原糖水多少克？`,rel('不变的是？','水','糖','糖水'),[field('原糖水',a*10,'克')],['后来糖∶水＝1∶2。','同样4份水，原糖1份，后来糖2份。','新加的糖恰好1份；原糖水共5份。'],`${a*2}×5＝${a*10}克。`);
+ if(id==='race')return task(`同一路程，甲车${a}小时，乙车${a+2}小时。求甲∶乙的时间比和速度比。`,rel('哪辆更快？','甲车','乙车','一样快'),[field('甲∶乙时间比',a/(a+2),'','ratio'),field('甲∶乙速度比',(a+2)/a,'','ratio')],['两问对象顺序一样。','时间直接按已知写比。','同路程，速度按时间的倒数写比。'],`时间${a}∶${a+2}，速度${a+2}∶${a}。`);
+ if(id==='fold'){const w=a+5;return task(`同样折法，左条占原纸2/${w}，右侧正方形。阴影占原纸多少？`,rel('原纸高几格？（宽按分母取格数）',String(w-2),String(w),String(w-4)),[field('阴影占比',2*(w-4)/(w*(w-2)),'','fraction')],['先用正方形确定原高。','阴影高等于原高减2。','阴影面积除以原纸面积。'],`阴影2×${w-4}，原纸${w}×${w-2}。`,{figure:'fold',paper:[w,2]});}
+ if(id==='book')return task(`${a*2}天完成全任务的2/5。剩余任务还需几天？`,rel('剩余对应几份？','3份','2份','5份'),[field('还需',a*3,'天')],['已完成2份，还剩3份。','先求一份需要的天数。','已用时间除以2，再乘3。'],`${a*2}÷2×3＝${a*3}天。`);
+ return task(`甲拿出贴纸的1/2，乙拿出贴纸的3/4，两人拿出的都是${a*3}张。原来各有多少？`,rel('谁原来更多？','甲','乙','相同'),[field('甲',a*6,'张'),field('乙',a*4,'张')],['拿出的比例小，原量会更大。','分别把已知数量看作各自的部分。','甲除以1/2，乙除以3/4。'],`甲${a*6}张，乙${a*4}张。`);
+}
+function taskFor(){return s.exam==='review'?reviewTask(s.lesson,s.reviewSerial||0):BANK[s.lesson][s.exam];}
+function taskLabel(){const r=recordFor();return {original:BANK[s.lesson].original.source||'原题重做',near:'变式一 · 换数字',far:'变式二 · 换问法 / 情境',review:r.finishedDay&&today()>r.finishedDay?'隔天再试 · 新题':'同日加练 · 新题'}[s.exam];}
+function flowIndex(){return s.mode==='play'?0:s.mode==='bridge'?1:s.mode==='exam'?(s.exam==='original'?2:s.exam==='review'?4:3):4;}
+function flowRail(){return `<nav class="ma-route" aria-label="学习路径">${FLOW_NAMES.map((x,i)=>`<span class="${i===flowIndex()?'active':''}">${i+1} ${x}</span>`).join('')}</nav>`;}
+function statusText(id){const r=s.records[id];if(!r)return '从这里出发';const n=['original','near','far'].filter(k=>r.checks[k]?.independent).length;if(r.reviews.some(x=>x.independent&&x.delayed))return '隔天新题独立完成';if(r.finishedDay)return `${n}/3题独立 · 待复习`;if(r.bridge)return '已完成关系练习';if(r.game)return '动手已完成';return '继续学习';}
+function startExam(kind){s.exam=kind;s.mode='exam';s.examState=cleanChallenge();if(kind==='review'){const r=recordFor();s.reviewSerial=r.reviewSerial||0;r.reviewSerial=s.reviewSerial+1;}render();save();topOfTask();}
+function normalizedNumber(value){const t=String(value).trim().normalize('NFKC').replaceAll('：',':').replaceAll('∶',':').replaceAll('／','/').replace(/\s/g,'');if(!t)return null;if(/^-?\d+(?:\.\d+)?%$/.test(t))return Number(t.slice(0,-1))/100;if(/^-?\d+(?:\.\d+)?$/.test(t))return Number(t);const m=t.match(/^(-?\d+(?:\.\d+)?)[/:](-?\d+(?:\.\d+)?)$/);if(m&&Number(m[2])!==0)return Number(m[1])/Number(m[2]);return null;}
+function normalizedOrder(x){return String(x).normalize('NFKC').replace(/\s/g,'').toLowerCase();}
+function fieldOK(value,f){if(f.type==='order')return normalizedOrder(value)===f.answer;const n=normalizedNumber(value);return n!==null&&Math.abs(n-f.answer)<1e-8;}
+function submitExam(){const t=taskFor(),e=s.examState;
+ if(e.passed)return;
+ if(e.reason===''||t.fields.some((f,i)=>!String(e.answers[i]||'').trim())){e.feedback='先选清关系，再把每个空填上。还没填写的不算答错。';e.type='incomplete';render();return;}
+ e.attempts++;
+ const wrongRelation=Number(e.reason)!==t.relation.correct;
+ const wrongFields=t.fields.map((f,i)=>fieldOK(e.answers[i],f)?null:f.label).filter(Boolean);
+ if(wrongRelation||wrongFields.length){e.assisted=true;e.type=wrongRelation?'relation':'calculation';e.feedback=wrongRelation?'先修正数量关系。算出的数字即使碰巧正确，也还不能通过这一题。':`关系找对了，再检查“${wrongFields.join('、')}”。先核对它对应几份，以及问的是全部、剩余还是新增。`;render();save();return;}
+ e.passed=true;e.type='passed';e.firstTry=e.attempts===1&&e.hints===0&&!e.assisted;e.feedback=e.firstTry?'这次你独立找对关系，也算对了。':'这次已经订正正确。因为使用了帮助或重试，我们把它记为“帮助后完成”。';
+ const result={independent:e.firstTry,attempts:e.attempts,hints:e.hints,day:today(),answers:e.answers.map(x=>String(x).slice(0,40)),reason:Number(e.reason)};
+ const r=recordFor();
+ if(s.exam==='review'){result.delayed=!!r.finishedDay&&today()>r.finishedDay;r.reviews.push(result);r.reviews=r.reviews.slice(-2);}
+ else r.checks[s.exam]=result;
+ render();save();
+}
+function figureFor(t){if(!t.figure)return '';if(t.figure==='fold'){const [w,a]=t.paper,h=w-a,scale=180/w,X=n=>50+n*scale,Y=n=>15+n*scale;return svg(280,200,'原题折纸示意，未标辅助格与答案',`<rect x="50" y="15" width="180" height="${h*scale}" fill="#fff" stroke="#8a9b85" stroke-dasharray="4 4"/><rect x="50" y="15" width="${a*scale}" height="${(h-a)*scale}" fill="#a5d3b0"/><polygon points="${X(a)},15 ${X(a)},${Y(h)} ${X(w)},${Y(h)}" fill="#f1d39d" stroke="#8a9b85"/><polygon points="50,${Y(h-a)} ${X(a)},${Y(h-a)} ${X(a)},${Y(h)}" fill="#d0be8a" stroke="#8a9b85"/>`);}
+ return svg(280,155,'原题长方形，A在左上角，底边从左下角量起',`<rect x="20" y="25" width="240" height="100" fill="#fff" stroke="#6e8c7b" stroke-width="2"/>${txt(20,18,'A')}${t.figure==='quarter'?'<line x1="20" y1="25" x2="80" y2="125" stroke="#587f6f" stroke-width="2"/>':''}${txt(20,147,'左端','start')}${txt(260,147,'右端','end')}`);
+}
+function optionOrder(items){const shift=(lessons.findIndex(l=>l.id===s.lesson)+(['original','near','far','review'].indexOf(s.exam)+1))%items.length;return items.map((text,index)=>({text,index})).slice(shift).concat(items.map((text,index)=>({text,index})).slice(0,shift));}
+function assessmentView(){const t=taskFor(),e=s.examState;
+return `<main class="ma-main">${flowRail()}<div class="ma-kicker">${lesson().icon} ${lesson().name}</div><h1>${taskLabel()}</h1><p class="ma-exam-intro">先自己想一想。需要时再点帮助。</p>${t.notice?`<p class="ma-notice">${t.notice}</p>`:''}<section class="ma-paper"><p>${t.body}</p>${figureFor(t)}</section><form id="ma-exam-form"><label class="ma-field"><span>先找关系：${t.relation.prompt}</span><select id="ma-reason" ${e.passed?'disabled':''}><option value="">请选择</option>${optionOrder(t.relation.options).map(({text:v,index:i})=>`<option value="${i}" ${String(e.reason)===String(i)?'selected':''}>${v}</option>`).join('')}</select></label><div class="ma-answer-fields">${t.fields.map((f,i)=>`<label class="ma-field"><span>${f.label}${f.unit?'（'+f.unit+'）':''}</span><input type="text" inputmode="${f.type==='number'?'decimal':'text'}" maxlength="40" data-answer="${i}" value="${escape(e.answers[i]||'')}" placeholder="${f.type==='fraction'?'例如 2/5':f.type==='ratio'?'例如 2:3':f.type==='order'?'例如 a>b>c':'填数字'}" autocomplete="off" ${e.passed?'disabled':''}></label>`).join('')}</div><label class="ma-field"><span>我为什么这样做？（可说给大人听，也可写一句）</span><textarea id="ma-explain" rows="2" maxlength="160" placeholder="先找……因为……" ${e.passed?'disabled':''}>${escape(e.note||'')}</textarea></label><p class="ma-caption">这句解释留给孩子与大人讨论，不由程序自动判断。</p>${!e.passed?'<button class="ma-primary" type="submit">检查关系和答案</button>':''}</form><div aria-live="polite">${e.feedback?`<div class="ma-feedback ${e.passed?'success':''}">${escape(e.feedback)}</div>`:''}</div>${e.hints?`<aside class="ma-repair"><strong>只补这一小步 · ${e.hints}/3</strong><p>${t.hints[e.hints-1]}</p><p class="ma-caption">保留你填的内容，想清楚后再检查。</p></aside>`:''}<div class="ma-footer">${e.passed?`<details class="ma-solution"><summary>核对完整过程</summary><p>${t.solution}</p></details>`:`<button type="button" class="ma-secondary" data-path="help" ${e.hints>=3?'disabled':''}>${e.hints?'再给一点帮助':'我需要一点帮助'}</button>`}${e.passed?'<button type="button" class="ma-primary" data-path="continue">继续下一步 →</button>':''}</div></main>`;
+}
+function bridgeView(){const b=BANK[s.lesson].bridge;return `<main class="ma-main">${flowRail()}<div class="ma-kicker">把游戏里的发现，带回数学题</div><h1>这一步，轮到你解释</h1><div class="ma-bridge"><p>🎮 ${b[0]}</p><span>↓</span><p>✏️ ${b[1]}</p></div><p class="ma-question">${b[2]}</p><div class="ma-choices">${optionOrder([b[4],b[3],b[5]]).map(({text:x,index:i})=>`<button class="ma-choice ${s.bridgeChoice===i?(s.bridgePassed?'right':'try'):''}" data-bridge="${i}" type="button" ${s.bridgePassed?'disabled':''}>${x}</button>`).join('')}</div><div aria-live="polite">${s.bridgeFeedback?`<p class="ma-feedback ${s.bridgePassed?'success':''}">${s.bridgeFeedback}</p>`:''}</div><div class="ma-footer"><button type="button" class="ma-secondary" data-path="backGame">回去动手看一遍</button><button type="button" class="ma-primary" data-path="startOriginal" ${s.bridgePassed?'':'disabled'}>收起图解，我来做题 →</button></div></main>`;}
+function summaryView(){const r=recordFor(),keys=['original','near','far'],labels=[BANK[s.lesson].original.source||'原题','换数字','换问法 / 情境'];return `<main class="ma-main">${flowRail()}<div class="ma-win"><div class="ma-sticker">${lesson().icon}</div><h1>今天学到了哪一步？</h1><p>${lesson().tip}</p></div><div class="ma-checks">${keys.map((k,i)=>`<div><span>${labels[i]}</span><strong>${r.checks[k]?(r.checks[k].independent?'独立完成':'帮助后完成'):'还没做'}</strong></div>`).join('')}</div><p class="ma-caption">“独立完成”指首次提交时关系和答案都正确，且没看提示；不等同于长期掌握。</p><div class="ma-repair"><strong>下一站：隔天换一道题</strong><p>${r.finishedDay&&today()>r.finishedDay?'今天可以做隔天回测了。':'明天或以后再来，用一题没见过的题看看是否记住。现在也可以练，但会记作同日加练。'}</p></div>${r.reviews.length?`<div class="ma-checks">${r.reviews.map(x=>`<div><span>${x.day} · ${x.delayed?'隔天回测':'同日加练'}</span><strong>${x.independent?'独立完成':'帮助后完成'}</strong></div>`).join('')}</div>`:''}<div class="ma-actions"><button class="ma-primary" data-path="review" type="button">${r.finishedDay&&today()>r.finishedDay?'开始隔天回测':'现在换一道再练'}</button><button class="ma-secondary" data-act="map" type="button">回到学习地图</button></div></main>`;}
+function pathAction(key){
+if(key==='record'){s.mode='records';render();save();topOfTask();}
+if(key==='startOriginal'&&s.bridgePassed)startExam('original');
+if(key==='help'&&!s.examState.passed){s.examState.hints=Math.min(3,s.examState.hints+1);s.examState.assisted=true;render();save();}
+if(key==='continue'&&s.examState.passed){if(s.exam==='original')startExam('near');else if(s.exam==='near')startExam('far');else{const r=recordFor();if(s.exam==='far')r.finishedDay=today();s.mode='summary';render();save();topOfTask();}}
+if(key==='review')startExam('review');
+if(key==='backGame'){s.mode='play';s.step=0;s.v=initial().v;resetStep();render();save();topOfTask();}
+}
+function render(){
+if(s.mode==='records')root.innerHTML=header()+`<main class="ma-main"><h1>学习记录</h1><p>看原题、新题是否独立完成；游戏进度单独记录。</p>${lessons.map(l=>`<div class="ma-record-row"><span>${l.icon} ${l.name}<br><small>${statusText(l.id)}</small></span>${s.records[l.id]?.finishedDay?`<button type="button" class="ma-secondary" data-summary="${l.id}">查看与复习</button>`:`<button type="button" class="ma-secondary" data-lesson="${l.id}">进入学习</button>`}</div>`).join('')}</main>`;
+else if(s.mode==='exam')root.innerHTML=header()+assessmentView();
+else if(s.mode==='bridge')root.innerHTML=header()+bridgeView();
+else if(s.mode==='summary')root.innerHTML=header()+summaryView();
+else if(s.mode==='play'&&s.lesson==='juice')root.innerHTML=header()+picnicView();
+else if(s.mode==='play'&&STORY_META[s.lesson])root.innerHTML=header()+storyView();
+else{renderGame();if(s.mode==='play')root.querySelector('.ma-main')?.insertAdjacentHTML('afterbegin',flowRail());}
+}
+root.addEventListener('submit',e=>{if(e.target.id==='ma-exam-form'){e.preventDefault();submitExam();}});
+root.addEventListener('input',e=>{if(e.target.dataset.answer!==undefined)s.examState.answers[Number(e.target.dataset.answer)]=e.target.value;if(e.target.id==='ma-explain')s.examState.note=e.target.value;});
+root.addEventListener('change',e=>{if(e.target.id==='ma-reason')s.examState.reason=e.target.value;if(e.target.id==='ma-reason'||e.target.dataset.answer!==undefined||e.target.id==='ma-explain')save();});
+root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;if(b.dataset.summary){s.lesson=b.dataset.summary;s.mode='summary';render();save();topOfTask();return;}if(b.dataset.path){pathAction(b.dataset.path);return;}if(b.dataset.bridge!==undefined){s.bridgeChoice=Number(b.dataset.bridge);s.bridgePassed=s.bridgeChoice===1;s.bridgeFeedback=s.bridgePassed?'你抓住了关键。请再用自己的话说一遍，再收起图解做题。':'再想一想：图里的动作，究竟对应题目中的哪种关系？';if(s.bridgePassed)recordFor().bridge=true;render();save();}});
+
+// One physical model: oranges in bags. Introduce equal parts only after acting.
+function picnicPages(){return [
+ q('明天去野餐！','8位小伙伴要去野餐。小狐狸给每人准备一袋橘子，每袋装得一样多。','先看看已经准备好的橘子。',[],'每位小伙伴都有自己的一袋橘子。'),
+ q('先给这3位分橘子','这3位小伙伴一共有6个橘子。请把它们平均放进3个袋子。','点一个袋子，就放进1个橘子。',[],'轮流给每人放1个，再从第一位开始。'),
+ q('另外5位，也要一样多','前3袋，每袋有2个橘子。给另外5位，也各装2个。','点空袋，放进2个橘子。',[],'每袋都要和前3袋一样多。'),
+ q('8袋，一共有多少个？','现在，每位小伙伴的袋子里都有2个橘子。','8袋橘子一共有多少个？',[],'每袋2个，一共8袋。也可以先数前3袋，再数后5袋。'),
+ q('原来，这就是“几分之几”','每袋装得一样多。我们把一袋橘子叫作一份。','“全部橘子的3/8是6个”，这6个指什么？',[
+ choice('前3份合起来的橘子',true,'对！3份共6个，先用6÷3找到1份，再乘8找到全部。'),
+ choice('每1份里的橘子',false,'每1份只有2个。6个是前3份合起来的。'),
+ choice('全部8份的橘子',false,'全部8份有16个。6个只对应前3份。')
+ ],'看橙色的3份：每份2个，合起来6个。')
+];}
+function picnicOrange(x,y,r=12){return `<g class="picnic-orange"><circle cx="${x}" cy="${y}" r="${r}" fill="#f5a338" stroke="#d88624" stroke-width="1.5"/><path d="M${x},${y-r+2} q-3,-10 8,-8 q0,8 -8,8" fill="#548d53"/><path d="M${x-r/2},${y-r/3} q-3,3 -2,6" fill="none" stroke="#ffda94" stroke-width="2.5" stroke-linecap="round"/></g>`;}
+function picnicBag(n,flat=false){const positions=[[55,87],[103,87],[55,118],[103,118],[55,149],[103,149]];
+return `<svg viewBox="0 0 160 180" aria-hidden="true" focusable="false" class="picnic-bag-svg">${flat?'<rect x="22" y="36" width="116" height="137" rx="10" fill="#fff8e9" stroke="#bd955e" stroke-width="3"/>':'<path d="M54 63 V40 C54 8 106 8 106 40 V63" fill="none" stroke="#a97b40" stroke-width="8"/><path d="M27 51 H133 L142 169 Q80 181 18 169 Z" fill="#f3d9ac" stroke="#b58a53" stroke-width="3"/><path d="M27 51 L39 66 H121 L133 51" fill="none" stroke="#d5b47e" stroke-width="2"/>'}${n===null?'<text x="80" y="123" text-anchor="middle" font-size="42" fill="#936d36">?</text>':positions.slice(0,n).map(([x,y])=>picnicOrange(x,y)).join('')}${n===0?'<path d="M66 112 H94 M80 98 V126" stroke="#a9824b" stroke-width="4" stroke-linecap="round"/>':''}</svg>`;}
+function picnicCard(i,n,{interactive=false,remove=false,flat=false,intro=false}={}){const pals=['🐻','🐰','🐼','🐨','🐯','🐸','🐱','🐶'];const known=i<3;const label=intro?'每人一袋':flat?`第${i+1}份`:`第${i+1}袋`;
+const content=`<span class="picnic-pal" aria-hidden="true">${flat?'':pals[i]}</span>${picnicBag(n,flat)}<span class="picnic-card-label">${label}</span>${!intro?`<span class="picnic-card-count" aria-label="${n}个橘子">${n}个</span>`:''}`;
+return `<div class="picnic-card ${known?'picnic-known':''} ${intro?'picnic-intro-card':''}">${interactive?`<button type="button" class="picnic-bag-button" data-picnic-bag="${i}" aria-label="给第${i+1}袋放${s.step===1?'1':'2'}个橘子" ${s.passed||(s.step===1?s.v.oranges.reduce((a,b)=>a+b,0)>=6:n>0)?'disabled':''}>${content}</button>`:`<div class="picnic-bag-static">${content}</div>`}${remove?`<button type="button" class="picnic-take" data-picnic-take="${i}" aria-label="从第${i+1}袋拿回1个橘子" ${n===0||s.passed?'disabled':''}>拿回1个</button>`:''}</div>`;
+}
+function picnicScene(){const v=s.v,k=s.step;
+if(k===0)return `<section class="picnic-world" aria-label="8位小伙伴，每人一袋橘子"><div class="picnic-scene-heading">一人一袋，每袋一样多</div><div class="picnic-eight">${Array.from({length:8},(_,i)=>picnicCard(i,null,{intro:true})).join('')}</div><p class="picnic-scene-note">任务：帮小狐狸把8袋橘子备齐。</p></section>`;
+if(k===1){const left=6-v.oranges.reduce((a,b)=>a+b,0);return `<section class="picnic-world" aria-label="把6个橘子平均分给3位小伙伴"><div class="picnic-basket"><strong>${left?'桌上还剩'+left+'个橘子':'6个橘子都放进袋子了'}</strong><div class="picnic-loose" aria-hidden="true">${Array.from({length:6},(_,i)=>`<svg viewBox="0 0 40 44" class="${i>=left?'picnic-empty-orange':''}">${picnicOrange(20,25,14)}</svg>`).join('')}</div></div><p class="picnic-instruction">${config().question}</p><div class="picnic-three">${v.oranges.map((n,i)=>picnicCard(i,n,{interactive:true,remove:true})).join('')}</div></section><div class="picnic-check"><button type="button" class="ma-secondary" data-picnic="check" ${s.passed?'disabled':''}>检查：每人一样多了吗？</button></div>`;}
+if(k===2)return `<section class="picnic-world" aria-label="给另外5位也装上2个橘子"><p class="picnic-instruction">${config().question}</p><div class="picnic-eight">${Array.from({length:8},(_,i)=>picnicCard(i,i<3||v.picnicFilled.includes(i)?2:0,{interactive:i>=3})).join('')}</div><p class="picnic-scene-note">已经装好${3+v.picnicFilled.length}袋，还剩${5-v.picnicFilled.length}袋</p></section>`;
+if(k===3)return `<section class="picnic-world" aria-label="8个袋子，每袋2个橘子"><div class="picnic-eight">${Array.from({length:8},(_,i)=>picnicCard(i,2)).join('')}</div></section><form id="picnic-total" class="picnic-total"><label for="picnic-answer">一共</label><input id="picnic-answer" inputmode="numeric" type="text" maxlength="3" value="${escape(v.picnicAnswer)}" aria-label="一共有多少个橘子" ${s.passed?'disabled':''}><span>个橘子</span><button class="ma-secondary" type="submit" ${s.passed?'disabled':''}>检查答案</button></form>${s.passed?'<div class="picnic-equations"><span>6个 ÷ 3袋 = 每袋2个</span><span>每袋2个 × 8袋 = 16个</span></div>':''}`;
+return `<section class="picnic-world" aria-label="从8袋橘子变成8等份"><div class="picnic-scene-heading">${v.picnicFlat?'1袋 → 1份，橘子的数量没变':'一袋橘子，就是一份'}</div><div class="picnic-eight picnic-fraction-view">${Array.from({length:8},(_,i)=>picnicCard(i,2,{flat:v.picnicFlat})).join('')}</div><div class="picnic-legend"><span>橙色标记：前3${v.picnicFlat?'份':'袋'}，共6个</span><span>全部：8${v.picnicFlat?'份':'袋'}，共16个</span></div>${v.picnicFlat?'<p class="picnic-fraction-sentence">前3份，是全部8份中的3份。<br>写成分数，就是 <strong>3/8</strong>。</p>':'<button class="ma-secondary" data-picnic="flatten" type="button">把每袋画成一份 →</button>'}</section>${v.picnicFlat?`<p class="ma-question">${config().question}</p><div class="ma-choices">${config().choices.map((a,i)=>`<button type="button" class="ma-choice ${s.selected===i?(s.passed?'right':'try'):''}" data-choice="${i}" ${s.passed?'disabled':''}>${a.label}</button>`).join('')}</div>`:''}`;
+}
+function picnicView(){const c=config(),labels=['认识任务','分好3袋','备齐8袋','数出全部','认识分数'],next=['看看已经准备好的橘子 →','给另外5位装袋 →','数数一共有多少 →','把故事变成分数题 →','把发现带回题目 →'];return `<main class="ma-main picnic-main"><div class="picnic-progress" aria-label="动手看懂，第${s.step+1}步，共5步"><span>🍊 野餐分橘子</span><span>第${s.step+1}步 · ${labels[s.step]}</span></div><h1>${c.title}</h1><div class="picnic-story"><span aria-hidden="true">🦊</span><p>${s.step===0?'明天，8位小伙伴要去野餐。<br>每人一袋橘子，<strong>每袋一样多。</strong>':c.line}</p></div>${picnicScene()}<div aria-live="polite">${s.feedback?`<div class="ma-feedback ${s.passed?'success':''}">${escape(s.feedback)}</div>`:''}${s.hint&&!s.passed?`<div class="ma-feedback">${c.hint}</div>`:''}</div><div class="ma-footer picnic-footer"><div>${s.step>0?'<button class="ma-link" type="button" data-act="hint">给我一点提示</button>':''}${'speechSynthesis' in window?'<button class="ma-link" type="button" data-act="speak">🔊 读给我听</button>':''}</div><button type="button" class="ma-primary" ${s.step===0?'data-picnic="start"':'data-act="next"'} ${s.step===0||s.passed?'':'disabled'}>${next[s.step]}</button></div></main>`;}
+function picnicCheck(){if(s.step!==1||s.passed)return;const a=s.v.oranges,total=a.reduce((x,y)=>x+y,0);if(total!==6)s.feedback=`桌上还有${6-total}个橘子，先把它们分完。`;else if(a.every(n=>n===2))pass('每人都分到2个！6个橘子平均分给3位，每袋就是2个。');else s.feedback=`现在三袋分别有${a.join('、')}个，还不一样多。用“拿回1个”调整，再分一分。`;render();save();}
+function picnicTotal(){if(s.step!==3||s.passed)return;const n=normalizedNumber(s.v.picnicAnswer);if(n===16)pass('备齐啦！8袋，每袋2个，一共需要16个橘子。');else if(n===6)s.feedback='6个是前3袋的橘子。还要把后面5袋也数上。';else if(n===10)s.feedback='10个是后来装的5袋。前3袋的6个也要算进去。';else s.feedback='每袋有2个，一共有8袋。你可以两个两个数。';render();save();}
+root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled||s.lesson!=='juice'||s.mode!=='play')return;
+if(b.dataset.picnic==='start'){pass('');action('next');return;}
+if(b.dataset.picnic==='check'){picnicCheck();return;}
+if(b.dataset.picnic==='flatten'){s.v.picnicFlat=true;render();save();return;}
+if(b.dataset.picnicBag!==undefined&&!s.passed){const i=Number(b.dataset.picnicBag);if(s.step===1&&i<3&&s.v.oranges.reduce((a,b)=>a+b,0)<6){s.v.oranges[i]++;s.feedback='';}if(s.step===2&&i>=3&&i<8&&!s.v.picnicFilled.includes(i)){s.v.picnicFilled.push(i);if(s.v.picnicFilled.length===5)pass('8袋都装好了，每袋都有2个橘子。');}render();save();}
+if(b.dataset.picnicTake!==undefined&&s.step===1&&!s.passed){const i=Number(b.dataset.picnicTake);if(s.v.oranges[i]>0)s.v.oranges[i]--;s.feedback='';render();save();}
+});
+root.addEventListener('input',e=>{if(e.target.id==='picnic-answer'){s.v.picnicAnswer=e.target.value;save();}});
+root.addEventListener('submit',e=>{if(e.target.id==='picnic-total'){e.preventDefault();picnicTotal();}});
+
+// A story introduces objects before quantities, then actions before symbols.
+const STORY_META={
+cookies:[
+ ['来参加饼干分享会','熊熊有4块饼干。兔兔说：“我想比熊熊多一半。”我们来帮兔兔摆好。','一块圆饼干就是1块，盘子上的名字说明是谁的。'],
+ ['先一样多，再多一半','先从点心盒给兔兔拿4块。再参照熊熊的4块，找出一半，另外拿给兔兔。','熊熊的饼干留在原盘。点选只是作参照，新饼干从点心盒拿。'],
+ ['换了比较对象，一半会变吗？','现在熊熊4块，兔兔6块。熊熊比兔兔少2块。这次把兔兔的6块当作全部。','跟谁比，就把谁的数量看作完整的一份。'],
+ ['回到试卷：一次眨眼是什么？','闭一下眼睛再睁开，算1次。下面每个圆点表示1次，比较的都是1分钟。写字次数是正常24次的3/4。','把24次分成4份，点出其中3份。'],
+ ['接好第二句话','写字18次，是看书次数的6/5。也就是说：写字有这样的6份，看书有5份。','18对应6份，先找一份，再找5份。'],
+ ['最后一句，先看跟谁比','看书15次，比玩游戏多1/2。“多的一半”按玩游戏的次数算。','把游戏画成2份，看书就是同样大的3份。']
+],
+factory:[
+ ['给运动会做同款手链','小狐狸要串彩珠手链。每条用2颗红珠、3颗黄珠、5颗蓝珠，顺序和颗数都照配方来。','图里的每个圆珠都是1颗。三种颜色都用“颗”来数。'],
+ ['先串好第一条','三个盒子各有6颗珠子。我们想把黄珠全部用完，先照配方串1条看看。','每条同时用掉2红、3黄、5蓝。'],
+ ['第二条缺什么？','第一条做完后，还剩3颗黄珠，能再串1条。那时蓝珠只有1颗，但下一条需要5颗。','先看手里有的1颗，只补缺少的部分。'],
+ ['剩下和补来的，要分开数','两条手链都做好了。黄珠刚好用完，检查红珠剩几颗、蓝珠一共补了几颗。','剩下＝原有－用掉；补来＝需要－原有。'],
+ ['把配方方法带到工地','工人也按2∶3∶5配材料。这里比的是质量：黄沙3份，一共600吨。先确定一份有多重。','600吨是黄沙的3份，不是三种材料合计10份。']
+],
+cake:[
+ ['帮小熊和小兔分蛋糕','只有这一块长方形蛋糕，厚度一样。小熊拿1份，小兔拿同样大小的3份。','蛋糕厚度相同，这里用上面的面积表示拿到多少。'],
+ ['先看整个蛋糕有几份','先把蛋糕画成4个同样大的部分。点1份给小熊，另外3份留给小兔。','小熊要的是整块的1/4。'],
+ ['斜着切，会和直着切一样吗？','从左上角切到底边的四分之一处。用纸描一块相同的三角形，翻过来拼，看看大小。','纸片只用来比面积，原蛋糕仍然只有一块。'],
+ ['让小熊真的拿到四分之一','两块相同的三角形合起来，应当铺满半块蛋糕。拖动下面的切点，让它们刚好铺到虚线。','两块占1/2，原来一块才占1/4。'],
+ ['拿走纸片，检查真正分到的蛋糕','拿走用来比较的纸片。橙色三角形给小熊，其余的一整块给小兔。','算小兔拿到多少，要用整块减去小熊的1/4。']
+],
+salt:[
+ ['帮小狐狸找回原来的重量','瓶里原来就有水和盐。现在只倒入15克盐，想知道原来的整瓶盐水有多重。','盐水的质量＝水的质量＋盐的质量。'],
+ ['只加盐，什么没有变？','点一下，把15克盐倒进去。观察水、盐和盐水总量，哪一个始终没变？','一滴水也没有加入或倒走。'],
+ ['盐占盐水的九分之一','把后来盐水的质量平均分成9份，其中盐1份。请点出剩下的水。','黄色写“盐”，蓝色写“水”。每份代表同样多的质量。'],
+ ['让前后用同一把尺','原来盐∶水是1∶11，后来是1∶8。把同样的水画成88小格：既能每11格一组，也能每8格一组。','88是画出的格数；每格的克数，下一步再求。'],
+ ['新加的15克，只对应新增3格','原来8格盐，后来11格盐，多了3格。这3格合起来，才是新加的15克。','每格一样重。调每格的克数，让3格合计15克。'],
+ ['回到加盐以前','一小格是5克。原来有88格水、8格盐。新加的3格，单独放在虚线框里。','问题问原来，所以只合计原来的水和盐。']
+],
+race:[
+ ['两辆车去同一个森林公园','两辆车从同一起点出发，走同一条24千米的路。红车全程用6小时，蓝车用8小时。','两行画的是同一段路；起点、终点和路程完全相同。'],
+ ['把一小时走的路找出来','两辆车都匀速行驶。红车的路按6小时分，蓝车的路按8小时分，每一段就是它1小时走的距离。','路一样长，分的段数越少，每段越长。'],
+ ['一起走一小时，亲眼比较','让两辆车同时走1小时。看同样时间里，各走了多少千米。','速度就是单位时间走的路程，这里看1小时。'],
+ ['先排名字，再比用时','这次问“慢车与快车的时间比”。蓝色慢车要写前面，红色快车写后面。','慢车8小时，快车6小时；按名字顺序写比。'],
+ ['换成速度，再排一次名字','这次问“快车与慢车的速度比”。先写红色快车1小时走的路，再写蓝色慢车的。','比较速度，看同样1小时走了多少；不要把全程用时抄过来。']
+],
+fold:[
+ ['折一张藏宝纸','小狐狸把长方形纸折两次。最后左上方露出的绿色部分就是藏宝区，我们要看它占原纸多少。','虚线始终标着整张原纸，折起来也不能丢掉这个比较对象。'],
+ ['先把右上角折下来','把右边贴到下边。两条橙色边原本就一样长，右侧这一块因此是正方形。','折叠不改变边长。右侧正方形的宽，就是原纸的高。'],
+ ['左条的2/7怎样用？','左条和整纸一样高。左条占原纸面积2/7，所以把宽分7份时，左条占2份。','右侧还剩5份宽。它是正方形，高也和宽一样。'],
+ ['再折左下角','左条宽2格，把左下角向上折。底部2格高的区域被盖住，绿色部分还剩多高？','原纸高5格，下面盖住2格。'],
+ ['用小方格量藏宝区','每个小方格面积一样大。点亮左上方所有绿色小格，数的是面积，不是边长。','绿色区域是2列、3行。'],
+ ['和整张原纸比','点亮的是6格。现在沿着原纸的虚线边界，把整张纸的格数也算进去。','原纸宽7格、高5格。分母要用原纸的面积。']
+],
+book:[
+ ['帮小熊安排接下来的阅读','小熊每天读得一样多。已经读了6天、200页，书还没读完。我们要帮它安排接下来几天。','图中始终是同一本书，蓝色是已读，浅色是未读。'],
+ ['同一本书，分成三段','把全书按页数平均分成3段。已经读完前2段，还没有读的是哪一段？','每段页数相同。“段”只是同一本书的不同部分。'],
+ ['先把页数算清楚','已经读的两段，合起来200页。每段一样长，全书有3段。','200页对应2段，先找1段，再找整本3段。'],
+ ['把六天也平均分开','前两段一样长，每天读得一样多，因此两段花的天数应当一样。把已经用的6天分给它们。','点一段安排1天；分错了可以拿回重分。'],
+ ['只给接下来要读的日子盖章','最后一段也要3天。前6天已经读过了，请点接下来还要读的3天。','灰色日子已经过去；从第7天开始，才是接下来。'],
+ ['“一共”和“还要”，各算哪段？','从开始到读完是“一共”；从现在到读完才是“还要”。把两种时间分别写出来。','已经6天，接下来3天。不要把两个问题填成同一个数。']
+],
+machines:[
+ ['来给数字机器装输入卡','数字卡上的数叫“输入”，机器按规则计算，屏幕显示“结果”。四台机器都要显示1，输入的数会一样吗？','这里比较的都是正数。长条只是表示数字大小，一整条标作1。'],
+ ['A机器：分三份，只留两份','A把输入平均分成3份，只取其中2份，也就是乘2/3。试试哪张输入卡能让结果变成1。','只取一部分就要够1，输入应该比1大。'],
+ ['B和C：数得出几个小段？','B除以2/5，就是数输入里有几个2/5；C除以2/3同理。要让结果都是1，输入恰好应有1个那样的小段。','尺子下的彩色小段就是除数：B是2/5，C是2/3。'],
+ ['D机器：把同一个2先分再数','先把2平均分成d份，每份是2/d。再看2里面有几个这样的份，得到的就是d。','分别试d＝1、2、3，再判断结果要是1时，d是多少。'],
+ ['输入卡，从大到小排队','四台结果都是1。现在比较输入：a＝3/2，b＝2/5，c＝2/3，d＝1。依次点击最大的、第二大的……','看数轴：越靠右，数字越大。'],
+ ['结果一起变大，顺序会变吗？','让四台机器一起改成结果2。每张输入卡也一起变成原来的2倍。观察大小顺序。','用共同结果1便于观察；共同结果变成别的正数，顺序仍相同。']
+]
+};
+function storyPages(id){return STORY_META[id].map(([title,line,hint])=>q(title,line,'',[],hint,'story'));}
+function storyState(){return s.v.story||(s.v.story={});}
+function stInput(key){return storyState().inputs?.[`${s.step}:${key}`]||'';}
+function stButton(text,key,disabled=false){return `<button class="ma-secondary" type="button" data-story-action="${key}" ${disabled||s.passed?'disabled':''}>${text}</button>`;}
+function stChoices(question,items,enabled=true){return `<p class="ma-question">${question}</p><div class="ma-choices">${items.map(([value,label])=>`<button type="button" class="ma-choice" data-story-answer="${value}" ${s.passed||!enabled?'disabled':''}>${label}</button>`).join('')}</div>`;}
+function stForm(fields,enabled=true){return `<form id="story-check" class="st-form">${fields.map(([key,label,format='number'])=>`<label class="ma-field"><span>${label}</span><input type="text" inputmode="${format==='number'?'decimal':'text'}" data-story-input="${key}" maxlength="30" value="${escape(stInput(key))}" placeholder="${format==='fraction'?'例如 2/5':format==='ratio'?'例如 2:3':'填数字'}" ${s.passed||!enabled?'disabled':''}></label>`).join('')}<button type="submit" class="ma-secondary" ${s.passed||!enabled?'disabled':''}>检查我的想法</button></form>`;}
+function stNote(text){return `<p class="st-note">${text}</p>`;}
+function stCookie(){return '<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="#dca35e" stroke="#ac7641" stroke-width="2"/><circle cx="12" cy="14" r="2.5" fill="#79533a"/><circle cx="25" cy="11" r="2.5" fill="#79533a"/><circle cx="21" cy="25" r="3" fill="#79533a"/><circle cx="10" cy="26" r="2" fill="#79533a"/><circle cx="29" cy="24" r="2" fill="#79533a"/></svg>';}
+function stDots(n,color='blue',cookie=false){return `<span class="st-dots" aria-label="${n}${cookie?'块饼干':'个'}">${Array.from({length:n},()=>`<span class="st-dot ${color}" aria-hidden="true">${cookie?stCookie():''}</span>`).join('')}</span>`;}
+function stTray(label,body,tail=''){return `<div class="st-tray"><strong>${label}</strong><div>${body}</div>${tail?`<span class="st-tray-tail">${tail}</span>`:''}</div>`;}
+function stGroups(n,size,label,color='blue'){return `<div class="st-groups">${Array.from({length:n},(_,i)=>`<div class="st-group"><small>第${i+1}份</small>${stDots(size,color)}<b>${size}次</b></div>`).join('')}</div>`;}
+function stShell(content){return `<section class="st-world" aria-label="${config().title}的操作图">${content}</section>`;}
+function storyView(){const c=config();return `<main class="ma-main picnic-main st-main"><div class="picnic-progress"><span>${lesson().icon} ${lesson().name}</span><span>第${s.step+1}步，共${pages()[s.lesson].length}步</span></div><h1>${c.title}</h1><div class="picnic-story"><span aria-hidden="true">🦊</span><p>${c.line}</p></div>${storyScene()}<div aria-live="polite">${s.feedback?`<div class="ma-feedback ${s.passed?'success':''}">${escape(s.feedback)}</div>`:''}${s.hint&&!s.passed?`<div class="ma-feedback">${c.hint}</div>`:''}</div><div class="ma-footer picnic-footer"><div>${s.step?'<button class="ma-link" type="button" data-act="hint">给我一点提示</button>':''}${'speechSynthesis' in window?'<button class="ma-link" type="button" data-act="speak">🔊 读给我听</button>':''}</div><button class="ma-primary" type="button" ${s.step===0?'data-story-action="start"':'data-act="next"'} ${s.step===0||s.passed?'':'disabled'}>${s.step===0?'我明白任务了，开始动手 →':s.step===pages()[s.lesson].length-1?'把发现带回题目 →':'下一小步 →'}</button></div></main>`;}
+function storyScene(){return ({cookies:cookieScene,factory:beadScene,cake:cakeStoryScene,salt:saltStoryScene,race:raceStoryScene,fold:foldStoryScene,book:bookStoryScene,machines:machineStoryScene})[s.lesson]();}
+
+function cookieScene(){const v=storyState(),k=s.step;
+if(k<3){const rabbit=v.extra?6:v.same?4:0;
+const bear=k===1?`<div class="st-dots">${Array.from({length:4},(_,i)=>`<button type="button" class="st-cookie-pick ${(v.half||[]).includes(i)?'picked':''}" data-story-action="half:${i}" aria-label="选熊熊的第${i+1}块作参照" ${!v.same||v.extra||s.passed?'disabled':''}>${stCookie()}</button>`).join('')}</div>`:stDots(4,'gold',true);
+return stShell(`<div class="st-two">${stTray('🐻 熊熊',bear,'一直保留4块')}${stTray('🐰 兔兔',stDots(k===2?6:rabbit,'gold',true),k===0?'等待你帮它准备':`${k===2?6:rabbit}块`)}</div>${stNote('一块圆饼干＝1块。名字和盘子始终一一对应。')}${k===1?`<div class="st-actions">${stButton('从点心盒拿4块给兔兔','same',!!v.same)}${stButton('参照选中的一半，再给兔兔添饼干','extra',!v.same||!!v.extra)}</div>${stNote('点选熊熊盘里的一半作参照，饼干仍留在原盘。')}`:k===2?`${stButton('把兔兔的6块，每2块圈成一组','cookieGroups',!!v.groups)}${v.groups?`<div class="st-groups">${[1,2,3].map(i=>stTray(`第${i}组`,stDots(2,'gold',true))).join('')}</div>${stNote('少掉的2块，是兔兔3组中的1组。')}`:''}`:''}`)+(k===2?stChoices('熊熊比兔兔少几分之几？',[['half','1/2'],['third','1/3'],['two','2/3']],!!v.groups):'');}
+if(k===3)return stShell(`<h2>👁 正常：1分钟24次</h2>${stNote('1个圆点＝1次眨眼。每框6次，共4框。点选其中3框给“写字”。')}<div class="st-four">${[0,1,2,3].map(i=>`<button type="button" class="st-select-group ${(v.writeGroups||[]).includes(i)?'picked':''}" data-story-action="write:${i}" ${s.passed?'disabled':''}><b>第${i+1}份</b>${stDots(6)}<span>6次</span></button>`).join('')}</div>`)+stForm([['writing','写字时每分钟眨眼几次？']],(v.writeGroups||[]).length===3);
+if(k===4)return stShell(`${stButton('把写字的18次，平均分成6份','readingSplit',!!v.readingSplit)}${v.readingSplit?`${stTray('✏️ 写字：6份，共18次',stGroups(6,3,''))}${stTray('📖 看书：同样大的5份',stGroups(5,3,''))}`:stTray('✏️ 写字：已知18次',stDots(18))}${stNote('两行的每一份一样大。写字比看书多了这样的1份。')}`)+stForm([['reading','看书时每分钟眨眼几次？']],!!v.readingSplit);
+return stShell(`${stTray('📖 看书：15次',stDots(15))}${stButton('把游戏画成2份，看书画成3份','gameParts',!!v.gameParts)}${v.gameParts?`${stTray('🎮 游戏：2份',stGroups(2,5,''))}${stTray('📖 看书：3份',stGroups(3,5,''))}${stNote('多出来的1份，是游戏2份的一半。')}`:''}`)+stForm([['gaming','玩游戏时每分钟眨眼几次？']],!!v.gameParts);
+}
+function beadFinished(){const m=storyState().made||0;if(!m)return '';return `<div class="st-finished"><p>用掉的珠子，串在这里：</p>${Array.from({length:m},(_,j)=>svg(140,140,'已经做好的第'+(j+1)+'条手链',`<circle cx="70" cy="62" r="43" fill="none" stroke="#adad92" stroke-width="2"/>${Array.from({length:10},(_,i)=>{const angle=i*Math.PI/5;return `<circle cx="${70+43*Math.cos(angle)}" cy="${62+43*Math.sin(angle)}" r="9" fill="${i<2?'#d78a76':i<5?'#e4b85b':'#70a5bf'}" stroke="white" stroke-width="1.5"/>`;}).join('')}<text x="70" y="69" text-anchor="middle" font-size="17" fill="#49634e">第${j+1}条</text>`)).join('')}</div>`;}
+function beadStock(){const v=storyState(),m=v.made||0,x=v.blueExtra||0;return `<div class="st-stock">${[['红珠','red',6-2*m],['黄珠','gold',6-3*m],['蓝珠','blue',6+x-5*m]].map(([label,color,n])=>stTray(label,stDots(n,color),`盒里剩${n}颗`)).join('')}</div>${beadFinished()}`;}
+function beadRecipe(){return `<div class="st-recipe">${[['红珠','red',2],['黄珠','gold',3],['蓝珠','blue',5]].map(([name,color,n])=>stTray(name,stDots(n,color),`${n}颗`)).join('')}</div>`;}
+function beadScene(){const v=storyState(),k=s.step;if(k===0)return stShell(`<h2>每串1条，都要用这些珠子</h2>${beadRecipe()}${stNote('1个圆珠＝1颗。红、黄、蓝的颗数比是2∶3∶5。')}`);
+if(k===1)return stShell(`<details open><summary>一条手链的配方</summary>${beadRecipe()}</details><h2>储物盒：三种珠子原来各6颗</h2>${beadStock()}${stButton('照配方串好第1条','make1',v.made>=1)}${v.made>=1?stNote('第1条做好：用了2红、3黄、5蓝。黄珠还剩3颗，正好够下一条。'):''}`);
+if(k===2)return stShell(`${beadStock()}<h2>${v.made===2?'第二条使用了5颗蓝珠':'下一条需要5颗蓝珠'}</h2><div class="st-needed">${Array.from({length:5},(_,i)=>`<span class="st-dot blue ${i>=1+(v.blueExtra||0)?'missing':''}" aria-hidden="true"></span>`).join('')}</div>${stNote(`已补${v.blueExtra||0}颗蓝珠。空心位置表示还缺的珠子。`)}<div class="st-actions">${stButton('补1颗蓝珠','bluePlus',(v.blueExtra||0)>=6)}${stButton('退回1颗','blueMinus',!(v.blueExtra||0))}${stButton('检查后串第2条','make2')}</div>`);
+if(k===3)return stShell(`<h2>已完成2条，黄珠正好用完</h2>${beadStock()}${stTray('从外面补来的蓝珠',stDots(v.blueExtra||0,'blue'))}`)+stForm([['left','红珠还剩几颗？'],['extra','蓝珠一共补了几颗？']]);
+return stShell(`<h2>新任务：黄沙3份，共600吨</h2><div class="st-three">${[1,2,3].map(i=>stTray(`黄沙第${i}份`,'<span class="st-sack">黄沙</span>','? 吨')).join('')}</div>${stNote('600吨黄沙平均分成3份。每个框代表同样重的一份，用“吨”表示质量。')}`)+stForm([['unit','每份黄沙有多少吨？']]);
+}
+function cakeDiagram(foot=25,copy=false,quarters=false,given=false){const x=40,y=25,w=480,h=220,b=w*foot/100;return svg(560,285,'长方形蛋糕俯视图，纸片标成浅黄色',`<rect x="40" y="36" width="480" height="220" rx="8" fill="#d9b980"/><rect x="40" y="25" width="480" height="220" rx="6" fill="#fff2d7" stroke="#98734d" stroke-width="2"/>${quarters?Array.from({length:4},(_,i)=>`<rect x="${x+i*w/4}" y="${y}" width="120" height="220" fill="${given&&i===0?'#f1b75b':given?'#c9dfc2':'#fff2d7'}" stroke="#bd9c70"/><text x="${x+(i+.5)*w/4}" y="145" text-anchor="middle" fill="#526756" font-size="24">${given?(i===0?'小熊':'小兔'):'1份'}</text>`).join(''):`<polygon points="${x},${y} ${x},${y+h} ${x+b},${y+h}" fill="#eeb05e" stroke="#b57b37" stroke-width="2"/>${copy?`<polygon points="${x},${y} ${x+b},${y} ${x+b},${y+h}" fill="#f8e69c" stroke="#ba9e4f" stroke-dasharray="5 4"/><text x="${x+b*.7}" y="75" text-anchor="middle" fill="#776128" font-size="17">纸片</text>`:''}<text x="280" y="18" text-anchor="middle" font-size="15" fill="#477e68">一半的位置</text><path d="M280 25 V245" stroke="#477e68" stroke-dasharray="7 5" stroke-width="2"/><circle cx="${x+b}" cy="${y+h}" r="7" fill="#206e5c"/><text x="${x+b}" y="277" text-anchor="middle" fill="#206e5c" font-size="18">切点</text>`}`);}
+function cakeStoryScene(){const v=storyState(),k=s.step;if(k===0)return stShell(`${cakeDiagram(25,false,true,false)}<div class="st-two">${stTray('🐻 小熊','1份')}${stTray('🐰 小兔','同样大小的3份')}</div>${stNote('图是从上面看蛋糕。先弄清楚各拿多少，再研究怎么切。')}`);
+if(k===1)return stShell(`${cakeDiagram(25,false,true,!!v.bearGiven)}${stButton('把其中1份分给小熊','bearPiece',!!v.bearGiven)}${v.bearGiven?stNote('小熊拿4份中的1份，也就是整块的1/4；小兔拿另外3份。'):''}`);
+if(k===2)return stShell(`${cakeDiagram(25,!!v.copy)}${stButton('描一张同样大的纸片，翻过来拼','copy',!!v.copy)}${v.copy?stNote('橙色是蛋糕，浅黄是纸片。两块拼在一起才铺满左边1/4，一块只有它的一半。'):stNote('切点在底边的1/4处。先别把它当作面积的1/4。')}`)+stChoices('原来的三角形占整块多少？',[['quarter','1/4'],['eighth','1/8'],['half','1/2']],!!v.copy);
+if(k===3){const foot=v.foot??25;return stShell(`${cakeDiagram(foot,true)}<label class="st-slider">移动底边上的切点<input type="range" id="story-cut" min="5" max="95" step="5" value="${foot}" ${s.passed?'disabled':''}></label>${stNote(`<span id="story-cut-value">切点在底边的${foot}%。</span>浅黄色是描出的纸片，绿色虚线标着半块蛋糕。`)}`)+`<div class="st-actions">${stButton('检查：两块是否铺满半块蛋糕','cakeCheck')}</div>`;}
+return stShell(`${cakeDiagram(50,!v.copyRemoved)}${stButton('收起纸片，只看原来的蛋糕','removeCopy',!!v.copyRemoved)}${v.copyRemoved?stNote('小熊的三角形占1/4。其余部分全部给小兔。'):''}`)+stForm([['rabbit','小兔占整块蛋糕的几分之几？','fraction']],!!v.copyRemoved);
+}
+function saltBottle(){return svg(350,200,'瓶中的盐水由水和盐组成',`<path d="M137 15 H213 V55 Q260 65 260 105 V178 Q175 198 90 178 V105 Q90 65 137 55 Z" fill="#e7f4f4" stroke="#60928e" stroke-width="4"/><path d="M94 110 H256 V175 Q175 191 94 175 Z" fill="#a9d2de"/><text x="175" y="149" text-anchor="middle" font-size="24" fill="#325964">盐水</text><text x="175" y="178" text-anchor="middle" font-size="16" fill="#325964">水 ＋ 盐</text>`);}
+function saltSquares(n,kind='water'){return `<span class="st-mass-cells">${Array.from({length:n},()=>`<i class="${kind}" aria-hidden="true"></i>`).join('')}</span>`;}
+function saltStoryScene(){const v=storyState(),k=s.step;
+if(k===0)return stShell(`${saltBottle()}<div class="st-two">${stTray('原来就有','💧 水 ＋ 🧂 盐')}${stTray('只准备加进去','🧂 15克盐')}</div>${stNote('盐已经溶在水里。下面研究质量，不用液面的高低当重量。')}`);
+if(k===1)return stShell(`${saltBottle()}${stButton('倒入15克盐','addSalt',!!v.added)}<div class="st-three">${stTray('水的质量',v.added?'没加、没倒，保持原样':'原来那份水')}${stTray('盐的质量',v.added?'原来的盐＋15克':'原来就有盐')}${stTray('盐水总质量',v.added?'原来整瓶＋15克':'水和盐合起来')}</div>`)+stChoices('可以连接前后两次比较的，是哪个不变的量？',[['water','水的质量'],['salt','盐的质量'],['all','盐水的总质量']],!!v.added);
+if(k===2)return stShell(`<h2>后来盐水共9份：1份盐，其余是水</h2><div class="st-nine">${Array.from({length:9},(_,i)=>`<button class="st-mass-part ${i?'water':'salt'} ${(v.waterSelected||[]).includes(i)?'picked':''}" type="button" data-story-action="water:${i}" ${s.passed?'disabled':''}>${i?'💧 水':'🧂 盐'}<small>同样重的1份</small></button>`).join('')}</div>${stNote(`点水：已选${(v.waterSelected||[]).length}份。每个框代表同样多的质量。`)}${s.passed?stNote('盐1份，水8份，所以后来盐∶水＝1∶8。'):''}`);
+if(k===3){const g=v.group||11,groups=88/g,seen=v.groupsSeen||[];return stShell(`<div class="st-actions">${stButton('原来：每11格水配1格盐','group:11')}${stButton('后来：每8格水配1格盐','group:8')}</div><h2>同一份水，都是88小格</h2><div class="st-water-groups">${Array.from({length:groups},(_,i)=>`<div><small>第${i+1}组</small>${saltSquares(g)}</div>`).join('')}</div>${stNote(`现在分成${groups}组水，每组配1格盐，所以配${groups}格盐。`)}<div class="st-two">${stTray('原来的盐',seen.includes(11)?saltSquares(8,'salt'):'先点“原来”观察',seen.includes(11)?'8格':'')}${stTray('后来的盐',seen.includes(8)?saltSquares(11,'salt'):'再点“后来”观察',seen.includes(8)?'11格':'')}</div>${stNote('选88格，因为11×8＝88。每小格代表同样多的质量；每格多少克，下一步再求。')}`)+stForm([['added','后来比原来多了几格盐？']],seen.includes(11)&&seen.includes(8));}
+if(k===4){const gram=v.gram||1;return stShell(`<h2>只有这3格，是新加的15克盐</h2><div class="st-three">${[1,2,3].map(i=>stTray(`新增第${i}格`,`🧂 ${gram}克`)).join('')}</div><p class="st-big">现在合计：${gram*3}克</p><div class="st-actions">${stButton('每格增加1克','gramPlus',gram>=15)}${stButton('每格减少1克','gramMinus',gram<=1)}${stButton('检查：3格合起来是15克吗','gramCheck')}</div>`);}
+return stShell(`<div class="st-original-mass"><h2>加盐以前：要计算这一部分</h2>${stTray('水：88格',saltSquares(88),'每格5克')}${stTray('原来的盐：8格',saltSquares(8,'salt'),'每格5克')}</div><div class="st-new-mass">新加的3格盐，留在计算范围外：${saltSquares(3,'salt')}</div>`)+stForm([['original','原来的水和盐合起来多少克？']]);
+}
+function raceDiagram(hour=0,split=false){return `<div class="st-road-map">${[['红车',6,4,'red'],['蓝车',8,3,'blue']].map(([name,t,speed,color])=>`<div class="st-road"><div class="st-road-head"><strong>${name}</strong><span>${hour?'同样经过1小时':'全程用'+t+'小时'}</span></div>${split?`<div class="st-hour-parts ${color}" style="grid-template-columns:repeat(${t},1fr)">${Array.from({length:t},()=>'<span>1小时</span>').join('')}</div>`:''}<div class="st-road-track"><span class="st-car ${color}" style="left:${hour*speed/24*100}%"><svg viewBox="0 0 48 32" aria-hidden="true"><path d="M3 13 H11 L17 4 H31 L37 13 H45 V25 H3 Z" fill="currentColor" stroke="white" stroke-width="1.5"/><path d="M18 7 H29 L33 13 H14 Z" fill="#dcedf1"/><circle cx="12" cy="26" r="5" fill="#4a5d59"/><circle cx="36" cy="26" r="5" fill="#4a5d59"/></svg></span></div><div class="st-road-ends"><span>起点 0</span><span>公园 24千米</span></div>${hour?`<p class="st-road-distance">${name}1小时走${speed}千米</p>`:''}</div>`).join('')}${stNote('两行是同样长的路。每个小刻度间隔代表1千米。')}</div>`;}
+function raceStoryScene(){const v=storyState(),k=s.step;if(k===0)return stShell(`${raceDiagram()}${stNote('用24千米作这次练习的路程，帮助我们把时间和距离画出来。')}`);
+if(k===1)return stShell(`${raceDiagram(0,!!v.split)}${stButton('把两条路分别按6小时、8小时分开','roadSplit',!!v.split)}${v.split?stNote('上面的红长段每段4千米；下面的蓝短段每段3千米。每段都对应1小时。'):''}`)+stChoices('同样1小时，哪辆车走得更多？',[['red','红车'],['blue','蓝车'],['same','一样多']],!!v.split);
+if(k===2)return stShell(`${raceDiagram(v.hour||0,true)}${stButton('让两辆车同时走1小时','driveBoth',!!v.hour)}`)+stForm([['fast','红车1小时走几千米？'],['slow','蓝车1小时走几千米？']],!!v.hour);
+if(k===3)return stShell(`<div class="st-ratio-row">${stTray('先：蓝色慢车','8小时')}<b>∶</b>${stTray('后：红色快车','6小时')}</div>${stNote('这里比的是走完全程用的时间。时间越少，车越快。')}`)+stForm([['time','慢车∶快车的时间比','ratio']]);
+return stShell(`<div class="st-ratio-row">${stTray('先：红色快车','1小时走4千米')}<b>∶</b>${stTray('后：蓝色慢车','1小时走3千米')}</div>${stNote('这次比的是同样时间走多远。快车要写在前面。')}`)+stForm([['speed','快车∶慢车的速度比','ratio']]);
+}
+function foldDiagram(first=false,columns=false,second=false,grid=false){const x=50,y=30,u=43,w=7*u,h=5*u;return svg(420,310,'虚线标原纸，左上绿色标藏宝区域',`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#f8f4e8" stroke="#728879" stroke-width="2" stroke-dasharray="7 4"/>${first?`<rect x="${x}" y="${y}" width="${2*u}" height="${second?3*u:h}" fill="#acd4b1"/><path d="M${x+2*u} ${y} L${x+2*u} ${y+h} L${x+w} ${y+h} Z" fill="#e7c78c" stroke="#9f8658" stroke-width="2"/><path d="M${x+w} ${y} V${y+h} H${x+2*u}" fill="none" stroke="#d08b37" stroke-width="4"/>${second?`<path d="M${x} ${y+3*u} H${x+2*u} V${y+h} Z" fill="#d5b57e" stroke="#a88a5b" stroke-width="2"/><path d="M${x} ${y+3*u} V${y+h} H${x+2*u}" stroke="#967548" fill="none" stroke-dasharray="5 4"/>`:''}`:''}${columns||grid?Array.from({length:8},(_,i)=>`<path d="M${x+i*u} ${y} V${y+h}" stroke="#718a78" stroke-width="1" opacity=".7"/>`).join(''):''}${grid?Array.from({length:6},(_,i)=>`<path d="M${x} ${y+i*u} H${x+w}" stroke="#718a78" stroke-width="1" opacity=".7"/>`).join(''):''}${columns?`<text x="${x+u}" y="${y+h+30}" text-anchor="middle" font-size="18" fill="#376a48">左条2份宽</text><text x="${x+4.5*u}" y="${y+h+30}" text-anchor="middle" font-size="18" fill="#94672f">右侧剩下的宽</text>`:''}<text x="210" y="300" text-anchor="middle" font-size="16" fill="#526c59">虚线包住的范围，始终是原来的整张纸</text>`);}
+function foldStoryScene(){const v=storyState(),k=s.step;if(k===0)return stShell(`${foldDiagram()}${stNote('先认识这张完整长方形纸，再按顺序折。藏宝区在第二次折好后出现。')}`);
+if(k===1)return stShell(`${foldDiagram(!!v.first)}${stButton('把右上角折下，让右边贴到底边','fold1',!!v.first)}${v.first?stNote('右边这条边折过去，贴在右侧底边上。两条橙色边一样长。'):''}`)+stChoices('右侧这块，宽和原纸的高是什么关系？',[['equal','一样长，所以右侧是正方形'],['seven','原纸一定也是正方形'],['short','宽一定比高短']],!!v.first);
+if(k===2)return stShell(`${foldDiagram(true,!!v.columns)}${stButton('把整张纸的宽分成7份','columns',!!v.columns)}${stNote('左条占2份宽，右边剩下的宽正好是原纸的高。图中的“格”是帮助比较的长度单位。')}`)+stForm([['height','原纸的高相当于几格？']],!!v.columns);
+if(k===3)return stShell(`${foldDiagram(true,true,!!v.second)}${stButton('把左下角向上折，盖住下面2格高','fold2',!!v.second)}${stNote('原纸高5格，左下折起的区域高2格。绿色部分在上方。')}`)+stForm([['shadeHeight','绿色部分还剩几格高？']],!!v.second);
+if(k===4)return stShell(`${stNote('沿着刚才的原纸边界，铺上同样大的小方格。下面就是同一张原纸：7列、5行。点左上方的绿色小格。')}<div class="st-paper-cells">${Array.from({length:35},(_,i)=>{const green=i%7<2&&Math.floor(i/7)<3;return `<button type="button" class="${green?'green':'covered'} ${(v.cells||[]).includes(i)?'picked':''}" data-story-action="cell:${i}" aria-label="第${Math.floor(i/7)+1}行第${i%7+1}列${green?'绿色':'非阴影'}小格" ${s.passed?'disabled':''}>${(v.cells||[]).includes(i)?'★':''}</button>`;}).join('')}</div>${stNote(`点亮了${(v.cells||[]).length}个绿色小格。每格代表同样大的面积。`)}`);
+return stShell(`${foldDiagram(true,true,true,true)}${stNote('绿色是2列×3行；原纸是7列×5行。把面积分别数完整。')}`)+stForm([['whole','原纸一共有多少小格？'],['fraction','绿色占原纸的几分之几？','fraction']]);
+}
+function bookPicture(selectable=false){return `<div class="st-book"><div class="st-book-title">📖 同一本故事书 · 平均分成3段</div><div class="st-three">${[0,1,2].map(i=>`${selectable?`<button type="button" data-story-action="bookPart:${i}" ${s.passed?'disabled':''}`:'<div'} class="st-book-part ${i<2?'read':'unread'}"><b>第${i+1}段</b><span class="st-page-lines" aria-hidden="true"></span><strong>${i<2?'已经读完':'还没读'}</strong>${selectable?'</button>':'</div>'}`).join('')}</div></div>`;}
+function bookCalendar(){const v=storyState(),active=s.step===4;return `<div class="st-calendar">${Array.from({length:9},(_,i)=>`<${active?'button':'div'} ${active?`type="button" data-story-action="day:${i}" ${s.passed?'disabled':''}`:''} class="st-day-card ${i<6?'past':'future'} ${(v.future||[]).includes(i)?'picked':''}"><b>第${i+1}天</b><span>${i<6?'已读过':(v.future||[]).includes(i)?'✓ 接下来':'还要读'}</span></${active?'button':'div'}>`).join('')}</div>`;}
+function bookStoryScene(){const v=storyState(),k=s.step;if(k===0)return stShell(`${bookPicture()}${stNote('这是同一本书，按页数平均分成3段；前2段已经读完，最后1段还没读。')}`);
+if(k===1)return stShell(`${bookPicture(true)}${stNote('点一下接下来要读的那一段。')}`);
+if(k===2)return stShell(`${bookPicture()}<div class="st-two">${stTray('前两段合起来','200页')}${stTray('整本书','同样长的3段')}</div>`)+stForm([['pagesPart','每段有多少页？'],['pagesWhole','整本书有多少页？']]);
+if(k===3){const a=v.days||[0,0],left=6-a[0]-a[1];return stShell(`<h2>已经用掉6天，还没分配的：${left}天</h2><div class="st-two">${[0,1].map(i=>stTray(`已读的第${i+1}段`,`${Array.from({length:a[i]},()=>'<span class="st-day-token">1天</span>').join('')}<div class="st-actions">${stButton('给这段安排1天',`assign:${i}`,left<=0)}${stButton('拿回1天',`unassign:${i}`,!a[i])}</div>`,`${a[i]}天`)).join('')}</div>`)+`<div class="st-actions">${stButton('检查：两段用时一样吗','daysCheck')}</div>`;}
+if(k===4)return stShell(`${bookCalendar()}${stNote('前6天已用过。要盖章的是第7、8、9天。')}`);
+return stShell(`${bookCalendar()}<div class="st-two">${stTray('已经用过','第1天到第6天')}${stTray('接下来还要','第7天到第9天')}</div>`)+stForm([['total','从开始到读完，一共几天？'],['remaining','从现在到读完，还要几天？']]);
+}
+function stFraction(n){for(let d=1;d<=100;d++){const a=Math.round(n*d);if(Math.abs(a/d-n)<1e-8)return d===1?String(a):a+'/'+d;}return String(n);}
+function machineLane(name,rule,input,output){return `<div class="st-machine-lane"><div><small>输入卡 ${name}</small><strong>${input}</strong></div><span aria-hidden="true">→</span><div class="st-machine-box">🤖<b>${rule}</b></div><span aria-hidden="true">→</span><div><small>结果屏幕</small><strong>${output}</strong></div></div>`;}
+function machineRuler(markers=[]){return svg(550,130,'数字大小的尺子，位置越靠右数字越大',`<path d="M35 82 H515" stroke="#657b6b" stroke-width="3"/>${[0,.5,1,1.5,2].map(n=>`<path d="M${35+n*240} 76 V88" stroke="#657b6b"/><text x="${35+n*240}" y="113" text-anchor="middle" font-size="18" fill="#526b58">${n}</text>`).join('')}${markers.map(([name,n,color])=>`<circle cx="${35+n*240}" cy="82" r="6" fill="${color}"/><text x="${35+n*240}" y="${name==='c'?38:60}" text-anchor="middle" font-size="18" fill="${color}">${name}=${n===1.5?'3/2':n===2/3?'2/3':n===.4?'2/5':n}</text>`).join('')}`);}
+function machineStoryScene(){const v=storyState(),k=s.step;
+if(k===0)return stShell(`${machineLane('a','× 2/3','?','1')}<div class="st-three">${stTray('输入','把数字卡送进去')}${stTray('规则','按机器上的算式计算')}${stTray('结果','看屏幕亮出的数')}</div>${stNote('每台机器的规则不同。这一关先试共同结果1，只比较正数。')}`);
+if(k===1){const a=v.a;return stShell(`${machineLane('a','× 2/3',a??'?',a?stFraction(a*2/3):'?')}${machineRuler(a?[['a',a,'#b77e35']]:[])}${stNote('输入分3份，保留2份。目标结果是1。')}<div class="st-actions">${[.5,1,1.5,2].map(n=>stButton(`输入${n===1.5?'3/2（1又1/2）':n}`,`a:${n}`)).join('')}${stButton('检查A是否得到1','aCheck',a===undefined)}</div>`);}
+if(k===2)return stShell(`${stTray('一整条表示数字1',`<div class="st-unit-ruler"><span style="width:40%">2/5</span></div>${stNote('B的小段长2/5。输入恰好1个这样的小段，除完就是1。')}`)}${machineLane('b','÷ 2/5',v.b!==undefined?stFraction(v.b):'?',v.b!==undefined?stFraction(v.b/(2/5)):'?')}<div class="st-actions">${['2/5','1','5/2'].map(n=>stButton(`B输入${n}`,`b:${n}`)).join('')}</div>${stTray('一整条仍然表示数字1','<div class="st-unit-ruler"><span style="width:66.6667%">2/3</span></div>')}${machineLane('c','÷ 2/3',v.c!==undefined?stFraction(v.c):'?',v.c!==undefined?stFraction(v.c/(2/3)):'?')}<div class="st-actions">${['2/3','1','3/2'].map(n=>stButton(`C输入${n}`,`c:${n}`)).join('')}${stButton('检查B和C是否都得到1','bcCheck')}</div>`);
+if(k===3){const d=v.d||1;return stShell(`<h2>固定的数字2，分成${d}份</h2><div class="st-split-two">${Array.from({length:d},()=>`<span>一份：2/${d}</span>`).join('')}</div>${stNote(`2 ÷ (2/${d}) ＝ ${d}，因为2里面有${d}个这样的份。`)}<div class="st-actions">${[1,2,3].map(n=>stButton(`试d＝${n}`,`d:${n}`)).join('')}</div>${stNote(`已经试过：${(v.dSeen||[]).join('、')||'还没试'}`)}`)+stForm([['d','若结果要是1，d应是多少？']],(v.dSeen||[]).length===3);}
+if(k===4){const order=v.order||[];return stShell(`${machineRuler([['a',1.5,'#b27c35'],['b',.4,'#4b8b9c'],['c',2/3,'#5e9866'],['d',1,'#8c78a3']])}<p class="st-big">${order.length?order.join(' ＞ '):'从最大的开始，依次点击输入卡'}</p><div class="st-actions">${[['b','2/5'],['a','3/2'],['d','1'],['c','2/3']].map(([letter,value])=>stButton(`${letter}＝${value}`,`order:${letter}`,order.includes(letter))).join('')}${stButton('撤回上一个','orderUndo',!order.length)}</div>`);}
+const common=v.common||1;return stShell(`<div class="st-actions">${stButton('把共同结果变成2','common:2')}${stButton('再试共同结果3','common:3')}</div><h2>共同结果：${common}</h2><div class="st-four">${[['a',`${common*3}/2`],['d',`${common}`],['c',`${common*2}/3`],['b',`${common*2}/5`]].map(([letter,value])=>stTray(`输入${letter}`,value)).join('')}</div>${stNote('输入的大小一起按相同比例变化。只要共同结果是正数，大小顺序保持一致。')}`)+stChoices('四台机器的共同结果变为2以后，输入的顺序是？',[['same','还是a＞d＞c＞b'],['reverse','变成b＞c＞d＞a'],['equal','变得一样大']],common>1);
+}
+function storyFail(text){s.feedback=text;}
+function storyUpdate(){render();save();}
+function storyAction(key){if(s.mode!=='play'||!STORY_META[s.lesson]||s.passed)return;const v=storyState(),k=s.step,[act,arg]=key.split(':');s.feedback='';
+if(act==='start'&&k===0){pass('');action('next');return;}
+if(s.lesson==='cookies'){
+ if(k===1&&act==='same')v.same=true;
+ if(k===1&&act==='half'&&v.same&&!v.extra){v.half=(v.half||[]).includes(+arg)?v.half.filter(x=>x!==+arg):[...(v.half||[]),+arg];s.feedback='';}
+ if(k===1&&act==='extra'){if((v.half||[]).length===2){v.extra=true;pass('熊熊还是4块。兔兔先有4块，再从点心盒添2块，一共6块。');}else storyFail('熊熊有4块，它的一半是2块。先点选2块作参照。');}
+ if(k===2&&act==='cookieGroups')v.groups=true;
+ if(k===3&&act==='write'){v.writeGroups=(v.writeGroups||[]).includes(+arg)?v.writeGroups.filter(x=>x!==+arg):[...(v.writeGroups||[]),+arg];s.feedback='';}
+ if(k===4&&act==='readingSplit')v.readingSplit=true;
+ if(k===5&&act==='gameParts')v.gameParts=true;
+}
+if(s.lesson==='factory'){
+ if(k===1&&act==='make1'&&!v.made){v.made=1;pass('第一条用掉2红、3黄、5蓝。盒里现在是4红、3黄、1蓝。');}
+ if(k===2&&act==='bluePlus')v.blueExtra=Math.min(6,(v.blueExtra||0)+1);
+ if(k===2&&act==='blueMinus')v.blueExtra=Math.max(0,(v.blueExtra||0)-1);
+ if(k===2&&act==='make2'){const n=v.blueExtra||0;if(n===4){v.made=2;pass('只补4颗就够了！第二条做好，红珠剩2颗，黄珠和蓝珠都用完。');}else storyFail(n<4?`下一条要5颗蓝珠，现在只有${1+n}颗，还不够。`:`现在有${1+n}颗蓝珠，超过需要的5颗。退回多补的，只补缺少的部分。`);}
+}
+if(s.lesson==='cake'){
+ if(k===1&&act==='bearPiece'){v.bearGiven=true;pass('整个蛋糕是4份，小熊拿1份，占1/4。');}
+ if(k===2&&act==='copy')v.copy=true;
+ if(k===3&&act==='cakeCheck'){if((v.foot??25)===50)pass('拼成的长方形正好占半块蛋糕；原来的三角形只有它一半，占整块1/4。');else storyFail((v.foot??25)<50?'两块还没铺到中间虚线，再向右移一点。':'两块超过了中间虚线，向左移一点。');}
+ if(k===4&&act==='removeCopy')v.copyRemoved=true;
+}
+if(s.lesson==='salt'){
+ if(k===1&&act==='addSalt')v.added=true;
+ if(k===2&&act==='water'){if(+arg===0)storyFail('这份标着“盐”。我们要找另外的水。');else{v.waterSelected=(v.waterSelected||[]).includes(+arg)?v.waterSelected.filter(x=>x!==+arg):[...(v.waterSelected||[]),+arg];s.feedback='';if(v.waterSelected.length===8)pass('水有8份，盐有1份。盐占盐水1/9，换成盐∶水就是1∶8。');}}
+ if(k===3&&act==='group'){v.group=+arg;v.groupsSeen=[...new Set([...(v.groupsSeen||[]),+arg])];}
+ if(k===4&&act==='gramPlus')v.gram=Math.min(15,(v.gram||1)+1);
+ if(k===4&&act==='gramMinus')v.gram=Math.max(1,(v.gram||1)-1);
+ if(k===4&&act==='gramCheck'){if(v.gram===5)pass('每格5克，新增3格正好15克。同样大小的水格和盐格，也各代表5克。');else storyFail(`现在3格合计${(v.gram||1)*3}克，目标是15克。调整的是每格的重量。`);}
+}
+if(s.lesson==='race'){
+ if(k===1&&act==='roadSplit')v.split=true;
+ if(k===2&&act==='driveBoth')v.hour=1;
+}
+if(s.lesson==='fold'){
+ if(k===1&&act==='fold1')v.first=true;
+ if(k===2&&act==='columns')v.columns=true;
+ if(k===3&&act==='fold2')v.second=true;
+ if(k===4&&act==='cell'){const i=+arg;if(i%7<2&&Math.floor(i/7)<3){v.cells=[...new Set([...(v.cells||[]),i])];s.feedback='';if(v.cells.length===6)pass('绿色区域2列、3行，共6小格。下一步还要和原纸全部面积比较。');}else storyFail('这一格不在左上方的绿色区域里。只点露出的绿色小格。');}
+}
+if(s.lesson==='book'){
+ if(k===1&&act==='bookPart'){if(+arg===2)pass('是最后一段！它是同一本书的1/3，还没有读。');else storyFail('这一段已经读过。题目问接下来，请找浅色的未读部分。');}
+ if(k===3&&(act==='assign'||act==='unassign')){v.days=v.days||[0,0];if(act==='assign'&&v.days[0]+v.days[1]<6)v.days[+arg]++;if(act==='unassign'&&v.days[+arg]>0)v.days[+arg]--;s.feedback='';}
+ if(k===3&&act==='daysCheck'){const a=v.days||[0,0];if(a[0]===3&&a[1]===3)pass('6天分给两段，每段3天。最后一段同样长，也要3天。');else storyFail(a[0]+a[1]<6?'还有已经用过的天数没分完。':`两段现在分到${a[0]}天和${a[1]}天，还不一样。拿回几天调整。`);}
+ if(k===4&&act==='day'){const i=+arg;if(i<6)storyFail('这一天已经读过了。“还要”从现在之后开始数。');else{v.future=[...new Set([...(v.future||[]),i])];s.feedback='';if(v.future.length===3)pass('接下来还有3天。前6天是已经，第7、8、9天才是还要。');}}
+}
+if(s.lesson==='machines'){
+ if(k===1&&act==='a')v.a=+arg;
+ if(k===1&&act==='aCheck'){if(v.a===1.5)pass('3/2分3份，每份1/2，取2份正好1。输入a比结果1大。');else storyFail('看结果屏幕，还没有等于1。输入只留2/3，输入本来要比1大。');}
+ if(k===2&&['b','c'].includes(act))v[act]=normalizedNumber(arg);
+ if(k===2&&act==='bcCheck'){if(v.b===2/5&&v.c===2/3)pass('一个2/5里面恰好有1个2/5；一个2/3里面恰好有1个2/3。两个结果都是1。');else storyFail('每台都要数出恰好1个自己的小段。再看除数标出的那一小段。');}
+ if(k===3&&act==='d'){v.d=+arg;v.dSeen=[...new Set([...(v.dSeen||[]),+arg])];}
+ if(k===4&&act==='order'){v.order=v.order||[];if(!v.order.includes(arg))v.order.push(arg);s.feedback='';if(v.order.length===4){if(v.order.join('')==='adcb')pass('从右到左是a、d、c、b，所以a＞d＞c＞b。');else storyFail('顺序还没对上数轴。可以撤回，从最靠右的数字开始排。');}}
+ if(k===4&&act==='orderUndo'){(v.order||[]).pop();s.feedback='';}
+ if(k===5&&act==='common')v.common=+arg;
+}
+storyUpdate();
+}
+function storyAnswer(value){if(s.passed)return;const k=s.step,v=storyState();
+if(s.lesson==='cookies'&&k===2&&v.groups){if(value==='third')pass('差2块，是兔兔6块的1/3。换了比较对象，分数也跟着变了。');else storyFail('现在跟兔兔的6块比。把6块每2块分组，差的是3组中的1组。');}
+if(s.lesson==='cake'&&k===2&&v.copy){if(value==='eighth')pass('两块相同三角形才占1/4，一块就是1/8。底边取1/4，面积不会直接也是1/4。');else storyFail('1/4是三角形和纸片两块合起来。单独一块要再分成一半。');}
+if(s.lesson==='salt'&&k===1&&v.added){if(value==='water')pass('只有水的质量没变。接下来用同样多的水，比较前后的盐。');else storyFail(value==='salt'?'盐新加了15克，已经变多。':'盐水包括水和盐，加进盐后总质量也增加了。');}
+if(s.lesson==='race'&&k===1&&v.split){if(value==='red')pass('红车1小时走4千米，蓝车走3千米。红车就是快车，蓝车是慢车。');else storyFail('比较表示1小时的红、蓝长段。红车一段4千米，比蓝车一段3千米长。');}
+if(s.lesson==='fold'&&k===1&&v.first){if(value==='equal')pass('右边折到下边，边长保持不变。右侧这块宽和高一样，原纸整体仍是长方形。');else storyFail('只看右侧由橙色边围出的那一块。原纸还包括左边的窄条。');}
+if(s.lesson==='machines'&&k===5&&(v.common||1)>1){if(value==='same')pass('四个输入按同一倍数变大，顺序仍是a＞d＞c＞b。共同结果取1只是为了算起来方便。');else storyFail('各张输入卡都乘了同一个正数。一起放大，不会互相交换大小。');}
+storyUpdate();
+}
+function storyCheck(){if(s.passed)return;const id=s.lesson,k=s.step,v=storyState();const specs={
+ 'cookies:3':[['writing',18],'写字用3份，每份6次，共18次。'],
+ 'cookies:4':[['reading',15],'18÷6＝3次一份。看书5份，共15次。'],
+ 'cookies:5':[['gaming',10],'看书3份15次，1份5次；游戏2份是10次。多出的一半按游戏算。'],
+ 'factory:3':[['left',2],['extra',4],'红珠剩2颗，蓝珠补4颗。剩下的和新补的，分别按各自的盒子算。'],
+ 'factory:4':[['unit',200],'600吨对应黄沙3份，每份600÷3＝200吨。再用同样的一份去算其他材料。'],
+ 'cake:4':[['rabbit',3/4],'小熊1/4，小兔3/4，两块面积比1∶3。切点落在底边中点。'],
+ 'salt:3':[['added',3],'后来11格减原来8格，多出来3格，正好对应新增15克。'],
+ 'salt:5':[['original',480],'原来88＋8＝96格，每格5克，共480克。新增15克不算在原来里面。'],
+ 'race:2':[['fast',4],['slow',3],'同样1小时，快车4千米，慢车3千米。'],
+ 'race:3':[['time',4/3],'慢∶快的时间是8∶6＝4∶3。'],
+ 'race:4':[['speed',4/3],'快∶慢的速度是4∶3。两问答案碰巧相同，但名字顺序和比较的量不同。'],
+ 'fold:2':[['height',5],'右侧宽7－2＝5格。它是正方形，所以原纸高5格。'],
+ 'fold:3':[['shadeHeight',3],'绿色区域高5－2＝3格，宽仍是2格。'],
+ 'fold:5':[['whole',35],['fraction',6/35],'阴影6格，原纸7×5＝35格，所以占6/35。'],
+ 'book:2':[['pagesPart',100],['pagesWhole',300],'每段200÷2＝100页，全书100×3＝300页。'],
+ 'book:5':[['total',9],['remaining',3],'一共6＋3＝9天；还要只算接下来的3天。'],
+ 'machines:3':[['d',1],'2÷(2/d)会数回d份。结果要1，d就等于1。']
+};const spec=specs[`${id}:${k}`];if(!spec)return;const fields=spec.slice(0,-1);if(fields.some(([key])=>!stInput(key).trim())){storyFail('先把这一小步的空填上，再检查。');storyUpdate();return;}
+const ok=fields.every(([key,answer])=>{const n=normalizedNumber(stInput(key));return n!==null&&Math.abs(n-answer)<1e-8;});
+if(ok)pass(spec[spec.length-1]);else{let message=config().hint;
+ if(id==='cookies'&&k===3)message='写字占4份中的3份，每份6次。只把选中的3份合起来。';
+ if(id==='cookies'&&k===4)message='18是写字的6份，不是正常的24次。先用18÷6，再取5份。';
+ if(id==='cookies'&&k===5)message='“多一半”以游戏为准。游戏2份，看书3份，不能直接拿15减去它自己的一半。';
+ if(id==='salt'&&k===5)message='原来只有88格水和8格盐。检查是否把新增的3格也算进了“原来”。';
+ if(id==='race'&&k===3)message='时间比按“慢车在前、快车在后”，先写8∶6，再化简。';
+ if(id==='race'&&k===4)message='速度比按“快车在前、慢车在后”，写同样1小时走的4千米与3千米。';
+ if(id==='book'&&k===5)message='两问分开：一共从第1天数，还要从第7天数。';
+ storyFail(message);}
+storyUpdate();
+}
+root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled||s.mode!=='play'||!STORY_META[s.lesson])return;if(b.dataset.storyAction!==undefined)storyAction(b.dataset.storyAction);if(b.dataset.storyAnswer!==undefined)storyAnswer(b.dataset.storyAnswer);});
+root.addEventListener('input',e=>{if(e.target.dataset.storyInput!==undefined){const v=storyState();v.inputs=v.inputs||{};v.inputs[`${s.step}:${e.target.dataset.storyInput}`]=e.target.value;s.feedback='';root.querySelector('[aria-live=polite]').innerHTML='';save();}if(e.target.id==='story-cut'){const foot=Number(e.target.value);storyState().foot=foot;s.feedback='';const holder=document.createElement('div');holder.innerHTML=cakeDiagram(foot,true);root.querySelector('.st-world .ma-svg').replaceWith(holder.firstElementChild);root.querySelector('#story-cut-value').textContent='切点在底边的'+foot+'%。';root.querySelector('[aria-live=polite]').innerHTML='';save();}});
+root.addEventListener('submit',e=>{if(e.target.id==='story-check'){e.preventDefault();storyCheck();}});
+
+function config(){const all=pages()[s.lesson];if(s.step>=all.length)s.step=all.length-1;return all[s.step]}
+const act=(label,key,primary=false,disabled=false)=>`<button type="button" class="${primary?'ma-primary':'ma-secondary'}" data-act="${key}" ${disabled?'disabled':''}>${label}</button>`;
+const tokens=(n,icon,cls='')=>Array.from({length:n},()=>`<span class="ma-token ${cls}" aria-hidden="true">${icon}</span>`).join('');
+const svg=(w,h,label,body)=>`<svg class="ma-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="${label}"><title>${label}</title>${body}</svg>`;
+const txt=(x,y,t,anchor='middle',cls='')=>`<text x="${x}" y="${y}" text-anchor="${anchor}" class="${cls}">${t}</text>`;
+function draw(){const v=s.v,k=s.step,id=s.lesson;
+if(id==='cookies'){
+ if(k>=3)return `<div class="ma-statement">${k===3?'正常 → 写字 → 看书':'游戏：2份　　看书：3份'}</div>${k===3?`<div class="ma-row"><span class="ma-row-name">正常</span><div class="ma-items">${tokens(4,'👁️')}</div><span class="ma-counter">24次</span></div><div class="ma-row"><span class="ma-row-name">写字</span><div class="ma-items">${tokens(3,'👁️')}</div><span class="ma-counter">18次</span></div><div class="ma-statement">写字6份 = 18次　→　看书5份 = ?</div>`:`<div class="ma-row"><span class="ma-row-name">游戏</span><div class="ma-items">${tokens(2,'🟩')}</div><span class="ma-counter">? 次</span></div><div class="ma-row"><span class="ma-row-name">看书</span><div class="ma-items">${tokens(3,'🟧')}</div><span class="ma-counter">15次</span></div>`}`;
+ return `<div class="ma-row"><span class="ma-row-name">🐻 熊熊</span><div class="ma-items">${Array.from({length:4},(_,i)=>k===1?`<button type="button" data-half="${i}" class="ma-token ${v.half.includes(i)?'add':''}" aria-label="熊熊第${i+1}块饼干" aria-pressed="${v.half.includes(i)}">🍪</button>`:'<span class="ma-token">🍪</span>').join('')}</div><span class="ma-counter">4块</span></div><div class="ma-row"><span class="ma-row-name">🐰 兔兔</span><div class="ma-items">${tokens(4,'🍪')}${k===2||v.extra?tokens(2,'🍪','add'):'<span>＋ ?</span>'}</div><span class="ma-counter">${k===2||v.extra?'6块':'4块＋一半'}</span></div>${k===1?`<div class="ma-caption">已选 ${v.half.length} 块 · 黄色表示你选的一半</div><div class="ma-actions">${act('把这一半送给兔兔','give',true,v.extra)}</div>`:''}${k===2?'<div class="ma-statement">差了2块　🍪 🍪　← 现在和兔兔的6块比</div>':''}`;
+}
+if(id==='factory'){
+ if(k===3)return `<div class="ma-recipe"><span>🧱 水泥2份</span><span>🏖️ 黄沙3份</span><span>🪨 石子5份</span></div><div class="ma-statement">每种原来都有600吨</div><div class="ma-row"><span class="ma-row-name">黄沙</span>${tokens(3,'🟨')}<span class="ma-counter">合起来600吨</span></div><div class="ma-caption">一份是多少？水泥用2份，石子用5份。</div>`;
+ const b=v.batches,extra=v.supplement;
+ return `<div class="ma-recipe"><span>🥛 2杯奶</span><span>🧃 3杯果汁</span><span>🧊 5块冰</span></div><div class="ma-caption">这是1份冰沙的配方；原来：奶6杯、果汁6杯、冰6块。</div>${[['奶','🥛',6-b*2],['果汁','🧃',6-b*3],['冰','🧊',6+extra-b*5]].map(([name,icon,n])=>`<div class="ma-supply"><strong>${name}</strong><div class="ma-items">${tokens(n,icon)}${n===0?'用完啦':tokens(Math.max(0,6-n),icon,'faded')}</div><span class="ma-counter">剩${n}</span></div>`).join('')}<div class="ma-statement">已做好 ${b} 份冰沙 ${'🥤'.repeat(b)}</div>${k===1?`<div class="ma-actions">${act('做1份冰沙','make',true,b>=1)}</div>`:''}`;
+}
+if(id==='cake'){
+ const w=Math.min(600,Math.max(260,root.clientWidth-88)),h=Math.min(220,w*.57),x=k===0?25:k===2?50:v.foot,px=w*x/100;
+ let b=`<rect x="0" y="10" width="${w}" height="${h}" rx="8" fill="#e8b1a5"/><polygon points="0,10 0,${h+10} ${px},${h+10}" fill="#e8ba64"/>`;
+ for(let i=1;i<8;i++)b+=`<line x1="${w*i/8}" y1="10" x2="${w*i/8}" y2="${h+10}" stroke="#ffffff55"/>`;
+ for(let i=1;i<4;i++)b+=`<line x1="0" y1="${10+h*i/4}" x2="${w}" y2="${10+h*i/4}" stroke="#ffffff55"/>`;
+ if(k===2&&v.clone)b+=`<polygon class="ma-clone" points="0,10 ${w/2},10 ${w/2},${h+10}" fill="#82bea8"/>`;
+ b+=`<line x1="0" y1="10" x2="${px}" y2="${h+10}" stroke="#5c5141" stroke-width="3"/><circle cx="${px}" cy="${h+10}" r="9" fill="#207665"/>`;
+ b+=txt(w/2,h+45,k===0?'整块蛋糕：4份':`切割点：整条底边的 ${x}%`);
+ const fraction=x===50?'1/4':x===40?'1/5':x===25?'1/8':`${x/2}%`;
+ return svg(w,h+58,'蛋糕三角形面积随底边切点移动而变化',b)+`<div class="ma-caption">黄色：小熊的三角形 · 粉色：小兔的蛋糕${v.clone&&k===2?' · 绿色：复制的一块':''}</div>`+`${k===1||k===3?`<label class="ma-range-label">拖动绿色滑块<input class="ma-slider" id="ma-cut" aria-label="移动蛋糕切割点" type="range" min="5" max="95" step="5" value="${x}"></label><div class="ma-statement">🐻 小熊得到整块的 <strong>${fraction}</strong></div><div class="ma-actions">${act('看看分得对不对','checkCut',true)}</div>`:''}${k===2?`<div class="ma-actions">${act('复制并拼好','clone',true,v.clone)}</div>`:''}`;
+}
+if(id==='salt'){
+ if(k===0)return `<div class="ma-statement">🧂 新加：15克盐 ↓</div>${svg(320,200,'向盐水瓶里加盐，水保持不变',`<path d="M90 20 V175 Q90 185 100 185 H220 Q230 185 230 175 V20" fill="#cbe6ef" stroke="#789990" stroke-width="3"/><path d="M90 75 Q125 65 160 75 T230 75 V175 Q230 185 220 185 H100 Q90 185 90 175Z" fill="#83c3dc"/>${txt(160,127,'原来的盐 ＋ 水')}`)}<div class="ma-caption">瓶中的盐已经溶在水里。</div>`;
+ const group=k===3?11:v.waterGroup,after=k===2||(k===1&&group===8);
+ return `<div class="ma-statement">💧 同一份水：88格，一格也没少</div><div class="ma-water" style="grid-template-columns:repeat(${group},1fr)" role="img" aria-label="88格水，每行${group}格，共${88/group}行">${'<i></i>'.repeat(88)}</div><div class="ma-caption">每行${group}格水，配1格盐 · 共${88/group}行</div><div class="ma-salt-pieces" role="img" aria-label="${after?11:8}格盐，其中新增${after?3:0}格">${Array.from({length:after?11:8},(_,i)=>`<i class="ma-salt-piece ${i>=8?'new':''}">${i>=8?'＋':'盐'}</i>`).join('')}</div>${k===1?`<div class="ma-actions">${act('原来：11水配1盐','water11')}${act('后来：8水配1盐','water8',true)}</div><div class="ma-caption">盐占盐水1/9：盐1份＋水8份，共9份。</div>`:''}${k===2?'<div class="ma-statement">黄色原有8格 ＋ 紫色新增3格<br>新增的3格＝15克</div>':''}${k===3?'<div class="ma-statement">回到原来：水88格＋盐8格<br>每格5克，新增的3格不计入原来。</div>':''}`;
+}
+if(id==='race'){
+ const hour=k===0?0:k===3?8:v.raceHour;
+ return `<div class="ma-statement">${k===0?'同一条路：24小段':`已经出发 ${hour} 小时`}</div>${[['快车','🏎️',4,6],['慢车','🚙',3,8]].map(([name,icon,speed,time])=>`<div class="ma-row"><strong>${name}</strong><span class="ma-counter">${hour?`跑了${Math.min(24,hour*speed)}段`:`全程${time}小时`}</span></div><div class="ma-track" aria-label="${name}跑了${Math.min(24,hour*speed)}段，共24段"><div class="ma-distance" style="width:${Math.min(100,hour*speed/24*100)}%"></div><div class="ma-road-ticks">${'<i></i>'.repeat(24)}</div><span class="ma-racer" style="--pos:${Math.min(100,hour*speed/24*100)}%">${icon}</span><span class="ma-finish">🏁</span></div>`).join('')}${k===1?`<div class="ma-actions">${act('一起跑1小时','drive',true,hour>=1)}</div>`:''}${k===3?'<div class="ma-statement">慢车8小时　∶　快车6小时</div>':''}`;
+}
+if(id==='fold'){
+ const w=Math.min(550,Math.max(250,root.clientWidth-88)),g=Math.min(48,(w-20)/7),ox=(w-7*g)/2,oy=28,X=n=>ox+n*g,Y=n=>oy+n*g,fold=k===0?0:k===1?v.foldStage:2;
+ let b=`<rect x="${X(0)}" y="${Y(0)}" width="${7*g}" height="${5*g}" fill="#fff"/>`;
+ if(fold===0)b+=`<rect x="${X(0)}" y="${Y(0)}" width="${2*g}" height="${5*g}" fill="#b4d6bb"/><rect x="${X(2)}" y="${Y(0)}" width="${5*g}" height="${5*g}" fill="#f1d39d"/>`;
+ else b+=`<rect x="${X(0)}" y="${Y(0)}" width="${2*g}" height="${(fold===1?5:3)*g}" fill="#a5d3b0"/><polygon points="${X(2)},${Y(0)} ${X(2)},${Y(5)} ${X(7)},${Y(5)}" fill="#f1d39d"/>${fold===2?`<polygon points="${X(0)},${Y(3)} ${X(2)},${Y(3)} ${X(2)},${Y(5)}" fill="#d0be8a"/>`:''}`;
+ for(let i=0;i<=7;i++)b+=`<line x1="${X(i)}" y1="${Y(0)}" x2="${X(i)}" y2="${Y(5)}" stroke="#8a9b8560"/>`;
+ for(let i=0;i<=5;i++)b+=`<line x1="${X(0)}" y1="${Y(i)}" x2="${X(7)}" y2="${Y(i)}" stroke="#8a9b8560"/>`;
+ if(fold>=1)b+=`<line x1="${X(2)}" y1="${Y(0)}" x2="${X(7)}" y2="${Y(5)}" stroke="#7c745a" stroke-width="2"/>`;
+ if(fold===2)b+=`<line x1="${X(0)}" y1="${Y(3)}" x2="${X(2)}" y2="${Y(5)}" stroke="#7c745a" stroke-width="2"/>`;
+ for(let i=0;i<6;i++)if(k!==2&&v.shaded.includes(i))b+=txt(X(i%2+.5),Y(Math.floor(i/2)+.5)+6,'★');
+ b+=txt(X(0),17,'左边2格','start','ma-small')+txt(X(7),17,'右边是正方形','end','ma-small')+txt(X(3.5),Y(5)+28,k===0?'原纸宽7格，右边有多宽？':'原纸：宽7格，高5格');
+ return `<div class="ma-foldboard" style="width:${w}px">${svg(w,5*g+70,k===0?'原纸宽7格，左边宽2格，右侧是正方形':'原纸7乘5格，左上阴影2乘3格',b)}${k===2?Array.from({length:6},(_,i)=>`<button type="button" class="ma-treasure" data-shade="${i}" aria-label="点亮第${i+1}个藏宝格" aria-pressed="${v.shaded.includes(i)}" style="left:${X(i%2)/w*100}%;top:${Y(Math.floor(i/2))/(5*g+70)*100}%;width:${g/w*100}%;height:${g/(5*g+70)*100}%">${v.shaded.includes(i)?'★':''}</button>`).join(''):''}</div>`+`${k===1?`<div class="ma-actions">${act(v.foldStage===0?'① 折右上角':'② 折左下角','fold',true,v.foldStage>=2)}</div>`:''}${k===2?`<div class="ma-caption">直接点图里的绿色格子 · 已找到 ${v.shaded.length} 颗星</div>`:''}`;
+}
+if(id==='book'){
+ if(k===2)return `<div class="ma-days">${Array.from({length:9},(_,i)=>`<button type="button" class="ma-day ${i<6?'read':v.days.includes(i)?'picked':''}" data-day="${i}" aria-label="第${i+1}天${i<6?'已经读过':v.days.includes(i)?'已盖章':'还没读'}"><span>${v.days.includes(i)?'⭐':i+1}</span><small>${i<6?'已读':'待读'}</small></button>`).join('')}</div><div class="ma-statement">已经6天　｜　还要 ${v.days.length||'?'} 天</div>`;
+ if(k===3)return `<div class="ma-statement">📚 新故事书分成5包</div><div class="ma-items" style="justify-content:center">${tokens(2,'📗')}${tokens(3,'📙')}</div><div class="ma-caption">绿色2包已读，用了4天；橙色3包还没读。</div>`;
+ return `<div class="ma-books">${Array.from({length:3},(_,i)=>`<div class="ma-book ${i===2?'rest':''}"><span>📖</span>${i<2?'已读':'未读'}<br>${k===1&&v.bookSplit?'3天':'100页'}</div>`).join('')}</div><div class="ma-statement">前两包合起来：6天　｜　最后一包：? 天</div>${k===1?`<div class="ma-actions">${act('把6天分给2包','splitBook',false,v.bookSplit)}</div>`:''}`;
+}
+if(id==='machines'){
+ if(k===0)return `<div class="ma-statement">放进去 ? 块　→　🤖 留下2/3　→　出来2块</div><div class="ma-items" style="justify-content:center">${tokens(2,'🟩')}</div><div class="ma-caption">机器人只留下其中一部分。</div>`;
+ if(k===3)return `<div class="ma-machines"><div class="ma-machine"><strong>x</strong><span class="ma-machine-middle">× 3/4 →</span><strong>同样大</strong></div><div class="ma-machine"><strong>y</strong><span class="ma-machine-middle">÷ 2/3 →</span><strong>同样大</strong></div><div class="ma-machine"><strong>z</strong><span class="ma-machine-middle">不变 →</span><strong>同样大</strong></div></div>`;
+ return `<div class="ma-machines">${[['a','1又1/2','× 2/3'],['b','2/5','÷ 2/5'],['c','2/3','÷ 2/3'],['d','1','2 ÷ (2/d)']].map(([name,val,op])=>`<div class="ma-machine"><strong>${name}：${k===2||v.robot?val:'?'}</strong><span class="ma-machine-middle">${op} →</span><strong>1</strong></div>`).join('')}</div>${k===1?`<div class="ma-actions">${act('看清输入','robot',true,!!v.robot)}</div>`:''}<div class="ma-caption">本关只比较正数。</div>`;
+}
+return '';
+}
+function header(){return `<header class="ma-top"><div class="ma-brand">🧭 数学探险队</div><div class="ma-top-actions"><button class="ma-link" type="button" data-nav="map">探险地图</button><button class="ma-link" type="button" data-nav="adult">给大人看</button><button class="ma-link" type="button" data-path="record">学习记录</button></div></header>`}
+function renderGame(){
+ let h=header();
+ if(s.mode==='map')h+=`<main class="ma-main"><div class="ma-kicker">一次玩一关，慢慢发现</div><h1>今天去哪里探险？</h1><p>每次走完一条小路线：动手 → 讲清 → 原题 → 两道新题。</p><div class="ma-map">${lessons.map(l=>`<button type="button" class="ma-island" data-lesson="${l.id}"><span class="ma-island-icon">${l.icon}</span><strong>${l.name}</strong><small>${l.sub}</small>${`<span class="ma-earned">${statusText(l.id)}</span>`}</button>`).join('')}</div></main>`;
+ else if(s.mode==='adult')h+=`<main class="ma-main ma-adult"><h1>让孩子自己发现关系</h1><p>每关先用游戏理解，再讲清数量关系。之后收起图解，独立填写原题与两道变式；隔天再做一道新题。关系和数值都正确才通过。</p><details open><summary>陪孩子时，只问这一句</summary><p>“你是怎么从图里看出来的？”先听完整，再决定是否点提示。系统分别记录首次独立完成、帮助后完成、隔天回测。孩子的口头或文字解释保留作讨论，不自动判定。</p></details><details><summary>九个故事，分别补什么</summary><p>分橘子：部分与整体；饼干：比较基准及连续关系；彩珠：按配方消耗库存；蛋糕：底边与面积；盐水：不变量；赛车：同路程速度与时间；折纸：原面积与阴影；故事书：剩余时间；机器人：等值算式反推。</p></details><details><summary>这份试卷中需要保留的说明</summary><p>沙子题的分子被遮挡，所以分橘子这一关的同类题使用明确的新编条件3/8。折纸关按照片所示标准折法。机器人关明确使用正数，原卷只写非零，条件不够严谨。眨眼题第二问10次数值正确，但卷面过程不成立。</p></details><details><summary>设计依据与使用边界</summary><p>参考 IES 分数教学建议与 EEF 表征教学建议：让操作和数量关系明确对应，再逐步过渡到独立解题。本工具还没有经过孩子实际试学，不能把完成贴纸当作学习效果证明。</p><p><a href="https://ies.ed.gov/learn/blog/two-practical-strategies-unlocking-fractions-preview-teaching-fractions-toolkit" target="_blank" rel="noopener">IES：图解分数与比率</a> · <a href="https://educationendowmentfoundation.org.uk/newsletter/improving-mathematics-in-key-stages-2-and-3-email-course-2" target="_blank" rel="noopener">EEF：教具与数学表征</a></p></details><div class="ma-actions">${act('回到孩子的这一关','resume',true)}</div></main>`;
+ else if(s.mode==='win'){const l=lesson();h+=`<main class="ma-main ma-win"><div class="ma-kicker">你完成了一个小发现</div><div class="ma-sticker">${l.icon}</div><h1>${l.badge}</h1><p>${l.tip}</p><div class="ma-statement">试着对大人说：<br>“我刚才发现了……”</div><div class="ma-actions">${act('收好贴纸，去地图','map',true)}${act('再玩一次','replay')}</div><p class="ma-caption">今天玩到这里也很好。下次换个数字再试。</p></main>`;}
+ else{
+  const c=config(),l=lesson(),total=pages()[s.lesson].length;
+  h+=`<main class="ma-main"><div class="ma-kicker">${l.icon} ${l.name} · 第 ${s.step+1} / ${total} 步</div><h1>${c.title}</h1><div class="ma-progress" aria-label="第${s.step+1}步，共${total}步">${Array.from({length:total},(_,i)=>`<span class="ma-dot ${i<=s.step?'on':''}"></span>`).join('')}</div><div class="ma-guide"><span class="ma-avatar" aria-hidden="true">🦊</span><p class="ma-speech">${c.line}</p></div><section class="ma-scene" id="ma-stage" aria-label="动手观察区">${draw()}</section><p class="ma-question">${c.question}</p>${c.choices.length?`<div class="ma-choices">${c.choices.map((a,i)=>`<button class="ma-choice ${s.selected===i?(s.passed?'right':'try'):''}" type="button" data-choice="${i}" ${s.passed?'disabled':''}>${a.label}</button>`).join('')}</div>`:''}<div id="ma-response" aria-live="polite">${s.feedback?`<div class="ma-feedback ${s.passed?'success':''}">${s.passed?'✨ ':'🔎 '}${escape(s.feedback)}</div>`:''}${s.hint&&!s.passed?`<div class="ma-feedback">🦊 小提示：${c.hint}</div>`:''}</div><div class="ma-footer"><div><button class="ma-link" type="button" data-act="hint">给我一点提示</button>${'speechSynthesis' in window?'<button class="ma-link" type="button" data-act="speak">🔊 读给我听</button>':''}</div><button type="button" class="ma-primary" data-act="next" ${s.passed?'':'disabled'}>${s.step===total-1?'把发现带回题目 →':'下一小步 →'}</button></div></main>`;
+ }
+ root.innerHTML=h;
+}
+function pass(message){s.passed=true;s.feedback=message;s.hint=false;}
+function retry(message){s.feedback=message;s.wrong++;if(s.wrong>=2)s.hint=true;}
+function resetStep(){s.passed=false;s.feedback='';s.selected=null;s.wrong=0;s.hint=false;}
+function topOfTask(){root.querySelector('.ma-main')?.scrollIntoView({block:'start',behavior:'instant'});}
+function begin(id){const done=s.done,records=s.records;s={...initial(),lesson:id,done,records};render();save();topOfTask();}
+function stopSpeech(){try{window.speechSynthesis?.cancel();}catch{}speaking=false;}
+function action(key){const v=s.v,c=config();
+ if(key!=='speak')stopSpeech();
+ if(key==='map'){s.mode='map';}
+ if(key==='resume')s.mode=s.returnMode||'play';
+ if(key==='replay'){begin(s.lesson);return;}
+ if(key==='hint')s.hint=!s.hint;
+ if(key==='next'&&s.passed){if(s.step===pages()[s.lesson].length-1){recordFor().game=true;s.mode='bridge';s.bridgePassed=false;s.bridgeChoice=null;s.bridgeFeedback='';}else{s.step++;resetStep();if(s.lesson==='cake'&&s.step===3)v.foot=25;}}
+ if(key==='give'&&!s.passed){if(v.half.length===2){v.extra=true;pass('兔兔先有同样的4块，再多2块，所以一共有6块。');}else retry(`你选了${v.half.length}块。4块的一半应该是2块，再选选看。`);}
+ if(key==='make'&&!s.passed){v.batches=1;pass('第一份做好了！奶剩4杯、果汁剩3杯、冰剩1块。下一份会缺什么呢？');}
+ if(key==='checkCut'&&!s.passed){const target=s.step===3?40:50;if(v.foot===target)pass(s.step===3?'切对了！底边占2/5，三角形面积占1/5，另一块占4/5。':'切对了！落在底边中点，三角形刚好占整块的1/4。');else retry(`现在小熊得到了整块的${v.foot/2}%。目标是${target/2}%。${v.foot<target?'向右移一些，小熊的蛋糕会变大。':'向左移一些，小熊的蛋糕会变小。'}`);}
+ if(key==='clone')v.clone=true;
+ if(key==='water11'){v.waterGroup=11;v.saltAdded=false;}
+ if(key==='water8'){v.waterGroup=8;v.saltAdded=true;pass('水仍然88格。原来配8格盐，后来配11格盐，多了3格。');}
+ if(key==='drive'){v.raceHour=1;pass('一起跑1小时：快车4段，慢车3段。速度，就是同样时间里跑多远。');}
+ if(key==='fold'){v.foldStage=Math.min(2,v.foldStage+1);if(v.foldStage===2)pass('两次都折好了！左上方剩下一个宽2格、高3格的绿色区域。');}
+ if(key==='splitBook')v.bookSplit=true;
+ if(key==='robot'){v.robot=1;pass('a只拿出2/3就够1，所以原来超过1；b、c原来都小于1。');}
+ if(key==='speak'){try{const u=new SpeechSynthesisUtterance(`${c.title}。${c.line}。${c.question}${s.feedback?'。'+s.feedback:''}`);u.lang='zh-CN';u.rate=.9;window.speechSynthesis.cancel();window.speechSynthesis.speak(u);speaking=true;}catch{s.feedback='这台设备暂时不能朗读，可以请大人读一下上面的短句。';}}
+ render();save();if(['next','map','resume'].includes(key))topOfTask();
+}
+root.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b||b.disabled)return;
+ if(b.dataset.nav){stopSpeech();s.returnMode=s.mode;s.mode=b.dataset.nav;render();save();topOfTask();return;}
+ if(b.dataset.lesson){stopSpeech();begin(b.dataset.lesson);return;}
+ if(b.dataset.act){action(b.dataset.act);return;}
+ if(b.dataset.choice!==undefined&&!s.passed){const i=+b.dataset.choice,a=config().choices[i];if(!a)return;s.selected=i;if(a.right){if(s.lesson==='factory'&&s.step===2){s.v.batches=2;s.v.supplement=4;}pass(a.feedback);}else retry(a.feedback);render();save();return;}
+ if(b.dataset.half!==undefined&&!s.passed){const i=+b.dataset.half;s.v.half=s.v.half.includes(i)?s.v.half.filter(x=>x!==i):[...s.v.half,i];render();save();return;}
+ if(b.dataset.shade!==undefined&&!s.passed){const i=+b.dataset.shade;if(!s.v.shaded.includes(i))s.v.shaded.push(i);if(s.v.shaded.length===6)pass('找到6颗星！2列、每列3格，阴影一共6格。');render();save();return;}
+ if(b.dataset.day!==undefined&&!s.passed){const i=+b.dataset.day;if(i<6)retry('这天已经读过啦。我们只给“接下来要读”的日子盖章。');else{if(!s.v.days.includes(i))s.v.days.push(i);s.feedback='';if(s.v.days.length===3)pass('还要3天！已经6天，加上接下来3天，一共9天。');}render();save();}
+});
+root.addEventListener('input',e=>{if(e.target.id==='ma-cut'){s.v.foot=+e.target.value;resetStep();const stage=$('#ma-stage'),preview=document.createElement('div');preview.innerHTML=draw();stage.querySelector('.ma-svg').replaceWith(preview.querySelector('.ma-svg'));stage.querySelector('.ma-statement').replaceWith(preview.querySelector('.ma-statement'));$('#ma-response').innerHTML='';const next=root.querySelector('[data-act="next"]');if(next)next.disabled=true;}});
+root.addEventListener('change',e=>{if(e.target.id==='ma-cut')save();});
+window.addEventListener('openai:set_globals',e=>{if(e.detail?.globals?.widgetState){restore(e.detail.globals.widgetState);render();}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopSpeech();});
+try{restore(window.openai?.widgetState||JSON.parse(localStorage.getItem(storageKey)||'null'));}catch{}
+render();
+})();
+</script>
+
+</body></html>
