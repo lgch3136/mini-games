@@ -1,0 +1,1 @@
+function c(e){return e==="journey"?"journey":"focus"}function u(e,t,d,r){const n=r[c(t)];if(e instanceof n)return e;const s=e?.reduced??!1;e?.destroy();const o=new n(d);return o.reduced=s,o}export{u as selectModeStage,c as stageKindFor};
