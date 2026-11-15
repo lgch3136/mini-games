@@ -1,0 +1,77 @@
+/* Menu-only layout. Gameplay, pause and results keep their original layout. */
+#menu {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: stretch;
+  justify-items: center;
+  overflow: hidden;
+}
+#menu .menu-scroll {
+  width: 100%;
+  max-width: 560px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  padding: 14px 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 14px;
+  scrollbar-gutter: stable;
+  overflow-wrap: anywhere;
+}
+#menu .menu-scroll::before { display: none; }
+#menu .panel h1 { display: block; font-size: 24px; line-height: 1.2; letter-spacing: 0; }
+#menu .panel h1 small { margin-top: 3px; font-size: 10px; letter-spacing: 4px; }
+#menu #qa-notice { display: block; margin: 6px 0 10px; font-size: 11px; line-height: 1.5; }
+#menu #qa-notice a { display: inline-block; padding: 2px 6px; color: #a9dbff; }
+#menu .song-row { margin: 0; }
+#menu #song-select { flex: 1; min-width: 0; max-width: 100%; font-size: 13px; }
+#menu #song-detail { flex-basis: 100%; line-height: 1.5; font-size: 11px; }
+#menu .opt-row { margin-top: 8px; gap: 8px; flex-wrap: wrap; }
+#menu .seg { min-width: 0; max-width: 100%; flex-wrap: wrap; justify-content: center; }
+#menu .diff-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 8px 0; }
+#menu .difficulty { padding: 6px 4px; font-size: 11px; white-space: normal; }
+#menu .session-settings { grid-template-columns: 6em minmax(0, 1fr); gap: 8px; margin: 8px 0; }
+#menu .session-settings select { width: 100%; font-size: 12px; }
+#menu .menu-actions {
+  width: 100%;
+  max-width: 560px;
+  padding: 8px 18px max(8px, env(safe-area-inset-bottom));
+  background: #171024;
+  border-top: 1px solid #c2b6ef42;
+}
+#menu .menu-actions .btn-main { width: 100%; margin: 0; min-height: 50px; padding: 10px 16px; font-size: 16px; }
+#menu .menu-disclosure { margin: 8px 0 0; text-align: left; border: 1px solid #b7b9df35; border-radius: 10px; background: #9392d80c; }
+#menu .menu-disclosure > summary { min-height: 44px; padding: 12px; color: #d7d9ec; font-size: 12px; line-height: 1.6; cursor: pointer; }
+#menu .menu-disclosure > summary:focus-visible { outline: 3px solid #f5d0fe; outline-offset: -3px; border-radius: 10px; }
+#menu .menu-disclosure-body { padding: 0 12px 12px; }
+#menu .menu-disclosure-body > a { display: block; width: fit-content; max-width: 100%; min-height: 44px; padding: 12px 0; line-height: 1.6; }
+#menu .menu-disclosure .sub, #menu .menu-disclosure .keys { display: block; }
+#menu .menu-disclosure .judge-guide { display: flex; }
+#menu .menu-disclosure .keys span { display: inline-block; margin: 2px; }
+#menu .menu-disclosure .sub { margin: 4px 0 10px; font-size: 12px; line-height: 1.6; }
+#menu .menu-disclosure .opt-hint { font-size: 12px; line-height: 1.6; margin: 8px 0; }
+#menu .menu-disclosure .menu-cover { display: block; width: 100%; height: 96px; margin: 12px 0 0; }
+#menu #score-source, #menu .instrument-source { display: block; }
+#menu button, #menu select { max-width: 100%; min-height: 44px; }
+@media (max-width: 600px) and (orientation: portrait) {
+  #menu .menu-scroll { padding: max(12px, env(safe-area-inset-top)) 14px 14px; }
+  #menu #song-select, #menu .session-settings select, #menu #speed-select { font-size: 16px; }
+  #menu .session-settings { grid-template-columns: 5em minmax(0, 1fr); }
+  #menu .menu-actions { padding-inline: 14px; }
+}
+@media (max-height: 480px) {
+  #menu .menu-scroll { padding: 10px 14px; }
+  #menu .panel h1 { font-size: 20px; }
+  #menu .panel h1 small { display: none; }
+  #menu .menu-actions { padding-top: 6px; }
+  #menu .menu-actions .btn-main { min-height: 44px; }
+}
+
+/* Independent full-row option, not a narrow select-field label cell. */
+#menu .phrase-shift-option { width:100%; margin:10px 0; text-align:left; }
+#menu .phrase-shift-option label { display:flex; align-items:flex-start; gap:9px; width:100%; box-sizing:border-box; font-size:13px; line-height:1.5; color:#e8eafa; cursor:pointer; }
+#menu .phrase-shift-option input { flex:0 0 auto; width:16px; height:16px; margin:2px 0 0; }
+#menu .phrase-shift-option span { flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
