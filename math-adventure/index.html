@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数学探险队 · 从看懂到独立做题</title><style>body{margin:0;padding:16px;background:#eaf0e9}body>#math-adventure{max-width:1040px;margin:auto}@media(max-width:600px){body{padding:0}}</style></head><body>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>数学探险队 · 从零理解分数</title><style>body{margin:0;padding:16px;background:#eaf0e9}body>#math-adventure{max-width:1040px;margin:auto}@media(max-width:600px){body{padding:0}}</style></head><body>
 <div id="math-adventure" lang="zh-CN"></div>
 <style>
 #math-adventure{--ink:#243e43;--muted:#607579;--paper:#fffdf6;--surface:#fff;--green:#207665;--mint:#e4f3e7;--line:#dbe6df;--orange:#f3aa54;--blue:#78bdd7;--pink:#edb2ac;--purple:#b5a6db;color-scheme:light;color:var(--ink);font:17px/1.65 ui-rounded,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--paper);border-radius:24px;overflow:hidden;max-width:100%;text-align:left;box-sizing:border-box}
@@ -383,6 +383,53 @@
 
 #math-adventure .vx-frame-title{scroll-margin-top:20px}#math-adventure .vx-same-mass{max-width:470px}
 
+#math-adventure .fd-home h1{max-width:720px;font-size:clamp(28px,4vw,43px);line-height:1.35}
+#math-adventure .fd-intro{font-size:19px;line-height:1.8;margin:12px 0 24px}
+#math-adventure .fd-next{display:flex;gap:25px;align-items:center;justify-content:space-between;padding:24px;background:#edf3df;border-radius:20px;margin:25px 0}
+#math-adventure .fd-next h2{font-size:25px;margin:5px 0 12px}#math-adventure .fd-next p{font-size:17px;line-height:1.7;margin:6px 0}#math-adventure .fd-next>button{flex-shrink:0}
+#math-adventure .fd-progress-line{font-size:16px;line-height:1.7;color:#5c7559}
+#math-adventure .fd-course-group{border-top:1px solid #d6dfce;margin-top:18px;padding-top:15px}
+#math-adventure .fd-course-group>summary{cursor:pointer;font-size:22px;font-weight:700;padding:12px 0;display:flex;align-items:center;gap:15px}
+#math-adventure .fd-course-group>summary:after{content:'＋';margin-left:auto;color:#6c865f}#math-adventure .fd-course-group[open]>summary:after{content:'−'}
+#math-adventure .fd-course-group>summary>b{width:35px;height:35px;display:grid;place-content:center;border:1px solid #94ac80;border-radius:50%;font-size:18px}
+#math-adventure .fd-course-row{width:100%;border:0;border-bottom:1px solid #e1e6d7;background:transparent;padding:20px 8px;display:grid;grid-template-columns:30px 1fr auto;gap:14px;text-align:left;align-items:center;color:#2f4f41;cursor:pointer}
+#math-adventure .fd-course-row:hover{background:#f2f5e8}#math-adventure .fd-course-number{font-size:16px;color:#738065}
+#math-adventure .fd-course-row strong{font-size:20px;display:block}#math-adventure .fd-course-row small{font-size:15px;line-height:1.6;display:block;margin-top:7px;color:#60715a}#math-adventure .fd-course-row em{font-size:13px;font-style:normal;color:#65805b}
+#math-adventure .fd-transfer{background:#f7edda}#math-adventure .fd-lesson-line{display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#6c7a61;margin:22px 0}
+#math-adventure .fd-workbench{padding:25px;background:#f2f5e9;border-radius:20px}#math-adventure .fd-control{display:block;margin:25px 0;font-size:18px}
+#math-adventure .fd-range-row{display:flex;align-items:center;gap:12px;margin:15px 0}#math-adventure .fd-range-row>button{width:44px;height:44px;border-radius:12px;border:1px solid #adc59e;background:#fffdf6;font-size:22px;color:#426e42;cursor:pointer;flex-shrink:0}#math-adventure .fd-range-row input{width:100%;accent-color:#437b58;min-width:0;height:38px}#math-adventure .fd-range-row output{font-size:22px;font-weight:bold;min-width:32px}
+#math-adventure .fd-pick-options{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}#math-adventure .fd-pick-options [aria-pressed=true]{background:#d8e9cc;border:2px solid #56814b}
+#math-adventure .fd-strip-group{margin:15px 0 25px}#math-adventure .fd-strip-group>strong{display:block;font-size:18px;margin-bottom:12px}#math-adventure .fd-strip-group>small{display:block;font-size:15px;color:#63725a;margin-top:8px;line-height:1.7}
+#math-adventure .fd-strip{display:grid;grid-template-columns:repeat(var(--parts),minmax(0,1fr));border:2px solid #8e9a72;border-radius:5px;overflow:hidden;min-height:60px;margin-top:10px}
+#math-adventure .fd-strip>span{border-right:1px solid #8e9a72;display:grid;place-content:center;min-height:60px;font-size:17px;color:#3e553c;position:relative}#math-adventure .fd-strip>span:last-child{border:0}
+#math-adventure .fd-strip .gold,#math-adventure .fd-measure .gold{background:#edc77c}#math-adventure .fd-strip .blue,#math-adventure .fd-measure .blue{background:#b6d7e1}#math-adventure .fd-strip .green{background:#add4ad}#math-adventure .fd-strip .plain{background:#fffdf4}
+#math-adventure .fd-cross:after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 48%,#a15b46 49% 52%,transparent 53%)}
+#math-adventure .fd-dot-box{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;border:2px solid #b8bf9a;border-radius:16px;padding:20px;max-width:440px;margin:12px auto;background:#fffdf5}
+#math-adventure .fd-dot{color:#d9dfce;font-size:30px;line-height:1}.fd-dot.chosen{color:#d9a341!important}
+#math-adventure .fd-chocolate{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));background:#79513b;padding:7px;gap:5px;border-radius:9px;margin:28px 0 14px}
+#math-adventure .fd-chocolate span{height:70px;background:#ad7952;border:3px solid #c5996d;border-right-color:#8d5f3e;border-bottom-color:#8d5f3e;border-radius:5px;position:relative}
+#math-adventure .fd-cut-edge:after{content:'';position:absolute;right:-7px;top:-17px;bottom:-17px;border-right:5px solid #478e65;z-index:1}
+#math-adventure .fd-sides{display:flex;justify-content:space-between;font-size:18px}
+#math-adventure .fd-number-line{margin:24px 5px 30px;padding:15px 12px;background:#fffdf5;border-radius:12px}#math-adventure .fd-number-line>strong{font-size:17px;line-height:1.7;display:block}
+#math-adventure .fd-line-track{height:5px;position:relative;background:#bcc8ac;margin:50px 15px 45px;border-radius:3px}
+#math-adventure .fd-line-progress{display:block;height:100%;background:#43855c;transition:width .35s ease}
+#math-adventure .fd-tick{position:absolute;top:-8px;display:block;transform:translateX(-50%)}#math-adventure .fd-tick i{height:20px;border-left:2px solid #738666;display:block;margin:auto;width:1px}#math-adventure .fd-tick b{font-size:16px;position:absolute;top:30px;left:50%;transform:translateX(-50%);white-space:nowrap}
+#math-adventure .fd-tick.selected:before{content:'🦊';position:absolute;top:-32px;left:50%;transform:translateX(-50%);font-size:25px}
+#math-adventure .fd-line-track>button{position:absolute;top:-18px;transform:translateX(-50%);width:37px;height:42px;border:1px solid #90ad7a;border-radius:50%;background:#f9faef;color:#4d7048;font-size:15px;cursor:pointer}
+#math-adventure .fd-line-track>button[aria-pressed=true]{background:#4d8056;color:#fff}#math-adventure .fd-number-line p{font-size:16px;line-height:1.7;margin-top:55px}
+#math-adventure .fd-area{display:grid;grid-template-columns:repeat(var(--cols),1fr);max-width:420px;border:2px solid #98aa83;margin:15px auto}#math-adventure .fd-area span{aspect-ratio:1.6;border:1px solid #9aab89;background:#fffef5}#math-adventure .fd-area .row{background:#efd29c}#math-adventure .fd-area .col{background:#b8dce7}#math-adventure .fd-area .both{background:#94c59b}
+#math-adventure .fd-live-result{padding:12px 16px;background:#e3edd5;border-left:4px solid #75a166;border-radius:0 10px 10px 0;font-size:19px;line-height:1.8}
+#math-adventure .fd-measure{display:grid;grid-template-columns:repeat(var(--parts),1fr);border:2px solid #809270;margin:20px 0}#math-adventure .fd-measure span{height:66px;display:grid;place-content:center;border-right:1px solid #9d976b;font-size:16px}#math-adventure .fd-measure .group-end{border-right:5px solid #52673f}
+#math-adventure .fd-hundred{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;max-width:350px;margin:20px auto}#math-adventure .fd-hundred i{aspect-ratio:1;border:1px solid #a7b696;background:#fbfaf1;border-radius:2px}#math-adventure .fd-hundred .lit{background:#94c7a5;border-color:#4f865f}
+#math-adventure .fd-quiz-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}#math-adventure .fd-quiz-tabs button{font-size:15px}#math-adventure .fd-quiz-tabs [aria-current]{background:#dfead2;border-color:#789868}
+#math-adventure .fd-result{background:#e9f1dc;padding:20px;border-radius:14px;margin:22px 0}#math-adventure .fd-result h2{font-size:22px}#math-adventure .fd-result p{font-size:17px;line-height:1.8}
+#math-adventure .fd-record-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 0;border-bottom:1px solid #dde5d2}#math-adventure .fd-record-row strong{font-size:20px}#math-adventure .fd-record-row p{font-size:16px;margin:8px 0}#math-adventure .fd-record-row small{font-size:14px;color:#6d7e5d}#math-adventure .fd-record-row button{flex-shrink:0}
+@media(max-width:600px){#math-adventure .fd-next{display:block;padding:20px}#math-adventure .fd-next>button{margin-top:12px;width:100%}#math-adventure .fd-course-row{grid-template-columns:24px 1fr;gap:10px}#math-adventure .fd-course-row em{grid-column:2}#math-adventure .fd-course-row strong{font-size:19px}#math-adventure .fd-course-group>summary{font-size:20px}#math-adventure .fd-workbench{padding:18px 12px}#math-adventure .fd-strip>span{font-size:14px;min-height:50px}#math-adventure .fd-strip{min-height:50px}#math-adventure .fd-chocolate{gap:3px;padding:5px}#math-adventure .fd-chocolate span{height:55px;border-width:2px}#math-adventure .fd-dot-box{gap:8px;padding:14px}#math-adventure .fd-dot{font-size:25px}#math-adventure .fd-line-track>button{width:28px;height:35px;font-size:13px;top:-15px}#math-adventure .fd-number-line{padding:12px 8px}#math-adventure .fd-quiz-tabs{gap:7px}#math-adventure .fd-quiz-tabs button{font-size:14px;padding:10px}#math-adventure .fd-lesson-line{flex-wrap:wrap;gap:12px}#math-adventure .fd-measure span{font-size:14px;height:55px}#math-adventure .fd-record-row strong{font-size:18px}}
+
+#math-adventure .ma-top-actions{flex-wrap:wrap}#math-adventure .fd-record-row p{line-height:1.6}
+
+#math-adventure .fd-line-track>button[aria-pressed=true]:before{content:'🦊';position:absolute;top:-32px;left:50%;transform:translateX(-50%);font-size:25px;pointer-events:none}
+
 </style>
 <script>
 (() => {
@@ -404,7 +451,7 @@ let s=initial();let speaking=false;
 const $=sel=>root.querySelector(sel);
 const lesson=()=>lessons.find(x=>x.id===s.lesson)||lessons[0];
 const escape=t=>String(t).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-function restore(raw){const z=raw?.privateContent||raw;if(z?.version!==3||!lessons.some(x=>x.id===z.lesson))return;s={...initial(),...z,v:{...initial().v,...z.v}};s.done=Array.isArray(z.done)?z.done.filter(x=>lessons.some(l=>l.id===x)):[];s.step=Math.max(0,Math.min(pages()[s.lesson].length-1,Number(z.step)||0));if(!['play','map','adult','bridge','exam','summary','records'].includes(s.mode))s.mode='play';s.records=z.records&&typeof z.records==='object'?z.records:{};s.examState={...cleanChallenge(),...z.examState};if(!['original','near','far','review'].includes(s.exam))s.exam='original';if(((z.v?.picnicRevision!==1&&s.lesson==='juice')||(z.v?.storyRevision!==1&&s.lesson!=='juice'))&&s.mode==='play'){s.step=0;resetStep();}}
+function restore(raw){const z=raw?.privateContent||raw;if(z?.version!==3||!lessons.some(x=>x.id===z.lesson))return;s={...initial(),...z,v:{...initial().v,...z.v}};s.done=Array.isArray(z.done)?z.done.filter(x=>lessons.some(l=>l.id===x)):[];s.step=Math.max(0,Math.min(pages()[s.lesson].length-1,Number(z.step)||0));if(!['play','map','adult','bridge','exam','summary','records','journey','foundation','fraction-records'].includes(s.mode))s.mode='play';s.records=z.records&&typeof z.records==='object'?z.records:{};s.examState={...cleanChallenge(),...z.examState};if(!['original','near','far','review'].includes(s.exam))s.exam='original';if(((z.v?.picnicRevision!==1&&s.lesson==='juice')||(z.v?.storyRevision!==1&&s.lesson!=='juice'))&&s.mode==='play'){s.step=0;resetStep();}}
 
 function save(){try{localStorage.setItem(storageKey,JSON.stringify(s));}catch{}try{window.openai?.setWidgetState({modelContent:{当前故事:lesson().name,步骤:s.step+1,已完成:s.done},privateContent:s})?.catch(()=>{});}catch{}}
 const choice=(label,right,feedback)=>({label,right,feedback});
@@ -542,7 +589,8 @@ if(key==='backGame')goFlow(0);
 }
 function render(){
 stopVisualPlayback();
-if(s.mode==='records')root.innerHTML=header()+`<main class="ma-main"><h1>学习记录</h1><p>看原题、新题是否独立完成；游戏进度单独记录。</p>${lessons.map(l=>`<div class="ma-record-row"><span>${l.icon} ${l.name}<br><small>${statusText(l.id)}</small></span>${s.records[l.id]?.finishedDay?`<button type="button" class="ma-secondary" data-summary="${l.id}">查看与复习</button>`:`<button type="button" class="ma-secondary" data-lesson="${l.id}">进入学习</button>`}</div>`).join('')}</main>`;
+if(['journey','foundation','fraction-records'].includes(s.mode))root.innerHTML=header()+fdView();
+else if(s.mode==='records')root.innerHTML=header()+`<main class="ma-main"><h1>学习记录</h1><p>看原题、新题是否独立完成；游戏进度单独记录。</p>${lessons.map(l=>`<div class="ma-record-row"><span>${l.icon} ${l.name}<br><small>${statusText(l.id)}</small></span>${s.records[l.id]?.finishedDay?`<button type="button" class="ma-secondary" data-summary="${l.id}">查看与复习</button>`:`<button type="button" class="ma-secondary" data-lesson="${l.id}">进入学习</button>`}</div>`).join('')}</main>`;
 else if(s.mode==='exam')root.innerHTML=header()+assessmentView();
 else if(s.mode==='bridge')root.innerHTML=header()+bridgeView();
 else if(s.mode==='summary')root.innerHTML=header()+summaryView();
@@ -1089,6 +1137,7 @@ function visualFrames(id,kind,serial=0){const story=kind==='story',a=serial+4,re
 // One optional player per screen. The player never submits or changes answers.
 let visualTimer=null,visualPlaying=false,visualMotionPaused=false;
 function visualContext(){
+ if(s.mode==='foundation'){const f=fdState();if(f.phase!==0)return null;const frames=FD[f.id].frames(),key='foundation:'+f.id;if(!s.visuals)s.visuals={};const memory=s.visuals[key]||(s.visuals[key]={frame:0,open:true});memory.frame=Math.min(Math.max(0,memory.frame||0),frames.length-1);return {key,kind:'story',frames,memory};}
  if(!['play','bridge','exam'].includes(s.mode))return null;
  const kind=s.mode==='play'?((s.lesson==='cookies'&&s.step>=3)||(s.lesson==='factory'&&s.step>=4)?'original':'story'):s.mode==='bridge'?'original':s.exam;
  const startFrames={juice:[0,2,3,4,5],cookies:[0,2,3,1,2,3],factory:[0,1,2,3,2],cake:[0,0,1,2,3],salt:[0,0,1,2,4,5],race:[0,1,1,3,4],fold:[0,1,2,3,4,5],book:[0,0,1,3,4,5],machines:[0,1,2,4,5,6]};
@@ -1101,16 +1150,16 @@ function visualContext(){
 }
 function stopVisualPlayback(){if(visualTimer!==null){clearTimeout(visualTimer);visualTimer=null;}visualPlaying=false;visualMotionPaused=false;}
 function visualReduced(){return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;}
-function visualHeading(){return s.mode==='play'?'先看一段，再自己动手':s.mode==='bridge'?'把原题里的关系画出来':'这道题的分步图解';}
+function visualHeading(){return s.mode==='foundation'?'看一段故事，认清图里的东西':s.mode==='play'?'先看一段，再自己动手':s.mode==='bridge'?'把原题里的关系画出来':'这道题的分步图解';}
 function visualMarkup(c){const f=c.frames[c.memory.frame],isExam=s.mode==='exam';return `<section class="vx-player ${c.memory.open?'':'vx-closed'}" aria-label="数学图解动画"><div class="vx-top"><div><span class="vx-kicker">会动的数学图解</span><h2>${visualHeading()}</h2></div><button class="ma-secondary" type="button" data-visual="toggle" aria-expanded="${c.memory.open}">${c.memory.open?'收起图解':'打开图解动画'}</button></div>${!c.memory.open?`<p class="vx-closed-note">${isExam?'可以先独立做；看过图解再答对，会记作“帮助后完成”。':'物品是什么、怎样变化、为什么这样算，一幅一幅看。'}</p>`:`<div class="vx-frame"><div class="vx-frame-title"><span>第 ${c.memory.frame+1} / ${c.frames.length} 幅</span><h3>${f.title}</h3></div><p class="vx-caption">${f.caption}</p><div class="vx-stage">${f.html}</div>${f.formula?`<div class="vx-formula"><span>把刚才的图写下来</span><strong>${f.formula}</strong></div>`:''}</div><div class="vx-controls"><button class="ma-secondary" type="button" data-visual="prev" ${c.memory.frame===0?'disabled':''}>← 上一幅</button><button class="ma-primary" type="button" data-visual="play">${visualPlaying?'Ⅱ 暂停':'▶ 播放动画'}</button><button class="ma-secondary" type="button" data-visual="next" ${c.memory.frame===c.frames.length-1?'disabled':''}>下一幅 →</button><button class="ma-link" type="button" data-visual="replay">↺ 从头重播</button></div><nav class="vx-seek" aria-label="自由选择图解画面">${c.frames.map((f,i)=>`<button type="button" data-visual-frame="${i}" aria-label="图解 ${i+1}：${f.title}" ${i===c.memory.frame?'aria-current="step"':''}>${i+1}</button>`).join('')}</nav><p class="vx-player-tip">${visualPlaying?'正在播放，每幅停留8秒；随时可以暂停细看。':visualMotionPaused?'已暂停。点“播放动画”接着看，也可以直接选数字。':'不用赶，点“下一幅”慢慢看，也可以点数字跳着看。'}${isExam&&s.examState.visualHelp?' · 本题已使用图解帮助。':''}</p>`}</section>`;}
 function attachVisualLesson(){
  const c=visualContext();if(!c||!c.frames.length)return;
- const target=root.querySelector(s.mode==='play'?(s.lesson==='juice'?'.picnic-world':'.st-world'):s.mode==='bridge'?'.ma-bridge':'.ma-paper');
+ const target=root.querySelector(s.mode==='foundation'?'.fd-visual-anchor':s.mode==='play'?(s.lesson==='juice'?'.picnic-world':'.st-world'):s.mode==='bridge'?'.ma-bridge':'.ma-paper');
  if(!target)return;
  if(s.mode==='exam'&&c.memory.open&&!s.examState.passed){s.examState.assisted=true;s.examState.visualHelp=true;}
  target.insertAdjacentHTML(s.mode==='exam'?'afterend':'beforebegin',`<div id="ma-visual-slot">${visualMarkup(c)}</div>`);
  // The opening movie introduces the scene; later steps retain the actual toys.
- if(s.mode==='play'&&s.step===0&&typeof target.remove==='function')target.remove();
+ if((s.mode==='foundation'||s.mode==='play'&&s.step===0)&&typeof target.remove==='function')target.remove();
  settleVisualMotion();
 }
 function settleVisualMotion(){
@@ -1152,6 +1201,240 @@ function visualAction(action,index){
 }
 root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;if(b.dataset.visual)visualAction(b.dataset.visual);else if(b.dataset.visualFrame!==undefined)visualAction('seek',Number(b.dataset.visualFrame));});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&visualPlaying){if(visualTimer!==null)clearTimeout(visualTimer);visualTimer=null;visualPlaying=false;visualMotionPaused=true;setVisualMotion(true);visualButtonState();}});
+
+// All pictures use explicit units. Fractions are kept as values, never two unrelated integers.
+const fdF=(n,d=1)=>vxNum(n/d);
+const fdG=(a,b)=>b?fdG(b,a%b):a;
+const fdL=(a,b)=>a*b/fdG(a,b);
+const fdP=(title,caption,html,formula='')=>vxF(title,caption,html,formula);
+function fdStrip(d,n,label='同样大的一整个',color='gold',scale=1){
+ const count=Math.max(1,Math.ceil(n/d));return `<div class="fd-strip-group"><strong>${label}</strong>${Array.from({length:count},(_,whole)=>`<div class="fd-strip" style="--parts:${d};width:${scale*100}%" role="img" aria-label="一个整体平均分${d}份，其中涂色${Math.max(0,Math.min(d,n-whole*d))}份">${Array.from({length:d},(_,i)=>`<span class="${i+whole*d<n?color:'plain'} vx-pop">${d===1?'整个1':d<=8?'1/'+d:''}</span>`).join('')}</div>`).join('')}<small>每一整条＝1${d===1?'':'；每个小格＝1/'+d}</small></div>`;
+}
+function fdDots(total,selected=total,item='颗糖',whole='一整盒'){return `<div class="fd-dot-box" role="img" aria-label="${whole}共${total}${item}，涂色${selected}${item}">${Array.from({length:total},(_,i)=>`<span class="fd-dot ${i<selected?'chosen':''}">●</span>`).join('')}</div><p class="vx-legend">1个圆点表示1${item}；外框里的${total}${item}合起来是${whole}。</p>`;}
+function fdCut(cut=3){return `<div class="fd-chocolate" role="img" aria-label="同一块巧克力，左边${cut}小格，右边${8-cut}小格">${Array.from({length:8},(_,i)=>`<span class="${i===cut-1?'fd-cut-edge':''}"></span>`).join('')}</div><div class="fd-sides"><span>小熊：${cut}小格</span><span>小兔：${8-cut}小格</span></div><p class="vx-legend">整排是一块巧克力；每个小格同样大。绿线是切的位置。</p>`;}
+function fdLine(d,n,max=1,buttons=false){const total=d*max;return `<div class="fd-number-line"><strong>从0出发。0到1这一段，才是一个单位。</strong><div class="fd-line-track"><span class="fd-line-progress" style="width:${n/total*100}%"></span>${Array.from({length:total+1},(_,i)=>buttons?`<button type="button" data-fd-mark="${i}" style="left:${i/total*100}%" aria-label="第${i}个位置，${fdF(i,d)}" ${i===n?'aria-pressed="true"':'aria-pressed="false"'}>${i%d===0?i/d:'●'}</button>`:`<span class="fd-tick ${i===n?'selected':''}" style="left:${i/total*100}%"><i></i><b>${i%d===0?i/d:i===n?fdF(i,d):''}</b></span>`).join('')}</div><p>把每个单位平均分${d}段，每走一小段是1/${d}。${buttons?'点一个位置，让小狐狸走过去。':''}</p></div>`;}
+function fdArea(rows,cols,takeRows,takeCols){const selected=takeRows*takeCols;return `<div class="fd-area" style="--cols:${cols}" role="img" aria-label="整块平均分${rows*cols}格，先选上面${takeRows}行，再取其中左边${takeCols}列，最后选中${selected}格">${Array.from({length:rows*cols},(_,i)=>`<span class="${Math.floor(i/cols)<takeRows?(i%cols<takeCols?'both':'row'):'plain'} vx-pop"></span>`).join('')}</div><p class="vx-legend">整块＝1，共${rows*cols}个同样大的格。${takeRows?`先选上面${takeRows}行（所有彩色格）。${takeCols?`再只在这${takeRows}行里取左边${takeCols}列：绿色${selected}格是最后选中的部分。`:'下一步，只在橙色部分里继续选。'}`:'先认识整块，再开始选。'}</p>`;}
+
+function fdSum(d,a,b,minus=false){const total=minus?a:a+b,whole=Math.max(1,Math.ceil(total/d));return `<div class="fd-strip-group"><strong>${minus?'先有的部分，划线部分要拿走':'橙色先有，蓝色新添'}</strong>${Array.from({length:whole},(_,w)=>`<div class="fd-strip" style="--parts:${d}">${Array.from({length:d},(_,i)=>{const k=w*d+i;return `<span class="${k>=total?'plain':minus?(k>=a-b?'gold fd-cross':'gold'):k<a?'gold':'blue'}">1/${d}</span>`;}).join('')}</div>`).join('')}<small>每一整条代表同样的1；小份的大小没有变。</small></div>`;}
+function fdLesson(id,group,title,story,focus,prereq,frames,lab,questions){return {id,group,title,story,focus,prereq,frames,lab,questions};}
+function fdQuestion(body,answer,good,bad1,bad2,explain,hint,figure='',label='我的答案',type='number',error='关系还要再看'){return {body,fields:answer===null?[]:[field(label,answer,'',type)],relation:rel('哪句话说明了你的想法？',good,bad1,bad2),explain,hint,figure,error};}
+const FD={
+ fair:fdLesson('fair',0,'分得一样多，才公平','小熊和小兔要分同一块巧克力。我们先不写分数，只检查每人拿得是否一样多。','知道“平均分”要求每份同样大。',[],()=>[
+  fdP('先认识一个整体','这一整排是一块巧克力，小格同样大；切线决定两个人各拿多少。',fdCut(3)),
+  fdP('两块不一定一样大','虽然切成两块，小熊只有3小格，小兔有5小格。光数“几块”还不够。',fdCut(3)),
+  fdP('把切线移到中间','每人4小格，大小相同，才叫平均分成2份。',fdCut(4),'8小格 ÷ 2人 = 每人4小格'),
+  fdP('换成一盒东西，也可以平均分','这一盒8颗糖分给两人，每人4颗。整体可以是一件东西，也可以是一盒东西。',fdDots(8,4))
+ ],{type:'cut',start:3,target:4,min:1,max:7,label:'移动切线：左边拿几小格？',prompt:'让小熊和小兔拿到同样多。'},(slot,seed)=>{
+  if(slot===0)return fdQuestion('图里已经切成两块。这样算平均分吗？',null,'不算，两块大小不同','算，只要有两块就行','算，切线是直的就行','平均分看大小是否相同，不能只数块数。','数数切线两边各有几小格。',fdCut(3),'','','不平均也当作平均');
+  const people=slot===1?2:3,total=people*(seed%3+3);return fdQuestion(`${total}颗同样的糖平均分给${people}人，每人几颗？`,total/people,'每个人拿到的颗数相同','只要每个人都拿到就行','最后一人可以比别人多','平均分后，每份的数量相同。',`把糖轮流分给${people}个人。`,slot===1?fdDots(total,0):'','每人几颗');
+ }),
+ unit:fdLesson('unit',0,'给“一小份”起名字','小狐狸把一根同样粗细的面包平均切开。我们用一个新写法，说清一小份有多大。','一根面包分4份，拿1份，该怎么说？',['fair'],()=>[
+  fdP('一根面包是1','图中每一整条都是同样大的一根面包。先认整个，再看切开的部分。',fdStrip(1,1,'一根完整面包')),
+  fdP('平均切成4份，拿出1份','分母4说明整个平均分成4份；分子1说明取其中1份。',fdStrip(4,1,'平均分4份，取1份'),'1/4，读作“四分之一”'),
+  fdP('分成几份，决定每一份多大','同样一根面包，平均分2份的一份，比平均分4份的一份大。',fdStrip(2,1)+fdStrip(4,1)),
+  fdP('两个数字一起表示一个量','1/4是一个数，表示这一小份的大小。它不是1个面包加4个面包。',fdLine(4,1),'4个1/4合起来是1'),
+  fdP('分母不能是0','平均分成0份，根本得不到任何一份，所以不能用0作分母。分成1份则仍是整个。',fdStrip(1,1),'1/1 = 1；不能写分母是0的分数')
+ ],{type:'unit',start:2,target:4,min:2,max:8,label:'一整根平均分成几份？',prompt:'把整根平均分成4份，只取其中1份。'},(slot,seed)=>{const d=seed%4+3;return slot===0?fdQuestion('涂色的一份占整根多少？',1/d,`整根平均分${d}份，取1份`,'把涂色和没涂色的数量相加','只看涂色是什么颜色',`一份是1/${d}。`,`先数整根平均分成几份。`,fdStrip(d,1),'占整根多少','fraction'):slot===1?fdQuestion(`1/${d}中的${d}告诉我们什么？`,null,`整个被平均分成${d}份`,`取了${d}份`,`整个有${d}件东西`,'分母告诉我们每份是怎样划出来的。','先说“把整个平均分成……”'):fdQuestion(`一条1米长的丝带平均剪成${d}段，每段几米？`,1/d,'把1米平均分，取其中一段',`${d}米是一段长`,'每段都是1米',`1米平均分${d}段，每段1/${d}米。`,'总长只有1米，每段应该比1米短。','','每段几米','fraction');}),
+ build:fdLesson('build',0,'把一小份接起来','每个小块都是同样大小的1/5。小狐狸想把几块接在一起，看看新分数从哪里来。','拿3个五分之一，为什么就是五分之三？',['unit'],()=>[
+  fdP('一小份先确定','一整条平均分5份，每一份都是1/5。',fdStrip(5,1)),
+  fdP('拿3份，就有3个1/5','大小相同的小份可以逐个数。取了3份，分子就是3。',fdStrip(5,3),'1/5 + 1/5 + 1/5 = 3/5'),
+  fdP('全拿齐，就回到1','把5份全拿齐，还是原来那一整条。',fdStrip(5,5),'5/5 = 1'),
+  fdP('一份也没拿，是0','0个1/5表示0；分母仍然说明小份的大小。',fdStrip(5,0),'0/5 = 0')
+ ],{type:'build',start:1,target:3,min:0,max:5,label:'取几份1/5？',prompt:'取3个1/5，拼成3/5。'},(slot,seed)=>{const d=seed%3+4,a=d-2;return slot===0?fdQuestion('涂色部分是整条的几分之几？',a/d,`${a}个1/${d}`,`1个1/${a}`,'分母就是没涂色的块数',`${a}个1/${d}是${a}/${d}。`,'分母数全体等份，分子数取出的份数。',fdStrip(d,a),'占整条多少','fraction'):slot===1?fdQuestion(`${d}个1/${d}合起来是几？`,1,'正好把整个取齐','要把分母也加起来','比整个还少一份',`${d}/${d}=1。`,'想一想整条一共有几份。'):fdQuestion(`一条绳子平均分${d}段，取了${a}段。取的部分占全长多少？`,a/d,'取几段就有几个同样的一小份','分母是剩下的段数','分子是总段数',`取出的占${a}/${d}。`,'全长有几份？取了几份？','','占全长多少','fraction');}),
+ whole:fdLesson('whole',0,'先说清“谁是整个”','同一块小饼干，可以跟一块饼干比，也可以跟整盒比。比较对象换了，分数就会改变。','同一块饼干，为什么一会儿是1，一会儿是1/4？',['build'],()=>[
+  fdP('整盒作一个整体','这盒有4块同样的饼干。取其中1块，占整盒的1/4。',fdDots(4,1,'块饼干'),'1块 ÷ 4块 = 1/4'),
+  fdP('只把一块当整体','同一块饼干，如果跟它自己比，就是完整的1。物品没变，比较对象变了。',fdDots(1,1,'块饼干'),'一整块 = 1'),
+  fdP('两个一半，实际量未必相同','上条总长8厘米，下条总长4厘米。各取一半，实际分别是4厘米和2厘米。',fdStrip(2,1,'8厘米长的纸条')+fdStrip(2,1,'4厘米长的纸条','blue',.5),'分数相同，还要看整个有多大'),
+  fdP('每次都把整个圈出来','看到“占”“是……的”，先指出后面的对象，别急着算。',fdDots(12,3),'3颗占这一盒12颗的3/12')
+ ],{type:'whole',start:1,target:4,min:1,max:4,label:'把几块饼干合起来看作整个？',prompt:'同一块饼干要表示1/4，整个应包含4块同样的饼干。'},(slot,seed)=>{const n=seed%3+4;return slot===0?fdQuestion(`整盒${n}块同样的饼干，取1块，占整盒多少？`,1/n,'整盒作1','取出的1块作整个','盒盖作整个',`以整盒${n}块为整体，1块占1/${n}。`,'先圈出要比较的整盒。',fdDots(n,1,'块饼干'),'占整盒多少','fraction'):slot===1?fdQuestion('大面包的一半和小面包的一半，一定一样多吗？',null,'不一定，要看整个面包的大小','一定，都是1/2','一定，分母都是2','相同分数只有在同样大的整体上，才表示同样的实际量。','先看看两个整个是否一样大。'):fdQuestion(`${n*2}支笔装一盒，其中${n}支是蓝笔。蓝笔占整盒的多少？`,.5,'把这一盒所有笔作整体','只把蓝笔作整体','只把其他颜色作整体',`${n}/${n*2}=1/2。`,'分母对应整盒，分子对应蓝笔。','','蓝笔占比','fraction');}),
+ line:fdLesson('line',1,'分数在数轴上有住址','小狐狸走一条路。起点是0，一个单位远的地方是1；分数告诉它走到哪里。','把分数放到路上，看看它离0有多远。',['build'],()=>[
+  fdP('先找到0和1','0到1这一段是一个单位，整幅图的长度不一定都是1。',fdLine(4,0)),
+  fdP('平均分4段，需要3个内刻度','把0到1分成4个相等的间隔。走一段，到1/4。',fdLine(4,1),'数的是间隔，不是刻度点'),
+  fdP('走3小段，到3/4','3/4是一个位置，也是走过的长度。',fdLine(4,3),'3个1/4 = 3/4'),
+  fdP('换成8段，位置也能不变','到同一个3/4的位置，需要走6个1/8。',fdLine(8,6),'3/4 = 6/8')
+ ],{type:'line',start:1,target:3,min:0,max:4,label:'走几个1/4？',prompt:'点数轴，让小狐狸走到3/4。'},(slot,seed)=>{const d=seed%3+4,n=d-1;return slot===0?fdQuestion('涂色终点表示哪个数？',n/d,`从0走了${n}个1/${d}`,'把刻度点的个数当分母','把分子和分母分别放到数轴上',`每段1/${d}，走${n}段是${n}/${d}。`,'先数0到1有几个相等间隔。',fdLine(d,n),'这个数是','fraction'):slot===1?fdQuestion(`把0到1平均分成${d}段，端点之间要添几个刻度？`,d-1,'两头的0和1已经在，添中间的刻度','有几段就添几个内刻度','刻度和间隔没有区别',`${d}个间隔需要${d-1}个内刻度。`,'试着画3段，你会添几个内刻度？'):fdQuestion(`一只蜗牛每次走1/${d}米，走了${n}次，一共几米？`,n/d,'把同样的长度接起来','分母表示次数','每走一次长度就乘以分母',`${n}个1/${d}米是${n}/${d}米。`,'从0开始，一小段一小段往前接。','','一共几米','fraction');}),
+ over:fdLesson('over',1,'走过1，还能继续走','一条纸带不够长了，就接上第二条同样长的。分数也可以比1大。','分数能比1大吗？走过1之后到哪里？',['line'],()=>[
+  fdP('四个四分之一，正好到1','每条同样长，整个都记作1。',fdStrip(4,4),'4/4 = 1'),
+  fdP('再接一份，就超过1','5个1/4可以装满一条，还剩一小份。',fdStrip(4,5),'5/4 = 1又1/4'),
+  fdP('在数轴上继续往右走','5/4在1的右边、2的左边，不在5和4之间。',fdLine(4,5,2)),
+  fdP('两种写法，说的是同一段长度','先数完整的条，再数零头；也可以把所有1/4一起数。',fdStrip(4,7),'7/4 = 1又3/4')
+ ],{type:'over',start:3,target:5,min:0,max:8,label:'走几个1/4？',prompt:'让小狐狸到达1又1/4，也就是5/4。'},(slot,seed)=>{const d=seed%3+3,n=d+2;return slot===0?fdQuestion(`这段涂色一共有几个1/${d}？`,n,'完整的一条也要换成小份一起数','分数不能超过1','只数第二条的零头',`一整条有${d}小份，再加2份，共${n}份。`,'第一条别漏掉。',fdStrip(d,n),'小份个数'):slot===1?fdQuestion(`1又2/${d}写成分数是多少？`,n/d,'1里面有分母个同样的小份','把1直接加到分母上','只保留分数部分',`1=${d}/${d}，合起来${n}/${d}。`,'先把1换成同样的小份。','','写成分数','fraction'):fdQuestion(`做手工用了${n}段绳子，每段1/${d}米，一共多少米？`,n/d,'小份可以累加到超过1','超过1的部分不计算','分母也按段数累加',`${n}段共${n}/${d}米。`,'数一数能凑出几个完整的1米。','','总长','fraction');}),
+ equal:fdLesson('equal',1,'切法变了，多少没变','同一条纸带的一半，再把每份切成两小份。切口增加，纸带没有增加。','一半也能叫四分之二，为什么？',['line','build'],()=>[
+  fdP('先取整条的一半','这一整条代表一条纸带，橙色是它的一半。',fdStrip(2,1)),
+  fdP('每份再分成2小份','原来的1份变成2份，整个的2份变成4份；涂色总长度没变。',fdStrip(2,1)+fdStrip(4,2),'1/2 = 2/4'),
+  fdP('再换切法，也能到同一个位置','1/2、2/4和3/6表示同样多。',fdStrip(6,3)+fdLine(6,3),'分子、分母同时乘同一个非零数'),
+  fdP('倒过来合并小份，就是约分','把2/6的每2小份合成1份，得到1/3。取的量仍然一样。',fdStrip(6,2)+fdStrip(3,1),'2/6 = 1/3')
+ ],{type:'equal',start:1,target:3,min:1,max:4,label:'把每个半条再分成几小份？',prompt:'把一半改画成3/6，看看涂色有没有变长。'},(slot,seed)=>{const k=seed%3+2;return slot===0?fdQuestion(`1/2 = ?/${k*2}，问号应填几？`,k,'每一份都同样细分，取的量没变','只把分母乘大','分子分母加同一个数',`分子分母都乘${k}，得到${k}/${k*2}。`,'整个份数变成几倍，取的份数也变成几倍。',fdStrip(2,1)+fdStrip(k*2,k),'问号'):slot===1?fdQuestion(`${k}/${k*3}约成最简分数是多少？`,1/3,'把分子分母同时除以同一个数','只减少分子','约分就是让分数变小',`同时除以${k}，得到1/3。`,'把每组同样的小份合并。','','最简分数','fraction'):fdQuestion('一条纸带的一半再剪成两小段，原来涂色的总长度会变吗？',null,'不变，切法改变，纸没有增加或减少','变大，块数更多了','变小，分母更大了','比较同一个整体中取到的总量，不能只数块数。','想想有没有拿走或新添纸带。');}),
+ compare:fdLesson('compare',1,'同一把尺，比大小','两只小动物走同样长的路。谁到的位置更靠右，谁走过的长度就更大。','1/4和1/2，哪个更大？用图找到理由。',['equal','line'],()=>[
+  fdP('小份同样大，比拿几份','分母相同，每份的大小相同；3份比2份多。',fdStrip(5,3)+fdStrip(5,2,'同样大的另一条','blue'),'3/5 > 2/5'),
+  fdP('都只拿一份，分得越细越小','同样的1，分成4份的一份比分成2份的一份小。',fdStrip(2,1)+fdStrip(4,1,'同样大的另一条','blue'),'1/2 > 1/4'),
+  fdP('不好直接比，换成一样的小份','2/3换成8/12，3/4换成9/12，再比较份数。',fdStrip(12,8)+fdStrip(12,9,'同样大的另一条','blue'),'2/3 < 3/4'),
+  fdP('还可以用一半作路标','1/3不到一半，3/4超过一半，所以1/3更小。',fdLine(12,4)+fdLine(12,9),'先判断在哪一边，再比较')
+ ],{type:'compare',start:2,target:6,min:1,max:7,label:'蓝条取几个1/8？',prompt:'橙条是5/8。让蓝条刚好多出1/8。'},(slot,seed)=>{const d=seed%3+4;return slot===0?fdQuestion(`同样大的整体中，3/${d}和2/${d}哪个大？`,3/d,'小份一样大，3份比2份多','分母相同就一样大','只比较分母',`同分母比较分子，3/${d}更大。`,'每一小份有区别吗？',fdStrip(d,3)+fdStrip(d,2),'较大的分数','fraction'):slot===1?fdQuestion(`1/${d}和1/${d+1}哪个大？`,1/d,'同一个整体分得越细，一份越小','分母大的那一个更大','分子都是1所以一样大',`1/${d}更大。`,'想想同一块蛋糕，分给更多人时每人怎样。','','较大的分数','fraction'):fdQuestion('两人各有同样长的纸带，甲用了2/3，乙用了3/4。谁用得多？',null,'乙，3/4比2/3大','甲，因为3小于4','一样多，都是差一份没用','2/3=8/12，3/4=9/12，所以乙多。','把小份换成同样的十二分之一。');})
+};
+Object.assign(FD,{
+ add:fdLesson('add',2,'同样的小份，合起来或拿走','两只小动物拿的都是同一大小的五分之一。合并时数份数，不重新切蛋糕。','合起来、拿走一些，每一小份会变大吗？',['build','over'],()=>[
+  fdP('先确认每份一样大','橙色先有2个1/5，蓝色新添1个1/5。',fdSum(5,2,1)),
+  fdP('一共3小份，仍然是五分之一','只是在数同样的小份，整条没有被重新分成10份。',fdStrip(5,3),'2/5 + 1/5 = 3/5'),
+  fdP('减法就是拿走同样的小份','原来4个1/5，拿走1个，还剩3个。划线的部分不再计入。',fdSum(5,4,1,true),'4/5 − 1/5 = 3/5'),
+  fdP('超过一条也可以继续数','4个1/5加3个1/5，共7个，能拼成1又2/5。',fdSum(5,4,3),'4/5 + 3/5 = 7/5')
+ ],{type:'add',start:0,target:2,min:0,max:4,label:'再添几个1/5？',prompt:'先有2/5，再添到4/5。'},(slot,seed)=>{const d=seed%3+4;return slot===0?fdQuestion(`2/${d}+1/${d}是多少？`,3/d,'小份大小相同，只合并份数','分子分母都相加','只把分母加起来',`3个1/${d}就是3/${d}。`,'先读成“几个同样的小份”。',fdSum(d,2,1),'结果','fraction'):slot===1?fdQuestion(`${d-1}/${d}−1/${d}是多少？`,(d-2)/d,'拿走1份，剩下的每份大小不变','分母也减1','减法会让每一份变大',`还剩${d-2}个1/${d}。`,'只拿走一份，没有重新切整个。','','结果','fraction'):fdQuestion(`小熊上午走1/${d}千米，下午走2/${d}千米，一共几千米？`,3/d,'同样的长度单位可以合起来','两个分母相加','不同时间不能相加',`一共3/${d}千米。`,'两次的每一小段是同样长的吗？','','总路程','fraction');}),
+ common:fdLesson('common',2,'小份不同，先换同一把尺','半张纸和三分之一张纸，各是1份，可是这两份不一样大。先换成同样的小格再合并。','半张加三分之一张，怎样一起数？',['equal','add'],()=>[
+  fdP('都叫一份，大小却不同','两条代表同样大的整张纸。上面取一半，下面取三分之一。',fdStrip(2,1)+fdStrip(3,1,'同样大的另一张','blue')),
+  fdP('用六分之一当共同的小份','一半可以分成3个1/6，三分之一可以分成2个1/6。',fdStrip(6,3)+fdStrip(6,2,'换成一样的小份','blue'),'1/2 = 3/6；1/3 = 2/6'),
+  fdP('现在才可以数在一起','3个加2个，共5个六分之一。',fdSum(6,3,2),'1/2 + 1/3 = 5/6'),
+  fdP('减法也先换成同样的小份','3/4里面拿走1/2，也就是拿走2个1/4，还剩1个。',fdSum(4,3,2,true),'3/4 − 1/2 = 1/4')
+ ],{type:'common',start:3,target:6,min:2,max:12,label:'把每个整体统一分成几份？',prompt:'要同时表示1/2和1/3，找能整齐对齐的最少等份数。'},(slot,seed)=>{const [p,q]=[[2,3],[3,4],[4,6],[2,5]][seed%4],l=fdL(p,q);return slot===0?fdQuestion(`1/${p}+1/${q}是多少？`,1/p+1/q,'先把两种小份换成一样大','分子分母分别相加','都取一份所以答案是2',`换成${l}分之一，得到${fdF(l/p+l/q,l)}。`,`找${p}和${q}都能整齐分的等份数。`,'','结果','fraction'):slot===1?fdQuestion(`1−1/${p}是多少？`,(p-1)/p,`把1看作${p}个1/${p}`,'把分子分母同时减1','1不能写成分数',`1=${p}/${p}，拿走1份还剩${p-1}份。`,'先把完整的一条切成相同小份。','','结果','fraction'):fdQuestion(`同样的一米纸带，用掉1/${p}米，又用掉1/${q}米，共用几米？`,1/p+1/q,'两段长度用同样的小份测量后相加','把两段不同的小份当成相同份','先把两个分母相加',`总长为${fdF(l/p+l/q,l)}米。`,'先选一把两段都能量整齐的小尺。','','共用几米','fraction');}),
+ of:fdLesson('of',2,'一盒东西的几分之几','一整盒有12颗糖。不是把一颗糖切碎，而是把整盒分成一样多的几组。','12颗糖的3/4，到底是几颗？',['whole','build'],()=>[
+  fdP('整体可以是一盒12颗','图里每个点是一颗糖，外框圈住的12颗合起来看作1。',fdDots(12,0)),
+  fdP('先把12颗平均分4组','每组3颗，这一组才是整盒的1/4。',vxBar('整盒12颗',4,1,'gold','3颗'),'12 ÷ 4 = 3（颗）'),
+  fdP('取3组，得到整盒的3/4','3/4说取了几组；9颗说实际有多少。两种说法别混淆。',fdDots(12,9),'12 × 3/4 = 12 ÷ 4 × 3 = 9'),
+  fdP('先估一估，再计算','只取整盒的3/4，取出的数量应当少于12颗。',vxPair(vxCard('一整个','12颗'),vxCard('其中3/4','9颗')))
+ ],{type:'of',start:2,target:4,min:0,max:12,label:'从12颗糖中取几颗？',prompt:'取出整盒的1/3。先平均分3组，再取1组。'},(slot,seed)=>{const total=(seed%3+2)*4;return slot===0?fdQuestion(`${total}颗糖的3/4是几颗？`,total/4*3,'平均分4组，取3组','平均分3组，取4组','把3/4当成3颗',`每组${total/4}颗，3组共${total/4*3}颗。`,'分母决定分几组，分子决定取几组。','','几颗'):slot===1?fdQuestion(`${total}×1/4的结果和${total}相比怎样？`,null,'更小，因为只取其中一部分','更大，因为是乘法','相同，因为整体没有变','乘一个0到1之间的数，取到的是原量的一部分。','想想只拿整盒的四分之一。'):fdQuestion(`一根绳长${total}米，用去1/4，还剩几米？`,total*3/4,'问剩下，要取另外3/4','问剩下，直接填用去的1/4','把总长除以3',`剩下3/4，共${total*3/4}米。`,'先圈出题目问“用去”还是“剩下”。','','剩下几米');}),
+ multiply:fdLesson('multiply',2,'一部分里，再取一部分','先种满菜地的2/3，再把已种部分的3/4种成萝卜。萝卜占整块菜地多少？','在一部分菜地里再选一部分，剩下多大？',['of','equal'],()=>[
+  fdP('整块菜地只算一个整体','把整块平均分3行，再分4列，得到12个同样大的小格。',fdArea(3,4,0,0)),
+  fdP('先取整块的2/3','先取2行，共8小格。这里的一整个仍然是整块菜地。',fdArea(3,4,2,0)),
+  fdP('只在已取部分里，再取3/4','已取的2行按4列分，取其中3列。绿色6格是两次都取中的部分。',fdArea(3,4,2,3),'2/3 × 3/4 = 6/12 = 1/2'),
+  fdP('乘法也可能让数量变小','取2/3的一部分，结果1/2比2/3小。分母相乘来自整块被分成几格。',fdStrip(12,8)+fdStrip(12,6,'再取其中3/4','green'),'分子数取到的格，分母数整个的格')
+ ],{type:'multiply',start:1,target:3,min:0,max:4,label:'在4列中再取几列？',prompt:'先取2行，再取已选部分的3/4。绿色就是最后得到的部分。'},(slot,seed)=>{const p=seed%2+2,q=seed%3+3;return slot===0?fdQuestion(`1/${p}的1/${q}，占原来的整个多少？`,1/(p*q),'在已经取的部分里，再取一部分','把两个分数相加','只保留较大的分母',`整个分成${p*q}格，取1格，是1/${p*q}。`,'先分行，再分列，数交叠处。',fdArea(p,q,1,1),'占整个多少','fraction'):slot===1?fdQuestion(`2/3×3/4是多少？`,.5,'分母数整块格子，分子数交叠格子','乘法一定比两个数都大','分子分母分别相加','交叠6格，整块12格，所以1/2。','先算交叠处有几格，再与整个比。','','结果','fraction'):fdQuestion(`花圃的1/${p}种花，其中1/${q}种向日葵。向日葵占整个花圃多少？`,1/(p*q),'第二个分数的整体是已经种花的部分','第二个分数仍直接表示整个花圃','两个分数都指不同大小的花圃',`是整个花圃的1/${p*q}。`,'第二次只在第一次选中的范围里取。','','占整个花圃','fraction');}),
+ share:fdLesson('share',2,'把一段分数，平均分给几人','只有3/4米彩带，平均分给3个人。先认清可分的彩带，不能把没拿来的部分也分掉。','只有3/4米彩带，3个人怎样平分？',['of','multiply'],()=>[
+  fdP('实际拿来的是3/4米','整条参照线长1米；橙色才是手里的彩带。',fdStrip(4,3,'1米参照，手里有3/4米')),
+  fdP('把3份平均给3人','手里刚好3个1/4米，每人拿1个。',vxBar('实际的3/4米',3,3,'gold','1/4米'),'3/4 ÷ 3 = 1/4'),
+  fdP('不是每个人都拿原来的3/4','每人只拿到现有量的1/3。加回3个人的量，要等于原来的量。',fdStrip(4,1,'每人所得'),'3 × 1/4 = 3/4'),
+  fdP('换成2个人，也按现有量平均分','把3/4换成6/8，再分给2人，每人3/8米。',fdStrip(8,3,'每人所得'),'3/4 ÷ 2 = 3/8')
+ ],{type:'share',start:2,target:3,min:2,max:4,label:'把3/4米平均分给几人？',prompt:'给3个人平均分，观察每人拿到的长度。'},(slot,seed)=>{const d=seed%3+4;return slot===0?fdQuestion(`2/${d}米平均分给2人，每人几米？`,1/d,'把现有的2个小份平均分成2组','把完整1米平均分给2人','分母除以2就行',`2个1/${d}米平均分，每人1/${d}米。`,'只分题目实际拿来的部分。',fdStrip(d,2),'每人几米','fraction'):slot===1?fdQuestion(`1/${d}÷2是多少？`,1/(d*2),'把原来的一小份再平均分成2份','除法一定得到整数','把分子减2',`每份是1/${d*2}。`,'把原来的小份再切半。','','结果','fraction'):fdQuestion(`3/${d}升果汁平均倒入3杯，每杯几升？`,1/d,'三杯合起来应还原原来的果汁量','每杯都是3升','把杯数当成新的分子',`每杯1/${d}升，3杯合起来3/${d}升。`,'可以用每杯量乘3来检查。','','每杯几升','fraction');}),
+ divide:fdLesson('divide',2,'里面装得下几个小段','手里有2米绳子，每2/3米剪成一段。除法在问：这些绳子里有几个这么长的小段？','2米绳子，每段2/3米，能剪几段？',['equal','share','over'],()=>[
+  fdP('被除数是总量，除数是每段多长','总量2米，每段2/3米；问能剪出几段。先分清三个量。',fdStrip(3,6,'总量2米')+fdStrip(3,2,'每段2/3米')),
+  fdP('都换成三分之一米来数','2米是6个1/3米。每段占2个这样的小份。',fdMeasure(6,3,2),'2 ÷ 2/3 = 6份 ÷ 2份'),
+  fdP('每2份圈成一组，共3组','一组就是题目中的一段，不是三分之一米的小份。',fdMeasure(6,3,2),'6 ÷ 2 = 3（段）'),
+  fdP('为什么可以乘倒数？','先乘3，把米换成三分之一米；再除以2，把每2小份组成一段。',fdMeasure(6,3,2),'2 × 3 ÷ 2 = 2 × 3/2 = 3'),
+  fdP('最后半组，也可以表示','3/4米按每1/2米来量，能装1整组，再装半组，共1又1/2组。',fdMeasure(3,4,2),'3/4 ÷ 1/2 = 3/2')
+ ],{type:'divide',start:1,target:2,min:1,max:6,label:'每段含几个1/3米？',prompt:'总量2米，每段2/3米。把每2个小份圈成一组。'},(slot,seed)=>{const d=seed%3+3;return slot===0?fdQuestion(`2米绳子，每1/${d}米剪一段，能剪几段？`,2*d,'总量里包含几个指定长度的小段','把总长平均分给分母个人','除法结果一定更小',`2米有${2*d}个1/${d}米。`,'先把2米换成指定的小单位。','','几段'):slot===1?fdQuestion('3/4÷1/2是多少？',1.5,'用1/2作一组，能装1整组和半组','结果只能是整数','只把两个分母相除','3/4是3个1/4，一组2个1/4，所以3÷2=3/2。','把两种长度都改用四分之一量。','','结果','fraction'):fdQuestion(`有${d-1}/${d}升饮料，每杯1/${d}升，能装几杯？`,d-1,'看总量能装几个同样大的杯量','把每杯量乘总量','除以分数就是分子分母一起相加',`有${d-1}个1/${d}升，能装${d-1}杯。`,'这次问杯数，不是每杯多少。','','杯数');}),
+ percent:fdLesson('percent',3,'一个量，三种名字','一张百格纸代表整个。分数、小数和百分数，可以说同一个涂色范围。','1/4、0.25和25%，为什么说的是一样多？',['equal','of'],()=>[
+  fdP('一整张是1，也就是100%','百格纸有100个同样大的小格。每格是整个的1/100。',fdHundred(100)),
+  fdP('涂25格，是四分之一张','把100格分成4组，每组25格。',fdHundred(25),'25/100 = 1/4'),
+  fdP('也可以写成0.25或25%','0.25表示25个百分之一；25%读作百分之二十五。它们不是25个整体。',fdHundred(25),'1/4 = 0.25 = 25%'),
+  fdP('写法变了，数量仍然相同','同样的1/2，可以改写为50/100、0.5和50%。',fdHundred(50),'1/2 = 0.5 = 50%')
+ ],{type:'percent',start:50,target:25,min:0,max:100,step:5,label:'百格纸涂多少格？',prompt:'涂出整张的1/4，同时看看它的小数和百分数写法。'},(slot,seed)=>{const a=[25,50,75][seed%3];return slot===0?fdQuestion(`${a}%写成最简分数是多少？`,a/100,'百分数表示以100等份来计数','百分数表示几个整体','去掉百分号数值不变',`${a}%=${a}/100=${fdF(a,100)}。`,'分母先写100，再约分。',fdHundred(a),'最简分数','fraction'):slot===1?fdQuestion(`${a/100}写成百分数，百分号前应填几？`,a,'一个整体对应100%','小数点后有几位就写几','小数变百分数要除以100',`${a/100}=${a}%。`,'先看相当于几个百分之一。','','百分号前的数'):fdQuestion(`一盒有20块积木，其中${a}%是蓝色，有几块蓝色积木？`,20*a/100,'先把百分数看成整个的几分之几','百分数就是积木块数','20块表示20个百分之一',`20×${a}/100=${20*a/100}块。`,'百分数描述占比，还要结合整盒有多少。','','蓝色几块');}),
+ back:fdLesson('back',3,'知道几份，找回整个','小狐狸准备了3袋同样多的橘子，一共6个。全部要准备8袋，怎样从已知部分找到全部？','只知道一部分有多少，能找到全部吗？',['of','divide'],()=>[
+  fdP('已知6个，只对应3袋','每袋同样多，一袋作一份。不是每一袋都有6个。',vxBags(3,2),'已知的3份合起来6个'),
+  fdP('先求一份','把6个平均分成3份，得到每份2个。',vxBags(1,2),'6 ÷ 3 = 2（个/份）'),
+  fdP('再补齐完整8份','整个共有8份，每份仍是2个，所以共16个。',vxBags(8,2),'6 ÷ 3 × 8 = 16'),
+  fdP('为什么这次用除法？','6是整个的3/8。用部分除以对应的分数，倒着找整个。',fdStrip(8,3),'6 ÷ 3/8 = 16')
+ ],{type:'back',start:1,target:2,min:1,max:6,label:'每袋放几个？',prompt:'调到前3袋合起来6个，再看完整8袋的总数。'},(slot,seed)=>{const one=seed%4+3;return slot===0?fdQuestion(`一盒糖的2/5是${one*2}颗，整盒几颗？`,one*5,`已知${one*2}颗对应2份`,'已知数对应5份','直接把已知量再乘2/5',`先${one*2}÷2=${one}，再乘5。`,'先给已知数量贴上“对应几份”的标签。','','整盒几颗'):slot===1?fdQuestion(`一盒原有${one*5}颗，拿走2/5，拿走几颗？`,one*2,'这次已知的是完整5份','和上一问一样要倒推整个','分母表示拿走的颗数',`${one*5}÷5×2=${one*2}颗。`,'先判断已知量是全部还是部分。','','拿走几颗'):fdQuestion(`${one*3}页占全书3/4。全书还剩几页没读？`,one,'先求全书一份，再取剩下的一份','把总页数直接填到还剩','已读页数就是一份',`每份${one}页，还剩1/4，所以还剩${one}页。`,'求出一份后，检查最后问的是全部还是剩下。','','还剩几页');}),
+ base:fdLesson('base',3,'这一次，跟谁比较','熊熊4块饼干，兔兔6块。兔兔比熊熊多一半，反过来却不是少一半。我们来找原因。','多一半，反过来就少一半吗？',['whole','of','back'],()=>[
+  fdP('先摆清谁有多少','两个盘子中的饼干同样大。差始终是2块。',vxPair(vxCard('熊熊4块',vxCount(4,'cookie')),vxCard('兔兔6块',vxCount(6,'cookie')))),
+  fdP('兔兔比熊熊多，按熊熊算','多出的2块，占熊熊4块的1/2。',fdStrip(4,2,'以熊熊4块为整个'),'多2 ÷ 4 = 1/2'),
+  fdP('熊熊比兔兔少，按兔兔算','少掉的2块，占兔兔6块的1/3。差没变，比较的整个变了。',fdStrip(6,2,'以兔兔6块为整个'),'少2 ÷ 6 = 1/3'),
+  fdP('比与占比，也要先排名字','熊∶兔＝4∶6＝2∶3；熊占两人合计的4/10＝2/5。整体不同，答案不同。',fdDots(10,4,'块饼干','两人的全部饼干'),'每次先写：跟谁比？')
+ ],{type:'base',start:2,target:1,min:1,max:2,label:'选择比较对象',prompt:'问“兔兔比熊熊多几分之几”，应拿谁作整个？',options:['熊熊4块','兔兔6块']},(slot,seed)=>{const k=seed%3+2,a=k*2,b=k*3;return slot===0?fdQuestion(`甲${a}张，乙${b}张。乙比甲多几分之几？`,.5,'多出的量要除以甲','多出的量要除以乙','直接用乙减甲作分数',`差${k}张，按甲${a}张算，得1/2。`,'“比甲多”，就跟甲比。','','多几分之几','fraction'):slot===1?fdQuestion(`甲${a}张，乙${b}张。甲比乙少几分之几？`,1/3,'少掉的量要除以乙','和上一题一样还是1/2','用两人总和作整体',`差${k}张，按乙${b}张算，得1/3。`,'这次跟谁比，名字换了吗？','','少几分之几','fraction'):fdQuestion(`甲${a}张，乙${b}张。甲占两人总数的多少？`,.4,'这次整个是甲乙合计','整个仍然只有乙','整个只有甲',`甲占${a}/${a+b}=2/5。`,'先把这次的完整整体圈出来。','','占总数多少','fraction');}),
+ plan:fdLesson('plan',3,'把多步问题画清楚','一篮20个水果，先吃掉1/4，再把剩下的1/3送人。每一步都先认清这次的整个。','先吃一些再送一些，第二次按多少来算？',['common','multiply','base'],()=>[
+  fdP('第一步，以原有20个为整个','先吃掉20个的1/4，也就是5个。',fdDots(20,5,'个水果','一整篮'),'20 × 1/4 = 5'),
+  fdP('第二步开始，手里只剩15个','剩下的15个成为下一句话比较的整个。不是又拿原来20个去算。',fdDots(15,15,'个水果','剩下的一篮'),'20 − 5 = 15'),
+  fdP('再取剩下的三分之一','15个的1/3是5个，送人后还剩10个。',fdDots(15,5,'个水果','剩下的一篮'),'15 × 1/3 = 5；15 − 5 = 10'),
+  fdP('回头检查有没有漏算','吃5个、送5个、剩10个，合起来应当还是原有20个。',vxPair(vxCard('已经离开篮子','5 + 5 = 10'),vxCard('篮子里还剩','10')),'5 + 5 + 10 = 20')
+ ],{type:'plan',start:1,target:2,min:1,max:2,label:'第二步的三分之一，按谁算？',prompt:'先吃掉5个后，应该把“剩下的15个”作新的整个。',options:['原有20个','剩下15个']},(slot,seed)=>{const k=seed%3+2,total=12*k;return slot===0?fdQuestion('1/2 + 1/3 × 3/4 的结果是多少？',.75,'先算乘法，再把同样的小份相加','先把前两个分数加起来','把所有分子相加、分母相加','乘法结果1/4，再加1/2得到3/4。','先看哪些量是一组运算，再考虑通分。','','结果','fraction'):slot===1?fdQuestion(`原有${total}颗糖，先吃1/3，再送出剩下的1/4。最后剩几颗？`,6*k,'第二次以吃完后剩下的糖为整个','两次都按原有总量算','把两个分数直接相减',`先剩${8*k}颗，再送${2*k}颗，最后${6*k}颗。`,'先把第一步剩下的数量写出来。','','最后几颗'):fdQuestion(`已经走${6*k}千米，占全程3/5。到终点还要走几千米？`,4*k,'先求一份，再数未走的2份','把全程填到还要走的空','已走3份就是未走3份',`一份${2*k}千米，剩2份，共${4*k}千米。`,'注意问的是“还要”，不是“一共”。','','还要几千米');})
+});
+function fdMeasure(n,d,group){return `<div class="fd-measure" style="--parts:${n}" role="img" aria-label="总量${fdF(n,d)}，每组${fdF(group,d)}">${Array.from({length:n},(_,i)=>`<span class="${Math.floor(i/group)%2?'blue':'gold'} ${(i+1)%group===0?'group-end':''}">1/${d}</span>`).join('')}</div><p class="vx-legend">每格1/${d}米；每${group}格圈成一组。分组边界用粗线标出。</p>`;}
+function fdHundred(n){return `<div class="fd-hundred" role="img" aria-label="整张100格，涂色${n}格">${Array.from({length:100},(_,i)=>`<i class="${i<n?'lit':''}"></i>`).join('')}</div><p class="vx-legend">每格都是1/100；${n}格是${n}%。</p>`;}
+const FD_GROUPS=['从分东西开始','把分数当成数','理解为什么这样算','把分数用到问题里'];
+
+const FD_REPAIR={fair:'fair',unit:'fair',build:'unit',whole:'whole',line:'line',over:'build',equal:'build',compare:'equal',add:'unit',common:'equal',of:'whole',multiply:'of',share:'of',divide:'share',percent:'equal',back:'of',base:'whole',plan:'whole'};
+const FD_PHASES=['看故事','动手试','说清楚','独立做','隔天试'];
+const FD_REASONS={
+ fair:['为什么切成两块，还不一定是平均分？','要检查两块是否同样大','只要有两块就算平均','看切线有没有颜色'],
+ unit:['1/4中的4和1分别说明什么？','整个平均分4份，取其中1份','整个有4个，取走1个','1和4是两个分开的数量'],
+ build:['3/5为什么是3个1/5？','每份是1/5，取了3份','把1/5的分母加3','把整个平均分3份'],
+ whole:['同样是1/2，实际量为什么可能不同？','它们所比较的整个可能不同','分数的大小随颜色改变','两个一半永远实际一样多'],
+ line:['在数轴上找3/4，先确定什么？','0到1这个单位，再平均分4段','先数整张图上的刻度点','把3和4分别找出来'],
+ over:['5/4为什么能比1大？','它有5个1/4，比完整1多1个1/4','分数不能大于1','分母比1大就代表分数大于1'],
+ equal:['把1/2改写成2/4，什么改变了？','小份切法和份数变了，取的总量没变','整个变成了两倍大','只有分母发生变化'],
+ compare:['同一个整体上，1/4为什么比1/2小？','分得更多，每一份更小','分母越大，分数越大','分子相同，分数就相等'],
+ add:['2/5加1/5，为什么分母还是5？','只是合并份数，每一小份大小没变','加法总要保留较大的分母','因为分母不能做任何运算'],
+ common:['1/2加1/3，为什么先通分？','先换成一样大小的小份，才能一起数','任何两个数字都要先相乘','分子是1就能直接相加'],
+ of:['12的3/4，分母和分子分别让我们做什么？','先把12分4份，再取3份','把12分3份，再取4份','只需要算12减4加3'],
+ multiply:['2/3的3/4，第二次在哪个范围取？','在已经取出的2/3里面取','重新从原来整个取3/4','把两个部分简单相加'],
+ share:['3/4平均分给3人，为什么每人不是3/4？','每人只拿到现有量的1/3','每人都拿完整的一份现有量','分给几人就把分母减几'],
+ divide:['2÷2/3，在这个剪绳故事里问什么？','2里面有几个2/3','把2分别除以2和3','把2/3米绳子分给2人'],
+ percent:['25%为什么等于1/4？','100等份取25份，正好是四分之一','25%就是25个整体','有百分号就不需要看整个'],
+ back:['整个的3/8是6，为什么先算6÷3？','6对应3份，先找1份','6对应完整8份','只要有分数就先除3'],
+ base:['甲比乙多一半，这一半按谁算？','按乙的量算','按甲的量算','按两人合起来算'],
+ plan:['先吃一部分，再拿剩下的几分之几，第二次整个是谁？','第一次做完后实际剩下的量','永远是最初的总量','每次都拿相同的分子作整个']
+};
+function fdState(){
+ const f=s.foundation||(s.foundation={version:1,id:'fair',phase:0,labs:{},reasons:{},sessions:{},records:{}});
+ if(!FD[f.id])f.id='fair';if(!Number.isInteger(f.phase)||f.phase<0||f.phase>4)f.phase=0;
+ for(const k of ['labs','reasons','sessions','records'])if(!f[k]||typeof f[k]!=='object')f[k]={};
+ return f;
+}
+function fdLessonNow(){return FD[fdState().id];}
+function fdRecord(id=fdState().id){return fdState().records[id]||(fdState().records[id]={history:[],lastError:null});}
+function fdSession(phase=fdState().phase){const f=fdState(),key=f.id+':'+phase;return f.sessions[key]||(f.sessions[key]={round:0,index:0,items:[{},{},{}]});}
+function fdQuestionNow(){const f=fdState(),t=fdSession();return FD[f.id].questions(t.index,t.round*5+(f.phase===4?11:0)+t.index);}
+function fdAnswerState(){const t=fdSession(),i=t.index;return t.items[i]||(t.items[i]={});}
+function fdNextDay(day,offset){const d=new Date(day+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+offset);return d.toISOString().slice(0,10);}
+function fdDue(id){const r=fdRecord(id);if(!r.establishedDay)return null;const intervals=[1,3,7,14],base=r.lastReview?.independent?r.lastReview.day:r.establishedDay;return fdNextDay(base,intervals[Math.min(r.reviewLevel||0,3)]);}
+function fdStatus(id){const r=fdRecord(id);if(r.lastError)return '有一处需要再看看';if(r.lastReview?.independent)return '已通过隔天检验';if(r.establishedDay)return '已独立完成 · 过一天再试';if(r.practice)return '练过了 · 再独立试试';return r.history.length?'正在练习':'还没开始';}
+function fdRecommend(){
+ const f=fdState(),ids=Object.keys(FD),due=ids.find(id=>{const d=fdDue(id);return d&&d<=today();});
+ if(due)return {id:due,phase:4,reason:'之前已经独立做对，今天换题看看还记不记得。'};
+ const repair=ids.find(id=>fdRecord(id).lastError);
+ if(repair){const suggested=fdRecord(repair).repairLesson||FD_REPAIR[repair];const target=suggested&&!fdRecord(suggested).establishedDay?suggested:repair;return {id:target,phase:target===repair?1:0,reason:`上次在“${FD[repair].title}”遇到一点困难，先把相关的图看清楚。`};}
+ const next=ids.find(id=>!fdRecord(id).establishedDay)||ids[ids.length-1];
+ return {id:next,phase:0,reason:next==='fair'?'不需要先认识分数。我们从分一块巧克力开始。':'前面练过的会保留，接着建立下一步理解。'};
+}
+function fdHome(){const rec=fdRecommend(),independent=Object.keys(FD).filter(id=>fdRecord(id).establishedDay&&!fdRecord(id).lastError).length,reviewed=Object.keys(FD).filter(id=>fdRecord(id).lastReview?.independent&&!fdRecord(id).lastError).length;return `<main class="ma-main fd-home"><h1>分数，从分一块巧克力开始</h1><p class="fd-intro">先看见，再动手；能说清楚，再换一道自己做。</p><section class="fd-next"><div><p>接下来可以试试</p><h2>${FD[rec.id].title}</h2><p>${rec.reason}</p></div><button type="button" class="ma-primary" data-fd-start="${rec.id}" data-fd-phase="${rec.phase}">从这里开始 →</button></section><p class="fd-progress-line">18课中，${independent}课已完成独立练习，${reviewed}课已通过隔天检验。看过、跳过都不算通过。</p><p class="ma-caption">所有课程与步骤都可以自由选择。第一次建议从第1课开始，一次慢慢学一课。</p>${FD_GROUPS.map((g,gi)=>`<details class="fd-course-group" ${gi===FD[rec.id].group?'open':''}><summary><b>${gi+1}</b>${g}</summary><div>${Object.values(FD).filter(l=>l.group===gi).map(l=>`<button type="button" class="fd-course-row" data-fd-start="${l.id}" data-fd-phase="0"><span class="fd-course-number">${Object.keys(FD).indexOf(l.id)+1}</span><span><strong>${l.title}</strong><small>${l.focus}</small></span><em>${fdStatus(l.id)}</em></button>`).join('')}</div></details>`).join('')}<section class="fd-next fd-transfer"><div><h2>把理解带回原来的错题</h2><p>基础稳了，再挑战分橘子、盐水、折纸、赛车等九个故事。原有记录都保留。</p></div><button class="ma-secondary" data-nav="map" type="button">去错题探险地图 →</button></section><button class="ma-link" data-fd="records" type="button">查看我的分数足迹</button></main>`;}
+function fdRail(){const f=fdState();return `<nav class="ma-route fd-route" aria-label="基础课五个环节，可自由选择">${FD_PHASES.map((t,i)=>`<button type="button" data-fd-go="${i}" ${f.phase===i?'aria-current="step"':''}><b>${i+1}</b><span>${t}</span></button>`).join('')}</nav><p class="ma-route-tip">点数字可以任选、跳过和回来看看；不会清掉你填过的内容。</p>`;}
+function fdLabState(){const f=fdState(),l=FD[f.id];return f.labs[f.id]||(f.labs[f.id]={value:l.lab.start,feedback:'',passed:false});}
+function fdLabModel(){const l=fdLessonNow(),v=fdLabState().value;switch(l.lab.type){
+ case 'cut':return fdCut(v);
+ case 'unit':return fdStrip(v,1,'同一根面包')+`<p class="fd-live-result">取的一份写作 1/${v}</p>`;
+ case 'build':return fdStrip(5,v)+`<p class="fd-live-result">${v}个1/5，是${v}/5${v===5?'，也就是1':v===0?'，也就是0':''}。</p>`;
+ case 'whole':return fdDots(v,1,'块饼干')+`<p class="fd-live-result">同一块饼干占这个整体的1/${v}。</p>`;
+ case 'line':return fdLine(4,v,1,true)+`<p class="fd-live-result">现在到 ${fdF(v,4)}</p>`;
+ case 'over':return fdLine(4,v,2,true)+fdStrip(4,v)+`<p class="fd-live-result">${v}/4 = ${Math.floor(v/4)}个完整的1，再加${v%4}/4。</p>`;
+ case 'equal':return fdStrip(2,1)+fdStrip(v*2,v,'同样长，换一种切法','blue')+`<p class="fd-live-result">1/2 = ${v}/${v*2}，涂色总长度没变。</p>`;
+ case 'compare':return fdStrip(8,5,'橙条')+fdStrip(8,v,'同样大小的蓝条','blue')+`<p class="fd-live-result">蓝条${v}/8 ${v===5?'等于':v<5?'小于':'大于'} 橙条5/8。</p>`;
+ case 'add':return fdSum(5,2,v)+`<p class="fd-live-result">2/5 + ${v}/5 = ${fdF(v+2,5)}。</p>`;
+ case 'common':return v%2===0&&v%3===0?fdStrip(v,v/2)+fdStrip(v,v/3,'同样大小的另一条','blue')+`<p class="fd-live-result">1/2 = ${v/2}/${v}；1/3 = ${v/3}/${v}。${v===6?'这是最少的共同等份。':'也能对齐，还能用更少的小格吗？'}</p>`:fdStrip(2,1)+fdStrip(3,1)+`<p class="fd-live-result">分成${v}份，不能同时整齐对齐二分之一和三分之一。</p>`;
+ case 'of':return fdDots(12,v)+`<p class="fd-live-result">取了${v}颗，占整盒的${v}/12。</p>`;
+ case 'multiply':return fdArea(3,4,2,v)+`<p class="fd-live-result">绿色${2*v}格，占整个${fdF(2*v,12)}。</p>`;
+ case 'share':return fdStrip(4,3,'实际拿来的3/4米')+fdStrip(4*v,3,'每个人分到的长度','blue')+`<p class="fd-live-result">3/4 ÷ ${v} = ${fdF(3,4*v)}（米/人）</p>`;
+ case 'divide':return fdMeasure(6,3,v)+`<p class="fd-live-result">总量2米，每段${v}/3米，可以量出${fdF(6,v)}段。</p>`;
+ case 'percent':return fdHundred(v)+`<p class="fd-live-result">${fdF(v,100)} = ${v/100} = ${v}%</p>`;
+ case 'back':return vxBar('已经准备的3袋',3,3,'gold',`${v}个`,`合起来${v*3}个，题目需要合起来6个`)+vxBar('完整8袋',8,8,'green',`${v}个`,`全部${v*8}个`);
+ case 'base':return vxPair(vxCard('熊熊',vxCount(4,'cookie'),'4块'),vxCard('兔兔',vxCount(6,'cookie'),'6块'))+`<p class="fd-live-result">差2块。按${v===1?'熊熊4':'兔兔6'}块算，差占${v===1?'1/2':'1/3'}。</p>`;
+ case 'plan':return fdDots(v===1?20:15,5,'个水果',v===1?'原有的一整篮':'剩下的一篮')+`<p class="fd-live-result">现在选择：${v===1?'原有20个；但其中5个已经吃掉，不在篮子里了。':'吃完后剩15个；第二次要在这15个里取1/3。'}</p>`;
+ default:return '';
+}}
+function fdLabView(){const l=fdLessonNow(),v=fdLabState();return `<p class="fd-intro">${l.lab.prompt}</p><section class="fd-workbench"><div id="fd-lab-picture">${fdLabModel()}</div><label class="fd-control"><strong>${l.lab.label}</strong>${l.lab.options?`<div class="fd-pick-options">${l.lab.options.map((x,i)=>`<button class="ma-secondary" type="button" data-fd-lab-value="${i+1}" aria-pressed="${v.value===i+1}">${x}</button>`).join('')}</div>`:`<div class="fd-range-row"><button type="button" data-fd-adjust="-1" aria-label="减少" ${v.value<=l.lab.min?'disabled':''}>−</button><input id="fd-lab-range" type="range" min="${l.lab.min}" max="${l.lab.max}" step="${l.lab.step||1}" value="${v.value}" aria-label="${l.lab.label}"><button type="button" data-fd-adjust="1" aria-label="增加" ${v.value>=l.lab.max?'disabled':''}>＋</button><output id="fd-lab-value">${v.value}</output></div>`}</label><button type="button" class="ma-primary" data-fd="lab-check">检查我的操作</button><div id="fd-lab-feedback" aria-live="polite">${v.feedback?`<p class="ma-feedback ${v.passed?'success':''}">${v.feedback}</p>`:''}</div></section><p class="ma-caption">这里可以反复试。看懂以后，再到第4步独立做一道新题。</p>`;}
+function fdReasonView(){const f=fdState(),q=FD_REASONS[f.id],r=f.reasons[f.id]||(f.reasons[f.id]={choice:'',note:''});return `<p class="ma-question">${q[0]}</p><div class="ma-choices">${[2,1,3].map(i=>`<button class="ma-choice ${Number(r.choice)===i?(i===1?'right':'try'):''}" type="button" data-fd-reason="${i}">${q[i]}</button>`).join('')}</div>${r.choice!==''?`<p class="ma-feedback ${r.choice===1?'success':''}">${r.choice===1?'你找到了关键关系。现在用自己的话说一遍，再去独立试。':'回到图里找一找：'+q[1]+'。'}</p>`:''}<label class="ma-field"><span>我可以这样解释……（也可以说给大人听）</span><textarea id="fd-reason-note" rows="2" maxlength="240">${escape(r.note)}</textarea></label><p class="ma-caption">自己的解释留给孩子和大人讨论，程序不自动判断表达是否真正理解。</p>`;}
+function fdAssessmentView(){const f=fdState(),session=fdSession(),e=fdAnswerState(),q=fdQuestionNow(),r=fdRecord(),review=f.phase===4,delayed=review&&r.establishedDay&&today()>r.establishedDay;const shift=(Object.keys(FD).indexOf(f.id)+session.index+session.round)%3,options=q.relation.options.map((text,i)=>({text,i})),ordered=options.slice(shift).concat(options.slice(0,shift));return `<p class="fd-intro">${review?(delayed?'今天换一组题，看看前面的理解是否还在。':'可以先换题练。第一次独立完成会建立记录；隔一天再完成，才算隔天检验。'):'先自己想一想。每组3题，会换图、换数字或换问法。'}</p><nav class="fd-quiz-tabs" aria-label="自由选择练习题">${['先试一题','换个角度','换个情境'].map((t,i)=>`<button type="button" class="ma-secondary" data-fd-item="${i}" ${i===session.index?'aria-current="page"':''}>${i+1} ${t}${session.items[i]?.passed?' ✓':''}</button>`).join('')}</nav><section class="ma-paper"><p>${q.body}</p>${q.figure}</section><form id="fd-quiz-form"><label class="ma-field"><span>${q.relation.prompt}</span><select id="fd-quiz-reason" ${e.passed?'disabled':''}><option value="">请选择</option>${ordered.map(x=>`<option value="${x.i}" ${String(e.reason)===String(x.i)?'selected':''}>${x.text}</option>`).join('')}</select></label>${q.fields.map((x,i)=>`<label class="ma-field"><span>${x.label}</span><input data-fd-answer="${i}" type="text" inputmode="${x.type==='number'?'decimal':'text'}" maxlength="40" value="${escape(e.answers?.[i]||'')}" placeholder="${x.type==='fraction'?'例如 2/5':'填数字'}" ${e.passed?'disabled':''}></label>`).join('')}${!e.passed?'<button class="ma-primary" type="submit">检查关系和答案</button>':''}</form><div aria-live="polite">${e.feedback?`<p class="ma-feedback ${e.passed?'success':''}">${escape(e.feedback)}</p>`:''}</div>${e.help?`<aside class="ma-repair"><strong>只补这一点</strong><p>${q.hint}</p>${e.help>=2?`<p>${q.explain}</p>`:''}${r.repairLesson&&r.repairLesson!==f.id?`<p>这次可以补看：<button class="ma-link" type="button" data-fd-start="${r.repairLesson}" data-fd-phase="0">${FD[r.repairLesson].title}</button></p>`:''}<button class="ma-link" type="button" data-fd-go="1">回到这课的动手图</button></aside>`:''}<div class="ma-footer">${e.passed?`<details><summary>看看完整想法</summary><p>${q.explain}</p></details>`:`<button class="ma-secondary" type="button" data-fd="help" ${e.help>=2?'disabled':''}>${e.help?'再看解题思路':'给我一点提示'}</button>`}<button class="ma-secondary" type="button" data-fd="quiz-next">${session.index<2?'下一题 →':'看看本组记录 →'}</button></div>${session.items.every(x=>x.passed)?`<section class="fd-result"><h2>这组题，做到了哪一步？</h2><p>${session.items.every(x=>x.independent)?(delayed?'三种问法都独立做对，完成一次隔天检验。':'三种问法都独立做对了。隔一天再换题验证。'):'已经订正完成。看过帮助或重试的题，与独立做对分别记录。'}</p><button type="button" class="ma-primary" data-fd="new-round">换一组新题再试</button></section>`:''}<p class="ma-caption">打开提示或提交后订正，会记为“帮助后完成”。跳过不记完成；点到最后不等于掌握。</p>`;}
+function fdRecordsView(){return `<main class="ma-main"><h1>我的分数足迹</h1><p>这里会留下你独立做对的题，以及隔几天再做的结果。遇到难处也没关系，回到图里试一试。</p>${Object.values(FD).map(l=>{const r=fdRecord(l.id),due=fdDue(l.id);return `<div class="fd-record-row"><div><strong>${l.title}</strong><p>${fdStatus(l.id)}</p>${r.lastError?`<small>上次需要再看：${escape(r.lastError)}</small>`:due?`<small>下次换题复习：${due}</small>`:''}</div><button class="ma-secondary" type="button" data-fd-start="${l.id}" data-fd-phase="${due&&due<=today()?4:3}">去试试</button></div>`;}).join('')}<button type="button" class="ma-primary" data-fd="home">回到课程路线</button></main>`;}
+function fdView(){if(s.mode==='journey')return fdHome();if(s.mode==='fraction-records')return fdRecordsView();const f=fdState(),l=FD[f.id];return `<main class="ma-main fd-main">${fdRail()}<div class="fd-lesson-line"><button type="button" class="ma-link" data-fd="home">← 分数学习路线</button><span>第${Object.keys(FD).indexOf(f.id)+1}课 / 18课</span></div><h1>${l.title}</h1>${f.phase===0?`<div class="picnic-story"><span aria-hidden="true">🦊</span><p>${l.story}</p></div><div class="fd-visual-anchor"></div>`:f.phase===1?fdLabView():f.phase===2?fdReasonView():fdAssessmentView()}<div class="ma-free-footer"><span>想从哪一步开始都可以；跳过不会记作完成。</span><button class="ma-secondary" type="button" ${f.phase<4?`data-fd-go="${f.phase+1}"`:'data-fd="home"'}>${f.phase<4?'去下一步 →':'回到学习路线 →'}</button></div></main>`;}
+function fdNavigate(id,phase=0){rememberView();stopSpeech();const f=fdState();if(FD[id])f.id=id;f.phase=Math.min(4,Math.max(0,phase));if(f.phase===4){const t=fdSession(4),due=fdDue(f.id);if(due&&due<=today()&&t.completedDay&&t.completedDay<today()&&t.items.every(x=>x.passed)){t.round++;t.index=0;t.items=[{},{},{}];}}s.mode='foundation';render();save();topOfTask();}
+function fdSetLab(value,redraw=true){const l=fdLessonNow(),v=fdLabState();v.value=Math.max(l.lab.min,Math.min(l.lab.max,Number(value)));v.feedback='';v.passed=false;if(redraw){render();save();}else{root.querySelector('#fd-lab-picture').innerHTML=fdLabModel();root.querySelector('#fd-lab-value').textContent=v.value;root.querySelector('#fd-lab-feedback').innerHTML='';root.querySelector('[data-fd-adjust="-1"]').disabled=v.value<=l.lab.min;root.querySelector('[data-fd-adjust="1"]').disabled=v.value>=l.lab.max;}}
+function fdCheckLab(){const l=fdLessonNow(),v=fdLabState();v.passed=v.value===l.lab.target;v.feedback=v.passed?'你把图里的关系做出来了。可以再改一改，观察变化；然后到第4步独立试。':l.lab.type==='cut'?`左边${v.value}小格，右边${8-v.value}小格，还没有一样多。`:'再对照任务看一看：'+l.lab.prompt;render();save();}
+function fdSimplest(text){const value=String(text).trim().replace(/／/g,'/').replace(/\s/g,'');const m=value.match(/^([0-9]+)\/([0-9]+)$/);return !!m&&Number(m[2])>0&&fdG(Number(m[1]),Number(m[2]))===1;}
+function fdSubmit(){const f=fdState(),e=fdAnswerState(),q=fdQuestionNow(),r=fdRecord(),session=fdSession();if(e.passed)return;e.answers=e.answers||[];if(e.reason===undefined||e.reason===''||q.fields.some((_,i)=>!String(e.answers[i]||'').trim())){e.feedback='先选好关系，再把需要的数字填上。没填完不算答错。';render();return;}e.attempts=(e.attempts||0)+1;const relation=Number(e.reason)===q.relation.correct,numbers=q.fields.every((field,i)=>fieldOK(e.answers[i],field));if(!relation||!numbers){e.assisted=true;e.feedback=relation?'你找对了关系，再核对一份多大、取了几份，以及题目最后问什么。':'先把关系看清楚：'+q.hint;r.lastError=relation?'数量计算或最后问法':FD[f.id].focus;r.repairLesson=relation?f.id:FD_REPAIR[f.id];render();save();return;}if(q.fields.some((field,i)=>field.label==='最简分数'&&!fdSimplest(e.answers[i]))){e.assisted=true;e.feedback='数的大小对了。题目还要求“最简分数”：把分子和分母同时除以相同的数，直到不能再约分，然后写成几分之几。';r.lastError='最简分数还需要约分';r.repairLesson='equal';render();save();return;}e.passed=true;e.independent=e.attempts===1&&!e.assisted&&!e.help;e.feedback=e.independent?'这道题的关系和答案都独立做对了。':'这道题已经订正正确，记作“帮助后完成”。';r.history.push({phase:f.phase,round:session.round,item:session.index,day:today(),independent:e.independent,attempts:e.attempts,help:e.help||0});r.history=r.history.slice(-60);if(session.items.every(x=>x.passed)){session.completedDay=today();const evidence={day:today(),independent:session.items.every(x=>x.independent),round:session.round};if(f.phase===3)r.practice=evidence;else if(r.establishedDay&&today()>r.establishedDay){r.lastReview=evidence;if(evidence.independent)r.reviewLevel=(r.reviewLevel||0)+1;}else r.sameDay=evidence;if(evidence.independent){r.establishedDay=r.establishedDay||today();r.lastError=null;}else{r.lastError='这组使用了帮助，待独立再试';}}render();save();}
+root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;
+ if(b.dataset.fdStart){fdNavigate(b.dataset.fdStart,Number(b.dataset.fdPhase)||0);return;}
+ if(b.dataset.fdGo!==undefined){fdNavigate(fdState().id,Number(b.dataset.fdGo));return;}
+ if(b.dataset.fdItem!==undefined){fdSession().index=Number(b.dataset.fdItem);render();save();return;}
+ if(b.dataset.fdMark!==undefined){fdSetLab(Number(b.dataset.fdMark));return;}
+ if(b.dataset.fdLabValue!==undefined){fdSetLab(Number(b.dataset.fdLabValue));return;}
+ if(b.dataset.fdAdjust!==undefined){fdSetLab(fdLabState().value+Number(b.dataset.fdAdjust)*(fdLessonNow().lab.step||1));return;}
+ if(b.dataset.fdReason!==undefined){const f=fdState(),r=f.reasons[f.id]||(f.reasons[f.id]={note:''});r.choice=Number(b.dataset.fdReason);render();save();return;}
+ const key=b.dataset.fd;if(!key)return;
+ if(key==='home'||key==='records'){rememberView();stopSpeech();s.mode=key==='home'?'journey':'fraction-records';render();save();topOfTask();}
+ else if(key==='lab-check')fdCheckLab();
+ else if(key==='help'){const e=fdAnswerState();if(!e.passed){e.help=Math.min(2,(e.help||0)+1);e.assisted=true;render();save();}}
+ else if(key==='quiz-next'){const t=fdSession();if(t.index<2)t.index++;else{s.mode='fraction-records';}render();save();topOfTask();}
+ else if(key==='new-round'){const t=fdSession();t.round++;t.index=0;t.items=[{},{},{}];render();save();topOfTask();}
+});
+root.addEventListener('input',e=>{if(e.target.id==='fd-lab-range')fdSetLab(e.target.value,false);if(e.target.dataset.fdAnswer!==undefined){const t=fdAnswerState();if(!t.answers)t.answers=[];t.answers[Number(e.target.dataset.fdAnswer)]=e.target.value;save();}if(e.target.id==='fd-reason-note'){const f=fdState();f.reasons[f.id].note=e.target.value;save();}});
+root.addEventListener('change',e=>{if(e.target.id==='fd-lab-range')save();if(e.target.id==='fd-quiz-reason'){fdAnswerState().reason=e.target.value;save();}});
+root.addEventListener('submit',e=>{if(e.target.id==='fd-quiz-form'){e.preventDefault();fdSubmit();}});
 
 function config(){const all=pages()[s.lesson];if(s.step>=all.length)s.step=all.length-1;return all[s.step]}
 const act=(label,key,primary=false,disabled=false)=>`<button type="button" class="${primary?'ma-primary':'ma-secondary'}" data-act="${key}" ${disabled?'disabled':''}>${label}</button>`;
@@ -1213,7 +1496,7 @@ if(id==='machines'){
 }
 return '';
 }
-function header(){return `<header class="ma-top"><div class="ma-brand">🧭 数学探险队</div><div class="ma-top-actions"><button class="ma-link" type="button" data-nav="map">探险地图</button><button class="ma-link" type="button" data-nav="adult">给大人看</button><button class="ma-link" type="button" data-path="record">学习记录</button></div></header>`}
+function header(){return `<header class="ma-top"><div class="ma-brand">🧭 数学探险队</div><div class="ma-top-actions"><button class="ma-link" type="button" data-fd="home">从零学分数</button><button class="ma-link" type="button" data-nav="map">探险地图</button><button class="ma-link" type="button" data-nav="adult">给大人看</button><button class="ma-link" type="button" data-path="record">学习记录</button></div></header>`}
 function renderGame(){
  let h=header();
  if(s.mode==='map')h+=`<main class="ma-main"><div class="ma-kicker">一次玩一关，慢慢发现</div><h1>今天去哪里探险？</h1><p>先选一关，再自由选择学习步骤；也可以按顺序慢慢来。</p><div class="ma-map">${lessons.map(l=>`<button type="button" class="ma-island" data-lesson="${l.id}"><span class="ma-island-icon">${l.icon}</span><strong>${l.name}</strong><small>${l.sub}</small>${`<span class="ma-earned">${statusText(l.id)}</span>`}</button>`).join('')}</div></main>`;
@@ -1229,7 +1512,7 @@ function pass(message){s.passed=true;s.feedback=message;s.hint=false;}
 function retry(message){s.feedback=message;s.wrong++;if(s.wrong>=2)s.hint=true;}
 function resetStep(){s.passed=false;s.feedback='';s.selected=null;s.wrong=0;s.hint=false;}
 function topOfTask(){root.querySelector('.ma-main')?.scrollIntoView({block:'start',behavior:'instant'});}
-function begin(id){rememberView();const done=s.done,records=s.records,navigation=s.navigation;s={...initial(),lesson:id,done,records,navigation};resumeGame();render();save();topOfTask();}
+function begin(id){rememberView();const done=s.done,records=s.records,navigation=s.navigation,foundation=s.foundation,visuals=s.visuals;s={...initial(),lesson:id,done,records,navigation,foundation,visuals};resumeGame();render();save();topOfTask();}
 function stopSpeech(){try{window.speechSynthesis?.cancel();}catch{}speaking=false;}
 function action(key){const v=s.v,c=config();
  if(key!=='speak')stopSpeech();
@@ -1265,7 +1548,7 @@ root.addEventListener('input',e=>{if(e.target.id==='ma-cut'){s.v.foot=+e.target.
 root.addEventListener('change',e=>{if(e.target.id==='ma-cut')save();});
 window.addEventListener('openai:set_globals',e=>{if(e.detail?.globals?.widgetState){restore(e.detail.globals.widgetState);render();}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopSpeech();});
-try{restore(window.openai?.widgetState||JSON.parse(localStorage.getItem(storageKey)||'null'));}catch{}
+try{const saved=window.openai?.widgetState||JSON.parse(localStorage.getItem(storageKey)||'null');restore(saved);if(!saved)s.mode='journey';}catch{s.mode='journey';}
 render();
 })();
 </script>
