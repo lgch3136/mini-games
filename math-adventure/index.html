@@ -113,9 +113,6 @@
 @keyframes ma-clone{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:600px){#math-adventure .ma-main{padding:20px 16px}#math-adventure .ma-top{padding:12px 16px}#math-adventure .ma-scene{padding:20px 12px}#math-adventure .ma-choices{grid-template-columns:1fr}#math-adventure .ma-choice{min-height:52px;padding:11px}#math-adventure .ma-map{grid-template-columns:repeat(2,minmax(0,1fr))}#math-adventure .ma-avatar{width:46px;flex-basis:46px;font-size:30px}#math-adventure .ma-speech{font-size:18px}#math-adventure .ma-cups{gap:5px}#math-adventure .ma-cup{height:85px;border-width:2px}#math-adventure .ma-cup-label{font-size:15px}#math-adventure .ma-supply{grid-template-columns:42px 1fr auto;gap:6px}#math-adventure .ma-supply .ma-counter{font-size:14px;padding:3px 6px}#math-adventure .ma-supply .ma-token{font-size:23px;min-width:25px}#math-adventure .ma-days{gap:3px}#math-adventure .ma-day{min-height:58px;font-size:16px}#math-adventure .ma-day small{font-size:11px}}
 @media(prefers-reduced-motion:reduce){#math-adventure *,#math-adventure *::before{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
-#math-adventure .ma-route{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 20px;font-size:13px}
-#math-adventure .ma-route span{background:#e8ede6;padding:5px 9px;border-radius:9px;color:#5d7367}
-#math-adventure .ma-route span.active{background:#207665;color:#fff}
 #math-adventure .ma-exam-intro{color:#607579;margin-bottom:16px}
 #math-adventure .ma-paper{background:#fff;border:1px solid #dbe6df;border-radius:18px;padding:22px;margin:18px 0;font-size:20px;line-height:1.85}
 #math-adventure .ma-paper .ma-svg{max-width:340px;margin:18px auto 0}
@@ -140,7 +137,7 @@
 #math-adventure .ma-choices{grid-template-columns:1fr}
 #math-adventure .ma-choice{text-align:left;font-size:17px;min-height:54px}
 #math-adventure .ma-record-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;padding:15px;background:white;border-radius:14px}
-@media(max-width:600px){#math-adventure .ma-answer-fields{grid-template-columns:1fr}#math-adventure .ma-paper{padding:16px;font-size:18px}#math-adventure .ma-route{gap:5px;font-size:12px}#math-adventure .ma-route span{padding:4px 6px}}
+@media(max-width:600px){#math-adventure .ma-answer-fields{grid-template-columns:1fr}#math-adventure .ma-paper{padding:16px;font-size:18px}}
 
 #math-adventure .picnic-main{max-width:900px;margin:auto}
 #math-adventure .picnic-progress{display:flex;justify-content:space-between;gap:12px;color:#667c73;font-size:14px;margin-bottom:14px}
@@ -279,6 +276,26 @@
 #math-adventure .st-calendar div.st-day-card{cursor:default}
 @media(max-width:600px){#math-adventure .st-water-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}#math-adventure .st-water-groups>div{padding:7px 3px}#math-adventure .st-water-groups .st-mass-cells{gap:2px}#math-adventure .st-water-groups .st-mass-cells i{width:8px;height:10px}}
 
+#math-adventure .ma-route{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0}
+#math-adventure .ma-route button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:8px 6px;background:#f1f5ee;border:1px solid #c9d8cc;border-radius:12px;color:#456658;font:inherit;font-size:14px;cursor:pointer}
+#math-adventure .ma-route button b{display:grid;place-items:center;flex-shrink:0;width:24px;height:24px;border-radius:50%;background:#dfe9db;font-size:14px}
+#math-adventure .ma-route button[aria-current]{background:#207665;border-color:#207665;color:white}
+#math-adventure .ma-route button[aria-current] b{background:#ffffff26}
+#math-adventure .ma-route-tip{font-size:13px;color:#62786b;margin:8px 0 20px}
+#math-adventure .ma-free-steps{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 24px;padding:12px;background:#f5f0e5;border-radius:12px}
+#math-adventure .ma-free-steps p{margin:0;font-size:14px;color:#6c6853}
+#math-adventure .ma-step-buttons{display:flex;gap:7px;flex-wrap:wrap}
+#math-adventure .ma-step-buttons button{width:42px;height:42px;border:1px solid #d1c4a5;background:#fffdf5;color:#745e31;border-radius:9px;cursor:pointer;font:inherit;font-weight:700}
+#math-adventure .ma-step-buttons button[aria-current]{background:#e7be71;border-color:#b38b3d;color:#47320e}
+#math-adventure .ma-free-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:20px;margin-top:20px;border-top:1px solid #dfe6dc}
+#math-adventure .ma-free-footer>span{font-size:13px;color:#62786b}
+#math-adventure .ma-variant-tabs{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+#math-adventure .ma-variant-tabs button{font:inherit;font-size:15px;padding:10px 14px;min-height:44px;border:1px solid #c9d8cc;background:white;color:#456658;border-radius:10px;cursor:pointer}
+#math-adventure .ma-variant-tabs button[aria-current]{background:#e2eee0;border-color:#7c9c81;font-weight:700}
+#math-adventure .ma-route button:hover,#math-adventure .ma-step-buttons button:hover,#math-adventure .ma-variant-tabs button:hover{box-shadow:0 0 0 2px #adc5b7}
+#math-adventure .ma-route button:focus-visible,#math-adventure .ma-step-buttons button:focus-visible,#math-adventure .ma-variant-tabs button:focus-visible{outline:3px solid #ae813a;outline-offset:3px}
+@media(max-width:600px){#math-adventure .ma-route{gap:4px}#math-adventure .ma-route button{flex-direction:column;gap:5px;padding:8px 2px;font-size:12px;line-height:1.4}#math-adventure .ma-route button span{max-width:4em}#math-adventure .ma-free-steps{padding:10px}#math-adventure .ma-step-buttons{gap:5px}#math-adventure .ma-free-footer{align-items:flex-start}#math-adventure .ma-free-footer button{width:100%}}
+
 </style>
 <script>
 (() => {
@@ -399,9 +416,9 @@ function reviewTask(id,n){
 function taskFor(){return s.exam==='review'?reviewTask(s.lesson,s.reviewSerial||0):BANK[s.lesson][s.exam];}
 function taskLabel(){const r=recordFor();return {original:BANK[s.lesson].original.source||'原题重做',near:'变式一 · 换数字',far:'变式二 · 换问法 / 情境',review:r.finishedDay&&today()>r.finishedDay?'隔天再试 · 新题':'同日加练 · 新题'}[s.exam];}
 function flowIndex(){return s.mode==='play'?0:s.mode==='bridge'?1:s.mode==='exam'?(s.exam==='original'?2:s.exam==='review'?4:3):4;}
-function flowRail(){return `<nav class="ma-route" aria-label="学习路径">${FLOW_NAMES.map((x,i)=>`<span class="${i===flowIndex()?'active':''}">${i+1} ${x}</span>`).join('')}</nav>`;}
+function flowRail(){return `<nav class="ma-route" aria-label="学习路径，可自由选择">${FLOW_NAMES.map((x,i)=>`<button type="button" data-flow="${i}" ${i===flowIndex()?'aria-current="step"':''}><b>${i+1}</b><span>${x}</span></button>`).join('')}</nav><p class="ma-route-tip">想从哪一步开始？点上面的数字就能跳转。</p>`;}
 function statusText(id){const r=s.records[id];if(!r)return '从这里出发';const n=['original','near','far'].filter(k=>r.checks[k]?.independent).length;if(r.reviews.some(x=>x.independent&&x.delayed))return '隔天新题独立完成';if(r.finishedDay)return `${n}/3题独立 · 待复习`;if(r.bridge)return '已完成关系练习';if(r.game)return '动手已完成';return '继续学习';}
-function startExam(kind){s.exam=kind;s.mode='exam';s.examState=cleanChallenge();if(kind==='review'){const r=recordFor();s.reviewSerial=r.reviewSerial||0;r.reviewSerial=s.reviewSerial+1;}render();save();topOfTask();}
+function startExam(kind,resume=false){rememberView();const cached=resume&&navMemory().exams[kind];s.exam=kind;s.mode='exam';if(cached)Object.assign(s,navCopy(cached));else{s.examState=cleanChallenge();if(kind==='review'){const r=recordFor();s.reviewSerial=r.reviewSerial||0;r.reviewSerial=s.reviewSerial+1;}}stopSpeech();render();save();topOfTask();}
 function normalizedNumber(value){const t=String(value).trim().normalize('NFKC').replaceAll('：',':').replaceAll('∶',':').replaceAll('／','/').replace(/\s/g,'');if(!t)return null;if(/^-?\d+(?:\.\d+)?%$/.test(t))return Number(t.slice(0,-1))/100;if(/^-?\d+(?:\.\d+)?$/.test(t))return Number(t);const m=t.match(/^(-?\d+(?:\.\d+)?)[/:](-?\d+(?:\.\d+)?)$/);if(m&&Number(m[2])!==0)return Number(m[1])/Number(m[2]);return null;}
 function normalizedOrder(x){return String(x).normalize('NFKC').replace(/\s/g,'').toLowerCase();}
 function fieldOK(value,f){if(f.type==='order')return normalizedOrder(value)===f.answer;const n=normalizedNumber(value);return n!==null&&Math.abs(n-f.answer)<1e-8;}
@@ -416,7 +433,7 @@ function submitExam(){const t=taskFor(),e=s.examState;
  const result={independent:e.firstTry,attempts:e.attempts,hints:e.hints,day:today(),answers:e.answers.map(x=>String(x).slice(0,40)),reason:Number(e.reason)};
  const r=recordFor();
  if(s.exam==='review'){result.delayed=!!r.finishedDay&&today()>r.finishedDay;r.reviews.push(result);r.reviews=r.reviews.slice(-2);}
- else r.checks[s.exam]=result;
+ else {r.checks[s.exam]=result;if(!r.finishedDay&&['original','near','far'].every(k=>r.checks[k]))r.finishedDay=today();}
  render();save();
 }
 function figureFor(t){if(!t.figure)return '';if(t.figure==='fold'){const [w,a]=t.paper,h=w-a,scale=180/w,X=n=>50+n*scale,Y=n=>15+n*scale;return svg(280,200,'原题折纸示意，未标辅助格与答案',`<rect x="50" y="15" width="180" height="${h*scale}" fill="#fff" stroke="#8a9b85" stroke-dasharray="4 4"/><rect x="50" y="15" width="${a*scale}" height="${(h-a)*scale}" fill="#a5d3b0"/><polygon points="${X(a)},15 ${X(a)},${Y(h)} ${X(w)},${Y(h)}" fill="#f1d39d" stroke="#8a9b85"/><polygon points="50,${Y(h-a)} ${X(a)},${Y(h-a)} ${X(a)},${Y(h)}" fill="#d0be8a" stroke="#8a9b85"/>`);}
@@ -429,12 +446,12 @@ return `<main class="ma-main">${flowRail()}<div class="ma-kicker">${lesson().ico
 function bridgeView(){const b=BANK[s.lesson].bridge;return `<main class="ma-main">${flowRail()}<div class="ma-kicker">把游戏里的发现，带回数学题</div><h1>这一步，轮到你解释</h1><div class="ma-bridge"><p>🎮 ${b[0]}</p><span>↓</span><p>✏️ ${b[1]}</p></div><p class="ma-question">${b[2]}</p><div class="ma-choices">${optionOrder([b[4],b[3],b[5]]).map(({text:x,index:i})=>`<button class="ma-choice ${s.bridgeChoice===i?(s.bridgePassed?'right':'try'):''}" data-bridge="${i}" type="button" ${s.bridgePassed?'disabled':''}>${x}</button>`).join('')}</div><div aria-live="polite">${s.bridgeFeedback?`<p class="ma-feedback ${s.bridgePassed?'success':''}">${s.bridgeFeedback}</p>`:''}</div><div class="ma-footer"><button type="button" class="ma-secondary" data-path="backGame">回去动手看一遍</button><button type="button" class="ma-primary" data-path="startOriginal" ${s.bridgePassed?'':'disabled'}>收起图解，我来做题 →</button></div></main>`;}
 function summaryView(){const r=recordFor(),keys=['original','near','far'],labels=[BANK[s.lesson].original.source||'原题','换数字','换问法 / 情境'];return `<main class="ma-main">${flowRail()}<div class="ma-win"><div class="ma-sticker">${lesson().icon}</div><h1>今天学到了哪一步？</h1><p>${lesson().tip}</p></div><div class="ma-checks">${keys.map((k,i)=>`<div><span>${labels[i]}</span><strong>${r.checks[k]?(r.checks[k].independent?'独立完成':'帮助后完成'):'还没做'}</strong></div>`).join('')}</div><p class="ma-caption">“独立完成”指首次提交时关系和答案都正确，且没看提示；不等同于长期掌握。</p><div class="ma-repair"><strong>下一站：隔天换一道题</strong><p>${r.finishedDay&&today()>r.finishedDay?'今天可以做隔天回测了。':'明天或以后再来，用一题没见过的题看看是否记住。现在也可以练，但会记作同日加练。'}</p></div>${r.reviews.length?`<div class="ma-checks">${r.reviews.map(x=>`<div><span>${x.day} · ${x.delayed?'隔天回测':'同日加练'}</span><strong>${x.independent?'独立完成':'帮助后完成'}</strong></div>`).join('')}</div>`:''}<div class="ma-actions"><button class="ma-primary" data-path="review" type="button">${r.finishedDay&&today()>r.finishedDay?'开始隔天回测':'现在换一道再练'}</button><button class="ma-secondary" data-act="map" type="button">回到学习地图</button></div></main>`;}
 function pathAction(key){
-if(key==='record'){s.mode='records';render();save();topOfTask();}
-if(key==='startOriginal'&&s.bridgePassed)startExam('original');
+if(key==='record'){rememberView();s.mode='records';render();save();topOfTask();}
+if(key==='startOriginal')startExam('original',true);
 if(key==='help'&&!s.examState.passed){s.examState.hints=Math.min(3,s.examState.hints+1);s.examState.assisted=true;render();save();}
-if(key==='continue'&&s.examState.passed){if(s.exam==='original')startExam('near');else if(s.exam==='near')startExam('far');else{const r=recordFor();if(s.exam==='far')r.finishedDay=today();s.mode='summary';render();save();topOfTask();}}
+if(key==='continue'&&s.examState.passed){if(s.exam==='original')startExam('near',true);else if(s.exam==='near')startExam('far',true);else{rememberView();s.mode='summary';render();save();topOfTask();}}
 if(key==='review')startExam('review');
-if(key==='backGame'){s.mode='play';s.step=0;s.v=initial().v;resetStep();render();save();topOfTask();}
+if(key==='backGame')goFlow(0);
 }
 function render(){
 if(s.mode==='records')root.innerHTML=header()+`<main class="ma-main"><h1>学习记录</h1><p>看原题、新题是否独立完成；游戏进度单独记录。</p>${lessons.map(l=>`<div class="ma-record-row"><span>${l.icon} ${l.name}<br><small>${statusText(l.id)}</small></span>${s.records[l.id]?.finishedDay?`<button type="button" class="ma-secondary" data-summary="${l.id}">查看与复习</button>`:`<button type="button" class="ma-secondary" data-lesson="${l.id}">进入学习</button>`}</div>`).join('')}</main>`;
@@ -443,7 +460,8 @@ else if(s.mode==='bridge')root.innerHTML=header()+bridgeView();
 else if(s.mode==='summary')root.innerHTML=header()+summaryView();
 else if(s.mode==='play'&&s.lesson==='juice')root.innerHTML=header()+picnicView();
 else if(s.mode==='play'&&STORY_META[s.lesson])root.innerHTML=header()+storyView();
-else{renderGame();if(s.mode==='play')root.querySelector('.ma-main')?.insertAdjacentHTML('afterbegin',flowRail());}
+else renderGame();
+freeNavigation();
 }
 root.addEventListener('submit',e=>{if(e.target.id==='ma-exam-form'){e.preventDefault();submitExam();}});
 root.addEventListener('input',e=>{if(e.target.dataset.answer!==undefined)s.examState.answers[Number(e.target.dataset.answer)]=e.target.value;if(e.target.id==='ma-explain')s.examState.note=e.target.value;});
@@ -742,6 +760,82 @@ root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.di
 root.addEventListener('input',e=>{if(e.target.dataset.storyInput!==undefined){const v=storyState();v.inputs=v.inputs||{};v.inputs[`${s.step}:${e.target.dataset.storyInput}`]=e.target.value;s.feedback='';root.querySelector('[aria-live=polite]').innerHTML='';save();}if(e.target.id==='story-cut'){const foot=Number(e.target.value);storyState().foot=foot;s.feedback='';const holder=document.createElement('div');holder.innerHTML=cakeDiagram(foot,true);root.querySelector('.st-world .ma-svg').replaceWith(holder.firstElementChild);root.querySelector('#story-cut-value').textContent='切点在底边的'+foot+'%。';root.querySelector('[aria-live=polite]').innerHTML='';save();}});
 root.addEventListener('submit',e=>{if(e.target.id==='story-check'){e.preventDefault();storyCheck();}});
 
+// Navigation changes location, never awards a pass or clears an attempt.
+function navMemory(){
+ if(!s.navigation||typeof s.navigation!=='object')s.navigation={};
+ return s.navigation[s.lesson]||(s.navigation[s.lesson]={steps:{},exams:{}});
+}
+const navCopy=value=>JSON.parse(JSON.stringify(value));
+function rememberView(){
+ const n=navMemory();
+ if(s.mode==='play'){
+  const view=navCopy({step:s.step,v:s.v,passed:s.passed,feedback:s.feedback,selected:s.selected,wrong:s.wrong,hint:s.hint});
+  n.play=view;n.steps[s.step]=view;
+ }else if(s.mode==='bridge')n.bridge={bridgePassed:s.bridgePassed,bridgeChoice:s.bridgeChoice,bridgeFeedback:s.bridgeFeedback};
+ else if(s.mode==='exam')n.exams[s.exam]=navCopy({examState:s.examState,reviewSerial:s.reviewSerial||0});
+}
+function newGameView(step){
+ const v=initial().v;
+ // Prepare only the scene's starting conditions, not this step's answer.
+ if(s.lesson==='factory'&&step===2)v.story={made:1};
+ if(s.lesson==='factory'&&step===3)v.story={made:2,blueExtra:4};
+ return {step,v,passed:false,feedback:'',selected:null,wrong:0,hint:false};
+}
+function resumeGame(){
+ const n=navMemory();Object.assign(s,n.play?navCopy(n.play):newGameView(0),{mode:'play'});
+}
+function navigationDone(){stopSpeech();render();save();topOfTask();}
+function goGameStep(step){
+ if(!Number.isInteger(step)||step<0||step>=pages()[s.lesson].length)return;
+ rememberView();const n=navMemory();
+ Object.assign(s,n.steps[step]?navCopy(n.steps[step]):newGameView(step),{mode:'play'});
+ navigationDone();
+}
+function goFlow(index){
+ if(!Number.isInteger(index)||index<0||index>4)return;
+ rememberView();
+ if(index===0)resumeGame();
+ else if(index===1){Object.assign(s,navMemory().bridge||{bridgePassed:false,bridgeChoice:null,bridgeFeedback:''});s.mode='bridge';}
+ else {startExam(index===2?'original':index===3?'near':'review',true);return;}
+ navigationDone();
+}
+function advanceGame(){
+ rememberView();
+ if(s.step<pages()[s.lesson].length-1){goGameStep(s.step+1);return;}
+ const n=navMemory();
+ if(pages()[s.lesson].every((_,i)=>n.steps[i]?.passed))recordFor().game=true;
+ goFlow(1);
+}
+function skipCurrent(){
+ if(s.mode==='play'){if(s.step<pages()[s.lesson].length-1)goGameStep(s.step+1);else goFlow(1);}
+ else if(s.mode==='bridge')goFlow(2);
+ else if(s.mode==='exam'){
+  if(s.exam==='original')startExam('near',true);
+  else if(s.exam==='near')startExam('far',true);
+  else if(s.exam==='far')goFlow(4);
+  else {rememberView();s.mode='summary';navigationDone();}
+ }
+}
+function gameStepRail(){return `<div class="ma-free-steps"><p>动手小步骤 · 点数字可以自由选择</p><nav class="ma-step-buttons" aria-label="动手小步骤">${pages()[s.lesson].map((p,i)=>`<button type="button" data-game-step="${i}" aria-label="小步骤 ${i+1}：${escape(p.title)}" title="${escape(p.title)}" ${s.step===i?'aria-current="step"':''}>${i+1}</button>`).join('')}</nav></div>`;}
+function variantRail(){return `<nav class="ma-variant-tabs" aria-label="选择变式题"><button type="button" data-exam-tab="near" ${s.exam==='near'?'aria-current="page"':''}>变式一 · 换数字</button><button type="button" data-exam-tab="far" ${s.exam==='far'?'aria-current="page"':''}>变式二 · 换问法</button></nav>`;}
+function freeNavigation(){
+ if(!['play','bridge','exam','summary'].includes(s.mode))return;
+ const main=root.querySelector('.ma-main');if(!main)return;
+ if(s.mode==='play')main.insertAdjacentHTML('afterbegin',flowRail()+gameStepRail());
+ if(s.mode==='exam'&&['near','far'].includes(s.exam))root.querySelector('h1')?.insertAdjacentHTML('afterend',variantRail());
+ if(s.mode!=='summary'){
+  const label=s.mode==='play'?'跳过这小步 →':s.mode==='bridge'?'跳过讲解，直接做题 →':s.exam==='review'?'暂不做，查看记录 →':'跳过这道题 →';
+  main.insertAdjacentHTML('beforeend',`<div class="ma-free-footer"><span>可以随时回来；跳过不会记作完成。</span><button type="button" class="ma-secondary" data-skip-current>${label}</button></div>`);
+ }
+}
+root.addEventListener('click',e=>{
+ const b=e.target.closest('button');if(!b||b.disabled)return;
+ if(b.dataset.flow!==undefined)goFlow(Number(b.dataset.flow));
+ else if(b.dataset.gameStep!==undefined)goGameStep(Number(b.dataset.gameStep));
+ else if(b.dataset.examTab==='near'||b.dataset.examTab==='far')startExam(b.dataset.examTab,true);
+ else if(b.hasAttribute('data-skip-current'))skipCurrent();
+});
+
 function config(){const all=pages()[s.lesson];if(s.step>=all.length)s.step=all.length-1;return all[s.step]}
 const act=(label,key,primary=false,disabled=false)=>`<button type="button" class="${primary?'ma-primary':'ma-secondary'}" data-act="${key}" ${disabled?'disabled':''}>${label}</button>`;
 const tokens=(n,icon,cls='')=>Array.from({length:n},()=>`<span class="ma-token ${cls}" aria-hidden="true">${icon}</span>`).join('');
@@ -805,7 +899,7 @@ return '';
 function header(){return `<header class="ma-top"><div class="ma-brand">🧭 数学探险队</div><div class="ma-top-actions"><button class="ma-link" type="button" data-nav="map">探险地图</button><button class="ma-link" type="button" data-nav="adult">给大人看</button><button class="ma-link" type="button" data-path="record">学习记录</button></div></header>`}
 function renderGame(){
  let h=header();
- if(s.mode==='map')h+=`<main class="ma-main"><div class="ma-kicker">一次玩一关，慢慢发现</div><h1>今天去哪里探险？</h1><p>每次走完一条小路线：动手 → 讲清 → 原题 → 两道新题。</p><div class="ma-map">${lessons.map(l=>`<button type="button" class="ma-island" data-lesson="${l.id}"><span class="ma-island-icon">${l.icon}</span><strong>${l.name}</strong><small>${l.sub}</small>${`<span class="ma-earned">${statusText(l.id)}</span>`}</button>`).join('')}</div></main>`;
+ if(s.mode==='map')h+=`<main class="ma-main"><div class="ma-kicker">一次玩一关，慢慢发现</div><h1>今天去哪里探险？</h1><p>先选一关，再自由选择学习步骤；也可以按顺序慢慢来。</p><div class="ma-map">${lessons.map(l=>`<button type="button" class="ma-island" data-lesson="${l.id}"><span class="ma-island-icon">${l.icon}</span><strong>${l.name}</strong><small>${l.sub}</small>${`<span class="ma-earned">${statusText(l.id)}</span>`}</button>`).join('')}</div></main>`;
  else if(s.mode==='adult')h+=`<main class="ma-main ma-adult"><h1>让孩子自己发现关系</h1><p>每关先用游戏理解，再讲清数量关系。之后收起图解，独立填写原题与两道变式；隔天再做一道新题。关系和数值都正确才通过。</p><details open><summary>陪孩子时，只问这一句</summary><p>“你是怎么从图里看出来的？”先听完整，再决定是否点提示。系统分别记录首次独立完成、帮助后完成、隔天回测。孩子的口头或文字解释保留作讨论，不自动判定。</p></details><details><summary>九个故事，分别补什么</summary><p>分橘子：部分与整体；饼干：比较基准及连续关系；彩珠：按配方消耗库存；蛋糕：底边与面积；盐水：不变量；赛车：同路程速度与时间；折纸：原面积与阴影；故事书：剩余时间；机器人：等值算式反推。</p></details><details><summary>这份试卷中需要保留的说明</summary><p>沙子题的分子被遮挡，所以分橘子这一关的同类题使用明确的新编条件3/8。折纸关按照片所示标准折法。机器人关明确使用正数，原卷只写非零，条件不够严谨。眨眼题第二问10次数值正确，但卷面过程不成立。</p></details><details><summary>设计依据与使用边界</summary><p>参考 IES 分数教学建议与 EEF 表征教学建议：让操作和数量关系明确对应，再逐步过渡到独立解题。本工具还没有经过孩子实际试学，不能把完成贴纸当作学习效果证明。</p><p><a href="https://ies.ed.gov/learn/blog/two-practical-strategies-unlocking-fractions-preview-teaching-fractions-toolkit" target="_blank" rel="noopener">IES：图解分数与比率</a> · <a href="https://educationendowmentfoundation.org.uk/newsletter/improving-mathematics-in-key-stages-2-and-3-email-course-2" target="_blank" rel="noopener">EEF：教具与数学表征</a></p></details><div class="ma-actions">${act('回到孩子的这一关','resume',true)}</div></main>`;
  else if(s.mode==='win'){const l=lesson();h+=`<main class="ma-main ma-win"><div class="ma-kicker">你完成了一个小发现</div><div class="ma-sticker">${l.icon}</div><h1>${l.badge}</h1><p>${l.tip}</p><div class="ma-statement">试着对大人说：<br>“我刚才发现了……”</div><div class="ma-actions">${act('收好贴纸，去地图','map',true)}${act('再玩一次','replay')}</div><p class="ma-caption">今天玩到这里也很好。下次换个数字再试。</p></main>`;}
  else{
@@ -818,15 +912,15 @@ function pass(message){s.passed=true;s.feedback=message;s.hint=false;}
 function retry(message){s.feedback=message;s.wrong++;if(s.wrong>=2)s.hint=true;}
 function resetStep(){s.passed=false;s.feedback='';s.selected=null;s.wrong=0;s.hint=false;}
 function topOfTask(){root.querySelector('.ma-main')?.scrollIntoView({block:'start',behavior:'instant'});}
-function begin(id){const done=s.done,records=s.records;s={...initial(),lesson:id,done,records};render();save();topOfTask();}
+function begin(id){rememberView();const done=s.done,records=s.records,navigation=s.navigation;s={...initial(),lesson:id,done,records,navigation};resumeGame();render();save();topOfTask();}
 function stopSpeech(){try{window.speechSynthesis?.cancel();}catch{}speaking=false;}
 function action(key){const v=s.v,c=config();
  if(key!=='speak')stopSpeech();
- if(key==='map'){s.mode='map';}
+ if(key==='map'){rememberView();s.mode='map';}
  if(key==='resume')s.mode=s.returnMode||'play';
  if(key==='replay'){begin(s.lesson);return;}
  if(key==='hint')s.hint=!s.hint;
- if(key==='next'&&s.passed){if(s.step===pages()[s.lesson].length-1){recordFor().game=true;s.mode='bridge';s.bridgePassed=false;s.bridgeChoice=null;s.bridgeFeedback='';}else{s.step++;resetStep();if(s.lesson==='cake'&&s.step===3)v.foot=25;}}
+ if(key==='next'&&s.passed){advanceGame();return;}
  if(key==='give'&&!s.passed){if(v.half.length===2){v.extra=true;pass('兔兔先有同样的4块，再多2块，所以一共有6块。');}else retry(`你选了${v.half.length}块。4块的一半应该是2块，再选选看。`);}
  if(key==='make'&&!s.passed){v.batches=1;pass('第一份做好了！奶剩4杯、果汁剩3杯、冰剩1块。下一份会缺什么呢？');}
  if(key==='checkCut'&&!s.passed){const target=s.step===3?40:50;if(v.foot===target)pass(s.step===3?'切对了！底边占2/5，三角形面积占1/5，另一块占4/5。':'切对了！落在底边中点，三角形刚好占整块的1/4。');else retry(`现在小熊得到了整块的${v.foot/2}%。目标是${target/2}%。${v.foot<target?'向右移一些，小熊的蛋糕会变大。':'向左移一些，小熊的蛋糕会变小。'}`);}
@@ -842,7 +936,7 @@ function action(key){const v=s.v,c=config();
 }
 root.addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b||b.disabled)return;
- if(b.dataset.nav){stopSpeech();s.returnMode=s.mode;s.mode=b.dataset.nav;render();save();topOfTask();return;}
+ if(b.dataset.nav){rememberView();stopSpeech();s.returnMode=s.mode;s.mode=b.dataset.nav;render();save();topOfTask();return;}
  if(b.dataset.lesson){stopSpeech();begin(b.dataset.lesson);return;}
  if(b.dataset.act){action(b.dataset.act);return;}
  if(b.dataset.choice!==undefined&&!s.passed){const i=+b.dataset.choice,a=config().choices[i];if(!a)return;s.selected=i;if(a.right){if(s.lesson==='factory'&&s.step===2){s.v.batches=2;s.v.supplement=4;}pass(a.feedback);}else retry(a.feedback);render();save();return;}
