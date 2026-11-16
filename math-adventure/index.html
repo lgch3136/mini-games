@@ -296,6 +296,93 @@
 #math-adventure .ma-route button:focus-visible,#math-adventure .ma-step-buttons button:focus-visible,#math-adventure .ma-variant-tabs button:focus-visible{outline:3px solid #ae813a;outline-offset:3px}
 @media(max-width:600px){#math-adventure .ma-route{gap:4px}#math-adventure .ma-route button{flex-direction:column;gap:5px;padding:8px 2px;font-size:12px;line-height:1.4}#math-adventure .ma-route button span{max-width:4em}#math-adventure .ma-free-steps{padding:10px}#math-adventure .ma-step-buttons{gap:5px}#math-adventure .ma-free-footer{align-items:flex-start}#math-adventure .ma-free-footer button{width:100%}}
 
+#math-adventure .vx-player{border:2px solid #d7e4d8;border-radius:22px;background:#f6f8ee;margin:24px 0;padding:22px;overflow:hidden;color:#29493d}
+#math-adventure .vx-top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+#math-adventure .vx-kicker{font-size:13px;letter-spacing:.08em;color:#648061;font-weight:700}
+#math-adventure .vx-player h2{font-size:21px;margin:5px 0;line-height:1.5}
+#math-adventure .vx-frame-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#math-adventure .vx-frame-title>span{background:#e7eed8;padding:5px 12px;border-radius:20px;font-size:14px;white-space:nowrap}
+#math-adventure .vx-frame h3{font-size:22px;line-height:1.5;margin:7px 0}
+#math-adventure .vx-caption{font-size:18px;line-height:1.75;margin:8px 0 16px}
+#math-adventure .vx-stage{padding:20px;background:#fffdf7;border:1px solid #e7e7d9;border-radius:18px;min-height:150px}
+#math-adventure .vx-stage svg{display:block;width:100%;height:auto;max-height:290px;margin:auto}
+#math-adventure .vx-stage p{line-height:1.65;font-size:16px;margin:9px 0 0}
+#math-adventure .vx-legend{color:#62765a;text-align:center}
+#math-adventure .vx-pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#math-adventure .vx-three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+#math-adventure .vx-card{padding:15px;border-radius:15px;background:#f1f3e9;text-align:center;min-width:0}
+#math-adventure .vx-card>strong{display:block;font-size:18px;margin-bottom:10px}
+#math-adventure .vx-big{display:block;font-size:clamp(22px,4vw,32px);color:#286b53;padding:14px 0;overflow-wrap:anywhere}
+#math-adventure .vx-friends{font-size:38px;text-align:center;line-height:1.9}
+#math-adventure .vx-objects{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;min-height:38px;align-items:center}
+#math-adventure .vx-object{display:inline-flex;width:38px;height:42px;align-items:center;justify-content:center;border:2px solid transparent;border-radius:10px}
+#math-adventure .vx-object>svg{width:34px;height:38px}
+#math-adventure .vx-extra{border-color:#419873;background:#e1f0e5}
+#math-adventure .vx-bead{display:block;width:24px;height:24px;border-radius:50%;background:#e2b656;box-shadow:inset -3px -4px 0 #0001;border:2px solid #fff}
+#math-adventure .vx-bead.red{background:#d88a76}#math-adventure .vx-bead.blue{background:#669db8}
+#math-adventure .vx-bags{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+#math-adventure .vx-bag{border:2px solid #d1b986;border-radius:8px 8px 18px 18px;background:#faf1d7;padding:10px 5px;text-align:center}
+#math-adventure .vx-bag>strong,#math-adventure .vx-bag>small{display:block;font-size:15px}
+#math-adventure .vx-bar-row{margin:8px 0 18px;min-width:0}
+#math-adventure .vx-bar-row>strong{display:block;font-size:17px;margin-bottom:8px}
+#math-adventure .vx-bar{display:grid;grid-template-columns:repeat(var(--parts),minmax(0,1fr));gap:4px;align-items:stretch}
+#math-adventure .vx-bar>span{display:flex;align-items:center;justify-content:center;min-height:57px;padding:5px 2px;text-align:center;font-size:16px;font-weight:700;border:1px solid #b9c6b0;border-radius:6px;overflow-wrap:anywhere;line-height:1.35}
+#math-adventure .vx-bar .gold{background:#f2d394;color:#61461f}#math-adventure .vx-bar .blue{background:#b5d8e3;color:#264c5b}#math-adventure .vx-bar .green{background:#bcdcb4;color:#31582c}#math-adventure .vx-bar .empty{background:#f2f0e8;border-style:dashed;color:#788070}
+#math-adventure .vx-formula{border-left:4px solid #82a16e;padding:12px 16px;margin-top:14px;background:#eaf1e1;border-radius:0 10px 10px 0}
+#math-adventure .vx-formula>span{display:block;color:#647957;font-size:14px;margin-bottom:5px}
+#math-adventure .vx-formula>strong{font-size:20px;line-height:1.6;overflow-wrap:anywhere}
+#math-adventure .vx-controls{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:18px}
+#math-adventure .vx-controls button{min-height:44px;font-size:15px;padding:10px 15px}
+#math-adventure .vx-seek{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:15px}
+#math-adventure .vx-seek button{width:40px;min-height:40px;border:1px solid #adc3a6;background:#fffdf7;border-radius:50%;color:#456840;font-size:16px;cursor:pointer}
+#math-adventure .vx-seek button[aria-current]{background:#376c50;color:white;border-color:#376c50}
+#math-adventure .vx-player-tip,#math-adventure .vx-closed-note{font-size:14px;line-height:1.6;color:#687760;margin:12px 0 0;text-align:center}
+#math-adventure .vx-closed .vx-top{margin-bottom:0}#math-adventure .vx-closed-note{text-align:left}
+#math-adventure .vx-chain{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+#math-adventure .vx-chain span{background:#edf0de;border:1px solid #c6d0b8;border-radius:12px;padding:15px;font-size:20px}
+#math-adventure .vx-chain>b{font-size:17px;color:#68805c}
+#math-adventure .vx-bracelets{display:flex;justify-content:center;gap:20px;margin-bottom:15px}
+#math-adventure .vx-bracelet{width:140px}
+#math-adventure .vx-meter,#math-adventure .vx-number-track{height:46px;background:#edf0e7;position:relative;border-radius:7px;margin:10px 0}
+#math-adventure .vx-meter>span,#math-adventure .vx-number-track>span{height:100%;display:flex;align-items:center;padding-left:8px;box-sizing:border-box;border-radius:7px;font-weight:bold;white-space:nowrap;font-size:17px;min-width:28px}
+#math-adventure .vx-meter>i,#math-adventure .vx-number-track>i{position:absolute;top:-5px;bottom:-5px;border-left:2px dashed #405d49}
+#math-adventure .vx-inventory+.vx-inventory{margin-top:25px}
+#math-adventure .vx-water-grid{max-width:470px;min-height:130px}
+#math-adventure .vx-salt-pour{max-height:160px!important;max-width:200px}
+#math-adventure .vx-road{margin:12px 0 25px}
+#math-adventure .vx-road-label{display:flex;justify-content:space-between;font-size:16px;gap:12px}
+#math-adventure .vx-track{position:relative;height:47px;background:linear-gradient(transparent 80%,#ccd2be 80%);margin:12px 25px 5px;border-bottom:2px dashed #7b8566}
+#math-adventure .vx-car-run{position:absolute;bottom:2px;width:50px;margin-left:-25px;left:var(--travel);animation:vx-drive 2.6s linear both}
+#math-adventure .vx-tank{height:150px;max-width:180px;margin:20px auto 10px;border:3px solid #78a1a4;border-top:0;border-radius:0 0 14px 14px;position:relative;overflow:hidden}
+#math-adventure .vx-tank-water{position:absolute;bottom:0;width:100%;height:var(--fill);background:#a2d1df;animation:vx-fill 2.6s linear both}
+#math-adventure .vx-paper{max-width:480px}
+#math-adventure .vx-book-shape{background:#fff9df;border:2px solid #ddc994;border-radius:8px 18px 18px 8px;padding:16px;box-shadow:4px 5px 0 #e6dcc0}
+#math-adventure .vx-book-shape>strong{display:block;margin-bottom:15px;font-size:17px}
+#math-adventure .vx-book-parts{display:grid;grid-template-columns:repeat(var(--parts),minmax(0,1fr));gap:6px}
+#math-adventure .vx-book-parts>div{border:1px solid #cfccb7;border-radius:7px;padding:9px 4px;text-align:center}
+#math-adventure .vx-book-parts .read{background:#bfddd8}#math-adventure .vx-book-parts .unread{background:#fffef7}
+#math-adventure .vx-book-parts span,#math-adventure .vx-book-parts b,#math-adventure .vx-book-parts small{display:block;font-size:15px;line-height:1.6}
+#math-adventure .vx-book-parts i{display:block;height:45px;margin:8px 4px;background:repeating-linear-gradient(transparent 0 10px,#bec9ad 10px 12px)}
+#math-adventure .vx-timeline{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+#math-adventure .vx-time-segment{flex:1;min-width:85px;padding:12px 8px;border-radius:10px;background:#edece6;color:#7a7e72;border:1px solid #d6d8cc;text-align:center}
+#math-adventure .vx-time-segment>b{font-size:16px}#math-adventure .vx-time-segment span{display:block;padding:7px 4px;margin:6px 0 0;background:#fafaf5;border-radius:5px;font-size:15px}
+#math-adventure .vx-time-lit{background:#d6eac7;color:#335f35;border-color:#88af76}
+#math-adventure .vx-now{flex-basis:100%;font-size:15px;color:#436b4d;font-weight:bold;text-align:center;padding:7px}
+#math-adventure .vx-number-bars>div{display:grid;grid-template-columns:25px 1fr;align-items:center;gap:8px}
+#math-adventure .vx-number-track>span{background:#bdd6a7}
+#math-adventure .vx-drop{animation:vx-drop .6s ease-out both;animation-delay:var(--delay,0s)}
+#math-adventure .vx-pop{animation:vx-pop .4s ease-out both;animation-delay:var(--delay,0s)}
+#math-adventure .vx-grow{transform-origin:left;animation:vx-grow 1.6s ease-in-out both}
+@keyframes vx-drop{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes vx-pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes vx-grow{from{transform:scaleX(.05)}to{transform:scaleX(1)}}
+@keyframes vx-drive{from{left:0}to{left:var(--travel)}}
+@keyframes vx-fill{from{height:0}to{height:var(--fill)}}
+@media(max-width:600px){#math-adventure .vx-player{padding:14px 12px;border-radius:16px;margin:18px 0}#math-adventure .vx-top{align-items:flex-start;gap:8px}#math-adventure .vx-player h2{font-size:18px}#math-adventure .vx-top>button{font-size:13px;padding:9px;flex-shrink:0}#math-adventure .vx-frame h3{font-size:20px}#math-adventure .vx-caption{font-size:17px}#math-adventure .vx-stage{padding:13px 10px}#math-adventure .vx-pair{grid-template-columns:1fr}#math-adventure .vx-three{gap:6px}#math-adventure .vx-three .vx-card{padding:10px 4px}#math-adventure .vx-three .vx-card>strong{font-size:16px}#math-adventure .vx-bags{grid-template-columns:repeat(2,1fr)}#math-adventure .vx-bar{gap:3px}#math-adventure .vx-bar>span{font-size:14px;min-height:56px;padding:4px 1px}#math-adventure .vx-formula>strong{font-size:18px}#math-adventure .vx-controls{gap:6px}#math-adventure .vx-controls button{font-size:14px;padding:9px 10px}#math-adventure .vx-seek button{width:38px;min-height:38px}#math-adventure .vx-book-shape{padding:10px 7px}#math-adventure .vx-book-parts{gap:3px}#math-adventure .vx-book-parts span,#math-adventure .vx-book-parts b,#math-adventure .vx-book-parts small{font-size:13px}#math-adventure .vx-book-parts>div{padding:6px 1px}#math-adventure .vx-time-segment{min-width:75px}#math-adventure .vx-stage svg{max-height:240px}}
+@media(prefers-reduced-motion:reduce){#math-adventure .vx-player *{animation:none!important;transition:none!important}}
+
+#math-adventure .vx-frame-title{scroll-margin-top:20px}#math-adventure .vx-same-mass{max-width:470px}
+
 </style>
 <script>
 (() => {
@@ -430,7 +517,7 @@ function submitExam(){const t=taskFor(),e=s.examState;
  const wrongFields=t.fields.map((f,i)=>fieldOK(e.answers[i],f)?null:f.label).filter(Boolean);
  if(wrongRelation||wrongFields.length){e.assisted=true;e.type=wrongRelation?'relation':'calculation';e.feedback=wrongRelation?'先修正数量关系。算出的数字即使碰巧正确，也还不能通过这一题。':`关系找对了，再检查“${wrongFields.join('、')}”。先核对它对应几份，以及问的是全部、剩余还是新增。`;render();save();return;}
  e.passed=true;e.type='passed';e.firstTry=e.attempts===1&&e.hints===0&&!e.assisted;e.feedback=e.firstTry?'这次你独立找对关系，也算对了。':'这次已经订正正确。因为使用了帮助或重试，我们把它记为“帮助后完成”。';
- const result={independent:e.firstTry,attempts:e.attempts,hints:e.hints,day:today(),answers:e.answers.map(x=>String(x).slice(0,40)),reason:Number(e.reason)};
+ const result={independent:e.firstTry,attempts:e.attempts,hints:e.hints,visualHelp:!!e.visualHelp,day:today(),answers:e.answers.map(x=>String(x).slice(0,40)),reason:Number(e.reason)};
  const r=recordFor();
  if(s.exam==='review'){result.delayed=!!r.finishedDay&&today()>r.finishedDay;r.reviews.push(result);r.reviews=r.reviews.slice(-2);}
  else {r.checks[s.exam]=result;if(!r.finishedDay&&['original','near','far'].every(k=>r.checks[k]))r.finishedDay=today();}
@@ -444,7 +531,7 @@ function assessmentView(){const t=taskFor(),e=s.examState;
 return `<main class="ma-main">${flowRail()}<div class="ma-kicker">${lesson().icon} ${lesson().name}</div><h1>${taskLabel()}</h1><p class="ma-exam-intro">先自己想一想。需要时再点帮助。</p>${t.notice?`<p class="ma-notice">${t.notice}</p>`:''}<section class="ma-paper"><p>${t.body}</p>${figureFor(t)}</section><form id="ma-exam-form"><label class="ma-field"><span>先找关系：${t.relation.prompt}</span><select id="ma-reason" ${e.passed?'disabled':''}><option value="">请选择</option>${optionOrder(t.relation.options).map(({text:v,index:i})=>`<option value="${i}" ${String(e.reason)===String(i)?'selected':''}>${v}</option>`).join('')}</select></label><div class="ma-answer-fields">${t.fields.map((f,i)=>`<label class="ma-field"><span>${f.label}${f.unit?'（'+f.unit+'）':''}</span><input type="text" inputmode="${f.type==='number'?'decimal':'text'}" maxlength="40" data-answer="${i}" value="${escape(e.answers[i]||'')}" placeholder="${f.type==='fraction'?'例如 2/5':f.type==='ratio'?'例如 2:3':f.type==='order'?'例如 a>b>c':'填数字'}" autocomplete="off" ${e.passed?'disabled':''}></label>`).join('')}</div><label class="ma-field"><span>我为什么这样做？（可说给大人听，也可写一句）</span><textarea id="ma-explain" rows="2" maxlength="160" placeholder="先找……因为……" ${e.passed?'disabled':''}>${escape(e.note||'')}</textarea></label><p class="ma-caption">这句解释留给孩子与大人讨论，不由程序自动判断。</p>${!e.passed?'<button class="ma-primary" type="submit">检查关系和答案</button>':''}</form><div aria-live="polite">${e.feedback?`<div class="ma-feedback ${e.passed?'success':''}">${escape(e.feedback)}</div>`:''}</div>${e.hints?`<aside class="ma-repair"><strong>只补这一小步 · ${e.hints}/3</strong><p>${t.hints[e.hints-1]}</p><p class="ma-caption">保留你填的内容，想清楚后再检查。</p></aside>`:''}<div class="ma-footer">${e.passed?`<details class="ma-solution"><summary>核对完整过程</summary><p>${t.solution}</p></details>`:`<button type="button" class="ma-secondary" data-path="help" ${e.hints>=3?'disabled':''}>${e.hints?'再给一点帮助':'我需要一点帮助'}</button>`}${e.passed?'<button type="button" class="ma-primary" data-path="continue">继续下一步 →</button>':''}</div></main>`;
 }
 function bridgeView(){const b=BANK[s.lesson].bridge;return `<main class="ma-main">${flowRail()}<div class="ma-kicker">把游戏里的发现，带回数学题</div><h1>这一步，轮到你解释</h1><div class="ma-bridge"><p>🎮 ${b[0]}</p><span>↓</span><p>✏️ ${b[1]}</p></div><p class="ma-question">${b[2]}</p><div class="ma-choices">${optionOrder([b[4],b[3],b[5]]).map(({text:x,index:i})=>`<button class="ma-choice ${s.bridgeChoice===i?(s.bridgePassed?'right':'try'):''}" data-bridge="${i}" type="button" ${s.bridgePassed?'disabled':''}>${x}</button>`).join('')}</div><div aria-live="polite">${s.bridgeFeedback?`<p class="ma-feedback ${s.bridgePassed?'success':''}">${s.bridgeFeedback}</p>`:''}</div><div class="ma-footer"><button type="button" class="ma-secondary" data-path="backGame">回去动手看一遍</button><button type="button" class="ma-primary" data-path="startOriginal" ${s.bridgePassed?'':'disabled'}>收起图解，我来做题 →</button></div></main>`;}
-function summaryView(){const r=recordFor(),keys=['original','near','far'],labels=[BANK[s.lesson].original.source||'原题','换数字','换问法 / 情境'];return `<main class="ma-main">${flowRail()}<div class="ma-win"><div class="ma-sticker">${lesson().icon}</div><h1>今天学到了哪一步？</h1><p>${lesson().tip}</p></div><div class="ma-checks">${keys.map((k,i)=>`<div><span>${labels[i]}</span><strong>${r.checks[k]?(r.checks[k].independent?'独立完成':'帮助后完成'):'还没做'}</strong></div>`).join('')}</div><p class="ma-caption">“独立完成”指首次提交时关系和答案都正确，且没看提示；不等同于长期掌握。</p><div class="ma-repair"><strong>下一站：隔天换一道题</strong><p>${r.finishedDay&&today()>r.finishedDay?'今天可以做隔天回测了。':'明天或以后再来，用一题没见过的题看看是否记住。现在也可以练，但会记作同日加练。'}</p></div>${r.reviews.length?`<div class="ma-checks">${r.reviews.map(x=>`<div><span>${x.day} · ${x.delayed?'隔天回测':'同日加练'}</span><strong>${x.independent?'独立完成':'帮助后完成'}</strong></div>`).join('')}</div>`:''}<div class="ma-actions"><button class="ma-primary" data-path="review" type="button">${r.finishedDay&&today()>r.finishedDay?'开始隔天回测':'现在换一道再练'}</button><button class="ma-secondary" data-act="map" type="button">回到学习地图</button></div></main>`;}
+function summaryView(){const r=recordFor(),keys=['original','near','far'],labels=[BANK[s.lesson].original.source||'原题','换数字','换问法 / 情境'];return `<main class="ma-main">${flowRail()}<div class="ma-win"><div class="ma-sticker">${lesson().icon}</div><h1>今天学到了哪一步？</h1><p>${lesson().tip}</p></div><div class="ma-checks">${keys.map((k,i)=>`<div><span>${labels[i]}</span><strong>${r.checks[k]?(r.checks[k].independent?'独立完成':'帮助后完成'):'还没做'}</strong></div>`).join('')}</div><p class="ma-caption">“独立完成”指首次提交时关系和答案都正确，且没看提示或本题图解；不等同于长期掌握。</p><div class="ma-repair"><strong>下一站：隔天换一道题</strong><p>${r.finishedDay&&today()>r.finishedDay?'今天可以做隔天回测了。':'明天或以后再来，用一题没见过的题看看是否记住。现在也可以练，但会记作同日加练。'}</p></div>${r.reviews.length?`<div class="ma-checks">${r.reviews.map(x=>`<div><span>${x.day} · ${x.delayed?'隔天回测':'同日加练'}</span><strong>${x.independent?'独立完成':'帮助后完成'}</strong></div>`).join('')}</div>`:''}<div class="ma-actions"><button class="ma-primary" data-path="review" type="button">${r.finishedDay&&today()>r.finishedDay?'开始隔天回测':'现在换一道再练'}</button><button class="ma-secondary" data-act="map" type="button">回到学习地图</button></div></main>`;}
 function pathAction(key){
 if(key==='record'){rememberView();s.mode='records';render();save();topOfTask();}
 if(key==='startOriginal')startExam('original',true);
@@ -454,6 +541,7 @@ if(key==='review')startExam('review');
 if(key==='backGame')goFlow(0);
 }
 function render(){
+stopVisualPlayback();
 if(s.mode==='records')root.innerHTML=header()+`<main class="ma-main"><h1>学习记录</h1><p>看原题、新题是否独立完成；游戏进度单独记录。</p>${lessons.map(l=>`<div class="ma-record-row"><span>${l.icon} ${l.name}<br><small>${statusText(l.id)}</small></span>${s.records[l.id]?.finishedDay?`<button type="button" class="ma-secondary" data-summary="${l.id}">查看与复习</button>`:`<button type="button" class="ma-secondary" data-lesson="${l.id}">进入学习</button>`}</div>`).join('')}</main>`;
 else if(s.mode==='exam')root.innerHTML=header()+assessmentView();
 else if(s.mode==='bridge')root.innerHTML=header()+bridgeView();
@@ -462,6 +550,7 @@ else if(s.mode==='play'&&s.lesson==='juice')root.innerHTML=header()+picnicView()
 else if(s.mode==='play'&&STORY_META[s.lesson])root.innerHTML=header()+storyView();
 else renderGame();
 freeNavigation();
+attachVisualLesson();
 }
 root.addEventListener('submit',e=>{if(e.target.id==='ma-exam-form'){e.preventDefault();submitExam();}});
 root.addEventListener('input',e=>{if(e.target.dataset.answer!==undefined)s.examState.answers[Number(e.target.dataset.answer)]=e.target.value;if(e.target.id==='ma-explain')s.examState.note=e.target.value;});
@@ -835,6 +924,234 @@ root.addEventListener('click',e=>{
  else if(b.dataset.examTab==='near'||b.dataset.examTab==='far')startExam(b.dataset.examTab,true);
  else if(b.hasAttribute('data-skip-current'))skipCurrent();
 });
+
+// Quantity diagrams use the same numbers as the exercise. Watching is optional.
+const vxF=(title,caption,html,formula='')=>({title,caption,html,formula});
+const vxNum=n=>Number.isInteger(n)?String(n):stFraction(n);
+const vxGcd=(a,b)=>b?vxGcd(b,a%b):a;
+const vxRatio=(a,b)=>`${a/vxGcd(a,b)}∶${b/vxGcd(a,b)}`;
+const vxNote=t=>`<p class="vx-legend">${t}</p>`;
+const vxCard=(label,body,tail='')=>`<div class="vx-card"><strong>${label}</strong>${body}${tail?`<p>${tail}</p>`:''}</div>`;
+const vxPair=(a,b)=>`<div class="vx-pair">${a}${b}</div>`;
+function vxBar(label,n,filled,color='green',cell='1份',tail=''){
+ return `<div class="vx-bar-row"><strong>${label}</strong><div class="vx-bar" style="--parts:${n}">${Array.from({length:n},(_,i)=>`<span class="${i<filled?color:'empty'} vx-pop" style="--delay:${i*.065}s">${Array.isArray(cell)?cell[i]:cell}</span>`).join('')}</div>${tail?`<p>${tail}</p>`:''}</div>`;
+}
+function vxCount(n,type='orange',extra=0){return `<div class="vx-objects" aria-label="${n}个${type==='orange'?'橘子':type==='cookie'?'饼干':'珠子'}">${Array.from({length:n},(_,i)=>`<span class="vx-object vx-drop ${i>=n-extra?'vx-extra':''}" style="--delay:${i*.09}s">${type==='orange'?`<svg viewBox="0 0 40 44" aria-hidden="true">${picnicOrange(20,25,14)}</svg>`:type==='cookie'?stCookie():`<i class="vx-bead ${type}"></i>`}</span>`).join('')}</div>`;}
+function vxBags(count,amount){return `<div class="vx-bags">${Array.from({length:count},(_,i)=>`<div class="vx-bag"><strong>第${i+1}袋</strong>${vxCount(amount)}<small>${amount}个</small></div>`).join('')}</div>`;}
+function vxFractionFrames(p){const {name,n,k,value,unit,remaining=false}=p,one=remaining?value/n:value/k,total=one*n,answer=remaining?one*(n-k):total;
+ return [
+ vxF('先认清这幅图代表谁',`整条代表${name}，平均分成${n}份。每一格表示同样多的${unit}，不是“1${unit}”。`,vxBar(name,n,remaining?n:k,'gold','1份',remaining?`全部${value}${unit}`:`其中${k}份合起来${value}${unit}`)),
+ vxF('已知的数量，放到对应的份数上',remaining?`${value}${unit}对应整条${n}份。`: `${value}${unit}只对应涂色的${k}份；剩下的还不知道。`,vxBar(name,n,remaining?n:k,'blue','1份',`已知：${value}${unit} ↔ ${remaining?n:k}份`)),
+ vxF('先拆开，找一份',`把${value}${unit}平均分成${remaining?n:k}份，每份${vxNum(one)}${unit}。`,vxBar('每份一样多',n,1,'gold',Array.from({length:n},(_,i)=>i===0?`${vxNum(one)}${unit}`:'?')),`${value} ÷ ${remaining?n:k} = ${vxNum(one)}（${unit}/份）`),
+ vxF(remaining?'只留下没有用掉的部分':'把同样的一份补齐',remaining?`用了${k}份，留下${n-k}份。`:`完整的${name}有${n}份，每份都是${vxNum(one)}${unit}。`,vxBar(name,n,remaining?n-k:n,'green',`${vxNum(one)}${unit}`,remaining?`剩下${n-k}份；已用的${k}份不再计入`:`${n}份合起来才是全部`),`${vxNum(one)} × ${remaining?n-k:n} = ${vxNum(answer)}（${unit}）`),
+ vxF('把图读成算式',remaining?'已知全部求剩下：先找一份，再数剩下几份。':'已知几份求全部：先找一份，再补齐全部。',vxPair(vxCard('已知的数量',`<b class="vx-big">${value}${unit}</b>`,`${remaining?n:k}份`),vxCard(remaining?'求剩下':'求全部',`<b class="vx-big">${vxNum(answer)}${unit}</b>`,`${remaining?n-k:n}份`)),`${value} ÷ ${remaining?n:k} × ${remaining?n-k:n} = ${vxNum(answer)}`)
+ ];}
+function vxOrangeFrames(){return [
+ vxF('认识任务：8人，一人一袋','袋子用来分组；里面的每个橘子才是我们要数的东西。',`<div class="vx-friends">🐻 🐰 🐼 🐨 🐯 🐸 🐱 🐶</div>`+vxNote('8位小伙伴；每袋必须一样多。')),
+ vxF('先看已经准备的6个','先给其中3人分。这6个是3袋合起来的数量。',vxCount(6)+vxNote('1个橘子图案＝1个真实橘子')),
+ vxF('平均分进3袋','轮流分，每袋放2个，3袋刚好把6个分完。',vxBags(3,2),'6个 ÷ 3袋 = 每袋2个'),
+ vxF('给另外5人也备好','每袋仍然2个。后面5袋新准备10个，别忘了前3袋的6个。',vxBags(8,2),'6 + 5 × 2 = 16（个）'),
+ vxF('现在把袋子画成等份','每袋一样多，所以1袋可以画成1份。图换了，数量没变。',vxBar('全部8袋 → 全部8份',8,3,'gold','2个','橙色3份合起来6个；全部8份共16个'),'3/8说的是“8份中的3份”'),
+ vxF('这就能解释分数除法','6个不是1份，也不是全部。先用6÷3求1份，再取8份。',vxPair(vxCard('3份',vxCount(6),'已知6个'),vxCard('1份',vxCount(2),'平均分开得到2个')),'6 ÷ 3 × 8 = 16')
+ ];}
+function vxSandFrames(){return [
+ vxF('两句话，用两幅图','第一句话比较石子和水泥；第二句话比较沙子和水泥。水泥是连接两幅图的同一个量。',vxPair(vxCard('① 石子 → 水泥','🪨 → 🏗️','水泥是石子的4/5'),vxCard('② 水泥 → 沙子','🏗️ → 🏖️','水泥是沙子的3/8'))),
+ vxF('第一幅图：石子是完整的5份','每格表示石子质量的1/5。取4格，得到水泥的质量。',vxBar('石子：600吨',5,4,'gold','120吨','橙色4格对应水泥'),'600 ÷ 5 × 4 = 480（吨水泥）'),
+ vxF('换比较对象，重新画整条','现在整条代表沙子。水泥480吨只对应其中3份，不是整条。',vxBar('沙子：完整8份',8,3,'blue','1份','蓝色3份合起来＝水泥480吨')),
+ vxF('把480吨平均分成3份','两幅图里的“一份”大小可以不同，因为比较对象已经换了。',vxBar('沙子的每一份',8,1,'gold',Array.from({length:8},(_,i)=>i?'?':'160吨')),'480 ÷ 3 = 160（吨/份）'),
+ vxF('补齐沙子的8份','求完整沙子，就把同样重的8份合起来。',vxBar('沙子全部',8,8,'green','160吨'),'160 × 8 = 1280（吨沙子）')
+ ];}
+function vxCookieFrames(){return [
+ vxF('先认盘子：谁跟谁比','熊熊有4块。兔兔想“比熊熊多一半”，这“一半”按熊熊算。',vxPair(vxCard('🐻 熊熊',vxCount(4,'cookie'),'4块'),vxCard('🐰 兔兔',vxCount(0),'还没准备'))),
+ vxF('先拿到一样多','先从点心盒给兔兔拿4块。熊熊自己的饼干不拿走。',vxPair(vxCard('🐻 熊熊',vxCount(4,'cookie'),'4块'),vxCard('🐰 兔兔',vxCount(4,'cookie'),'先有同样的4块'))),
+ vxF('再添熊熊的一半','熊熊4块的一半是2块。再从点心盒给兔兔添2块。',vxPair(vxCard('作为参照：熊熊',vxCount(4,'cookie'),'4÷2＝2'),vxCard('兔兔拿到',vxCount(6,'cookie',2),'绿色边框是新添的2块')),'4 + 4 × 1/2 = 6（块）'),
+ vxF('换方向比较，完整的一份也换了','熊熊比兔兔少2块。这次用兔兔6块作参照。',vxBar('兔兔6块，分成3组',3,1,'gold','2块','少掉2块，只占兔兔的1组'),'2 ÷ 6 = 1/3'),
+ vxF('同一个差，可以得到不同分数','差都是2块；跟4块比是1/2，跟6块比是1/3。每次先看“比谁”。',vxPair(vxCard('兔兔比熊熊多',vxBar('以4块为准',2,1,'gold','2块'),'多1/2'),vxCard('熊熊比兔兔少',vxBar('以6块为准',3,1,'blue','2块'),'少1/3')))
+ ];}
+function vxBlinkFrames(){return [
+ vxF('先把四种状态排清楚','所有次数都指1分钟。箭头上的分数说清了比较对象。',`<div class="vx-chain"><span>正常24次</span><b>→ ×3/4</b><span>写字？</span><b>→ ÷6/5</b><span>看书？</span><b>→ ÷3/2</b><span>游戏？</span></div>`),
+ vxF('写字：正常24次的3/4','24次分成4份，每份6次。只取3份。',vxBar('正常：完整4份',4,3,'blue','6次','蓝色3份是写字次数'),'24 ÷ 4 × 3 = 18（次/分）'),
+ vxF('看书：18次对应6份','“写字是看书的6/5”，写字画6份，看书画5份；每份要一样大。',vxBar('写字18次',6,6,'blue','3次')+vxBar('看书',6,5,'green',['3次','3次','3次','3次','3次','不取']),'18 ÷ 6 × 5 = 15（次/分）'),
+ vxF('游戏：它才是“多一半”的参照','游戏画2份；看书比它多1份，画3份。已知看书的3份合起来15次。',vxBar('看书15次',3,3,'gold','5次')+vxBar('游戏',3,2,'blue',['5次','5次','不取']),'15 ÷ 3 × 2 = 10（次/分）'),
+ vxF('再接一遍数量关系','每走一步都要重新认准分数比较的是谁。不能把正常24次直接当成看书次数。',`<div class="vx-chain"><span>正常24</span><b>→</b><span>写字18</span><b>→</b><span>看书15</span><b>→</b><span>游戏10</span></div>`,'单位都是：次/分')
+ ];}
+function vxCompareFrames(p){const {known,base,n,m,value,unit}=p,one=value/m,total=one*n,cols=Math.max(n,m);return [
+ vxF('先圈出比较对象',`${base}是完整的${n}份；${known}有同样大的${m}份。`,vxBar(base,cols,n,'blue',Array.from({length:cols},(_,i)=>i<n?'1份':'不取'))+vxBar(known,cols,m,'gold',Array.from({length:cols},(_,i)=>i<m?'1份':'不取'))),
+ vxF('把已知数量标在正确的一行',`${value}${unit}是${known}的${m}份。`,vxBar(`${known}：${value}${unit}`,m,m,'gold','1份')),
+ vxF('从已知的几份，拆出一份',`每份是${vxNum(one)}${unit}。两行都要用同样大小的一份。`,vxBar('同样的一份',cols,1,'green',Array.from({length:cols},(_,i)=>i?'?':`${vxNum(one)}${unit}`)),`${value} ÷ ${m} = ${vxNum(one)}`),
+ vxF('再补齐要找的那一行',`${base}有${n}份，把${n}份合起来。`,vxBar(base,n,n,'blue',`${vxNum(one)}${unit}`),`${vxNum(one)} × ${n} = ${vxNum(total)}（${unit}）`)
+ ];}
+function vxBracelet(m){return `<div class="vx-bracelets">${Array.from({length:m},()=>`<div class="vx-bracelet"><svg viewBox="0 0 160 145" aria-label="一条手链：2红3黄5蓝"><circle cx="80" cy="68" r="46" fill="none" stroke="#a9a084" stroke-width="3"/>${Array.from({length:10},(_,i)=>`<circle class="vx-drop" style="--delay:${i*.1}s" cx="${80+46*Math.cos(i*Math.PI/5)}" cy="${68+46*Math.sin(i*Math.PI/5)}" r="10" fill="${i<2?'#d88a76':i<5?'#e2b656':'#669db8'}" stroke="white" stroke-width="2"/>`).join('')}</svg></div>`).join('')}</div>`;}
+function vxBeadStock(red,yellow,blue){return `<div class="vx-three">${vxCard('红珠',vxCount(red,'red'),`${red}颗`)}${vxCard('黄珠',vxCount(yellow,'gold'),`${yellow}颗`)}${vxCard('蓝珠',vxCount(blue,'blue'),`${blue}颗`)}</div>`;}
+function vxBeadFrames(){return [
+ vxF('先认识配方和库存','一条手链同时用2红、3黄、5蓝。每个圆珠表示1颗；三个盒子原来各有6颗。',vxBeadStock(6,6,6)),
+ vxF('串第一条：三种珠子一起减少','从盒子拿走的珠子没有消失，它们串在成品里。',vxBracelet(1)+vxBeadStock(4,3,1),'剩下：红4颗、黄3颗、蓝1颗'),
+ vxF('还要一条，只补缺少的蓝珠','黄珠还剩3颗，够再串1条。蓝珠需要5颗，手里只有1颗，还缺4颗。',vxPair(vxCard('已有1颗',vxCount(1,'blue')),vxCard('再补4颗',vxCount(4,'blue',4))),'5 − 1 = 4（颗）'),
+ vxF('串第二条，黄珠刚好用完','补的4颗也串进第二条。再看看每个盒子里剩下多少。',vxBracelet(2)+vxBeadStock(2,0,0),'红珠：6 − 2 × 2 = 2（颗）'),
+ vxF('“剩下”和“补来”不能混为一谈','红珠剩2颗，是库存里留下的；蓝珠补4颗，是从外面新拿来的。',vxPair(vxCard('库存里剩下',vxCount(2,'red'),'红珠2颗'),vxCard('从外面补来',vxCount(4,'blue'),'蓝珠4颗')))
+ ];}
+function vxRecipeFrames(p){const {names,r,stock,unit}=p,one=stock/r[1],need=r.map(x=>x*one),max=Math.max(stock,...need);
+ const bars=(filled=false)=>r.map((n,i)=>vxBar(names[i],r[2],n,['gold','blue','green'][i],Array.from({length:r[2]},(_,j)=>j<n?(filled?`${vxNum(one)}${unit}`:'1份'):'不取'))).join('');
+ const inventory=(i)=>`<div class="vx-inventory"><strong>${names[i]}</strong><div class="vx-meter"><span class="vx-grow" style="width:${need[i]/max*100}%;background:${i===0?'#e4b75e':i===1?'#70aac0':'#87b889'}">需要${vxNum(need[i])}</span><i style="left:${stock/max*100}%"></i></div><p>竖线标原有${stock}${unit}；色条长短表示需要多少。</p></div>`;
+ return [vxF('先认三份库存','“各有”是每种材料都有这么多；不是把这个数当作总量。',`<div class="vx-three">${names.map(n=>vxCard(n,`<b class="vx-big">${stock}${unit}</b>`)).join('')}</div>`),
+ vxF('按配方画等份','每格代表同样多的材料。中间这种用完了，用它确定每份大小。',bars(),`${names.join('∶')} = ${r.join('∶')}`),
+ vxF('用完的材料，正好对应这些份',`${names[1]}的${r[1]}份合起来${stock}${unit}。`,vxBar(names[1],r[1],r[1],'blue',`${vxNum(one)}${unit}`),`${stock} ÷ ${r[1]} = ${vxNum(one)}（${unit}/份）`),
+ vxF('每份一样大，算出各自需要多少','把同样大小的一份，按各自的份数铺开。',bars(true),`需要：${need.map((v,i)=>names[i]+vxNum(v)+unit).join('，')}`),
+ vxF('比原有少的是剩余，多的是缺口','先看需要量，再与各自的库存比。',inventory(0)+inventory(2),`${names[0]}剩${stock}−${vxNum(need[0])}=${vxNum(stock-need[0])}；${names[2]}补${vxNum(need[2])}−${stock}=${vxNum(need[2]-stock)}`)
+ ];}
+function vxCake(base,copy=false,from=base,grid=0){const x=25,y=20,w=500,h=200,b=w*base,old=w*from,points=`${x},${y} ${x},${y+h} ${x+b},${y+h}`,oldPoints=`${x},${y} ${x},${y+h} ${x+old},${y+h}`;
+ const helper=base===from?`<g transform="rotate(180 ${x+b/2} ${y+h/2})"><animateTransform attributeName="transform" type="rotate" from="0 ${x+b/2} ${y+h/2}" to="180 ${x+b/2} ${y+h/2}" dur="1.7s" fill="freeze"/><polygon points="${points}" fill="#f5e8a0" fill-opacity=".9" stroke="#a58d48" stroke-width="2" stroke-dasharray="6 4"/></g>`:`<polygon points="${x},${y} ${x+b},${y} ${x+b},${y+h}" fill="#f5e8a0" fill-opacity=".9" stroke="#a58d48" stroke-width="2" stroke-dasharray="6 4"><animate attributeName="points" from="${x},${y} ${x+old},${y} ${x+old},${y+h}" to="${x},${y} ${x+b},${y} ${x+b},${y+h}" dur="1.5s" fill="freeze"/></polygon>`;
+ return `<svg class="vx-geometry" viewBox="0 0 550 250" role="img" aria-label="整块长方形，橙色三角形，浅黄色是辅助纸片"><rect x="25" y="20" width="500" height="200" rx="4" fill="#fff0d1" stroke="#917b55" stroke-width="3"/>${grid?Array.from({length:grid-1},(_,i)=>`<path d="M${x+(i+1)*w/grid} ${y} V${y+h}" stroke="#baa373" stroke-dasharray="5 5"/>`).join(''):''}<polygon points="${points}" fill="#eead54" stroke="#ab7130" stroke-width="2">${base!==from?`<animate attributeName="points" from="${oldPoints}" to="${points}" dur="1.5s" fill="freeze"/>`:''}</polygon>${copy?helper:''}<path d="M${x} ${y+h+15} H${x+b}" stroke="#267c61" stroke-width="5"/><circle cx="${x+b}" cy="${y+h}" r="6" fill="#267c61"/></svg>`+vxNote(`整块＝1；绿色底边占${vxNum(base)}；橙色是三角形${copy?'，浅黄色只是一张辅助纸片':''}。`);
+}
+function vxCakeFrames(parts=4,inverse=false){const base=inverse?0.25:2/parts,area=base/2,other=1-area;return [
+ vxF('面积和底边，是两种不同的量',inverse?'题目给的是底边1/4，不是三角形面积1/4。':`目标面积比是1∶${parts-1}，三角形应占整块1/${parts}。先试试底边也取1/${parts}：真的够吗？`,vxCake(inverse?0.25:1/parts,false,undefined,parts),inverse?'先从底边找面积':`三角形占整块 1/${parts}`),
+ vxF('复制一张相同三角形的纸片','把辅助纸片转半圈。两个相同三角形，刚好拼成一个小长方形。蛋糕没有变多。',vxCake(inverse?0.25:1/parts,true), '一个三角形面积 = 小长方形面积 ÷ 2'),
+ vxF(inverse?'底边1/4，面积还要除以2':'所以底边要取两倍',inverse?'小长方形占整块1/4，橙色三角形只占小长方形的一半。':`想让一个三角形占1/${parts}，两个合起来要占2/${parts}；把切点移到那里。`,vxCake(base,true,inverse?base:1/parts),inverse?'1/4 ÷ 2 = 1/8':`1/${parts} × 2 = ${vxNum(base)}（底边占比）`),
+ vxF('收起纸片，只看真正的两块','橙色是三角形；其余整块是梯形。两块的面积合起来一定是1。',vxCake(base),`三角形${vxNum(area)} ＋ 梯形${vxNum(other)} = 1`),
+ vxF('最后回答题目问的量',inverse?'三角形和梯形分别占1/8、7/8，所以面积比为1∶7。':'问切点在哪里，就回答底边占比；不要把面积占比填进去。',vxPair(vxCard('三角形面积占比',`<b class="vx-big">${vxNum(area)}</b>`),vxCard(inverse?'三角形∶梯形':'三角形底边占比',`<b class="vx-big">${inverse?'1∶7':vxNum(base)}</b>`)))
+ ];}
+function vxWaterGrid(n,group,previous=group){const size=19,cols=Math.max(group,previous),rows=Math.max(Math.ceil(n/group),Math.ceil(n/previous));return `<svg class="vx-water-grid" viewBox="0 0 ${cols*size+8} ${rows*size+8}" role="img" aria-label="水共${n}格，每${group}格一组">${Array.from({length:n},(_,i)=>{const x=4+i%group*size,y=4+Math.floor(i/group)*size,ox=4+i%previous*size,oy=4+Math.floor(i/previous)*size;return `<rect x="${x}" y="${y}" width="16" height="16" rx="2" fill="#7cb8ce" stroke="#477d91">${previous!==group?`<animate attributeName="x" from="${ox}" to="${x}" dur="1.4s" fill="freeze"/><animate attributeName="y" from="${oy}" to="${y}" dur="1.4s" fill="freeze"/>`:''}</rect>`;}).join('')}</svg>`;}
+function vxSaltGrid(water,group,salt,oldSalt=salt,previous=group){const size=21,cols=Math.max(group,previous,salt),rows=Math.max(Math.ceil(water/group),Math.ceil(water/previous)),sy=rows*size+26;
+ return `<svg class="vx-same-mass" viewBox="0 0 ${cols*size+8} ${sy+29}" role="img" aria-label="同样大的格子表示同样的质量：水${water}格，原有溶质${oldSalt}格，现有${salt}格">${Array.from({length:water},(_,i)=>{const x=4+i%group*size,y=4+Math.floor(i/group)*size,ox=4+i%previous*size,oy=4+Math.floor(i/previous)*size;return `<rect x="${x}" y="${y}" width="18" height="18" rx="2" fill="#7cb8ce" stroke="#477d91">${previous!==group?`<animate attributeName="x" from="${ox}" to="${x}" dur="1.4s" fill="freeze"/><animate attributeName="y" from="${oy}" to="${y}" dur="1.4s" fill="freeze"/>`:''}</rect>`;}).join('')}<path d="M4 ${sy-13} H${cols*size}" stroke="#b5bdae" stroke-dasharray="3 3"/>${Array.from({length:salt},(_,i)=>`<rect x="${4+i*size}" y="${sy}" width="18" height="18" rx="2" fill="${i<oldSalt?'#edc77a':'#8fc99a'}" stroke="${i<oldSalt?'#a78545':'#47845a'}" ${i>=oldSalt?'class="vx-pop"':''}/>`).join('')}</svg>`+vxNote(`上方蓝色是水${water}格；下方橙色是原有${oldSalt}格${salt>oldSalt?`，绿色是新增${salt-oldSalt}格`:''}。所有格子同样大，代表同样的质量。`);
+}
+function vxSaltFrames(p,q,added,solute='盐'){const water=p*q/vxGcd(p,q),old=water/p,now=water/q,diff=now-old,gram=added/diff,total=(water+old)*gram;return [
+ vxF(`只加入${solute}，先锁定不变的水`,`${solute}原来就有。新增的${added}克不能当作后来全部的${solute}。`,vxPair(vxCard('原来瓶里',saltBottle().replaceAll('盐',solute),`题目告诉我们：原来${solute}∶水＝1∶${p}`),vxCard('只加进去',`<svg class="vx-salt-pour" viewBox="0 0 200 155" aria-label="只向瓶里加入溶质"><path d="M50 20 H114 V67 L82 91 L50 67 Z" fill="#ead6a0" stroke="#a68b4b" stroke-width="3"/><path class="vx-drop" d="M82 94 V124 M72 114 L82 126 L92 114" fill="none" stroke="#a68b4b" stroke-width="5"/></svg><b class="vx-big">${added}克${solute}</b>`,`箭头表示倒入；后来${solute}占${solute}水的1/${q+1}，水没有增加`))),
+ vxF(`把“占${solute}水”改成“${solute}与水”`,`后来一共${q+1}份：${solute}1份，水${q}份。`,vxBar(`后来${solute}水`,q+1,1,'gold',Array.from({length:q+1},(_,i)=>i?'水':'盐'.replace('盐',solute))),`${solute}∶水 = 1∶${q}`),
+ vxF('给同一份水画同样多的小格',`水画${water}格，既能按${p}格分组，也能按${q}格分组。原来每${p}格水配1格${solute}，所以配${old}格。每格几克还不知道。`,vxSaltGrid(water,p,old),`${water} ÷ ${p} = ${old}（格${solute}）`),
+ vxF('水一格没增减，只换分组','看蓝色小格移动：同一份水重新排组，总格数不变。',vxSaltGrid(water,q,now,old,p),`${water} ÷ ${q} = ${now}（格${solute}）`),
+ vxF(`新增的${added}克，对应多出的${diff}格`,`原来${old}格，后来${now}格。只把新增部分圈出来。`,vxSaltGrid(water,q,now,old),`${added} ÷ (${now} − ${old}) = ${vxNum(gram)}（克/格）`),
+ vxF('回到加以前，别带上新加的部分',`原来是${water}格水＋${old}格${solute}，每格${vxNum(gram)}克。`,vxPair(vxCard('原来的水',vxWaterGrid(water,p),`${water}格`),vxCard(`原来的${solute}`,vxBar('',old,old,'gold','1格'),`${old}格`)),`(${water} + ${old}) × ${vxNum(gram)} = ${vxNum(total)}（克）`)
+ ];}
+function vxCarRoad(name,time,distance,hour,color){const fraction=Math.min(hour/time,1);return `<div class="vx-road"><div class="vx-road-label"><strong>${name}</strong><span>全程${time}小时</span></div><div class="vx-track"><div class="vx-car-run" style="--travel:${fraction*100}%"><svg viewBox="0 0 50 34" aria-hidden="true"><path d="M3 15 H11 L18 5 H32 L39 15 H47 V27 H3Z" fill="${color}"/><path d="M19 8 H30 L35 15 H14Z" fill="#dff1f2"/><circle cx="13" cy="28" r="5" fill="#3c514b"/><circle cx="37" cy="28" r="5" fill="#3c514b"/></svg></div></div><div class="vx-road-label"><span>起点0</span><span>终点${distance}千米</span></div><p>${hour?`经过${hour}小时，走${vxNum(Math.min(distance,distance/time*hour))}千米`:'还没有出发'}</p></div>`;}
+function vxTank(name,time,hour){return vxCard(name,`<div class="vx-tank"><div class="vx-tank-water" style="--fill:${Math.min(hour/time,1)*100}%"></div></div>`,`全池${time}小时注满；${hour}小时注入${vxNum(Math.min(hour/time,1))}池`);}
+function vxRaceFrames(a,b,kind='original'){const pump=kind==='far',distance=a*b/vxGcd(a,b),names=pump?['甲管','乙管']:kind==='review'?['甲车（快车）','乙车（慢车）']:['红色快车','蓝色慢车'];const scene=h=>pump?vxPair(vxTank(names[0],a,h),vxTank(names[1],b,h)):vxCarRoad(names[0],a,distance,h,'#cf8069')+vxCarRoad(names[1],b,distance,h,'#659ab5');const timeForward=pump||kind==='review';return [
+ vxF(pump?'同一个池子，比的是注满速度':'同一条路，起终点完全相同',pump?'两次都注满同样大的空池，不是不同容量的池。':`为了画清楚，用${distance}千米作这次的共同路程。两辆车都匀速。`,scene(0)),
+ vxF('一起经过1小时','比较速度，要给双方同样多的时间。看动画里，谁在这1小时完成得多。',scene(1),pump?`甲1小时注1/${a}池；乙1小时注1/${b}池`:`快车每小时${distance/a}千米；慢车每小时${distance/b}千米`),
+ vxF('快的一方先完成全部',pump?`经过${a}小时，甲管已注满；乙管还没有。`:`经过${a}小时，快车已到终点；慢车还在路上。`,scene(a)),
+ vxF('时间比：先排名字，再填用时','这里比较完成全部所用的时间。',vxPair(vxCard('先写',`<b class="vx-big">${timeForward?names[0]:names[1]}</b>`,`${timeForward?a:b}小时`),vxCard('后写',`<b class="vx-big">${timeForward?names[1]:names[0]}</b>`,`${timeForward?b:a}小时`)),`时间比 ${timeForward?a:b}∶${timeForward?b:a} = ${timeForward?vxRatio(a,b):vxRatio(b,a)}`),
+ vxF('速度比：重新排名字，比较1小时的成果',pump?'甲先、乙后。同样1小时，甲注入更多，所以甲的速度更大。':'快的先、慢的后。全程用时少的一方，每小时反而走得多。',scene(1),`速度比 1/${a}∶1/${b} = ${vxRatio(b,a)}`)
+ ];}
+function vxFold(w,a,stage){const h=w-a,u=280/w,x=12,y=12,W=w*u,H=h*u,A=a*u,svgHeight=H+24;
+ const top=`${x+A},${y} ${x+W},${y} ${x+W},${y+H}`,down=`${x+A},${y} ${x+A},${y+H} ${x+W},${y+H}`;
+ const bottom=`${x},${y+H-A} ${x},${y+H} ${x+A},${y+H}`,up=`${x},${y+H-A} ${x+A},${y+H-A} ${x+A},${y+H}`;
+ return `<svg class="vx-paper" viewBox="0 0 304 ${svgHeight}" role="img" aria-label="虚线是原纸边界，绿色是露出的阴影"><rect x="${x}" y="${y}" width="${W}" height="${H}" fill="#fff7df" stroke="#6a866c" stroke-width="2" stroke-dasharray="5 4"/>${stage>=1?`<rect x="${x}" y="${y}" width="${A}" height="${stage>=3?H-A:H}" fill="#a0cd9f"/><polygon points="${down}" fill="#e9c58c" stroke="#927a53">${stage===1?`<animate attributeName="points" from="${top}" to="${down}" dur="1.6s" fill="freeze"/>`:''}</polygon>`:''}${stage>=3?`<polygon points="${up}" fill="#bca17a" stroke="#927a53">${stage===3?`<animate attributeName="points" from="${bottom}" to="${up}" dur="1.6s" fill="freeze"/>`:''}</polygon>`:''}${stage>=2?Array.from({length:w-1},(_,i)=>`<path d="M${x+(i+1)*u} ${y} V${y+H}" stroke="#82917d" stroke-width=".7"/>`).join(''):''}${stage>=4?Array.from({length:h-1},(_,i)=>`<path d="M${x} ${y+(i+1)*u} H${x+W}" stroke="#82917d" stroke-width=".7"/>`).join(''):''}</svg>`+vxNote(`虚线始终是原纸。${stage>=2?`宽${w}格，高${h}格；左条宽${a}格。`:'先看折叠动作，再加辅助格。'}`);
+}
+function vxFoldFrames(w,a){const h=w-a,green=a*(h-a),all=w*h;return [
+ vxF('先认完整的原纸','折叠后也要保留原纸边界。最后要比的是绿色面积和整张原纸面积。',vxFold(w,a,0)),
+ vxF('右上角向下折','看角怎样翻到下方。右边贴到底边，两条等长边说明右侧是正方形。',vxFold(w,a,1)),
+ vxF('先求原纸的高',`左条与原纸同高，占面积${a}/${w}，所以宽也占${a}/${w}。右侧宽${w-a}格，高也等于${w-a}格。`,vxFold(w,a,2),`原纸高 = ${w} − ${a} = ${h}`),
+ vxF('再把左下角向上折',`左条宽${a}格，下面盖住${a}格高。露出的绿色高${h-a}格。`,vxFold(w,a,3),`绿色高 = ${h} − ${a} = ${h-a}`),
+ vxF('铺格子，数的是面积','每个小方格一样大。绿色的宽乘高，和整张原纸的宽乘高，分别计算。',vxFold(w,a,4),`绿色${a}×${h-a}=${green}；原纸${w}×${h}=${all}`),
+ vxF('最后再求占比','分母是整张原纸的面积。不能只拿左条当作全部，也不能直接把宽的比例平方。',vxPair(vxCard('绿色区域',`<b class="vx-big">${green}格</b>`),vxCard('完整原纸',`<b class="vx-big">${all}格</b>`)),`${green} ÷ ${all} = ${vxNum(green/all)}`)
+ ];}
+function vxBookParts(n,k,days=0,subject='书'){return `<div class="vx-book-shape"><strong>${subject==='书'?'📖 同一本书':subject==='路'?'🛣️ 同一条路':'🧩 同一项工作'} · 平均分成${n}段</strong><div class="vx-book-parts" style="--parts:${n}">${Array.from({length:n},(_,i)=>`<div class="${i<k?'read':'unread'} vx-pop" style="--delay:${i*.13}s"><span>第${i+1}段</span><i></i><b>${i<k?'已完成':'未完成'}</b>${days?`<small>${vxNum(days)}天</small>`:''}</div>`).join('')}</div></div>`;}
+function vxTimeline(n,k,one,highlightAll=false){return `<div class="vx-timeline">${Array.from({length:n},(_,i)=>`<div class="vx-time-segment ${i<k?'past':'future'} ${highlightAll||i>=k?'vx-time-lit':''}"><b>${i<k?'已经':i===k?'现在起 →':'接下来'}</b><div>${Array.from({length:one},(_,j)=>`<span class="vx-pop" style="--delay:${(i*one+j)*.12}s">第${i*one+j+1}天</span>`).join('')}</div></div>`).join('')}</div>`+vxNote('“现在”就在已完成与未完成之间；接下来从下一天开始算。');}
+function vxBookFrames(n,k,used,subject='书',askTotal=false,pages=0){const one=used/k,left=(n-k)*one,total=n*one,frames=[
+ vxF('先把完整的一件事画出来',`图中每段一样长。已完成${k}段，未完成${n-k}段；颜色和文字一起标明。`,vxBookParts(n,k,0,subject)),
+ vxF('已用的时间，放到已完成的部分',`${used}天对应前${k}段，不是全部${n}段。进度相同，每段花的时间也相同。`,vxBar(`前${k}段，合计${used}天`,k,k,'blue','1段')),
+ vxF('把时间平均分给这些段',`每段需要${vxNum(one)}天。后面每段一样长，也要${vxNum(one)}天。`,vxBookParts(n,k,one,subject),`${used} ÷ ${k} = ${vxNum(one)}（天/段）`),
+ vxF('从“现在”往后数，才叫还要','灰色日子已经用掉。看后面亮起来的日子，它们才是接下来还需要的。',vxTimeline(n,k,one),`${n-k}段 × ${vxNum(one)}天 = ${vxNum(left)}天`),
+ vxF('从开始数到最后，才叫一共','同一张时间线，问题不同，计算范围也不同。',vxTimeline(n,k,one,true),`一共 ${used} + ${vxNum(left)} = ${vxNum(total)}天`),
+ vxF('读最后一句，选对计算范围',askTotal?'这道题问“一共”，把所有段对应的时间合起来。':'这道题问“还要”，只数未完成部分。',vxPair(vxCard('已经',`<b class="vx-big">${used}天</b>`),vxCard(askTotal?'本题问一共':'本题问还要',`<b class="vx-big">${vxNum(askTotal?total:left)}天</b>`)))];
+ if(pages)frames.splice(1,0,vxF('页数也按同样的段来分',`${pages}页对应${k}段，每段${pages/k}页。全书${n}段。`,vxBar('全书页数',n,k,'blue',`${pages/k}页`),`${pages} ÷ ${k} × ${n} = ${pages/k*n}（页）`));return frames;
+}
+function vxMachineFrames(kind){const near=kind==='near',review=kind==='review',letter=near?['x','y','z']:review?['u','v','w']:['a','b','c','d'],mul=near?3/4:review?4/5:2/3,div=near?2/3:review?3/4:2/5;
+ const frac=vxNum(mul),a=1/mul,frames=[
+ vxF('输入、规则、结果，先认清三样东西','输入是送进去的数，规则写在机器上，结果显示在右边。这里都按正数比较。',machineLane(letter[0],`× ${frac}`,'?','1')),
+ vxF('只取输入的一部分，结果却要够1','输入必须比1大。把输入平均分，再取指定的份数。',machineLane(letter[0],`× ${frac}`,vxNum(a),'1')+vxBar('输入的等份',near?4:review?5:3,near?3:review?4:2,'gold',near?'1/3':review?'1/4':'1/2'),`${letter[0]} = 1 ÷ ${frac} = ${vxNum(a)}`),
+ vxF('除以一个小段，是数有几个小段',`输入恰好1个${vxNum(div)}，除以${vxNum(div)}就得到1。`,machineLane(letter[1],`÷ ${vxNum(div)}`,vxNum(div),'1')+vxBar('一整条表示数字1',near?3:review?4:5,near?2:review?3:2,'blue','1份'),`${letter[1]} = ${vxNum(div)}`)
+ ];
+ if(near||review)frames.push(vxF('还有一个数，就是共同结果',`${letter[2]}没有经过乘除；等号说明它本身也等于共同结果。`,machineLane(letter[2],'直接等于','1','1'),`${letter[2]} = 1`));
+ if(!near&&!review){frames.push(vxF('C机器也同样数小段','一个2/3里面，恰好有1个2/3。',machineLane('c','÷ 2/3','2/3','1'),'c = 2/3'));
+ frames.push(vxF('D机器先分，再数回份数','把2分成d份，每份2/d。数2里面有几个这样的份，数回来的就是d。结果是1，就分1份。',vxBar('数字2',1,1,'green','一份就是2')+machineLane('d','2 ÷ (2/d)','1','1'),'2 ÷ (2/d) = d；所以d = 1'));}
+ const vals=near?[['x',4/3],['z',1],['y',2/3]]:review?[['u',5/4],['w',1],['v',3/4]]:[['a',1.5],['d',1],['c',2/3],['b',.4]];
+ frames.push(vxF('同一把尺，从长到短排', '每条的长度用同一个单位1来量；虚线位置是1。',`<div class="vx-number-bars">${vals.map(([l,v])=>`<div><strong>${l}</strong><div class="vx-number-track"><span class="vx-grow" style="width:${v/1.6*100}%">${vxNum(v)}</span><i style="left:62.5%"></i></div></div>`).join('')}</div>`+vxNote('共同结果设为1，是为了好比较；换成别的正数，所有输入同比放大。'),vals.map(v=>v[0]).join(' ＞ ')));if(kind==='story')frames.push(vxF('一起换成结果2，顺序还在','共同结果从1变成2，每个输入都乘2。图中的数一起变大，前后次序保持不变。',vxPair(vxCard('结果是1',`<div class="vx-chain">${vals.map(([l,v])=>`<span>${l}＝${vxNum(v)}</span>`).join('')}</div>`),vxCard('结果是2',`<div class="vx-chain">${vals.map(([l,v])=>`<span class="vx-pop">${l}＝${vxNum(v*2)}</span>`).join('')}</div>`)),'仍然是 a ＞ d ＞ c ＞ b'));return frames;
+}
+function vxStickerFrames(value,secondNum,secondDen){const a=value*2,b=value/secondNum*secondDen,unit=value/secondNum;return [
+ vxF('拿出来一样多，原来未必一样多',`甲拿出一半，乙拿出${secondNum}/${secondDen}，拿出的都是${value}张。`,vxPair(vxCard('甲拿出',`<b class="vx-big">${value}张</b>`,'只占自己的一半'),vxCard('乙拿出',`<b class="vx-big">${value}张</b>`,`占自己的${secondNum}/${secondDen}`))),
+ vxF('甲：一份就有这么多','甲原来的两半一样多。已知一半，再补上另一半。',vxBar('甲原有',2,1,'gold',`${value}张`),`${value} × 2 = ${a}张`),
+ vxF('乙：先把已知部分拆开',`${value}张对应${secondNum}份，不是1份。`,vxBar('乙原有',secondDen,secondNum,'blue',`${vxNum(unit)}张`),`${value} ÷ ${secondNum} × ${secondDen} = ${vxNum(b)}张`),
+ vxF('比较完整的两条','拿出的比例越小，同样多的贴纸背后对应的原量越大。',vxPair(vxCard('甲原来',`<b class="vx-big">${a}张</b>`),vxCard('乙原来',`<b class="vx-big">${vxNum(b)}张</b>`)))
+ ];}
+function visualFrames(id,kind,serial=0){const story=kind==='story',a=serial+4,repeat=kind==='review'&&serial>0;
+ if(id==='juice'){if(story)return vxOrangeFrames();if(kind==='original')return vxSandFrames();if(kind==='near')return vxFractionFrames({name:'整瓶果汁',n:5,k:3,value:240,unit:'毫升'});if(kind==='far')return vxFractionFrames({name:'整瓶果汁',n:5,k:3,value:500,unit:'毫升',remaining:true});return vxFractionFrames(repeat?{name:'整桶饮料',n:5,k:2,value:a*20,unit:'毫升'}:{name:'一箱零件',n:7,k:2,value:84,unit:'个'});}
+ if(id==='cookies'){if(story)return vxCookieFrames();if(kind==='original')return vxBlinkFrames();return vxCompareFrames(kind==='near'?{known:'红绳',base:'蓝绳',n:4,m:5,value:20,unit:'厘米'}:kind==='far'?{known:'甲的邮票',base:'乙的邮票',n:4,m:3,value:18,unit:'枚'}:repeat?{known:'姐姐的贴纸',base:'妹妹的贴纸',n:2,m:3,value:a*3,unit:'张'}:{known:'红珠',base:'蓝珠',n:3,m:5,value:25,unit:'颗'});}
+ if(id==='factory'){if(story)return vxBeadFrames();return vxRecipeFrames(kind==='near'?{names:['水泥','沙','石子'],r:[1,2,3],stock:300,unit:'吨'}:kind==='far'?{names:['奶粉','谷粉','豆粉'],r:[3,4,5],stock:8,unit:'袋'}:kind==='review'?{names:['甲','乙','丙'],r:repeat?[2,3,5]:[2,3,4],stock:repeat?a*30:450,unit:'千克'}:{names:['水泥','黄沙','石子'],r:[2,3,5],stock:600,unit:'吨'});}
+ if(id==='cake')return vxCakeFrames(kind==='near'?5:kind==='review'?(repeat?a+1:3):4,kind==='far');
+ if(id==='salt')return kind==='near'?vxSaltFrames(9,5,10):kind==='far'?vxSaltFrames(4,2,10,'糖'):kind==='review'?(repeat?vxSaltFrames(4,2,a*2,'糖'):vxSaltFrames(7,4,12)):vxSaltFrames(11,8,15);
+ if(id==='race')return kind==='near'?vxRaceFrames(4,6):kind==='far'?vxRaceFrames(3,5,'far'):kind==='review'?vxRaceFrames(repeat?a:5,repeat?a+2:7,'review'):vxRaceFrames(6,8);
+ if(id==='fold')return kind==='near'?vxFoldFrames(4,1):kind==='far'?vxFoldFrames(5,1):kind==='review'?vxFoldFrames(repeat?a+5:9,2):vxFoldFrames(7,2);
+ if(id==='book')return kind==='near'?vxBookFrames(5,2,4):kind==='far'?vxBookFrames(4,3,9,'路',true):kind==='review'?vxBookFrames(5,repeat?2:3,repeat?a*2:6,'工作'):vxBookFrames(3,2,6,'书',false,200);
+ if(id==='machines')return kind==='far'?vxStickerFrames(12,2,3):repeat?vxStickerFrames(a*3,3,4):vxMachineFrames(kind);
+ return [];
+}
+
+// One optional player per screen. The player never submits or changes answers.
+let visualTimer=null,visualPlaying=false,visualMotionPaused=false;
+function visualContext(){
+ if(!['play','bridge','exam'].includes(s.mode))return null;
+ const kind=s.mode==='play'?((s.lesson==='cookies'&&s.step>=3)||(s.lesson==='factory'&&s.step>=4)?'original':'story'):s.mode==='bridge'?'original':s.exam;
+ const startFrames={juice:[0,2,3,4,5],cookies:[0,2,3,1,2,3],factory:[0,1,2,3,2],cake:[0,0,1,2,3],salt:[0,0,1,2,4,5],race:[0,1,1,3,4],fold:[0,1,2,3,4,5],book:[0,0,1,3,4,5],machines:[0,1,2,4,5,6]};
+ const key=[s.lesson,s.mode,kind,s.mode==='play'?s.step:kind==='review'?s.reviewSerial||0:0].join(':');
+ const frames=visualFrames(s.lesson,kind,s.reviewSerial||0);
+ if(!s.visuals)s.visuals={};
+ const memory=s.visuals[key]||(s.visuals[key]={frame:s.mode==='play'?startFrames[s.lesson]?.[s.step]||0:0,open:s.mode==='bridge'||s.mode==='play'&&s.step===0});
+ memory.frame=Math.min(Math.max(0,memory.frame||0),frames.length-1);
+ return {key,kind,frames,memory};
+}
+function stopVisualPlayback(){if(visualTimer!==null){clearTimeout(visualTimer);visualTimer=null;}visualPlaying=false;visualMotionPaused=false;}
+function visualReduced(){return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;}
+function visualHeading(){return s.mode==='play'?'先看一段，再自己动手':s.mode==='bridge'?'把原题里的关系画出来':'这道题的分步图解';}
+function visualMarkup(c){const f=c.frames[c.memory.frame],isExam=s.mode==='exam';return `<section class="vx-player ${c.memory.open?'':'vx-closed'}" aria-label="数学图解动画"><div class="vx-top"><div><span class="vx-kicker">会动的数学图解</span><h2>${visualHeading()}</h2></div><button class="ma-secondary" type="button" data-visual="toggle" aria-expanded="${c.memory.open}">${c.memory.open?'收起图解':'打开图解动画'}</button></div>${!c.memory.open?`<p class="vx-closed-note">${isExam?'可以先独立做；看过图解再答对，会记作“帮助后完成”。':'物品是什么、怎样变化、为什么这样算，一幅一幅看。'}</p>`:`<div class="vx-frame"><div class="vx-frame-title"><span>第 ${c.memory.frame+1} / ${c.frames.length} 幅</span><h3>${f.title}</h3></div><p class="vx-caption">${f.caption}</p><div class="vx-stage">${f.html}</div>${f.formula?`<div class="vx-formula"><span>把刚才的图写下来</span><strong>${f.formula}</strong></div>`:''}</div><div class="vx-controls"><button class="ma-secondary" type="button" data-visual="prev" ${c.memory.frame===0?'disabled':''}>← 上一幅</button><button class="ma-primary" type="button" data-visual="play">${visualPlaying?'Ⅱ 暂停':'▶ 播放动画'}</button><button class="ma-secondary" type="button" data-visual="next" ${c.memory.frame===c.frames.length-1?'disabled':''}>下一幅 →</button><button class="ma-link" type="button" data-visual="replay">↺ 从头重播</button></div><nav class="vx-seek" aria-label="自由选择图解画面">${c.frames.map((f,i)=>`<button type="button" data-visual-frame="${i}" aria-label="图解 ${i+1}：${f.title}" ${i===c.memory.frame?'aria-current="step"':''}>${i+1}</button>`).join('')}</nav><p class="vx-player-tip">${visualPlaying?'正在播放，每幅停留8秒；随时可以暂停细看。':visualMotionPaused?'已暂停。点“播放动画”接着看，也可以直接选数字。':'不用赶，点“下一幅”慢慢看，也可以点数字跳着看。'}${isExam&&s.examState.visualHelp?' · 本题已使用图解帮助。':''}</p>`}</section>`;}
+function attachVisualLesson(){
+ const c=visualContext();if(!c||!c.frames.length)return;
+ const target=root.querySelector(s.mode==='play'?(s.lesson==='juice'?'.picnic-world':'.st-world'):s.mode==='bridge'?'.ma-bridge':'.ma-paper');
+ if(!target)return;
+ if(s.mode==='exam'&&c.memory.open&&!s.examState.passed){s.examState.assisted=true;s.examState.visualHelp=true;}
+ target.insertAdjacentHTML(s.mode==='exam'?'afterend':'beforebegin',`<div id="ma-visual-slot">${visualMarkup(c)}</div>`);
+ // The opening movie introduces the scene; later steps retain the actual toys.
+ if(s.mode==='play'&&s.step===0&&typeof target.remove==='function')target.remove();
+ settleVisualMotion();
+}
+function settleVisualMotion(){
+ if(!visualReduced())return;
+ // Under reduced motion every frame is still usable, showing the final diagram.
+ const slot=root.querySelector('#ma-visual-slot');
+ slot?.querySelectorAll?.('animate,animateTransform').forEach(a=>a.remove());
+}
+function drawVisual(){const c=visualContext(),slot=root.querySelector('#ma-visual-slot');if(!c||!slot)return;slot.innerHTML=visualMarkup(c);settleVisualMotion();save();}
+function setVisualMotion(paused){
+ const slot=root.querySelector('#ma-visual-slot');
+ slot?.getAnimations?.({subtree:true}).forEach(a=>paused?a.pause():a.play());
+ slot?.querySelectorAll?.('svg').forEach(svg=>paused?svg.pauseAnimations?.():svg.unpauseAnimations?.());
+}
+function visualButtonState(){const slot=root.querySelector('#ma-visual-slot'),b=slot?.querySelector?.('[data-visual="play"]'),tip=slot?.querySelector?.('.vx-player-tip');if(b)b.textContent=visualPlaying?'Ⅱ 暂停':'▶ 播放动画';if(tip)tip.textContent=visualPlaying?'正在播放，每幅停留8秒；随时可以暂停细看。':'已暂停。点“播放动画”接着看，也可以直接选数字。';}
+function scheduleVisual(){
+ const c=visualContext();if(!c||!visualPlaying||!c.memory.open)return;
+ const key=c.key;
+ visualTimer=setTimeout(()=>{visualTimer=null;const next=visualContext();if(!next||next.key!==key||!visualPlaying)return;if(next.memory.frame<next.frames.length-1){next.memory.frame++;drawVisual();scheduleVisual();}else{visualPlaying=false;visualButtonState();const tip=root.querySelector('.vx-player-tip');if(tip)tip.textContent='这一段看完了。可以重播，也可以回到题目自己试。';}},8000);
+}
+function visualAction(action,index){
+ const c=visualContext();if(!c)return;
+ if(action==='toggle'){
+  stopVisualPlayback();c.memory.open=!c.memory.open;
+  if(c.memory.open&&s.mode==='exam'&&!s.examState.passed){s.examState.assisted=true;s.examState.visualHelp=true;}
+  drawVisual();if(c.memory.open)root.querySelector('.vx-frame-title')?.scrollIntoView?.({block:'start',behavior:'instant'});return;
+ }
+ if(!c.memory.open)return;
+ if(action==='play'){
+  if(visualPlaying){if(visualTimer!==null)clearTimeout(visualTimer);visualTimer=null;visualPlaying=false;visualMotionPaused=true;setVisualMotion(true);visualButtonState();}
+  else{visualPlaying=true;if(visualMotionPaused){visualMotionPaused=false;setVisualMotion(false);visualButtonState();}else{if(c.memory.frame===c.frames.length-1)c.memory.frame=0;drawVisual();}scheduleVisual();}return;
+ }
+ stopVisualPlayback();
+ if(action==='prev')c.memory.frame=Math.max(0,c.memory.frame-1);
+ if(action==='next')c.memory.frame=Math.min(c.frames.length-1,c.memory.frame+1);
+ if(action==='seek')c.memory.frame=Math.min(c.frames.length-1,Math.max(0,index));
+ if(action==='replay'){c.memory.frame=0;visualPlaying=true;}
+ drawVisual();root.querySelector('.vx-frame-title')?.scrollIntoView?.({block:'start',behavior:'instant'});if(visualPlaying)scheduleVisual();
+}
+root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;if(b.dataset.visual)visualAction(b.dataset.visual);else if(b.dataset.visualFrame!==undefined)visualAction('seek',Number(b.dataset.visualFrame));});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&visualPlaying){if(visualTimer!==null)clearTimeout(visualTimer);visualTimer=null;visualPlaying=false;visualMotionPaused=true;setVisualMotion(true);visualButtonState();}});
 
 function config(){const all=pages()[s.lesson];if(s.step>=all.length)s.step=all.length-1;return all[s.step]}
 const act=(label,key,primary=false,disabled=false)=>`<button type="button" class="${primary?'ma-primary':'ma-secondary'}" data-act="${key}" ${disabled?'disabled':''}>${label}</button>`;
