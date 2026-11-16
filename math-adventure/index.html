@@ -430,6 +430,34 @@
 
 #math-adventure .fd-line-track>button[aria-pressed=true]:before{content:'🦊';position:absolute;top:-32px;left:50%;transform:translateX(-50%);font-size:25px;pointer-events:none}
 
+#math-adventure .mm-player{background:#f6f8ed}
+#math-adventure .mm-legend{font-size:18px;line-height:1.8;margin:15px 0;color:#3c5747}
+#math-adventure .mm-stage{background:#fffdf7;border:1px solid #dce5d3;border-radius:18px;overflow:hidden}
+#math-adventure .mm-canvas{display:block;width:100%;height:auto;max-height:370px;font-family:inherit}
+#math-adventure .mm-canvas *{animation:none!important;transition:none!important}
+#math-adventure .mm-explanation{min-height:132px;padding:16px 3px 6px}
+#math-adventure .mm-explanation>strong{font-size:23px;line-height:1.5;display:block}
+#math-adventure .mm-explanation>p{font-size:18px;line-height:1.8;margin:7px 0}
+#math-adventure #mm-formula{font-size:22px;font-weight:750;color:#346d50;line-height:1.6;min-height:35px}
+#math-adventure .mm-controls{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 20px}
+#math-adventure .mm-scrubber{display:block;font-size:16px;color:#4d6b53;margin:10px 0 20px}
+#math-adventure .mm-scrubber>span{display:flex;justify-content:space-between;gap:12px}
+#math-adventure #mm-progress{display:block;width:100%;height:40px;accent-color:#4a825d;cursor:ew-resize;margin:5px 0}
+#math-adventure .mm-chapters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#math-adventure .mm-chapters>button{font-size:15px;text-align:left;display:flex;align-items:center;gap:9px;padding:12px;background:#fffdf8;border:1px solid #cfddc7;line-height:1.5}
+#math-adventure .mm-chapters b{flex-shrink:0;width:24px;height:24px;border-radius:50%;display:grid;place-content:center;background:#e8eedf}
+#math-adventure .mm-chapters [aria-current]{border-color:#658d65;background:#e6efd9}
+#math-adventure .mm-status{font-size:15px;line-height:1.8;color:#60765c}
+#math-adventure .mm-notes{border-top:1px solid #d4dfcc;margin-top:20px;padding-top:12px}
+#math-adventure .mm-notes>summary{padding:12px 0;cursor:pointer;font-size:17px;color:#42654e}
+#math-adventure .mm-notes-body{margin-top:15px}
+@media(max-width:600px){#math-adventure .mm-player{padding:16px 12px}#math-adventure .mm-player .vx-top{align-items:flex-start}#math-adventure .mm-player .vx-top>button{font-size:14px;padding:9px;min-width:60px}#math-adventure .mm-player h2{font-size:20px}#math-adventure .mm-legend{font-size:17px}#math-adventure .mm-explanation>strong{font-size:21px}#math-adventure .mm-explanation>p{font-size:17px}#math-adventure .mm-explanation{min-height:165px}#math-adventure .mm-controls{gap:7px}#math-adventure .mm-controls>button{font-size:15px;padding:12px}#math-adventure .mm-chapters{grid-template-columns:1fr}#math-adventure .mm-scrubber{font-size:15px}#math-adventure .mm-canvas text{font-weight:700}}
+
+#math-adventure .mm-toolbar{position:sticky;top:0;background:#f6f8ed;z-index:2;padding:3px 0;scroll-margin-top:8px}#math-adventure .mm-toolbar .mm-controls{margin:5px 0 10px}#math-adventure .mm-toolbar [hidden]{display:none!important}#math-adventure .mm-stage{scroll-margin-top:80px}
+#math-adventure{overflow:clip}#math-adventure .mm-player{overflow:visible}
+
+@media(max-width:600px){#math-adventure .mm-canvas .mm-small-label{font-size:24px}}
+
 </style>
 <script>
 (() => {
@@ -1148,59 +1176,17 @@ function visualContext(){
  memory.frame=Math.min(Math.max(0,memory.frame||0),frames.length-1);
  return {key,kind,frames,memory};
 }
-function stopVisualPlayback(){if(visualTimer!==null){clearTimeout(visualTimer);visualTimer=null;}visualPlaying=false;visualMotionPaused=false;}
+function stopVisualPlayback(){if(visualTimer!==null){clearTimeout(visualTimer);visualTimer=null;}visualPlaying=false;visualMotionPaused=false;motionStop();}
 function visualReduced(){return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;}
-function visualHeading(){return s.mode==='foundation'?'看一段故事，认清图里的东西':s.mode==='play'?'先看一段，再自己动手':s.mode==='bridge'?'把原题里的关系画出来':'这道题的分步图解';}
-function visualMarkup(c){const f=c.frames[c.memory.frame],isExam=s.mode==='exam';return `<section class="vx-player ${c.memory.open?'':'vx-closed'}" aria-label="数学图解动画"><div class="vx-top"><div><span class="vx-kicker">会动的数学图解</span><h2>${visualHeading()}</h2></div><button class="ma-secondary" type="button" data-visual="toggle" aria-expanded="${c.memory.open}">${c.memory.open?'收起图解':'打开图解动画'}</button></div>${!c.memory.open?`<p class="vx-closed-note">${isExam?'可以先独立做；看过图解再答对，会记作“帮助后完成”。':'物品是什么、怎样变化、为什么这样算，一幅一幅看。'}</p>`:`<div class="vx-frame"><div class="vx-frame-title"><span>第 ${c.memory.frame+1} / ${c.frames.length} 幅</span><h3>${f.title}</h3></div><p class="vx-caption">${f.caption}</p><div class="vx-stage">${f.html}</div>${f.formula?`<div class="vx-formula"><span>把刚才的图写下来</span><strong>${f.formula}</strong></div>`:''}</div><div class="vx-controls"><button class="ma-secondary" type="button" data-visual="prev" ${c.memory.frame===0?'disabled':''}>← 上一幅</button><button class="ma-primary" type="button" data-visual="play">${visualPlaying?'Ⅱ 暂停':'▶ 播放动画'}</button><button class="ma-secondary" type="button" data-visual="next" ${c.memory.frame===c.frames.length-1?'disabled':''}>下一幅 →</button><button class="ma-link" type="button" data-visual="replay">↺ 从头重播</button></div><nav class="vx-seek" aria-label="自由选择图解画面">${c.frames.map((f,i)=>`<button type="button" data-visual-frame="${i}" aria-label="图解 ${i+1}：${f.title}" ${i===c.memory.frame?'aria-current="step"':''}>${i+1}</button>`).join('')}</nav><p class="vx-player-tip">${visualPlaying?'正在播放，每幅停留8秒；随时可以暂停细看。':visualMotionPaused?'已暂停。点“播放动画”接着看，也可以直接选数字。':'不用赶，点“下一幅”慢慢看，也可以点数字跳着看。'}${isExam&&s.examState.visualHelp?' · 本题已使用图解帮助。':''}</p>`}</section>`;}
-function attachVisualLesson(){
- const c=visualContext();if(!c||!c.frames.length)return;
- const target=root.querySelector(s.mode==='foundation'?'.fd-visual-anchor':s.mode==='play'?(s.lesson==='juice'?'.picnic-world':'.st-world'):s.mode==='bridge'?'.ma-bridge':'.ma-paper');
- if(!target)return;
- if(s.mode==='exam'&&c.memory.open&&!s.examState.passed){s.examState.assisted=true;s.examState.visualHelp=true;}
- target.insertAdjacentHTML(s.mode==='exam'?'afterend':'beforebegin',`<div id="ma-visual-slot">${visualMarkup(c)}</div>`);
- // The opening movie introduces the scene; later steps retain the actual toys.
- if((s.mode==='foundation'||s.mode==='play'&&s.step===0)&&typeof target.remove==='function')target.remove();
- settleVisualMotion();
-}
-function settleVisualMotion(){
- if(!visualReduced())return;
- // Under reduced motion every frame is still usable, showing the final diagram.
- const slot=root.querySelector('#ma-visual-slot');
- slot?.querySelectorAll?.('animate,animateTransform').forEach(a=>a.remove());
-}
-function drawVisual(){const c=visualContext(),slot=root.querySelector('#ma-visual-slot');if(!c||!slot)return;slot.innerHTML=visualMarkup(c);settleVisualMotion();save();}
-function setVisualMotion(paused){
- const slot=root.querySelector('#ma-visual-slot');
- slot?.getAnimations?.({subtree:true}).forEach(a=>paused?a.pause():a.play());
- slot?.querySelectorAll?.('svg').forEach(svg=>paused?svg.pauseAnimations?.():svg.unpauseAnimations?.());
-}
-function visualButtonState(){const slot=root.querySelector('#ma-visual-slot'),b=slot?.querySelector?.('[data-visual="play"]'),tip=slot?.querySelector?.('.vx-player-tip');if(b)b.textContent=visualPlaying?'Ⅱ 暂停':'▶ 播放动画';if(tip)tip.textContent=visualPlaying?'正在播放，每幅停留8秒；随时可以暂停细看。':'已暂停。点“播放动画”接着看，也可以直接选数字。';}
-function scheduleVisual(){
- const c=visualContext();if(!c||!visualPlaying||!c.memory.open)return;
- const key=c.key;
- visualTimer=setTimeout(()=>{visualTimer=null;const next=visualContext();if(!next||next.key!==key||!visualPlaying)return;if(next.memory.frame<next.frames.length-1){next.memory.frame++;drawVisual();scheduleVisual();}else{visualPlaying=false;visualButtonState();const tip=root.querySelector('.vx-player-tip');if(tip)tip.textContent='这一段看完了。可以重播，也可以回到题目自己试。';}},8000);
-}
-function visualAction(action,index){
- const c=visualContext();if(!c)return;
- if(action==='toggle'){
-  stopVisualPlayback();c.memory.open=!c.memory.open;
-  if(c.memory.open&&s.mode==='exam'&&!s.examState.passed){s.examState.assisted=true;s.examState.visualHelp=true;}
-  drawVisual();if(c.memory.open)root.querySelector('.vx-frame-title')?.scrollIntoView?.({block:'start',behavior:'instant'});return;
- }
- if(!c.memory.open)return;
- if(action==='play'){
-  if(visualPlaying){if(visualTimer!==null)clearTimeout(visualTimer);visualTimer=null;visualPlaying=false;visualMotionPaused=true;setVisualMotion(true);visualButtonState();}
-  else{visualPlaying=true;if(visualMotionPaused){visualMotionPaused=false;setVisualMotion(false);visualButtonState();}else{if(c.memory.frame===c.frames.length-1)c.memory.frame=0;drawVisual();}scheduleVisual();}return;
- }
- stopVisualPlayback();
- if(action==='prev')c.memory.frame=Math.max(0,c.memory.frame-1);
- if(action==='next')c.memory.frame=Math.min(c.frames.length-1,c.memory.frame+1);
- if(action==='seek')c.memory.frame=Math.min(c.frames.length-1,Math.max(0,index));
- if(action==='replay'){c.memory.frame=0;visualPlaying=true;}
- drawVisual();root.querySelector('.vx-frame-title')?.scrollIntoView?.({block:'start',behavior:'instant'});if(visualPlaying)scheduleVisual();
-}
+function visualHeading(){return s.mode==='foundation'?'把动作和分数连起来':s.mode==='play'?'看清物体怎样变化':s.mode==='bridge'?'把原题里的关系画出来':'这道题的分步图解';}
+function visualNotes(c){const f=c.frames[c.memory.frame];return `<div class="vx-frame"><div class="vx-frame-title"><span>图解 ${c.memory.frame+1} / ${c.frames.length}</span><h3>${f.title}</h3></div><p class="vx-caption">${f.caption}</p><div class="vx-stage">${f.html}</div>${f.formula?`<div class="vx-formula"><span>把图写成算式</span><strong>${f.formula}</strong></div>`:''}</div><div class="vx-controls"><button class="ma-secondary" type="button" data-visual="prev" ${c.memory.frame===0?'disabled':''}>← 上一幅</button><button class="ma-secondary" type="button" data-visual="next" ${c.memory.frame===c.frames.length-1?'disabled':''}>下一幅 →</button></div><nav class="vx-seek" aria-label="自由选择图解画面">${c.frames.map((f,i)=>`<button type="button" data-visual-frame="${i}" aria-label="图解 ${i+1}：${f.title}" ${i===c.memory.frame?'aria-current="step"':''}>${i+1}</button>`).join('')}</nav>`;}
+function visualMarkup(c){c.motion=motionFor(c);if(c.motion)return motionMarkup(c);const isExam=s.mode==='exam';return `<section class="vx-player ${c.memory.open?'':'vx-closed'}" aria-label="数学分步图解"><div class="vx-top"><div><span class="vx-kicker">按需查阅的图和算式</span><h2>${visualHeading()}</h2></div><button class="ma-secondary" type="button" data-visual="toggle" aria-expanded="${c.memory.open}">${c.memory.open?'收起图解':'打开分步图解'}</button></div>${!c.memory.open?`<p class="vx-closed-note">${isExam?'可以先独立做；打开本题图解会记录为使用帮助。':'图和算式可以手动逐幅查看。'}</p>`:visualNotes(c)}</section>`;}
+function attachVisualLesson(){const c=visualContext();if(!c||!c.frames.length)return;const target=root.querySelector(s.mode==='foundation'?'.fd-visual-anchor':s.mode==='play'?(s.lesson==='juice'?'.picnic-world':'.st-world'):s.mode==='bridge'?'.ma-bridge':'.ma-paper');if(!target)return;if(s.mode==='exam'&&c.memory.open&&!s.examState.passed){s.examState.assisted=true;s.examState.visualHelp=true;}target.insertAdjacentHTML(s.mode==='exam'?'afterend':'beforebegin',`<div id="ma-visual-slot">${visualMarkup(c)}</div>`);if((s.mode==='foundation'||s.mode==='play'&&s.step===0)&&typeof target.remove==='function')target.remove();if(c.motion&&c.memory.open)motionMount(c);settleVisualMotion();}
+function settleVisualMotion(){if(!visualReduced())return;const slot=root.querySelector('#ma-visual-slot');slot?.querySelectorAll?.('animate,animateTransform').forEach(a=>a.remove());}
+function drawVisual(){motionStop();const c=visualContext(),slot=root.querySelector('#ma-visual-slot');if(!c||!slot)return;slot.innerHTML=visualMarkup(c);if(c.motion&&c.memory.open)motionMount(c);settleVisualMotion();save();}
+function setVisualMotion(paused){const slot=root.querySelector('#ma-visual-slot');slot?.getAnimations?.({subtree:true}).forEach(a=>paused?a.pause():a.play());slot?.querySelectorAll?.('svg').forEach(svg=>paused?svg.pauseAnimations?.():svg.unpauseAnimations?.());}
+function visualAction(action,index){const c=visualContext();if(!c)return;if(action==='toggle'){stopVisualPlayback();c.memory.open=!c.memory.open;if(c.memory.open&&s.mode==='exam'&&!s.examState.passed){s.examState.assisted=true;s.examState.visualHelp=true;}drawVisual();return;}if(!c.memory.open)return;if(action==='prev')c.memory.frame=Math.max(0,c.memory.frame-1);if(action==='next')c.memory.frame=Math.min(c.frames.length-1,c.memory.frame+1);if(action==='seek')c.memory.frame=Math.min(c.frames.length-1,Math.max(0,index));const notes=root.querySelector('.mm-notes-body');if(motionFor(c)&&notes){notes.innerHTML=visualNotes(c);settleVisualMotion();save();}else drawVisual();}
 root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;if(b.dataset.visual)visualAction(b.dataset.visual);else if(b.dataset.visualFrame!==undefined)visualAction('seek',Number(b.dataset.visualFrame));});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&visualPlaying){if(visualTimer!==null)clearTimeout(visualTimer);visualTimer=null;visualPlaying=false;visualMotionPaused=true;setVisualMotion(true);visualButtonState();}});
 
 // All pictures use explicit units. Fractions are kept as values, never two unrelated integers.
 const fdF=(n,d=1)=>vxNum(n/d);
@@ -1435,6 +1421,159 @@ root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.di
 root.addEventListener('input',e=>{if(e.target.id==='fd-lab-range')fdSetLab(e.target.value,false);if(e.target.dataset.fdAnswer!==undefined){const t=fdAnswerState();if(!t.answers)t.answers=[];t.answers[Number(e.target.dataset.fdAnswer)]=e.target.value;save();}if(e.target.id==='fd-reason-note'){const f=fdState();f.reasons[f.id].note=e.target.value;save();}});
 root.addEventListener('change',e=>{if(e.target.id==='fd-lab-range')save();if(e.target.id==='fd-quiz-reason'){fdAnswerState().reason=e.target.value;save();}});
 root.addEventListener('submit',e=>{if(e.target.id==='fd-quiz-form'){e.preventDefault();fdSubmit();}});
+
+// Continuous mathematical scenes: the same SVG nodes move throughout a timeline.
+// No slide swapping, GIF/video dependency, or per-frame innerHTML replacement.
+const MC={ink:'#2d4a41',gold:'#edb85c',blue:'#75b4c5',green:'#80b797',red:'#da8d77',paper:'#fffaf0',line:'#b6c8b6'};
+const mcClamp=x=>Math.max(0,Math.min(1,x));
+const mcStep=(t,a,b)=>mcClamp((t-a)/(b-a));
+const mcEase=(t,a,b)=>{const v=mcStep(t,a,b);return v*v*(3-2*v);};
+const mcMix=(a,b,t)=>a+(b-a)*t;
+const mcEsc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+class MotionScene{
+ constructor(id,title,legend,phases,duration=22){this.id=id;this.title=title;this.legend=legend;this.phases=phases;this.duration=duration;this.nodes=[];this.tokens=0;this.height=390;}
+ node(tag,attrs={},tracks={},body=''){const key='m'+this.nodes.length;this.nodes.push({key,tag,attrs,tracks,body});return key;}
+ rect(x,y,w,h,fill=MC.paper,tracks={},extra={}){return this.node('rect',{x,y,width:w,height:h,rx:10,fill,stroke:MC.line,'stroke-width':2,...extra},tracks);}
+ line(x1,y1,x2,y2,tracks={},extra={}){return this.node('line',{x1,y1,x2,y2,stroke:MC.ink,'stroke-width':2,...extra},tracks);}
+ text(x,y,text,size=19,tracks={},extra={}){return this.node('text',{x,y,fill:MC.ink,'font-size':size,'text-anchor':'middle','font-weight':600,class:size<19&&typeof text==='string'&&text.length<15?'mm-small-label':'',...extra},{text:t=>typeof text==='function'?text(t):text,...tracks});}
+ token(x,y,type='orange',color=MC.gold,tracks={},r=13){this.tokens++;const body=type==='orange'?`<circle r="${r}" fill="${color}" stroke="#b77934" stroke-width="1.5"/><path d="M0 -${r-1} Q2 -${r+9} 11 -${r+5} Q8 -${r-1} 0 -${r-1}" fill="#608c57"/>`:type==='cookie'?`<circle r="${r}" fill="${color}" stroke="#9d7947" stroke-width="2"/>${[[-4,-4],[5,-2],[0,6]].map(([a,b])=>`<circle cx="${a}" cy="${b}" r="2" fill="#78583e"/>`).join('')}`:`<circle r="${r}" fill="${color}" stroke="white" stroke-width="2"/><circle cx="-4" cy="-4" r="3" fill="white" opacity=".4"/>`;return this.node('g',{transform:`translate(${x} ${y})`,'data-math-token':type},tracks,body);}
+ svg(){return `<svg class="mm-canvas" viewBox="0 0 600 ${this.height}" role="img" aria-label="${mcEsc(this.legend)}"><title>${mcEsc(this.title)}</title>${this.nodes.map(n=>`<${n.tag} data-mm-node="${n.key}" ${Object.entries(n.attrs).map(([k,v])=>`${k}="${mcEsc(v)}"`).join(' ')}>${n.body||''}</${n.tag}>`).join('')}</svg>`;}
+}
+const mp=(at,title,caption,formula='')=>({at,title,caption,formula});
+function mcTravel(x1,y1,x2,y2,t,a,b,arc=35){const v=mcEase(t,a,b);return `translate(${mcMix(x1,x2,v)} ${mcMix(y1,y2,v)-Math.sin(v*Math.PI)*arc})`;}
+function mcOutline(b,x,y,n,w=440,h=60){for(let i=0;i<n;i++)b.rect(x+i*w/n,y,w/n,h,'none',{}, {rx:2,'stroke-dasharray':'5 4'});}
+function mcFair(){const b=new MotionScene('fair','看：一块巧克力怎样公平分开','一整排是同一块巧克力，共8小格。绿线是切线；小熊和小兔各拿一边。',[
+ mp(0,'先看谁拿得多','绿线左边3格，右边5格。先别掰开。'),mp(.22,'把切线移到中间','让两边都留下4格。巧克力没有变多。'),mp(.55,'沿着切线掰开','同一块巧克力分成两份，慢慢移到两边。'),mp(.92,'两份一样大，才叫平均分','数一数：每边4格，总数仍是8格。','8 ÷ 2 = 4')]);
+ b.text(155,70,'🐻 小熊');b.text(445,70,'🐰 小兔');
+ for(let i=0;i<8;i++)b.rect(88+i*53,145,51,72,'#ae7850',{x:t=>88+i*53+(i<4?-25:25)*mcEase(t,.55,.9),y:t=>145+38*mcEase(t,.55,.9)},{stroke:'#805437','stroke-width':3,rx:5});
+ b.line(246,122,246,238,{x1:t=>246+53*mcEase(t,.22,.5),x2:t=>246+53*mcEase(t,.22,.5),opacity:t=>1-mcEase(t,.8,.9)},{stroke:'#42865c','stroke-width':6});
+ b.text(155,305,t=>t<.51?'原来：3格':'4格');b.text(445,305,t=>t<.51?'原来：5格':'4格');b.text(300,360,'8小格始终都在，没有增加或拿走',17);return b;
+}
+function mcUnit(){const b=new MotionScene('unit','把一根面包切成4份','每一小段都来自同一根面包。虚线留住整根面包原来的位置。',[
+ mp(0,'先认整根面包','整根面包看作1，还没有切开。'),mp(.18,'切三刀，得到四份','刀走过的位置是切口，四份必须一样长。'),mp(.58,'把四份轻轻拉开','小块移动了，面包的总量没有增加。'),mp(.88,'拿其中一份','这1份占整根的1/4，读作四分之一。','1 ÷ 4 = 1/4')]);
+ mcOutline(b,80,135,1);for(let i=0;i<4;i++)b.rect(80+i*110,135,110,70,MC.gold,{x:t=>80+i*110+(i-1.5)*12*mcEase(t,.58,.78),y:t=>135+(i===0?85*mcEase(t,.8,.96):0)},{rx:0,stroke:'#b78a48','stroke-width':1});
+ [1,2,3].forEach((i)=>b.line(80+i*110,135,80+i*110,135,{y2:t=>135+70*mcEase(t,.16+i*.1,.25+i*.1)},{stroke:MC.paper,'stroke-width':5}));
+ b.node('path',{d:'M0 0 L10 -35 L20 -35 L15 0Z',fill:'#8b9c97',stroke:MC.ink},{transform:t=>{const q=mcClamp((t-.18)/.4),k=Math.min(2,Math.floor(q*3));return `translate(${190+k*110} ${120+85*Math.sin(q*3%1*Math.PI)})`;},opacity:t=>t>=.18&&t<.58?1:0});
+ b.text(118,333,'取出的1份',19,{opacity:t=>mcEase(t,.88,.95)});b.text(300,375,'四份合起来，仍是原来的一整根',17);return b;
+}
+function mcBuild(){const b=new MotionScene('build','把三个五分之一，真的接在一起','每块小纸片都是整条的1/5。下面的虚线框表示同样长的一整条。',[
+ mp(0,'先认每块有多大','上面5块一样长，每块都是1/5。'),mp(.16,'一块一块放进去','把同样的小份接在一起，不改变每一块的长度。'),mp(.87,'接好了3块','3个1/5合起来是3/5；还有2块没有取。','1/5 + 1/5 + 1/5 = 3/5')]);
+ mcOutline(b,80,250,5);for(let i=0;i<5;i++){const a=.16+i*.19;b.rect(80+i*88,100,86,60,MC.gold,{y:t=>100+(i<3?150*mcEase(t,a,a+.2):0)},{rx:3});b.text(123+i*88,137,'1/5',19,{y:t=>137+(i<3?150*mcEase(t,a,a+.2):0)});}b.text(300,65,'5块小纸片，都一样大');b.text(300,350,'虚线框：一整个');return b;}
+function mcWhole(){const b=new MotionScene('whole','饼干没变，“整个”可以换','4块饼干同样大。橙色是始终选中的那一块；绿色虚线框告诉我们这次把谁看作整个。',[
+ mp(0,'只把这一块看作整个','选中的一块跟自己比，就是完整的1。'),mp(.2,'把“整个”的范围扩大','饼干不动，只扩大比较范围。现在框住整盒4块。'),mp(.82,'同一块，现在占整盒1/4','物品没有变，比较的整个变了。','1块 ÷ 4块 = 1/4')]);
+ b.rect(45,110,510,145,MC.paper);for(let i=0;i<4;i++)b.token(120+i*120,180,'cookie',i===0?MC.gold:'#ddd6c2',{},30);
+ b.rect(80,137,80,86,'none',{width:t=>80+360*mcEase(t,.2,.78)},{stroke:'#43865b','stroke-width':4,'stroke-dasharray':'8 5'});b.text(300,325,t=>t<.8?'绿色框＝这次说的“整个”':'4块是一整个，橙色这一块占1/4',21);return b;}
+function mcNumberLine(over=false){const d=4,max=over?2:1,target=over?5:3;const b=new MotionScene(over?'over':'line',over?'小狐狸走过1，还能接着走':'小狐狸一步一步走到3/4','0到1这一段是一个单位。每一小步长1/4；小狐狸走过的路会变绿。',[
+ mp(0,'先找到0和1','数小段的间隔，不数刻度点。'),mp(.12,'每次往前走1/4','小狐狸真的沿着路走；每一小步都一样长。'),mp(.9,over?'越过1，再走一小步':'走完三小步','看看终点在哪里，把走过的小份接起来。',over?'5/4 = 1又1/4':'3个1/4 = 3/4')]);
+ b.line(60,220,540,220,{}, {stroke:'#c4cfbf','stroke-width':9});const position=t=>{let p=0;for(let j=0;j<target;j++)p+=mcEase(t,.12+j*.14,.24+j*.14);return p;};b.line(60,220,60,220,{x2:t=>60+480*position(t)/(d*max)},{stroke:'#4d9365','stroke-width':9});
+ for(let i=0;i<=d*max;i++){b.line(60+i*480/(d*max),206,60+i*480/(d*max),238);b.text(60+i*480/(d*max),275,i%d===0?String(i/d):`${i}/4`,17);}
+ b.text(60,192,'🦊',40,{x:t=>60+480*position(t)/(d*max),y:t=>192-Math.sin(position(t)%1*Math.PI)*18});b.text(300,340,'走的是相等的小段，路标间隔不会变',18);return b;}
+function mcEqual(){const b=new MotionScene('equal','切口变多，涂色长度不变','下面始终是同一条纸带。橙色始终占左边一半；切口只改变每小份的大小。',[
+ mp(0,'先取纸带的一半','先平均分成2份，橙色取了1份。','1/2'),mp(.16,'每一半再切成2份','切线从上到下划开。涂色部分仍在原地。'),mp(.48,'再换成6等份','整条分6份，左半正好占3份。'),mp(.88,'同样的长度，三种名字','分子分母一起变，取的总量没有改变。','1/2 = 2/4 = 3/6')]);
+ b.rect(60,145,480,100,MC.paper,{}, {rx:1});b.rect(60,145,240,100,MC.gold,{}, {rx:0,stroke:'none'});b.line(300,145,300,245);
+ [180,420].forEach(x=>b.line(x,145,x,145,{y2:t=>145+100*mcEase(t,.16,.4),opacity:t=>1-mcEase(t,.48,.6)},{stroke:'#655d47','stroke-width':3}));
+ [140,220,380,460].forEach((x,i)=>b.line(x,145,x,145,{y2:t=>145+100*mcEase(t,.52+i*.045,.65+i*.045)},{stroke:'#655d47','stroke-width':3}));
+ b.text(300,105,t=>t<.4?'平均分2份，取1份':t<.78?'切法在改变，橙色长度没有变':'平均分6份，取3份',21);b.line(60,285,300,285,{}, {stroke:'#d8a34b','stroke-width':5});b.text(180,323,'一直是这么长',18);return b;}
+function mcCompare(){const b=new MotionScene('compare','把两份移到同一个起点','两个虚线框代表同样长的一整条。橙色是1/2，蓝色是1/4；移动时不拉长。',[
+ mp(0,'两个整体一样长','先确认两条纸带的整个一样大。'),mp(.18,'把蓝色一份平移过去','让两份从同一个起点出发。移动不是拉伸。'),mp(.88,'看谁的终点更远','一半的长度更长，1/2比1/4大。','1/2 > 1/4')]);
+ mcOutline(b,60,100,2);mcOutline(b,60,245,4);b.rect(60,100,220,60,MC.gold);b.rect(390,245,110,60,MC.blue,{x:t=>390-330*mcEase(t,.18,.75),y:t=>245-60*mcEase(t,.4,.82)});b.text(170,140,'1/2');b.text(445,285,'1/4',19,{x:t=>445-330*mcEase(t,.18,.75),y:t=>285-60*mcEase(t,.4,.82)});b.line(60,80,60,320,{}, {stroke:'#478362','stroke-dasharray':'5 5'});return b;}
+function mcAdd(){const b=new MotionScene('add','合进来，再拿走一份','每一块都长1/5。虚线表示一整条，移动小块时，每一份的大小始终不变。',[
+ mp(0,'先有2个1/5','橙色的2块已经在框里，蓝色1块在下面。'),mp(.13,'把蓝色一块接上去','把小份合起来，只数有几份。','2/5 + 1/5 = 3/5'),mp(.57,'再把蓝色这一块拿走','拿走的是1份，剩下小块的大小没变。','3/5 − 1/5 = 2/5'),mp(.92,'合并和拿走都不重新分整条','分母仍是5，因为每块始终是1/5。')]);mcOutline(b,80,140,5);for(let i=0;i<2;i++){b.rect(80+i*88,140,86,60,MC.gold);b.text(123+i*88,178,'1/5');}const yy=t=>285-145*mcEase(t,.13,.45)+145*mcEase(t,.57,.87);b.rect(256,285,86,60,MC.blue,{y:yy});b.text(299,323,'1/5',19,{y:t=>yy(t)+38});return b;}
+function mcCommon(){const b=new MotionScene('common','换成同样小的份，再接起来','上面橙色是一半，蓝色是三分之一。它们都从同样大的整条里取出。下面虚线框也是同样的一整条。',[
+ mp(0,'两种“一份”大小不同','上面两条的整个一样长，但取出的一份不同。'),mp(.12,'统一切成六分之一','切口把一半变成3小份，把三分之一变成2小份。'),mp(.45,'把5个小份搬到同一条里','这些小份现在一样长，可以接在一起数。'),mp(.94,'五小份合起来是5/6','移动没有增减纸片，空着的1/6没有取。','1/2 + 1/3 = 3/6 + 2/6 = 5/6')],26);
+ mcOutline(b,60,65,1,480,55);mcOutline(b,60,150,1,480,55);mcOutline(b,60,285,6,480,55);
+ for(let i=0;i<5;i++){const x=i<3?60+i*80:60+(i-3)*80,y=i<3?65:150,a=.45+i*.085;b.rect(x,y,80,55,i<3?MC.gold:MC.blue,{x:t=>mcMix(x,60+i*80,mcEase(t,a,a+.15)),y:t=>mcMix(y,285,mcEase(t,a,a+.15))},{rx:0,stroke:'none'});b.text(x+40,y+35,'1/6',18,{x:t=>mcMix(x+40,100+i*80,mcEase(t,a,a+.15)),y:t=>mcMix(y+35,320,mcEase(t,a,a+.15)),opacity:t=>mcEase(t,.25,.4)});}
+ [140,220].forEach(x=>b.line(x,65,x,65,{y2:t=>65+55*mcEase(t,.12,.35),opacity:t=>1-mcEase(t,.44,.5)},{stroke:MC.paper,'stroke-width':4}));b.line(140,150,140,150,{y2:t=>150+55*mcEase(t,.12,.35),opacity:t=>1-mcEase(t,.44,.5)},{stroke:MC.paper,'stroke-width':4});return b;}
+function mcOf(){const b=new MotionScene('of','12颗糖，轮流分进4个盒子','每颗圆珠是一颗糖。4个小盒子只是分组工具；12颗糖合起来仍是一整份。',[
+ mp(0,'一整盒共12颗','先数清总共有12颗糖。'),mp(.12,'轮流分，每盒一样多','第1盒、第2盒、第3盒、第4盒，分完一轮再来一轮。'),mp(.74,'每盒3颗，就是整份的1/4','现在拿其中3盒，另外1盒留下。'),mp(.94,'取3盒，共9颗','整份的3/4，指4份中的3份。','12 ÷ 4 × 3 = 9')],28);
+ b.rect(110,55,380,95);for(let g=0;g<4;g++){b.rect(40+g*140,230,100,100,MC.paper,{y:t=>230-(g<3?25*mcEase(t,.77,.93):0)},{stroke:g<3?'#b8a25e':MC.line});b.text(90+g*140,370,`第${g+1}盒`,18);}
+ for(let i=0;i<12;i++){const x=140+i%6*63,y=83+Math.floor(i/6)*40,g=i%4,k=Math.floor(i/4),a=.12+i*.045;b.token(x,y,'bead',MC.gold,{transform:t=>mcTravel(x,y,65+g*140+k*25,275-(g<3?25*mcEase(t,.77,.93):0),t,a,a+.13)});}return b;}
+function mcMultiply(){const b=new MotionScene('multiply','先选两行，再只取其中三列','这张格子纸代表整块菜地。3行、4列，共12格。橙色先圈出的地方，是整块的2/3。',[
+ mp(0,'整块菜地只算一个整体','先看清3行4列，每格同样大。'),mp(.1,'从上往下选两行','橙色慢慢铺满上面2行，这就是2/3。'),mp(.43,'只在橙色范围里取3/4','这2行分成4列。绿色从左到右，只选其中3列。'),mp(.9,'数绿色，也数整块','绿色6格，整块12格，所以占1/2。','2/3 × 3/4 = 6/12 = 1/2')]);
+ b.rect(100,75,400,240,MC.paper,{}, {rx:0});b.rect(100,75,400,0,MC.gold,{height:t=>160*mcEase(t,.1,.38)},{rx:0,stroke:'none'});b.rect(100,75,0,160,MC.green,{width:t=>300*mcEase(t,.43,.85)},{rx:0,stroke:'none'});for(let i=0;i<=4;i++)b.line(100+i*100,75,100+i*100,315,{}, {stroke:'#79957c'});for(let j=0;j<=3;j++)b.line(100,75+j*80,500,75+j*80,{}, {stroke:'#79957c'});b.text(300,355,'白色没有选；橙色是第二次没取的部分',17);return b;}
+function mcShare(){const b=new MotionScene('share','手里的3/4米，分给3个人','虚线整条长1米，只有橙色3小段是真正拿来的彩带。空着的1/4米不能分给别人。',[
+ mp(0,'先找实际能分的彩带','手里有3个1/4米，合起来3/4米。'),mp(.15,'每人移过去一小段','三段都来自手里的彩带，没有额外添彩带。'),mp(.9,'每人得到1/4米','把三人的长度合起来，就回到原来的3/4米。','3/4 ÷ 3 = 1/4')]);
+ mcOutline(b,80,85,4,440,55);for(let i=0;i<3;i++){const x=80+i*110,tx=55+i*195,a=.15+i*.2;b.rect(tx,260,110,55,'none',{}, {'stroke-dasharray':'5 4'});b.rect(x,85,110,55,MC.gold,{x:t=>mcMix(x,tx,mcEase(t,a,a+.25)),y:t=>85+175*mcEase(t,a,a+.25)},{rx:2});b.text(x+55,120,'1/4米',17,{x:t=>mcMix(x+55,tx+55,mcEase(t,a,a+.25)),y:t=>120+175*mcEase(t,a,a+.25)});b.text(tx+55,365,['🐻 小熊','🐰 小兔','🐼 熊猫'][i],20);}return b;}
+function mcDivide(){const b=new MotionScene('divide','2米绳子，每2/3米剪一段','整条橙绳长2米。细刻度每格1/3米；每两个小格才是要剪出的一段。',[
+ mp(0,'先把2米换成6个小份','6个1/3米排在一起，正好2米。'),mp(.16,'每两小份剪一刀','剪的是每2/3米，不是每1/3米。'),mp(.56,'把剪好的三段拉开','每段包含2小格，三段都来自原来的绳子。'),mp(.92,'数“几段”，不是数“小格”','6小份，每2份一组，共3组。','2 ÷ 2/3 = 6 ÷ 2 = 3')]);
+ for(let i=0;i<6;i++){const g=Math.floor(i/2);b.rect(75+i*75,145,74,50,g===1?MC.blue:MC.gold,{x:t=>75+i*75+(g-1)*20*mcEase(t,.56,.85),y:t=>145+50*mcEase(t,.56,.85)},{rx:8});b.text(112+i*75,177,'1/3',17,{x:t=>112+i*75+(g-1)*20*mcEase(t,.56,.85),y:t=>177+50*mcEase(t,.56,.85)});}
+ [225,375].forEach((x,i)=>b.text(x,110,'✂',36,{y:t=>110+90*mcEase(t,.16+i*.2,.31+i*.2),opacity:t=>t>=.16+i*.2&&t<.52?1:0}));for(let i=0;i<3;i++)b.text(150+i*150,295,'一段：2/3米',18,{opacity:t=>mcEase(t,.85,.94)});return b;}
+function mcPercent(){const b=new MotionScene('percent','把四分之一展开成25个百分之一','整个方格始终有100格。绿色是其中25格；小格移动时不会变大，也不会增加。',[
+ mp(0,'先涂左上角的四分之一','10行10列共100格，左上角5行5列有25格。'),mp(.2,'把25个小格重新排列','同一批绿色小格移到前两行和第三行的一半。'),mp(.9,'还是25格，占100格中的25格','同一个量，可以写成分数、小数或百分数。','1/4 = 25/100 = 0.25 = 25%')],25);
+ const x=165,y=40,w=27;for(let i=0;i<100;i++)b.rect(x+i%10*w,y+Math.floor(i/10)*w,w,w,MC.paper,{}, {rx:0,'stroke-width':1});for(let i=0;i<25;i++){const sx=x+i%5*w,sy=y+Math.floor(i/5)*w,tx=x+i%10*w,ty=y+Math.floor(i/10)*w;b.rect(sx,sy,w,w,MC.green,{x:t=>mcMix(sx,tx,mcEase(t,.2+i*.012,.48+i*.012)),y:t=>mcMix(sy,ty,mcEase(t,.2+i*.012,.48+i*.012))},{rx:0,'stroke-width':1});}b.text(300,350,'25个绿色小格，一格也没多，一格也没少',18);return b;}
+function mcBack(){const b=new MotionScene('back','6个分进3袋，再备齐8袋','每个橘子图案就是1个橘子，每袋同样多。前3袋合计6个；后5袋的橘子从新准备的篮子里来。',[
+ mp(0,'先认已经有的6个橘子','要让8位小伙伴每人一袋。已知的是前3袋合起来6个。'),mp(.1,'把6个平均分进前3袋','轮流分，最后每袋2个。'),mp(.46,'其余5袋也各放2个','看另外10个从右边“新准备”的位置飞进袋子。'),mp(.95,'8袋合起来才是全部','前3袋6个，加后5袋10个，共16个。','6 ÷ 3 × 8 = 16')],29);
+ b.text(165,30,'已经有：6个',17);b.text(465,30,'新准备的橘子 →',17);const loc=g=>[45+g%4*145,145+Math.floor(g/4)*145];for(let g=0;g<8;g++){const [x,y]=loc(g);b.rect(x,y,100,80,MC.paper,{}, {'stroke-dasharray':g<3?'none':'5 4'});b.text(x+50,y-12,`第${g+1}袋`,16);}
+ for(let i=0;i<16;i++){const g=i<6?i%3:3+(i-6)%5,k=i<6?Math.floor(i/3):Math.floor((i-6)/5),[x,y]=loc(g),sx=i<6?90+i*32:580,sy=i<6?70:60,a=i<6?.1+i*.047:.46+(i-6)*.035;b.token(sx,sy,'orange',MC.gold,{transform:t=>mcTravel(sx,sy,x+30+k*40,y+40,t,a,a+.15),opacity:t=>i<6?1:mcStep(t,a-.02,a)});}return b;}
+function mcBase(){const b=new MotionScene('base','差的2块不变，换一位来比较','熊熊4块、兔兔6块，饼干同样大。绿色框圈住这次比较的全部；兔兔末尾2块是多出的部分。',[
+ mp(0,'先摆在同一起点','熊熊4块、兔兔6块，差2块。'),mp(.14,'“兔兔比熊熊多”：跟熊熊比','把多出的2块移到熊熊4块旁边量一量。'),mp(.53,'“熊熊比兔兔少”：换兔兔作整个','同样的2块，再放回兔兔6块里比较。'),mp(.93,'同一个差，不同的比较对象','2占4的一半；2占6的三分之一。','多1/2，反过来是少1/3')],25);
+ b.text(55,105,'🐻',28);b.text(55,245,'🐰',28);for(let i=0;i<4;i++)b.token(120+i*70,100,'cookie',MC.gold,{},21);for(let i=0;i<6;i++)b.token(120+i*70,240,'cookie',i>=4?MC.green:MC.gold,{transform:t=>{const up=mcEase(t,.14,.42)-mcEase(t,.53,.82);return `translate(${120+i*70-(i>=4?280*up:0)} ${240-(i>=4?78*up:0)})`;}},21);
+ b.rect(86,68,278,66,'none',{y:t=>68+140*mcEase(t,.53,.82),width:t=>278+140*mcEase(t,.53,.82)},{stroke:'#4b8b63','stroke-width':3,'stroke-dasharray':'7 4'});b.text(300,340,t=>t<.5?'绿色框里的4块，是这次的整个':'绿色框里的6块，是这次的整个',19);return b;}
+function mcPlan(){const b=new MotionScene('plan','水果真的离开篮子，再分剩下的','每个橘子表示1个水果。先从20个里吃掉1/4；接下来只从剩下的15个里送出1/3。',[
+ mp(0,'原来一篮20个','先认清这一篮是第一步的整个。'),mp(.12,'把5个移到“吃掉”盘','吃掉原有的1/4，篮子里只剩15个。'),mp(.43,'把剩下15个分成3组','第二次的整个是15个，不再是20个。'),mp(.67,'只送走其中一组5个','把这一组移到礼物盒，另外两组留下。'),mp(.96,'篮子最后剩10个','吃掉5、送出5、留下10，加起来仍是20。','20 × 3/4 × 2/3 = 10')],29);
+ b.rect(95,65,410,190);b.rect(30,300,230,65,'#f8e6cc');b.text(145,290,'吃掉：5个',18);b.rect(340,300,230,65,'#dcebea');b.text(455,290,'送出：5个',18);
+ for(let i=0;i<20;i++){const sx=140+i%5*80,sy=92+Math.floor(i/5)*44;let xy=t=>[sx,sy];if(i<5)xy=t=>[mcMix(sx,65+i*40,mcEase(t,.12+i*.025,.3+i*.025)),mcMix(sy,333,mcEase(t,.12+i*.025,.3+i*.025))];else{const j=i-5,g=Math.floor(j/5),k=j%5,gx=130+g*145+k%2*35,gy=100+Math.floor(k/2)*46;xy=t=>{let x=mcMix(sx,gx,mcEase(t,.43,.63)),y=mcMix(sy,gy,mcEase(t,.43,.63));if(g===0){const q=mcEase(t,.67+k*.02,.83+k*.02);x=mcMix(x,375+k*40,q);y=mcMix(y,333,q);}return [x,y];};}b.token(sx,sy,'orange',MC.gold,{transform:t=>`translate(${xy(t).join(' ')})`},12);}return b;}
+function mcBeads(){const b=new MotionScene('factory','珠子从盒子里，真的串到手链上','一个圆珠就是1颗。三盒原来各6颗；每条用2红、3黄、5蓝。右边是做好的手链。',[
+ mp(0,'分清库存和配方','先看三盒，每盒6颗。圆环只是线，还没有珠子。'),mp(.1,'先串一条','需要的珠子从盒子飞到线圈上，库存同时减少。'),mp(.43,'第二条缺4颗蓝珠','蓝珠只剩1颗，还要从外面补4颗。'),mp(.62,'再串一条，黄珠刚好用完','继续移动实际用掉的珠子。红珠最后留2颗。'),mp(.96,'看清“剩下”和“补来”','盒里剩2红；额外补了4蓝。成品上的珠子也都能数到。','红珠剩2颗；蓝珠补4颗')],32);
+ const colors=[MC.red,MC.gold,MC.blue],counts=[2,3,5];for(let c=0;c<3;c++){b.rect(25,50+c*108,205,83,MC.paper);b.text(125,42+c*108,['红珠6颗','黄珠6颗','蓝珠6颗'][c],16);}const center=[[400,118],[400,298]];center.forEach(([x,y],i)=>{b.node('circle',{cx:x,cy:y,r:63,fill:'none',stroke:'#a79e7c','stroke-width':3});b.text(x,y+6,`第${i+1}条`,16);});
+ const destination=(c,k,round)=>{const offset=c===0?0:c===1?2:5,idx=offset+k,angle=idx*Math.PI/5;return [center[round][0]+63*Math.cos(angle),center[round][1]+63*Math.sin(angle)];};
+ for(let c=0;c<3;c++)for(let i=0;i<6;i++){const sx=63+i%3*55,sy=74+c*108+Math.floor(i/3)*36,n=counts[c],round=i<n?0:1,k=i<n?i:i-n,used=i<n||c!==0||i<4;const [tx,ty]=used?destination(c,k,round):[sx,sy],a=round===0?.1+c*.065+k*.015:.62+c*.05+k*.015;b.token(sx,sy,'bead',colors[c],{transform:t=>used?mcTravel(sx,sy,tx,ty,t,a,a+.14):`translate(${sx} ${sy})`},13);}
+ for(let i=0;i<4;i++){const [tx,ty]=destination(2,i+1,1),a=.8+i*.025;b.token(535+i%2*28,205+Math.floor(i/2)*28,'bead',MC.blue,{transform:t=>mcTravel(535+i%2*28,205+Math.floor(i/2)*28,tx,ty,t,a,a+.12),opacity:t=>mcStep(t,.45+i*.035,.48+i*.035)},13);}b.text(550,175,'补4蓝',16,{opacity:t=>mcStep(t,.43,.48)});return b;}
+function mcCake(){const b=new MotionScene('cake','三角形转半圈，才能拼成小长方形','左边是一块长方形蛋糕。右边两张是照着三角形描下的纸片，只用来比较，不算多出来的蛋糕。',[
+ mp(0,'在底边中点切一刀','左边三角形的底，只占整条底边一半。'),mp(.12,'把同样的形状描到纸上','两张纸片同样大，分别从左边的形状描出来。'),mp(.57,'把其中一张转半圈','纸片绕中心旋转180度，和另一张拼成小长方形。'),mp(.94,'小长方形是一半，三角形再除以2','所以原来三角形占整块蛋糕1/4，另一块占3/4。','1/2 ÷ 2 = 1/4；面积比1∶3')],28);
+ b.rect(40,95,240,180,'#f0dab3',{}, {rx:0});b.node('polygon',{points:'40,95 40,275 160,275',fill:MC.gold,stroke:'#a48552','stroke-width':3});b.line(40,95,160,275,{}, {'stroke-dasharray':'5 4'});b.text(160,325,'原来的蛋糕',19);b.rect(350,95,120,180,'none',{}, {rx:0,'stroke-dasharray':'6 4'});
+ const body='<polygon points="40,95 40,275 160,275" fill="#8bb9ae" stroke="#4f8173" stroke-width="2"/>';
+ b.node('g',{}, {transform:t=>`translate(${310*mcEase(t,.12,.34)} 0)`,opacity:t=>mcStep(t,.1,.13)},body);
+ b.node('g',{}, {transform:t=>`translate(${310*mcEase(t,.35,.55)} 0) rotate(${180*mcEase(t,.57,.88)} 100 185)`,opacity:t=>mcStep(t,.33,.36)},body.replace('#8bb9ae','#b7d2a6'));
+ b.text(410,325,'只用来比较的纸片',17);b.text(410,365,'两张拼出小长方形',17,{opacity:t=>mcEase(t,.88,.96)});return b;}
+function mcSalt(){const b=new MotionScene('salt','同一批水小格，换一种分组','蓝格是水，黄格是原有盐，绿格是新加盐。每格表示同样的质量。蓝格一直88格，没有增加。',[
+ mp(0,'原来：每11格水配1格盐','水88格，原有盐8格。暂时不知道每格几克。'),mp(.12,'只给水换排法','同样的88格水从每行11格，移动成每行8格。'),mp(.55,'每8格水，需要1格盐','现在需要11格盐，原来8格，所以新增3格。'),mp(.9,'新增3格对应15克','每格5克。原来水88格、盐8格，共96格。','15 ÷ 3 = 5；(88 + 8) × 5 = 480克')],29);
+ const u=22;for(let i=0;i<88;i++){const x=35+i%11*u,y=70+Math.floor(i/11)*u,tx=35+i%8*u,ty=55+Math.floor(i/8)*u;b.rect(x,y,19,19,MC.blue,{x:t=>mcMix(x,tx,mcEase(t,.12+(i%11)*.008,.48+(i%11)*.004)),y:t=>mcMix(y,ty,mcEase(t,.12+(i%11)*.008,.48+(i%11)*.004))},{rx:2,stroke:'none'});}
+ for(let i=0;i<8;i++)b.rect(300,70+i*u,19,19,MC.gold,{x:t=>300-61*mcEase(t,.12,.5),y:t=>70+i*u-15*mcEase(t,.12,.5)},{rx:2,stroke:'none'});
+ for(let i=0;i<3;i++)b.rect(465+i*26,160,19,19,MC.green,{x:t=>mcMix(465+i*26,239,mcEase(t,.55+i*.09,.72+i*.09)),y:t=>mcMix(160,55+(i+8)*u,mcEase(t,.55+i*.09,.72+i*.09)),opacity:t=>mcStep(t,.53,.56)},{rx:2,stroke:'none'});
+ b.text(455,115,'只加盐15克',21);b.text(455,220,'水保持88格',21);b.text(300,350,'黄格8个 ＋ 新加绿格3个 ＝ 后来11格盐',18);return b;}
+function mcRace(){const b=new MotionScene('race','两辆车真正同时出发','同一条24千米的路。红车6小时走完，蓝车8小时走完；播放时两车使用同一只时钟。',[
+ mp(0,'起点、终点都相同','两辆车都从0出发，路线同样长。'),mp(.06,'同时往前开','红车每小时4千米，蓝车每小时3千米。'),mp(.7,'红车先到，蓝车还在路上','经过6小时，红车到终点，蓝车只走18千米。'),mp(.96,'8小时，两辆车都走完全程','时间比8∶6，快慢速度比4∶3。','快∶慢速度 = 4∶3')],24);
+ const hour=t=>8*mcStep(t,.06,.94),car=color=>`<path d="M-22 0 L-15 -14 H12 L22 0 V13 H-25 V0Z" fill="${color}"/><circle cx="-15" cy="15" r="7" fill="#344b45"/><circle cx="15" cy="15" r="7" fill="#344b45"/><path d="M-11 -10 H9 L16 -1 H-16Z" fill="#eaf8f5"/>`;
+ [140,270].forEach(y=>{b.line(65,y,535,y,{}, {stroke:'#b8c9ba','stroke-width':14});b.line(65,y,535,y,{}, {stroke:'white','stroke-dasharray':'12 12'});});b.text(300,55,t=>`同一只时钟：${hour(t).toFixed(1)}小时`,24);b.text(55,105,'红车');b.text(55,235,'蓝车');b.node('g',{}, {transform:t=>`translate(${65+470*Math.min(hour(t)/6,1)} 125)`},car(MC.red));b.node('g',{}, {transform:t=>`translate(${65+470*Math.min(hour(t)/8,1)} 255)`},car(MC.blue));b.text(65,340,'起点0',18);b.text(520,340,'终点24千米',18);return b;}
+function mcFold(){const b=new MotionScene('fold','沿折痕翻纸，原纸边界一直保留','虚线是原来7格宽、5格高的纸。翻过去的三角形仍是原纸的一部分；最后只数露出的绿色。',[
+ mp(0,'先看原纸和折痕','左边窄条宽2格，右边正方形宽5格。'),mp(.12,'右上角绕斜折痕翻下来','角在移动，虚线边界不动。翻起时看起来变窄，不是纸变少。'),mp(.52,'再把左下角往上翻','这次绕左下方的斜折痕转过去。'),mp(.93,'数露出的绿格','绿色宽2格、高3格，共6格；原纸35格。','阴影占原纸6/35')],27);
+ const x=100,y=65,u=54;const pt=(a,c)=>`${x+a*u},${y+c*u}`;
+ b.rect(x,y,7*u,5*u,'#ebeee7',{}, {rx:0,'stroke-dasharray':'7 5'});
+ b.node('polygon',{points:[pt(0,0),pt(2,0),pt(2,5),pt(0,3)].join(' '),fill:'#dbe5ce'});b.node('polygon',{points:[pt(2,0),pt(2,5),pt(7,5)].join(' '),fill:'#f0d3a0'});
+ b.node('polygon',{fill:'#e0b882',stroke:'#947b55','stroke-width':2},{points:t=>{const q=(1-Math.cos(Math.PI*mcEase(t,.12,.45)))/2;return [pt(2,0),pt(7-5*q,5*q),pt(7,5)].join(' ');}});
+ b.node('polygon',{fill:'#bb9f78',stroke:'#847252','stroke-width':2},{points:t=>{const q=(1-Math.cos(Math.PI*mcEase(t,.52,.86)))/2;return [pt(0,3),pt(2*q,5-2*q),pt(2,5)].join(' ');}});
+ b.rect(x,y,2*u,3*u,MC.green,{opacity:t=>mcEase(t,.86,.94)},{rx:0,stroke:'none'});for(let i=1;i<7;i++)b.line(x+i*u,y,x+i*u,y+5*u,{opacity:t=>mcEase(t,.87,.95)},{stroke:'#788f76','stroke-width':1});for(let j=1;j<5;j++)b.line(x,y+j*u,x+7*u,y+j*u,{opacity:t=>mcEase(t,.87,.95)},{stroke:'#788f76','stroke-width':1});return b;}
+function mcBook(){const day=t=>t<.6?6*mcStep(t,.06,.48):6+3*mcStep(t,.63,.95);const b=new MotionScene('book','书页在翻，日子一天天过去','同一本300页的书，读6天完成2/3。灰色日子已经用过；绿色日子才是从“现在”往后还要读的。',[
+ mp(0,'先重放已经过去的6天','书页翻动，已读的部分慢慢增加。'),mp(.5,'停在题目说的“现在”','第6天，已读200页，还剩100页。过去6天不能再算进“还要”。'),mp(.63,'只往后走3天','继续读完最后1/3，给第7、8、9天盖章。'),mp(.96,'还要3天，一共9天','题目问哪一段时间，就数哪一段。','还要 6 ÷ 2 × 1 = 3天')],28);
+ b.rect(150,40,300,150,'#f3dfb5',{}, {rx:8});b.line(300,40,300,190);for(let j=0;j<5;j++){b.line(170,65+j*23,280,65+j*23,{}, {stroke:'#c3ac7c'});b.line(320,65+j*23,430,65+j*23,{}, {stroke:'#c3ac7c'});}b.node('polygon',{fill:'#fffaf0',stroke:'#b5a17b'},{points:t=>{const active=t>.06&&t<.48||t>.63&&t<.95;const q=active?day(t)*2%1:0;return `300,45 ${300+145*Math.cos(q*Math.PI)},50 ${300+145*Math.cos(q*Math.PI)},180 300,185`;}});
+ b.text(300,226,t=>day(t)<6?`重放：已经过${Math.floor(day(t))}天`:day(t)<6.01?'现在：6天，已读200页':`从现在起，又读了${Math.floor(day(t)-6)}天`,20);
+ for(let i=0;i<9;i++){b.rect(39+i*59,270,52,60,i<6?'#dbe0d6':'#d5eadb');b.text(65+i*59,295,`${i+1}天`,14);b.text(65+i*59,320,'✓',20,{opacity:t=>mcStep(day(t),i+.8,i+1)});}b.line(391,252,391,345,{}, {stroke:'#517e64','stroke-width':3});b.text(215,370,'已经用过6天',18);b.text(480,370,'还要3天',18);return b;}
+function mcMachine(){const b=new MotionScene('machines','输入真的进机器，看看输出怎样来','用6个圆点代表输入6。这台机器取输入的2/3：先分3组，只让其中2组通过。',[
+ mp(0,'输入6，先分清输入和结果','圆点进入机器之前，是我们拿来的总量。'),mp(.12,'平均分成3组','每组2个。取2/3，就是取这样的2组。'),mp(.5,'让其中两组通过','4个圆点从出口出来，另外2个留在未取区。'),mp(.94,'输出4，输入却是6','比较机器时，先认规则，不能把输出当输入。','6 × 2/3 = 4')],25);
+ b.rect(210,65,210,255,'#dcead9');b.text(315,100,'× 2/3',26);b.text(100,55,'输入6',21);b.text(510,55,t=>t<.94?'输出？':'输出4',21);b.text(315,360,'未取的1组：2个',17);
+ for(let i=0;i<6;i++){const sx=75+i%2*40,sy=120+Math.floor(i/2)*65,g=Math.floor(i/2),ix=265+i%2*55,iy=145+g*65;const xy=t=>{let x=mcMix(sx,ix,mcEase(t,.12+i*.025,.32+i*.025)),y=mcMix(sy,iy,mcEase(t,.12+i*.025,.32+i*.025));if(i<4){x=mcMix(x,490+i%2*42,mcEase(t,.5+i*.06,.68+i*.06));y=mcMix(y,150+Math.floor(i/2)*65,mcEase(t,.5+i*.06,.68+i*.06));}return [x,y];};b.token(sx,sy,'bead',i<4?MC.gold:MC.blue,{transform:t=>`translate(${xy(t).join(' ')})`},17);}return b;}
+const MOTION_FOUNDATION={fair:mcFair,unit:mcUnit,build:mcBuild,whole:mcWhole,line:()=>mcNumberLine(false),over:()=>mcNumberLine(true),equal:mcEqual,compare:mcCompare,add:mcAdd,common:mcCommon,of:mcOf,multiply:mcMultiply,share:mcShare,divide:mcDivide,percent:mcPercent,back:mcBack,base:mcBase,plan:mcPlan};
+const MOTION_STORIES={juice:mcBack,cookies:mcBase,factory:mcBeads,cake:mcCake,salt:mcSalt,race:mcRace,fold:mcFold,book:mcBook,machines:mcMachine};
+function motionFor(c){if(s.mode==='foundation')return MOTION_FOUNDATION[fdState().id]?.();if(s.mode==='play'&&c.kind==='story')return MOTION_STORIES[s.lesson]?.();return null;}
+
+let motionRuntime=null;
+function motionMemory(c){const m=c.memory.motion||(c.memory.motion={p:0,rate:1});m.p=Number.isFinite(m.p)?mcClamp(m.p):0;m.rate=m.rate===.5?.5:1;if(s.visuals?.motionOptIn)m.allowMotion=true;return m;}
+function motionMarkup(c){const a=c.motion,m=motionMemory(c);return `<section class="vx-player mm-player ${c.memory.open?'':'vx-closed'}" aria-label="连续动作演示"><div class="vx-top"><div><span class="vx-kicker">看物体怎样分开、移动和组合</span><h2>${a.title}</h2></div><button class="ma-secondary" type="button" data-visual="toggle" aria-expanded="${c.memory.open}">${c.memory.open?'收起演示':'打开动作演示'}</button></div>${c.memory.open?`<p class="mm-legend">${a.legend}</p><div class="mm-toolbar">${visualReduced()?'<button class="ma-secondary mm-motion-opt" type="button" data-motion="enable">仍然播放连续动作</button>':''}<div class="mm-controls"><button class="ma-primary" type="button" data-motion="play">▶ 开始演示</button><button class="ma-secondary" type="button" data-motion="replay">↺ 重新演示</button><button class="ma-secondary" type="button" data-motion="speed" aria-label="切换演示速度">${m.rate===.5?'慢速 ×0.5':'正常 ×1'}</button></div></div><div class="mm-stage">${a.svg()}</div><label class="mm-scrubber"><span>拖一拖，停在任意动作中间 <output id="mm-percent">0%</output></span><input type="range" id="mm-progress" min="0" max="1000" step="1" value="${Math.round(m.p*1000)}" aria-label="演示进度"></label><div class="mm-explanation" aria-live="polite"><strong id="mm-phase-title"></strong><p id="mm-phase-caption"></p><div id="mm-formula"></div></div><nav class="mm-chapters" aria-label="自由选择动画动作">${a.phases.map((p,i)=>`<button class="ma-secondary" type="button" data-motion-phase="${i}"><b>${i+1}</b>${p.title}</button>`).join('')}</nav><p class="mm-status" id="mm-status">点开始，让物体动起来。也可以直接拖动时间条。</p><details class="mm-notes"><summary>再看每一步的图和算式</summary><div class="mm-notes-body">${visualNotes(c)}</div></details>`:'<p class="vx-closed-note">打开后可以播放、暂停，或拖动时间条慢慢看。</p>'}</section>`;}
+
+function motionStop(){if(!motionRuntime)return;const r=motionRuntime;if(r.raf!==null)window.cancelAnimationFrame?.(r.raf);r.raf=null;r.playing=false;motionRuntime=null;}
+function motionMount(c){motionStop();const host=root.querySelector('.mm-player');if(!host?.querySelectorAll)return;const scene=c.motion,memory=motionMemory(c),els={};host.querySelectorAll('[data-mm-node]').forEach(e=>els[e.dataset.mmNode]=e);motionRuntime={key:c.key,host,scene,memory,els,lastValues:{},playing:false,raf:null,last:0,chapter:-1};motionPaint(memory.p);motionControls();}
+function motionPaint(p){const r=motionRuntime;if(!r)return;r.memory.p=mcClamp(p);for(const n of r.scene.nodes){const el=r.els[n.key];if(!el)continue;for(const [attr,fn] of Object.entries(n.tracks)){const value=fn(r.memory.p),v=typeof value==='number'?String(Math.round(value*1000)/1000):String(value),cacheKey=n.key+':'+attr;if(r.lastValues[cacheKey]===v)continue;r.lastValues[cacheKey]=v;if(attr==='text')el.textContent=v;else el.setAttribute(attr,v);}}
+ const chapter=r.scene.phases.reduce((last,v,i)=>v.at<=r.memory.p?i:last,0);if(chapter!==r.chapter){r.chapter=chapter;const info=r.scene.phases[chapter];r.host.querySelector('#mm-phase-title').textContent=info.title;r.host.querySelector('#mm-phase-caption').textContent=info.caption;r.host.querySelector('#mm-formula').textContent=info.formula;r.host.querySelectorAll('[data-motion-phase]').forEach((el,i)=>{if(i===chapter)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');});}
+ r.host.querySelector('#mm-progress').value=Math.round(r.memory.p*1000);r.host.querySelector('#mm-percent').textContent=Math.round(r.memory.p*100)+'%';r.host.dataset.motionProgress=r.memory.p.toFixed(4);}
+function motionControls(){const r=motionRuntime;if(!r)return;const reduced=visualReduced()&&!r.memory.allowMotion;const opt=r.host.querySelector('[data-motion="enable"]');if(opt)opt.hidden=!reduced;r.host.querySelector('[data-motion="play"]').textContent=reduced?'下一动作 →':r.playing?'Ⅱ 暂停':r.memory.p>=1?'▶ 再演一次':r.memory.p>0?'▶ 继续演示':'▶ 开始演示';r.host.querySelector('[data-motion="speed"]').textContent=r.memory.rate===.5?'慢速 ×0.5':'正常 ×1';r.host.querySelector('#mm-status').textContent=reduced?'设备已设置减少动态效果：用动作按钮或时间条逐步查看。':r.playing?'物体正在连续运动。可以随时暂停，或拖动时间条倒回去看。':r.memory.p>=1?'演示结束。试着说一说：物体怎样移动，什么始终没变？':r.memory.p>0?'已停住。物体的位置不会继续变化；点继续或拖动时间条。':'点开始，让物体动起来。也可以直接拖动时间条。';}
+function motionPause(){const r=motionRuntime;if(!r)return;if(r.raf!==null)window.cancelAnimationFrame?.(r.raf);r.raf=null;r.playing=false;motionControls();save();}
+function motionTick(now){const r=motionRuntime;if(!r||!r.playing)return;const delta=r.last?Math.max(0,Math.min(100,now-r.last)):0;r.last=now;motionPaint(r.memory.p+delta/1000/r.scene.duration*r.memory.rate);if(r.memory.p>=1){r.playing=false;r.raf=null;motionControls();save();return;}r.raf=window.requestAnimationFrame(motionTick);}
+function motionPlay(replay=false){const r=motionRuntime;if(!r)return;if(replay||r.memory.p>=1)motionPaint(0);if(visualReduced()&&!r.memory.allowMotion){const next=r.scene.phases.find(p=>p.at>r.memory.p);motionPaint(next?next.at:1);motionControls();save();return;}if(r.playing&&!replay){motionPause();return;}if(r.raf!==null)window.cancelAnimationFrame?.(r.raf);r.playing=true;r.last=0;motionControls();r.host.querySelector('.mm-stage')?.scrollIntoView?.({block:'start',behavior:'instant'});r.raf=window.requestAnimationFrame(motionTick);}
+function motionSeek(p,focus=false){motionPause();motionPaint(p);motionControls();save();if(focus)motionRuntime?.host.querySelector('.mm-stage')?.scrollIntoView?.({block:'start',behavior:'instant'});}
+root.addEventListener('click',e=>{const b=e.target.closest('button'),r=motionRuntime;if(!b||b.disabled||!r)return;if(b.dataset.motion==='enable'){r.memory.allowMotion=true;if(!s.visuals)s.visuals={};s.visuals.motionOptIn=true;motionPlay();save();}if(b.dataset.motion==='play')motionPlay();if(b.dataset.motion==='replay')motionPlay(true);if(b.dataset.motion==='speed'){r.memory.rate=r.memory.rate===1?.5:1;motionControls();save();}if(b.dataset.motionPhase!==undefined)motionSeek(r.scene.phases[Number(b.dataset.motionPhase)]?.at||0,true);});
+root.addEventListener('input',e=>{if(e.target.id==='mm-progress')motionSeek(Number(e.target.value)/1000);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&motionRuntime?.playing)motionPause();});
 
 function config(){const all=pages()[s.lesson];if(s.step>=all.length)s.step=all.length-1;return all[s.step]}
 const act=(label,key,primary=false,disabled=false)=>`<button type="button" class="${primary?'ma-primary':'ma-secondary'}" data-act="${key}" ${disabled?'disabled':''}>${label}</button>`;
