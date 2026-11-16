@@ -1,0 +1,1 @@
+export function interruptYaw(i,t,n,u=!1){if(t===null||!Number.isFinite(t)||!Number.isFinite(n)||!i||i.kind!=="sentry"||i.corePhase||i.dead||i.disabled||i.wind>0||!(i.timer>0))return 0;const r=n-t;if(r<0||r>=.72)return 0;const o=s=>s*s*(3-2*s),d=r<.08?o(r/.08):r<=.4?1:1-o((r-.4)/.32);return(i.id%2?-1:1)*(u?.08:.28)*d}

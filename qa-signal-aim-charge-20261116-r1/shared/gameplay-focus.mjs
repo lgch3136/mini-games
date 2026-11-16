@@ -1,0 +1,1 @@
+export function bindGameplayFocus(t,d,{root:o=document,signal:e}={}){t.tabIndex=0;const n=()=>{d()&&!o.querySelector?.("dialog[open]")?.open&&t.focus?.({preventScroll:!0})};return o.addEventListener("click",r=>{(r.target?.closest?.('button, [role="button"]')||r.target?.tagName==="BUTTON")&&n()},e?{signal:e}:void 0),t.addEventListener("pointerdown",n,e?{signal:e}:void 0),n}
