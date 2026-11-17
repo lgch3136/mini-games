@@ -1,0 +1,1 @@
+export function returnDirection(i,s,c,n){if(!(i.bounces>0)||i.dead)return null;const v=Math.hypot(i.vx,i.vy);if(!Number.isFinite(v)||v<.001||!Number.isFinite(s)||!Number.isFinite(c))return null;const r=i.vx/v,e=i.vy/v;return n[0]=s-r*1.5-e*3,n[1]=c-e*1.5+r*3,n[2]=s+r*4.5,n[3]=c+e*4.5,n[4]=s-r*1.5+e*3,n[5]=c-e*1.5-r*3,n}
