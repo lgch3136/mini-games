@@ -10,7 +10,11 @@
     background:#171006; border:1px solid rgba(232,197,110,.32);
     border-radius:0 0 14px 14px; pointer-events:none;
   }
-  body.light-haul-mode #word-bar { top:calc(100% + 6px); bottom:auto; max-width:96%; }
+  body.light-haul-mode #word-bar { top:calc(100% + 6px); bottom:auto; width:calc(100% - 24px); max-width:96%; display:grid; grid-template-columns:auto auto auto; justify-content:center; align-items:center; column-gap:8px; row-gap:2px; }
+  body.light-haul-mode #precision-receipt { grid-column:1 / -1; grid-row:1; }
+  body.light-haul-mode #wb-kind { grid-row:2; grid-column:1; margin:0; }
+  body.light-haul-mode #wb-word { grid-row:2; grid-column:2; }
+  body.light-haul-mode #wb-zh { grid-row:2; grid-column:3; margin:0; white-space:nowrap; }
   body.light-haul-mode #cast-btn,
   body.light-haul-mode #light-haul-btn,
   body.light-haul-mode #dynamite-btn { top:calc(100% + 64px); bottom:auto; }
