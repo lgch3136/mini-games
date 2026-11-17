@@ -1,0 +1,34 @@
+/* Candidate presentation only; canvas coordinates and collision remain untouched. */
+#menu .panel { max-width:600px; width:100%; padding:12px 18px; margin:0 auto; }
+#menu a { color:#a3e6dc; font-size:13px; }
+#menu h1 { margin-top:10px; font-size:30px; }
+#menu h1 small { letter-spacing:3px; }
+#menu .sub { margin:10px auto; }
+#menu .diff-row { margin:10px 0; }
+#start-btn { width:100%; max-width:420px; }
+.optional-rooms { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0 8px; }
+#menu .opening-entry { margin:0; padding:10px; width:100%; white-space:normal; font-size:15px; }
+.opening-entry small { display:block; margin-top:5px; font-size:12px; color:#c5e1dc; }
+.room-note { font-size:12px; color:#d6c6a5; }
+.play-help { text-align:left; margin:12px 0; font-size:13px; color:#dddbca; line-height:1.65; }
+.play-help summary { cursor:pointer; padding:10px 0; color:#a3e6dc; }
+.play-help p { margin:8px 0; }
+#menu .menu-cover { width:220px; max-height:140px; object-fit:cover; margin:0; }
+#wb-kind { border:0; padding:0; margin-right:5px; }
+#wb-word { color:#86efac; letter-spacing:1px; font-size:15px; }
+#wb-next { margin-left:12px; font-size:13px; color:#fff3b7; font-weight:800; }
+#wb-count { margin-left:8px; font-size:12px; color:#c1d6d0; }
+#word-bar { max-width:calc(100% - 380px); }
+@media(max-width:600px) and (orientation:portrait) {
+ #menu .panel { padding:8px 4px; } #menu h1 { font-size:26px; }
+ #menu .opening-entry { font-size:13px; padding:8px 4px; } .opening-entry small { font-size:11px; }
+ #word-bar { max-width:96%; } #wb-next { margin-left:8px; font-size:12px; }
+}
+@media(orientation:landscape) and (max-height:600px) {
+ #menu .panel { max-width:670px; } #menu .menu-cover { display:none; }
+ #menu h1 { font-size:22px; margin-top:4px; } #menu .sub { margin:4px auto; }
+ #menu .diff-row { margin:4px 0; } .optional-rooms { margin:6px 0; }
+ #word-bar { max-width:none; } #wb-next { display:block; margin:1px 0; }
+ #wb-count { margin-left:5px; } #wb-zh { display:none; }
+ .mission-strip { top:150px; }
+}

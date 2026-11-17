@@ -1,0 +1,7 @@
+/* Menu owns the screen: suppress stale in-run UI and its focus targets.
+   Paused/result overlays are intentionally unaffected. */
+#game-wrap:has(> #menu:not(.hidden)) > #hud,
+#game-wrap:has(> #menu:not(.hidden)) > #touch-controls {
+  visibility: hidden;
+  pointer-events: none;
+}
