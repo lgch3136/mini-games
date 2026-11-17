@@ -1,0 +1,117 @@
+/* Display-only QA HUD. The canvas, wrapper and physical coordinates stay unchanged. */
+.qa-notice { color:#b4e4ed; font-size:12px; line-height:1.4; margin:8px 0; }
+#stats { align-items:flex-start; }
+#stats .chips:first-child { display:grid; grid-template-columns:repeat(4,max-content); gap:3px; max-width:calc(100% - 112px); }
+#stats .chip { padding:2px 4px; font-size:10px; line-height:13px; white-space:nowrap; }
+#stats .chips:last-child { gap:4px; }
+#pause-btn, #mute-btn { min-width:48px; padding:3px 6px; }
+#contract-status { top:29px; left:12px; right:124px; padding:0; text-align:left; font-size:11px; line-height:14px; }
+#contract-progress { color:#fff0bd; font-weight:800; font-variant-numeric:tabular-nums; }
+#contract-next { color:#b8f5da; }
+#contract-status[data-phase="complete"] #contract-progress { color:#b8f5da; }
+#contract-status[data-phase="idle"] { display:none; }
+#over-contract { margin:10px auto 4px; max-width:420px; padding:8px 10px; border:1px solid #9aa77f; border-radius:10px; color:#fff0bd; font-size:13px; line-height:1.6; }
+#over-contract-next { color:#b8f5da; }
+#over-contract-note { color:#d2c0a0; font-size:11px; }
+#over-ledger-note { color:#d2c0a0; font-size:11px; line-height:1.5; margin:6px auto; max-width:420px; }
+@media (max-width:600px) and (orientation:portrait) {
+  #stats .chips:first-child { grid-template-columns:repeat(2,max-content); max-width:calc(100% - 106px); }
+  #stats .chip { font-size:10px; padding:2px 4px; }
+  #contract-status { top:calc(52px + env(safe-area-inset-top)); left:8px; right:8px; font-size:11px; line-height:14px; }
+}
+@media (orientation:landscape) and (max-height:450px) {
+  #stats { top:5px; left:7px; right:7px; }
+  #stats .chip { font-size:9px; padding:1px 3px; line-height:12px; }
+  #stats .chips:first-child { grid-template-columns:repeat(4,max-content); max-width:calc(100% - 104px); }
+  #contract-status { top:22px; left:7px; right:111px; font-size:10px; line-height:12px; }
+}
+
+/* r2: outcome first. Achievement stays positive but subordinate to the result. */
+#over-title { line-height:1.25; }
+.result-achievement { display:flex; justify-content:center; align-items:center; gap:8px; margin:8px auto; }
+#over-record { color:#e9cc84; font-size:14px; font-weight:700; }
+.result-achievement .mastery-medal { width:44px; }
+/* Desktop-only adjustment. Do not infer phone/short-landscape acceptance. */
+@media (min-width:900px) and (min-height:650px) {
+  #menu .panel { margin:auto; padding:16px 20px; }
+  #menu .menu-cover { width:240px; max-height:150px; margin-bottom:8px; }
+  #menu h1 { font-size:32px; }
+  #menu .sub { margin-top:8px; line-height:1.65; }
+  #menu .keys { margin-top:8px; }
+  #menu .diff-row { margin-top:10px; }
+  #menu #start-btn { margin-top:10px; }
+  #contract-status { top:31px; line-height:17px; }
+  #contract-progress { font-size:14px; }
+  #contract-next { font-size:12px; }
+  /* Upper-left HUD band, not the middle of the mining field. */
+  #feedback { top:70px; left:12px; right:auto; transform:none; max-width:calc(50% - 24px); padding:4px 8px; font-size:12px; line-height:17px; text-align:left; }
+}
+
+/* Keep changing aim references out of the live region; announce only contract updates. */
+#contract-next-announcement { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; border:0; }
+
+/* r2: the next decision stays stable; speculative payout never replaces an objective. */
+#contract-progress { font-size:11px; font-weight:600; color:#e7d4a5; }
+#contract-next { font-size:14px; line-height:19px; font-weight:800; color:#c7ffe4; font-variant-numeric:tabular-nums; }
+#contract-reference { min-height:17px; font-size:11px; line-height:17px; color:#c9bca5; }
+#contract-reference[data-kind="held"] { color:#ffd0a0; }
+#feedback { white-space:normal; overflow-wrap:anywhere; }
+@media (min-width:900px) and (min-height:650px) {
+  #contract-status { top:31px; line-height:16px; }
+  #contract-next { font-size:15px; line-height:21px; }
+  #contract-reference { font-size:12px; line-height:18px; min-height:18px; }
+  #feedback { top:91px; max-width:min(430px,calc(100% - 24px)); }
+}
+@media (max-width:600px) and (orientation:portrait) {
+  #contract-next { font-size:13px; line-height:18px; }
+  #contract-reference { font-size:10px; line-height:15px; min-height:30px; max-width:100%; }
+  #feedback { font-size:12px; line-height:18px; width:max-content; max-width:90%; }
+}
+@media (orientation:landscape) and (max-height:450px) {
+  #contract-next { font-size:11px; line-height:15px; }
+  #contract-reference { font-size:10px; line-height:13px; min-height:13px; }
+}
+
+/* Isolated quote UI; no changes to ordinary canvas, HUD or shop dimensions. */
+#route-entry { margin-top:12px; border-top:1px solid #6b572f; padding-top:6px; }
+#route-entry-note, #route-shop-result { color:#d3c4a8; font-size:11px; line-height:1.5; max-width:560px; margin:6px auto; }
+#route-preview { align-items:flex-start; }
+#route-preview .route-panel { margin:auto; width:650px; max-width:100%; padding:12px; }
+#route-title { font-size:24px; color:#fde68a; margin:0 0 6px; }
+#route-quote { color:#fff0bd; font-weight:800; font-size:15px; }
+#route-equipment { color:#b8f5da; font-size:12px; margin-top:4px; }
+.route-help, #route-reward, #route-unavailable { color:#d3c4a8; font-size:11px; line-height:1.5; margin:6px 0; }
+.route-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+.route-options section { border:1px solid #7b6740; border-radius:8px; padding:7px; background:#20190e; }
+.route-options h3 { font-size:15px; color:#fde68a; }
+.route-options p { font-size:11px; line-height:1.5; color:#e2d2ae; min-height:34px; }
+.route-options svg { display:block; width:100%; height:145px; background:#15130f; border-radius:6px; margin:5px 0; }
+.route-options button { width:100%; margin-top:4px; padding:7px; font-size:13px; }
+#route-preview button:disabled { opacity:.4; cursor:not-allowed; }
+#route-close-btn { margin-top:5px; }
+#route-run-label { position:absolute; right:8px; top:57px; width:116px; font-size:10px; line-height:14px; color:#cbe7e8; text-align:right; }
+#route-size-text { margin:14px 0; line-height:1.7; color:#e2d2ae; }
+
+/* r1 planning: actual geometry stays in SVG; labels use leaders to avoid crowding. */
+#route-preview { overflow-y:auto; }
+#route-preview .route-panel { flex-shrink:0; width:700px; margin:0 auto; }
+#route-title { font-size:21px; }
+.route-map-field { position:relative; aspect-ratio:720/480; margin:5px 0; }
+.route-options .route-map-field svg { width:100%; height:100%; margin:0; }
+.route-options .route-point { position:absolute; transform:translate(-50%,-50%); width:44px; height:29px; min-height:29px; margin:0; padding:0; border:1px solid #bfc8cd; border-radius:5px; color:#15130f; font-weight:900; font-size:14px; line-height:27px; background:#a5a8ad; cursor:pointer; }
+.route-options .route-point.gold { background:#e7b642; }
+.route-options .route-point.diamond { background:#70d5ed; }
+.route-options .route-point.planned-collect { outline:2px solid #a3f5bc; outline-offset:2px; }
+.route-options .route-point.planned-discard { outline:2px dashed #ffab87; outline-offset:2px; }
+.route-point small { font-size:10px; }
+.route-options .route-point.planning-blocked { outline:2px dashed #ffab87; outline-offset:2px; }
+#route-preview button:focus-visible { outline:3px solid #fff; outline-offset:3px; box-shadow:0 0 0 6px #44677a; }
+.route-options .route-point-detail { min-height:60px; margin:5px 0; text-align:left; color:#f1dfb8; }
+.route-plan-actions { display:flex; gap:6px; }
+.route-options .route-plan-actions button { font-size:11px; min-height:31px; padding:4px; }
+.route-options .route-plan-actions button:last-child { width:82px; flex-shrink:0; }
+.route-options .route-plan-sequence { min-height:32px; margin:6px 0 2px; text-align:left; color:#f5e8cd; }
+.route-options .route-plan-total { min-height:34px; font-size:13px; text-align:left; font-weight:800; color:#b8f5da; }
+.route-options .route-plan-warning { min-height:48px; text-align:left; color:#c8d3de; }
+.route-options .route-plan-warning[data-blocked="true"] { color:#ffbd9d; }
+.route-options .route-accept { border-color:#b89341; }

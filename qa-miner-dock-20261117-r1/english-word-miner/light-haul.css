@@ -1,0 +1,6 @@
+#light-haul-btn { display:none; }
+.light-haul-mode #light-haul-btn { display:block; position:absolute; bottom:max(18px,env(safe-area-inset-bottom)); left:35%; width:30%; min-height:54px; border:1px solid #67e8f9; border-radius:14px; background:#164e63; color:#ecfeff; font:700 12px/1.3 system-ui; padding:7px 3px; pointer-events:auto; cursor:pointer; }
+.light-haul-mode #light-haul-btn:disabled { opacity:.55; cursor:default; }
+.light-haul-mode #cast-btn { left:2%; width:30%; max-width:30%; padding:7px 3px; font-size:12px; }
+.light-haul-mode #dynamite-btn { right:2%; width:30%; max-width:30%; padding:7px 3px; font-size:12px; }
+#light-haul-btn:focus-visible { outline:3px solid #fff; outline-offset:2px; }

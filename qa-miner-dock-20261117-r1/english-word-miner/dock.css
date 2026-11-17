@@ -1,0 +1,18 @@
+/* Trial desktop only: reserve a separate control dock, never move mine objects. */
+@media (min-width:900px) and (min-height:650px) {
+  body.light-haul-mode #game-wrap {
+    width:min(96vw, calc((92dvh - 120px) * 1.285714));
+    margin-bottom:120px;
+    overflow:visible;
+  }
+  body.light-haul-mode #hud::before {
+    content:""; position:absolute; left:-1px; right:-1px; top:100%; height:120px;
+    background:#171006; border:1px solid rgba(232,197,110,.32);
+    border-radius:0 0 14px 14px; pointer-events:none;
+  }
+  body.light-haul-mode #word-bar { top:calc(100% + 6px); bottom:auto; max-width:96%; }
+  body.light-haul-mode #cast-btn,
+  body.light-haul-mode #light-haul-btn,
+  body.light-haul-mode #dynamite-btn { top:calc(100% + 64px); bottom:auto; }
+  body.light-haul-mode #game-wrap:has(> #menu:not(.hidden)) #hud { visibility:hidden; }
+}
