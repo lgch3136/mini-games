@@ -1,0 +1,1 @@
+function f(r,o,e){o&&r.detail>0&&e.focus({preventScroll:!0})}function l(r,o,e,u,t,c){return!o||!t[r.code]||r.code==="Space"||r.defaultPrevented||r.isComposing||r.keyCode===229||r.ctrlKey||r.metaKey||r.altKey||r.target!==e||c!==e?!1:(u.focus({preventScroll:!0}),!0)}export{l as resumeFromSoundKey,f as returnPointerSoundFocus};
