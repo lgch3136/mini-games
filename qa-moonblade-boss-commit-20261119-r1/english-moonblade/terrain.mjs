@@ -1,0 +1,1 @@
+function y(t,c){const n=t.oneWay?.35:Math.min(5.5,t.h),e=.16,o=t.oneWay?0:-.085,a=o-e;return{wall:{center:t.y+(a-n)/2,height:n+a},cap:{center:t.y+o-e/2,height:e,top:t.y+o},tile:t.oneWay?null:{center:t.y-.04,top:t.y,bottom:t.y-.08}}}export{y as platformLayers};
