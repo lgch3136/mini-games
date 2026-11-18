@@ -7,6 +7,7 @@
 <title>🎮 英语小游戏街机厅 · English Arcade</title>
 <link rel="stylesheet" href="style.css?v=20260930-quality-r5&amp;mobile=20260930-quality-r5">
 <style>
+#fogharbor-playtest.hidden{display:none}
 /* Preview lists must never stretch the game cards in the same grid row. */
 .grid{align-items:start}
 .grid>.card{min-width:0}
@@ -43,10 +44,26 @@
   <header>
     <span class="eyebrow">YOUR POCKET ARCADE</span>
     <h1>好玩，就再来一局</h1>
-    <p class="sub">17 款各有性格的小游戏，把碎片时间变成一点进步</p>
+    <p class="sub">18 款各有性格的小游戏，把碎片时间变成一点进步</p>
   <p class="version-note">版本说明：主卡保留原有入口和记录；下方列出目前可确认已部署的公开候选，候选不等于验收通过的正式升级。其他版本默认收起，点击即可展开。</p><p class="version-dates-note">更新日期按对应入口版本运行文件的上线记录标注（北京时间），不是集锦页面的修改日期。主入口与公开候选分开标注；上线不代表完整验收。</p></header>
 
-  <section id="fogharbor-playtest" aria-labelledby="fogharbor-playtest-title" style="margin:24px 0;padding:18px;border:1px solid #557e85;border-radius:16px;background:#101e29;color:#e7f0ed">
+  
+
+  <section class="discovery" aria-label="挑选游戏">
+    <a id="recent-game" class="recent-game" hidden><span>上次打开</span><strong></strong><span aria-hidden="true">继续游玩 ↗</span></a>
+    <div class="search-row"><label class="search-box" for="game-search"><span aria-hidden="true">⌕</span><input id="game-search" type="search" placeholder="搜索名字或玩法" autocomplete="off" maxlength="80" aria-label="搜索游戏名字或玩法"></label><span id="catalog-count" role="status" aria-live="polite">18 款游戏</span></div>
+    <div class="pace-filters" role="group" aria-label="选择游玩方式"><button data-pace="all" aria-pressed="true">慢慢挑</button><button data-pace="quick" aria-pressed="false">随手一局</button><button data-pace="focus" aria-pressed="false">专注练习</button><button data-pace="immersive" aria-pressed="false">沉浸挑战</button></div>
+  </section>
+  <nav class="filters" aria-label="游戏分类筛选">
+    <button class="filter selected" data-filter="all" aria-pressed="true">全部 <b>18</b></button>
+    <button class="filter" data-filter="action" aria-pressed="false">动作射击 <b>10</b></button>
+    <button class="filter" data-filter="racing" aria-pressed="false">竞速驾驶 <b>1</b></button>
+    <button class="filter" data-filter="puzzle" aria-pressed="false">益智策略 <b>2</b></button>
+    <button class="filter" data-filter="casual" aria-pressed="false">休闲反应 <b>5</b></button>
+  </nav>
+
+  <p id="catalog-empty" hidden>没有找到匹配的游戏。<button id="clear-search" type="button">清除筛选</button></p>
+<section id="fogharbor-playtest" data-cat="action" data-session="quick" data-search-alias="Fogharbor Lamplighter" aria-labelledby="fogharbor-playtest-title" style="margin:24px 0;padding:18px;border:1px solid #557e85;border-radius:16px;background:#101e29;color:#e7f0ed">
     <h2 id="fogharbor-playtest-title" style="margin:0 0 12px;font:700 21px/1.4 system-ui">新作试玩 · 雾港守灯人</h2>
     <figure style="margin:0 0 12px;max-width:520px;position:relative">
       <span class="game-update-badge"><span>最新候选更新</span><time datetime="2026-11-18">2026-11-18</time></span><img src="https://lgch3136.github.io/mini-games/fogharbor-lamplighter-playtest-20261102-r1/assets/cover.png" alt="雾港守灯人 · AI 原创概念封面，非实机画面" width="1672" height="940" loading="lazy" decoding="async" style="display:block;width:100%;height:auto;border-radius:10px">
@@ -80,20 +97,6 @@
       <p style="margin:10px 0 0;font:12px/1.5 system-ui"><a href="https://lgch3136.github.io/mini-games/fogharbor-lamplighter-playtest-20261102-r1/index.html" style="display:inline-block;min-height:44px;box-sizing:border-box;padding:12px 0;color:#bccbd2">旧版试玩 · 访问原记录</a></p>
   </details></section>
 
-  <section class="discovery" aria-label="挑选游戏">
-    <a id="recent-game" class="recent-game" hidden><span>上次打开</span><strong></strong><span aria-hidden="true">继续游玩 ↗</span></a>
-    <div class="search-row"><label class="search-box" for="game-search"><span aria-hidden="true">⌕</span><input id="game-search" type="search" placeholder="搜索名字或玩法" autocomplete="off" maxlength="80" aria-label="搜索游戏名字或玩法"></label><span id="catalog-count" role="status" aria-live="polite">17 款游戏</span></div>
-    <div class="pace-filters" role="group" aria-label="选择游玩方式"><button data-pace="all" aria-pressed="true">慢慢挑</button><button data-pace="quick" aria-pressed="false">随手一局</button><button data-pace="focus" aria-pressed="false">专注练习</button><button data-pace="immersive" aria-pressed="false">沉浸挑战</button></div>
-  </section>
-  <nav class="filters" aria-label="游戏分类筛选">
-    <button class="filter selected" data-filter="all" aria-pressed="true">全部 <b>17</b></button>
-    <button class="filter" data-filter="action" aria-pressed="false">动作射击 <b>9</b></button>
-    <button class="filter" data-filter="racing" aria-pressed="false">竞速驾驶 <b>1</b></button>
-    <button class="filter" data-filter="puzzle" aria-pressed="false">益智策略 <b>2</b></button>
-    <button class="filter" data-filter="casual" aria-pressed="false">休闲反应 <b>5</b></button>
-  </nav>
-
-  <p id="catalog-empty" hidden>没有找到匹配的游戏。<button id="clear-search" type="button">清除筛选</button></p>
   <main class="grid" aria-label="游戏列表">
     <div class="emberwild-card-group" id="anime-crossroads-r6">
     <a class="card" href="qa-anime-area-counterplay-20261115-r1/index.html" data-cat="action" data-session="immersive">
@@ -589,7 +592,7 @@
   </footer>
 </div>
 
-<script type="module" src="shared/arcade-hub.mjs?v=20261010-recent-r1"></script>
+<script type="module" src="shared/arcade-hub-fogharbor-20261118-r1.mjs"></script>
 </body>
 </html>
 
