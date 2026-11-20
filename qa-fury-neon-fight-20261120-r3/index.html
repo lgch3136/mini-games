@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>斗魂 · 霓虹夜斗 / 开发原型</title><link rel="stylesheet" href="play.css">
+</head>
+<body>
+<main>
+<header><div><span class="kicker">CROSSWIND FURY <b>01</b></span><h1>霓虹夜斗</h1></div><span class="stamp">贴身站位 r3 · 独立 2.5D</span></header>
+<section class="cabinet" aria-label="斗魂霓虹夜斗">
+<div id="screen" class="screen">
+<canvas id="game" width="480" height="270" tabindex="0" aria-label="1 对 1 斗魂擂台，WASD 移动"></canvas>
+<div class="hud" aria-hidden="true">
+ <div class="vitals left"><strong>凌风 <small>P1</small></strong><i><b id="hp0"></b></i><div><span id="score0"></span><span id="meter0"></span></div></div>
+ <div class="time"><strong id="timer">75</strong><small id="round">ROUND 01</small></div>
+ <div class="vitals right"><strong><small>P2</small> 赤绫</strong><i><b id="hp1"></b></i><div><span id="meter1"></span><span id="score1"></span></div></div>
+</div>
+<div id="announce" class="announce" hidden></div>
+<div id="contact" class="contact" hidden></div>
+<div id="panel" class="veil">
+ <div class="panel" role="group" aria-label="对局菜单">
+  <span class="kicker" id="panel-meta">ORIGINAL DUEL / NEON PASS</span>
+  <h2 id="panel-title">先打赢两个回合。</h2>
+  <p id="panel-copy">凌风对赤绫 · 75 秒一局 · 原战斗规则</p>
+  <div id="mode-block" class="modes">
+   <label>对手 <select id="mode"><option value="arcade">电脑对手</option><option value="versus">本地双人</option></select></label>
+   <label id="level-block">难度 <select id="difficulty"><option value="easy">入门</option><option value="normal" selected>标准</option><option value="hard">高手</option></select></label>
+  </div>
+  <div class="actions"><button id="start" class="primary" disabled>进入对决 ↗</button><button id="retry-art" type="button" hidden>重新加载画面</button><button id="restart" hidden>重开对局</button><button id="menu" hidden>返回开场</button></div>
+ </div>
+</div>
+</div>
+<div class="under"><span id="asset-note">角色和场景装载中</span><div class="under-actions"><button id="sound" type="button" aria-pressed="false">开启音效</button><button id="pause" type="button" hidden>暂停 / Esc</button></div></div>
+<div id="touch" class="touch" hidden>
+ <fieldset><legend>方向</legend><div data-group="move"><button data-action="left" aria-label="向左">←</button><button data-action="right" aria-label="向右">→</button><button data-action="up">跳</button><button data-action="down">蹲</button></div></fieldset>
+ <fieldset><legend>攻击</legend><div data-group="fight"><button data-action="A">轻拳</button><button data-action="B">轻脚</button><button data-action="C">重拳</button><button data-action="D">重脚</button><button data-action="guard">防</button><button data-action="roll">闪</button><button data-action="wave">气波</button></div></fieldset>
+</div>
+</section>
+<details><summary>按键说明</summary>
+ <p>凌风：WASD 移动、跳、蹲；J K U I 轻拳 / 轻脚 / 重拳 / 重脚，Shift 防，L 闪，空格气波。Q / E / R / F / T / O 对应突进、上击、奥义、爆气、投与击退。</p>
+ <p>赤绫：方向键移动，1–4 轻重拳脚，5 闪、6 飞羽、7 上击、8 奥义、9 爆气、0 投。两人都可按远离对手的方向防守。触屏仅操控凌风，适合与电脑对战。</p>
+</details>
+<p class="sr" id="status" aria-live="polite">准备对战</p>
+</main><script type="module" src="main.mjs"></script>
+</body></html>
