@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>斗魂 · 完整对局验收候选</title><link rel="stylesheet" href="select.css">
+<script type="module" src="boot.mjs"></script></head>
+<body><main id="shell">
+<header><p class="kicker">斗魂 / 港城会馆</p><h1>截风擂台</h1><p>完整对局验收候选。约 8 MB 资源需全部载入才能开打。</p></header>
+<section id="picker" aria-labelledby="pick-title"><h2 id="pick-title">选择格斗家</h2>
+<div class="fighters" role="group" aria-label="玩家一">
+ <button type="button" id="choose-lin" aria-pressed="true"><canvas id="preview-lin" width="54" height="70" aria-hidden="true"></canvas><span><b>凌风</b><small>均衡 · 截风拳</small></span></button>
+ <button type="button" id="choose-mei" aria-pressed="false"><canvas id="preview-mei" width="54" height="70" aria-hidden="true"></canvas><span><b>赤绫</b><small>迅击 · 燕返腿</small></span></button>
+</div>
+<p id="matchup">凌风 对 赤绫</p>
+<div class="status">
+ <p id="art-state" role="status" aria-live="polite">选人界面已可用，正在检查首开资源。</p>
+ <p id="asset-size">对局资源尚未确认，未开始下载。</p>
+ <p id="preview-note">角色小图仅用于选人，不代替战斗动作。</p>
+</div>
+<details class="qa-settings"><summary>验收设置</summary>
+<label><input type="checkbox" id="stage-cache"> 开启擂台图缓存（对照实验）</label><br>
+<button type="button" id="sample-menu">测选人界面（10 秒）</button>
+<br><button type="button" id="start-logic-only" disabled>非游玩：逻辑对照（不绘制）</button>
+<br><button type="button" id="start-surface-only" disabled>非游玩：只显示对局区</button>
+<p id="menu-sample" aria-live="polite"></p></details>
+<p><label>玩法 <select id="duel-mode"><option value="arcade">单人 Arcade · 正常</option><option value="versus">本地双人 · 正常</option></select></label></p><button type="button" id="start-match" disabled>进入擂台</button>
+<label><input type="checkbox" id="silent-start"> 静音开局</label>
+<button type="button" id="retry-load" hidden>重试载入</button>
+<noscript><p>请开启 JavaScript。未加载动作前不能开始对局。</p></noscript>
+</section>
+<section id="match-panel" aria-label="对局" hidden>
+<p id="logic-only-banner" hidden>非游玩测量：不接收玩家输入，不绘制，也不开启音频。</p>
+<canvas id="arena" width="480" height="270" tabindex="0" aria-label="斗魂对局"></canvas>
+<p id="round-clock" aria-label="对局阶段与时间">准备</p>
+<p id="live-duel" role="status"></p>
+<details class="key-reminder"><summary>键盘操作</summary>
+<p>玩家一：A / D 移动，W 跳，S 下蹲，Shift 防御。J / K 轻招，U / I 重招，L 翻滚。</p>
+<p>本地双人：玩家二用方向键移动、跳跃、下蹲，← 或 → 远离对手时防御。数字 1 / 2 轻招，3 / 4 重招，5 翻滚。</p>
+</details>
+<label class="qa-switch"><input type="checkbox" id="qa-display"> 显示验收状态</label>
+<p id="qa-status" aria-live="off" hidden></p>
+<p><button type="button" id="sample-match">测对局（10 秒）</button></p>
+<p id="match-sample" aria-live="polite"></p><p id="round-result"></p><button type="button" id="rematch" disabled>原阵容再战</button>
+<button type="button" id="return-select">返回选人</button>
+</section></main></body></html>
