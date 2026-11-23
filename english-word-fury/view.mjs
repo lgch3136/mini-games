@@ -1,10 +1,10 @@
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
 import rosterPoses from "./harbor-roster-guard.mjs?v=20261124-harbor-guard1";
-import stanceAtlas from "./harbor-guard-cels.mjs?v=20261124-harbor-guard1";
+import stanceAtlas from "./harbor-contact-cels.mjs?v=20261124-harbor-hands1";
 import {loadMatchSheet, stanceRoles} from "./match-sheet.mjs?v=20261124-compact-baked1";
 import signatures from "./signature-frames.mjs?v=20261124-tumble1";
 import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261124-tumble1";
-import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-harbor-guard1";
+import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-harbor-hands1";
 import atlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 
 const ironLegs = {
@@ -59,6 +59,15 @@ function actionCel(fighter, cells) {
     move = fallback[move];
   }
   return fighter.crouch ? "crouch/hold" : "idle/0";
+}
+
+function paintedHand(f, role, facing, atlas) {
+  const move = f.action?.name;
+  if ((move !== "jab" && move !== "punch") || !role.startsWith(move + "/")) return null;
+  const {frame, spec} = f.action;
+  const phase = frame < spec.startup ? "load" : frame < spec.startup + spec.active ? "active" : "release";
+  const key = move + (facing < 0 ? "/L/" : "/R/") + phase;
+  return atlas.cells[key] ? key : null;
 }
 
 function celFor(f, cells, frame) {
@@ -352,7 +361,10 @@ export class ArenaView {
     const floor = this.screen(0, 0)[1];
     const scale = this.portrait ? this.portraitUnit/34 : this.h * this.camera.zoom / (9 * 34);
     const figures = fight.f.map(f => {
-      const [x, y] = this.screen(lerp(f.px, f.x, alpha), lerp(f.py, f.y, alpha));
+      // The front of the guard occupies the game-space origin; the trunk stands behind it.
+      const facing = ((f.down || f.hp <= 0) && f.tossFacing) || f.facing;
+      const stanceOffset = !this.previewOnly && (f.c.id === "lin" || f.c.id === "mei") ? .37 * facing : 0;
+      const [x, y] = this.screen(lerp(f.px, f.x, alpha) - stanceOffset, lerp(f.py, f.y, alpha));
       return { f, x, y };
     });
     const priority = f => {
@@ -389,8 +401,10 @@ export class ArenaView {
       const closeSheet = !this.previewOnly && this.stanceSheets.get(f.c.id);
       const holdingCover = role === "block/release" && f.state !== "block";
       const stanceName = closeSheet?.decoded && (holdingCover ? "cover" : stanceRoles[role]);
-      const stance = stanceName && stanceAtlas[f.c.id].cells[stanceName];
       const facing = ((f.down || f.hp <= 0) && f.tossFacing) || f.facing;
+      const handName = closeSheet?.decoded && paintedHand(f, role, facing, stanceAtlas[f.c.id]);
+      const drawnRole = handName || stanceName;
+      const stance = drawnRole && stanceAtlas[f.c.id].cells[drawnRole];
       const ownFace = !signature && !leg && !stride && !stance && facing < 0 && cells[role + "@left"];
       const fallback = f.c.id === "shan" && role === "hit/impact"
         ? cells["block/impact"] : cells[role];
@@ -403,7 +417,7 @@ export class ArenaView {
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
-      const mirror=ownFace ? 1 : facing;
+      const mirror=ownFace || handName ? 1 : facing;
       c.scale(mirror,1);
       const py=dy*size, py2=(dy+displayH/2)*size;
       const px=mirror*dx*size, px2=mirror*(dx+displayW/2)*size;
@@ -417,7 +431,7 @@ export class ArenaView {
       c.drawImage(image, sx * sourceX, sy * sourceY, w * sourceX, h * sourceY, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
-      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, stance:stance ? stanceName : null, signature:signature ? key : null };
+      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, stance:stance ? stanceName || null : null, hand:handName || null, anchorX:x, signature:signature ? key : null };
     }
   }
   event(e) {

@@ -34,16 +34,16 @@ function diamond(c,x,y,r,kind) {
 }
 
 export class View {
-  constructor(canvas,fx) {
+  constructor(canvas,fx,powerSaving=false) {
     this.canvas=canvas;this.fx=fx;
     fx.style.backgroundImage="linear-gradient(to bottom, rgba(3,13,20,.22), transparent 38%, transparent 72%, rgba(3,13,20,.4))";
-    this.context=canvas.getContext("2d",{alpha:true});
+    this.context=canvas.getContext("2d",{alpha:true,willReadFrequently:powerSaving});
     // Combat, silhouettes and their cues are drawn in order on one surface.
     // The top and bottom atmosphere is a static CSS overlay.
     this.ctx=this.context;
     this.fx.width=this.fx.height=1;
     Object.assign(fx.style,{width:"100%",height:"100%",pointerEvents:"none"});
-    this.powerSaving=false;
+    this.powerSaving=powerSaving;
     this.paints=0;
     this.detail=true;this.reduced=matchMedia("(prefers-reduced-motion:reduce)").matches;
     this.ready=false;this.disposed=false;this.elapsed=0;
@@ -54,6 +54,22 @@ export class View {
     this.glowImage=glowCard();this.platforms=[];this.stage=-1;
     this.backgrounds=new Map();this.pendingSkies=new Map();
     this.counts={actors:0,platforms:0,facades:0};this.enemyPoses={};
+  }
+  setPowerSaving(enabled) {
+    if (this.powerSaving===enabled || this.disposed) return;
+    // Canvas context attributes are fixed by the first getContext call.
+    // Replace only the gameplay surface while the player is in the menu.
+    const old=this.canvas, next=old.cloneNode(false);
+    next.width=next.height=1;
+    const context=next.getContext("2d",{alpha:true,willReadFrequently:enabled});
+    if (!context) return;
+    this.resetSky();
+    old.replaceWith(next);
+    old.width=old.height=1;
+    this.canvas=next;
+    this.context=this.ctx=context;
+    this.powerSaving=enabled;
+    this.w=this.h=0;
   }
   resetSky() {
     if (this.sky) {
@@ -191,12 +207,13 @@ export class View {
     const c=this.context,u=this.unit;
     const bg=this.backgrounds.get(this.theme)||this.backgrounds.get("city");
     if (!this.sky) {
-      this.sky=bakeSky(bg,this.w,this.h,this.theme==="city");
+      const skyScale=this.powerSaving?Math.min(1,Math.sqrt(245760/((this.w+38)*this.h))):1;
+      this.sky=bakeSky(bg,(this.w+38)*skyScale-38,this.h*skyScale,this.theme==="city");
       this.sky.setAttribute("aria-hidden","true");
       this.sky.className="court-sky";
       this.canvas.before(this.sky);
     }
-    const drift=this.reduced ? 0 : Math.round(Math.sin(this.cx*.045)*24)/2;
+    const drift=this.reduced || this.powerSaving ? 0 : Math.round(Math.sin(this.cx*.045)*24)/2;
     if (drift!==this.skyOffset) {
       this.sky.style.transform="translateX("+drift+"px)";
       this.skyOffset=drift;
@@ -304,6 +321,8 @@ export class View {
       platformPixels:this.platforms.reduce((n,row)=>n+(row.art?row.art.width*row.art.height:0),0)
         +(this.stone ? this.stone.width*this.stone.height : 0), skyLayers:this.canvas.parentElement.querySelectorAll(".court-sky").length,
       stonePainted:!!this.stone,wallSheet:!!this.wallSheet,paints:this.paints,powerSaving:this.powerSaving,
+      skyPixels:(this.sky?.width||0)*(this.sky?.height||0),
+      rasterPreference:this.context.getContextAttributes?.().willReadFrequently??null,
       paintSurfaces:[this.canvas.width*this.canvas.height],overlayPixels:this.fx.width*this.fx.height,
       textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas))+Number(Boolean(this.bladeAtlas))+Number(Boolean(this.waymarks))+Number(Boolean(this.wallSheet)),
       waymarkPixels:(this.waymarks?.naturalWidth || 0)*(this.waymarks?.naturalHeight || 0),triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},

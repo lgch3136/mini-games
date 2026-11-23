@@ -1,6 +1,6 @@
 import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261124-eave-return1";
-import { View } from "./court-view-v1.mjs?v=20261124-roof-canvas1";
+import { View } from "./court-view-v1.mjs?v=20261124-clear-eaves1";
 import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
@@ -327,7 +327,7 @@ $("sound-btn").addEventListener("click", async () => {
 $("power-saving").addEventListener("change", () => {
   const enabled=$("power-saving").checked;
   try {localStorage.setItem("moonblade-power-v1",enabled?"on":"off");} catch {}
-  if (view) {view.powerSaving=enabled;preview();}
+  if (view) {view.setPowerSaving(enabled);preview();}
 });
 $("detail").addEventListener("change", () => {
   if (view) view.detail = $("detail").checked;
@@ -438,22 +438,39 @@ window.addEventListener("pagehide", () => {
   audio.ctx?.close().catch(() => {});
   view?.dispose();
   observer.disconnect();
+  phoneLayout.removeEventListener("change",positionVitals);
 });
 window.addEventListener("pageshow", (e) => {
   if (e.persisted && destroyed) location.reload();
 });
+const phoneLayout=matchMedia("(max-width:600px) and (orientation:portrait)");
+function positionVitals() {
+  const hud=$("hud"), rail=$("phone-vitals"), vitals=$("chapter").parentElement, boss=$("boss"), toast=$("toast");
+  if (phoneLayout.matches) {
+    if (vitals.parentElement!==rail) rail.append(vitals,boss,toast);
+  } else if (vitals.parentElement!==hud) {
+    hud.prepend(vitals);
+    hud.insertBefore(boss,$("words"));
+    hud.append(toast);
+  }
+}
+positionVitals();
+phoneLayout.addEventListener("change",positionVitals);
 const observer = new ResizeObserver(preview);
 observer.observe($("arena"));
 coarse.addEventListener("change", () => {
   controlNote();
   if (mode === "playing") $("touch").hidden = !coarse.matches;
 });
-$("game").addEventListener("webglcontextlost", (e) => {
+function lostCanvas(e) {
+  if(e.target!==$("game"))return;
   if (destroyed) return;
   e.preventDefault();
   pause();
   text("status", "画面上下文已释放，请刷新恢复。");
-});
+}
+$("arena").addEventListener("contextlost",lostCanvas,true);
+$("arena").addEventListener("webglcontextlost",lostCanvas,true);
 const pct = (a, p) =>
   a.length ? [...a].sort((x, y) => x - y)[Math.floor((a.length - 1) * p)] : 0;
 let performanceCache = null,
@@ -502,8 +519,9 @@ window.moonDiagnostics = () => ({
   },
 });
 try {
-  view = new View($("game"), $("fx"));
-  try {view.powerSaving=localStorage.getItem("moonblade-power-v1")==="on";} catch {}
+  let savedPower=false;
+  try {savedPower=localStorage.getItem("moonblade-power-v1")==="on";} catch {}
+  view = new View($("game"), $("fx"), savedPower);
   $("power-saving").checked=view.powerSaving;
   view.onSceneryChange = preview;
   $("comfort").checked = view.reduced;

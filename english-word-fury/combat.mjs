@@ -1142,12 +1142,13 @@ export class Fight {
     )
       return;
     const d = b.x - a.x,
-      min = (0.76 * (a.c.size + b.c.size)) / 2;
+      min = (0.92 * (a.c.size + b.c.size)) / 2;
     if (Math.abs(d) >= min) return;
-    const sign = d >= 0 ? 1 : -1,
-      delta = (min - Math.abs(d)) / 2;
-    a.x = clamp(a.x - sign * delta, -6.45, 6.45);
-    b.x = clamp(b.x + sign * delta, -6.45, 6.45);
+    const aOnLeft = d > 0 || (d === 0 && a.px <= b.px);
+    const left = aOnLeft ? a : b, right = aOnLeft ? b : a;
+    // At the corner the inner fighter takes the remaining displacement.
+    left.x = clamp((left.x + right.x - min) / 2, -6.45, 6.45 - min);
+    right.x = left.x + min;
   }
   advanceGait(f) {
     // Use actual displacement after pushboxes, in the character's model scale.

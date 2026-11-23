@@ -23,10 +23,43 @@
         margin-top:4px;
         line-height:1.25;
       }
+      #phone-vitals {display:none}
       @media (max-width:600px) and (orientation:portrait) {
+        body.playing .play-row {flex-direction:column;justify-content:center}
+        body.playing #phone-vitals {
+          display:grid; width:100%; flex:none; box-sizing:border-box;
+          padding:4px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left));
+          background:#0c1b25; border-bottom:1px solid #34424b; color:#e8d8b9;
+        }
+        #phone-vitals #toast {
+          position:static; inset:auto; display:block; width:100%; min-width:0;
+          height:15px; min-height:15px; box-sizing:border-box; margin:1px 0 0;
+          padding:0; border:0; background:none; transform:none; text-align:left;
+          color:#ffdfa6; font:600 11px/15px system-ui; letter-spacing:.02em;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:none;
+        }
+        #phone-vitals #toast:empty {visibility:hidden}
+        #phone-vitals .vitals {
+          position:static; width:100%; max-width:none; display:grid;
+          grid-template-columns:minmax(100px,1.1fr) minmax(100px,1fr);
+          align-items:center; column-gap:12px; row-gap:3px; text-shadow:none;
+        }
+        #phone-vitals .chapter {grid-column:1;grid-row:1;font-size:11px;letter-spacing:1px}
+        #phone-vitals .hp {grid-column:1;grid-row:2;margin:0;height:6px}
+        #phone-vitals .energy {grid-column:2;grid-row:1;font-size:10px;gap:3px}
+        #phone-vitals .energy b {letter-spacing:0;white-space:nowrap}
+        #phone-vitals .energy #score {display:none}
+        #phone-vitals #moon-mastery {grid-column:2;grid-row:2;margin:0;font:600 10px/1.15 system-ui;color:#bdd0cf}
+        #phone-vitals .boss:not([hidden]) {
+          position:static;width:100%;display:grid;grid-template-columns:auto minmax(55px,1fr);
+          align-items:center;gap:10px;text-align:left;margin-top:4px;font-size:10px;
+        }
+        #phone-vitals .boss > div {margin:0;height:5px}
+
         body.playing #arena {
           width:100%;
-          height:clamp(230px,min(120vw,calc(100dvh - 218px)),540px);
+          height:clamp(186px,min(120vw,calc(100dvh - 265px)),540px);
+          flex:0 1 auto; min-height:0;
           max-height:100%; aspect-ratio:auto;
         }
       }
@@ -44,6 +77,7 @@
         </nav>
       </header>
       <div class="play-row">
+        <div id="phone-vitals" role="group" aria-label="忍者与守将状态"></div>
         <div id="arena">
           <canvas id="game" aria-label="月影忍途实时动作画面"></canvas
           ><canvas id="fx" aria-hidden="true"></canvas>
@@ -173,6 +207,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20261124-roof-canvas1"></script>
+    <script type="module" src="main.mjs?v=20261124-eaves-toast1"></script>
   </body>
 </html>
