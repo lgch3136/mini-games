@@ -1,184 +1,163 @@
-import * as THREE from "../shared/vendor/three-0.185.1/three.module.min.js";
-import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
-import { ankle } from "./motion.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
-import {
-  ROSTER,
-  lerp,
-  clamp,
-  hurtbox,
-  attackBox,
-} from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
-import { PosePair } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
-const Y = new THREE.Vector3(0, 1, 0),
-  Z = new THREE.Vector3(0, 0, 1),
-  v = new THREE.Vector3(),
-  identity = new THREE.Quaternion(),
-  q = new THREE.Quaternion();
+import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
+import atlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
+
+const TAU = Math.PI * 2;
+const gaitFrames = [0, 3, 6, 9];
+const phases = ["load", "commit", "active", "return", "settle"];
+
+function actionCel(fighter, cells) {
+  const { name, spec, frame, connected } = fighter.action;
+  let phase;
+  if (frame < spec.startup) phase = frame < spec.startup * 0.55 ? 0 : 1;
+  else if (frame < spec.startup + spec.active) phase = 2;
+  else phase = frame - spec.startup - spec.active < spec.recovery * 0.58 ? 3 : 4;
+  if (name === "punch" && !connected && phase >= 3) {
+    const whiff = phase === 3 ? "punch/return/whiff" : "punch/return/whiff-late";
+    if (cells[whiff]) return whiff;
+  }
+  const fallback = {
+    super: "wave", wave: "punch", grab: "throw", throw: "punch",
+    rush: "kick", blow: "punch", airKick: "kick", airPunch: "jab",
+    lowPunch: "jab", overhead: "highKick",
+  };
+  let move = name;
+  while (move) {
+    const order = phase === 2 ? [2] : phase < 2 ? [phase, 0, 1] : [phase, 3, 4];
+    for (const i of order) {
+      const key = move + "/" + phases[i];
+      if (cells[key]) return key;
+    }
+    move = fallback[move];
+  }
+  return fighter.crouch ? "crouch/hold" : "idle/0";
+}
+
+function celFor(f, cells, frame) {
+  if (f.hp <= 0 || f.state === "ko") return f.down > 20 ? "ko/contact" : "ko/seated";
+  if (f.down) return f.down < 6 && f.y === 0 ? "rise/start" : "down/ground";
+  if (f.state === "hurt") return f.stateFrame < 7 ? "hit/impact" : "hit/release";
+  if (f.state === "block" || f.state === "guard" || (f.crouch && f.blocking)) {
+    const phase = f.state === "block" && f.stateFrame < 7 ? "impact" : "release";
+    return "block/" + (f.crouch ? "crouch-" : "") + phase;
+  }
+  if (f.action) return actionCel(f, cells);
+  if (f.state === "roll") return "roll/" + phases[Math.min(4, Math.floor(f.stateFrame / 6))];
+  if (f.land > 0) return f.land >= 3 ? "land/compress" : "land/release";
+  if (f.y > 0 || f.state === "jump" || f.state === "backstep") {
+    return "jump/" + (f.vy > 0.07 ? "rise" : f.vy < -0.07 ? "descent" : "apex");
+  }
+  if (f.crouch) return "crouch/hold";
+  if (f.state === "walk" || f.state === "run") {
+    const step = gaitFrames[Math.floor((f.walkPhase * 4 / TAU) % 4 + 4) % 4];
+    const gait = f.state === "run" && cells["run/0"] ? "run"
+      : (f.vx * f.facing < 0 ? "walkBack" : "walkForward");
+    return gait + "/" + step;
+  }
+  return "idle/" + [0, 1, 2, 1][Math.floor(frame / 11 + f.side * 2) % 4];
+}
+
 export class ArenaView {
   constructor(canvas, overlay) {
     this.canvas = canvas;
     this.overlay = overlay;
+    this.actorContext = canvas.getContext("2d");
     this.ctx = overlay.getContext("2d");
-    this.scene = new THREE.Scene();
     this.effects = [];
+    this.assets = new Map();
+    this.rigSources = {};
+    this.actorCels = [];
     this.models = [];
-    this.pools = [];
+    this.ready = false;
     this.boxes = false;
-    this.renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-      alpha: false,
-      powerPreference: "low-power",
-    });
-    this.renderer.setClearColor(0x17242c, 1);
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
-    this.camera = new THREE.OrthographicCamera(-8, 8, 7.2, -1.8, 0.1, 60);
-    this.camera.position.set(0, 0, 20);
-    this.camera.lookAt(0, 0, 0);
-    this.scene.add(new THREE.HemisphereLight(0xc7dced, 0x49372d, 1.05));
-    const key = new THREE.DirectionalLight(0xffdbb2, 2.6);
-    key.position.set(-4, 6, 5);
-    this.scene.add(key);
-    const rim = new THREE.DirectionalLight(0xffb875, 3.1);
-    rim.position.set(3, 4, -3);
-    this.scene.add(rim);
-    const fill = new THREE.DirectionalLight(0x91cddd, 0.7);
-    fill.position.set(3, 2, 7);
-    this.scene.add(fill);
     this.ambient = true;
     this.cinematic = true;
     this.reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    this.elapsed = 0;
-    this.pulseLights = [0, 1].map((i) => {
-      const light = new THREE.PointLight(i ? 0xffb478 : 0x78ffe3, 0, 4, 2);
-      this.scene.add(light);
-      return light;
-    });
-    this.loader = new GLTFLoader();
-    this.cache = new Map();
-    this.generation = 0;
-    this.ready = false;
-    const shadowCanvas = document.createElement("canvas");
-    shadowCanvas.width = 128;
-    shadowCanvas.height = 64;
-    const c = shadowCanvas.getContext("2d");
-    const g = c.createRadialGradient(64, 32, 5, 64, 32, 60);
-    g.addColorStop(0, "rgba(12,19,27,.6)");
-    g.addColorStop(0.55, "rgba(12,19,27,.28)");
-    g.addColorStop(1, "rgba(12,19,27,0)");
-    c.fillStyle = g;
-    c.fillRect(0, 0, 128, 64);
-    this.shadowTexture = new THREE.CanvasTexture(shadowCanvas);
-    this.shadows = [0, 1].map(() => {
-      const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.2, 0.38),
-        new THREE.MeshBasicMaterial({
-          map: this.shadowTexture,
-          transparent: true,
-          depthWrite: false,
-        }),
-      );
-      m.position.z = -0.12;
-      this.scene.add(m);
-      return m;
-    });
-    this.footShadows = [0, 1, 2, 3].map(() => {
-      const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.74, 0.13),
-        new THREE.MeshBasicMaterial({
-          map: this.shadowTexture,
-          transparent: true,
-          depthWrite: false,
-          opacity: 0.6,
-        }),
-      );
-      m.position.z = 0.02;
-      this.scene.add(m);
-      return m;
-    });
+    this.camera = { zoom: 1 };
+  }
+  load(index) {
+    const id = ROSTER[index].id;
+    if (!this.assets.has(id)) {
+      const atlas = atlases[id];
+      const image = new Image();
+      image.src = new URL("./assets/" + atlas.file + "?v=arcade-cels-r3", import.meta.url).href;
+      const promise = image.decode().then(() => {
+        if (image.naturalWidth !== atlas.width || image.naturalHeight !== atlas.height) {
+          throw new Error("Unexpected atlas dimensions for " + id);
+        }
+        this.rigSources[id] = "original-frame-atlas";
+        return image;
+      }).catch((error) => {
+        this.assets.delete(id);
+        throw error;
+      });
+      this.assets.set(id, { image, promise });
+    }
+    return this.assets.get(id).promise;
   }
   async preload() {
-    const textureLoader = new THREE.TextureLoader();
-    [this.clothTexture, this.backdropTexture] = await Promise.all([
-      textureLoader.loadAsync(
-        new URL("./assets/wind-jacquard-v3.jpg", import.meta.url).href,
-      ),
-      textureLoader.loadAsync(
-        new URL("./assets/harbor-dusk-v2.webp", import.meta.url).href,
-      ),
-    ]);
-    this.clothTexture.colorSpace = THREE.SRGBColorSpace;
-    this.clothTexture.wrapS = this.clothTexture.wrapT = THREE.RepeatWrapping;
-    this.clothTexture.flipY = false;
-    this.clothTexture.anisotropy = Math.min(
-      4,
-      this.renderer.capabilities.getMaxAnisotropy(),
-    );
-    this.backdropTexture.colorSpace = THREE.SRGBColorSpace;
-    this.backdrop = new THREE.Mesh(
-      new THREE.PlaneGeometry(16, 9),
-      new THREE.MeshBasicMaterial({
-        map: this.backdropTexture,
-        toneMapped: false,
-      }),
-    );
-    this.backdrop.position.set(0, 2.7, -1);
-    this.scene.add(this.backdrop);
-    await Promise.all(
-      ROSTER.map(async (c) => {
-        const model = await this.loader.loadAsync(
-          new URL(`./assets/${c.id}-rig-v3.glb`, import.meta.url).href,
-        );
-        model.scene.traverse((o) => {
-          if (!o.isMesh) return;
-          for (const m of Array.isArray(o.material) ? o.material : [o.material])
-            if (/_jacket|_trousers/.test(m.name)) {
-              m.map = this.clothTexture;
-              m.bumpMap = this.clothTexture;
-              m.bumpScale = 0.018;
-              m.roughness = 0.84;
-              m.needsUpdate = true;
-            }
-        });
-        this.cache.set(c.id, model.scene);
-      }),
-    );
+    await this.select([0, 1]);
     this.ready = true;
   }
-  select(ids) {
-    for (const m of this.models) this.scene.remove(m.root);
-    this.models = [];
-    ids.forEach((id, i) => {
-      const data = ROSTER[id],
-        source = this.cache.get(data.id);
-      if (!source) return;
-      const root = source.clone(true),
-        parts = {};
-      root.traverse((o) => {
-        if (o.name.includes("__") && !o.name.includes("_surface"))
-          parts[o.name.split("__")[1]] = o;
-        if (o.isMesh) {
-          o.frustumCulled = false; /* Shared mesh/material resources; no per-frame clones. */
-        }
-      });
-      this.scene.add(root);
-      this.models[i] = { root, parts, id, trail: [], posePair: new PosePair() };
-    });
+  async select(ids) {
+    await Promise.all(ids.map((id) => this.load(id)));
+    this.models = ids;
   }
   resize() {
-    const rect = this.canvas.getBoundingClientRect(),
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const rect = this.canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     if (this.w === rect.width && this.h === rect.height && this.dpr === dpr) return;
-    this.renderer.setPixelRatio(dpr);
-    this.renderer.setSize(rect.width, rect.height, false);
-    this.overlay.width = Math.round(rect.width * dpr);
-    this.overlay.height = Math.round(rect.height * dpr);
     this.w = rect.width;
     this.h = rect.height;
     this.dpr = dpr;
-    this.makeAtmosphere();
+    for (const el of [this.canvas, this.overlay]) {
+      el.width = Math.round(this.w * dpr);
+      el.height = Math.round(this.h * dpr);
+    }
+  }
+  screen(x, y) {
+    return [
+      (0.5 + x * this.camera.zoom / 16) * this.w,
+      (0.5 + (2.7 - y) * this.camera.zoom / 9) * this.h,
+    ];
+  }
+  drawFighters(fight, alpha) {
+    const c = this.actorContext;
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    c.clearRect(0, 0, this.w, this.h);
+    const floor = this.screen(0, 0)[1];
+    const scale = this.h * this.camera.zoom / (9 * 34);
+    const figures = fight.f.map(f => {
+      const [x, y] = this.screen(lerp(f.px, f.x, alpha), lerp(f.py, f.y, alpha));
+      return { f, x, y };
+    });
+    const priority = f => f.action && f.action.frame >= f.action.spec.startup
+      && f.action.frame < f.action.spec.startup + f.action.spec.active ? 2 : f.stun ? 0 : 1;
+    this.actorCels = [];
+    this.drawCalls = 0;
+    c.fillStyle = "rgba(11,20,30,.44)";
+    for (const { f, x } of figures) {
+      const spread = scale * clamp(1 - f.y * 0.16, 0.4, 1);
+      c.beginPath();
+      c.ellipse(x, floor + 1, 28 * spread, 4.7 * spread, 0, 0, TAU);
+      c.fill();
+    }
+    for (const { f, x, y } of figures.sort((a, b) => priority(a.f) - priority(b.f))) {
+      const entry = this.assets.get(f.c.id);
+      if (!entry?.image.naturalWidth) continue;
+      const { cells } = atlases[f.c.id];
+      const role = celFor(f, cells, fight.frame);
+      const ownFace = f.facing < 0 && cells[role + "@left"];
+      const [sx, sy, w, h, dx, dy] = ownFace || cells[role] || cells["idle/0"];
+      const size = scale * (f.c.id === "shan" ? 0.93 : 1);
+      c.save();
+      c.translate(Math.round(x), Math.round(y));
+      if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
+      c.scale(ownFace ? 1 : f.facing, 1);
+      c.drawImage(entry.image, sx, sy, w, h, dx * size, dy * size, w * size / 2, h * size / 2);
+      c.restore();
+      this.drawCalls++;
+      this.actorCels[f.side] = { id:f.c.id, role, facing:f.facing, ownFace:!!ownFace };
+    }
   }
   event(e) {
     if (
@@ -202,135 +181,16 @@ export class ArenaView {
       if (this.effects.length > 36) this.effects.shift();
     }
   }
-  setSegment(parts, name, a, b, length) {
-    const o = parts[name];
-    if (!o) return;
-    o.position.set(...a);
-    v.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-    q.setFromUnitVectors(Y, v.normalize());
-    o.quaternion.copy(q);
-    o.scale.set(1, 1, 1);
-  }
-  actor(model, f, prev, alpha, tick) {
-    const p = model.posePair.sample(f, prev, alpha, tick);
-    const { root, parts } = model;
-    model.pose = p;
-    root.position.set(lerp(f.px, f.x, alpha), lerp(f.py, f.y, alpha), 0.7);
-    root.scale.set(f.c.size * f.facing, f.c.size, f.c.size);
-    this.setSegment(parts, "torso", p.hip, p.chest, 0.95);
-    if (parts.pelvis) {
-      parts.pelvis.position.set(...p.hip);
-      parts.pelvis.quaternion.copy(parts.torso.quaternion);
-    }
-    if (parts.head) {
-      parts.head.position.set(...p.head);
-      parts.head.quaternion.slerpQuaternions(
-        identity,
-        parts.torso.quaternion,
-        f.down || f.state === "roll" ? 1 : 0.4,
-      );
-    }
-    this.setSegment(parts, "upperArmF", p.shoulderF, p.elbowFront, 0.59);
-    this.setSegment(parts, "forearmF", p.elbowFront, p.handF, 0.55);
-    this.setSegment(parts, "upperArmB", p.shoulderB, p.elbowBack, 0.59);
-    this.setSegment(parts, "forearmB", p.elbowBack, p.handB, 0.55);
-    for (const s of ["F", "B"]) {
-      parts["hand" + s]?.position.set(...p["hand" + s]);
-      parts["hand" + s]?.quaternion.copy(parts["forearm" + s].quaternion);
-      this.setSegment(
-        parts,
-        "thigh" + s,
-        p["hip" + s],
-        p[s === "F" ? "kneeFront" : "kneeBack"],
-        0.77,
-      );
-      this.setSegment(
-        parts,
-        "shin" + s,
-        p[s === "F" ? "kneeFront" : "kneeBack"],
-        ankle(p, s),
-        0.77,
-      );
-      const ft = parts["foot" + s];
-      if (ft) {
-        ft.position.set(...p["foot" + s]);
-        ft.rotation.set(0, 0, p["footAngle" + s]);
-      }
-      const contact = this.footShadows[f.side * 2 + (s === "F" ? 0 : 1)],
-        lift = root.position.y + p["foot" + s][1] * f.c.size;
-      contact.position.set(
-        root.position.x + (p["foot" + s][0] + 0.12) * f.facing * f.c.size,
-        -0.025,
-        0.02,
-      );
-      contact.material.opacity = 0.65 * clamp(1 - lift * 3, 0, 1);
-      contact.scale.setScalar(f.c.size);
-    }
-    if (parts.tail) {
-      parts.tail.position.set(p.hip[0] - 0.17, p.hip[1] + 0.12, -0.25);
-      parts.tail.rotation.set(
-        0,
-        0,
-        Math.PI + 0.14 * Math.sin(f.walkPhase) + f.vx * 2,
-      );
-    }
-    const shadow = this.shadows[f.side];
-    shadow.position.set(root.position.x, -0.01, -0.12);
-    shadow.scale.setScalar(clamp(1 - f.y * 0.12, 0.65, 1));
-    shadow.material.opacity = 0.42 * clamp(1 - f.y * 0.15, 0.3, 1);
-  }
-  screen(x, y) {
-    return [
-      (0.5 + (x * this.camera.zoom) / 16) * this.w,
-      (0.5 + ((2.7 - y) * this.camera.zoom) / 9) * this.h,
-    ];
-  }
-  render(fight, previous, alpha, dt = 0) {
-    if (!this.ready || !this.w) return;
-    this.elapsed += dt;
-    const intro =
-      this.cinematic && !this.reducedMotion && fight.state === "intro"
-        ? clamp((fight.intro - 28) / 47, 0, 1)
-        : 0;
-    const zoom = 1 + 0.055 * intro * intro * (3 - 2 * intro);
-    if (this.camera.zoom !== zoom) {
-      this.camera.zoom = zoom;
-      this.camera.updateProjectionMatrix();
-    }
-    this.pulseLights.forEach((light, i) => {
-      const shot = fight.projectiles.find((s) => s.owner === i),
-        flash = this.effects.findLast(
-          (e) =>
-            (e.side ?? 0) === i &&
-            ["hit", "block", "wave"].includes(e.type) &&
-            e.age < 0.12,
-        );
-      light.intensity = this.ambient
-        ? shot
-          ? 3.4
-          : flash
-            ? 4 * (1 - flash.age / 0.12)
-            : 0
-        : 0;
-      light.position.set(
-        shot ? lerp(shot.px, shot.x, alpha) : (flash?.x ?? fight.f[i].x),
-        shot?.y ?? flash?.y ?? 1.6,
-        1.5,
-      );
-    });
-    fight.f.forEach((f, i) => {
-      if (this.models[i]) this.actor(this.models[i], f, previous?.[i], alpha, dt > 0 ? fight.frame : undefined);
-    });
-    this.backdrop.material.map = this.ambient
-      ? this.atmosphereTexture
-      : this.backdropTexture;
-    this.renderer.render(this.scene, this.camera);
+  render(fight, _previous, alpha, dt = 0) {
+    if (!this.ready || !this.w || !this.h) return;
+    const intro = this.cinematic && !this.reducedMotion && fight.state === "intro"
+      ? clamp((fight.intro - 28) / 47, 0, 1) : 0;
+    this.camera.zoom = 1 + 0.035 * intro * intro * (3 - 2 * intro);
+    this.drawFighters(fight, alpha);
     const c = this.ctx;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, this.w, this.h);
     const scale = (this.w / 16) * this.camera.zoom;
-    this.drawAtmosphere(c);
-    this.drawTrails(fight, c, scale);
     for (const f of fight.f)
       if (f.maxTime > 0) {
         const [x, y] = this.screen(lerp(f.px, f.x, alpha), f.y + 1.5);
@@ -383,7 +243,7 @@ export class ArenaView {
       if (t >= 1) continue;
       const f = fight.f[e.side ?? 0],
         [x, y] = this.screen(e.x ?? f.x, e.y ?? 0.06),
-        r = (e.heavy ? 0.68 : 0.42) * scale;
+        r = (e.heavy ? 0.42 : 0.29) * scale;
       c.save();
       c.globalAlpha = 1 - t;
       c.translate(x, y);
@@ -467,153 +327,23 @@ export class ArenaView {
       }
     }
   }
-  makeAtmosphere() {
-    if (this.atmosphereTexture || !this.backdropTexture) return;
-    const layer = document.createElement("canvas");
-    layer.width = this.backdropTexture.image.width;
-    layer.height = this.backdropTexture.image.height;
-    const c = layer.getContext("2d"),
-      w = layer.width,
-      h = layer.height;
-    // Bake only static atmosphere once. Dynamic FX canvas stays mostly empty,
-    // instead of blending another full-screen translucent image every frame.
-    c.drawImage(this.backdropTexture.image, 0, 0, w, h);
-    const edge = c.createRadialGradient(
-      w * 0.5,
-      h * 0.53,
-      w * 0.2,
-      w * 0.5,
-      h * 0.5,
-      w * 0.69,
-    );
-    edge.addColorStop(0, "rgba(13,24,38,0)");
-    edge.addColorStop(0.7, "rgba(13,24,38,.035)");
-    edge.addColorStop(1, "rgba(13,24,38,.3)");
-    c.fillStyle = edge;
-    c.fillRect(0, 0, w, h);
-    for (const [x, y, r] of [
-      [0.13, 0.23, 0.11],
-      [0.9, 0.23, 0.09],
-      [0.49, 0.45, 0.22],
-    ]) {
-      const g = c.createRadialGradient(w * x, h * y, 0, w * x, h * y, w * r);
-      g.addColorStop(0, "rgba(255,181,86,.055)");
-      g.addColorStop(1, "rgba(255,181,86,0)");
-      c.fillStyle = g;
-      c.fillRect(0, 0, w, h);
-    }
-    this.atmosphereTexture = new THREE.CanvasTexture(layer);
-    this.atmosphereTexture.colorSpace = THREE.SRGBColorSpace;
-  }
-  drawAtmosphere(c) {
-    if (!this.ambient) return;
-    if (this.reducedMotion) return;
-    c.save();
-    for (let i = 0; i < 12; i++) {
-      const x = ((i * 0.618 + this.elapsed * 0.003) % 1) * this.w,
-        y = (0.2 + ((i * 0.373 + this.elapsed * 0.002) % 1) * 0.47) * this.h;
-      c.globalAlpha = 0.08 + 0.07 * Math.sin(this.elapsed * 0.7 + i) ** 2;
-      c.fillStyle = "#ffe4ad";
-      c.beginPath();
-      c.arc(
-        x,
-        y,
-        Math.max(0.5, this.w / 1200) * (i % 3 === 0 ? 1.4 : 0.8),
-        0,
-        Math.PI * 2,
-      );
-      c.fill();
-    }
-    c.restore();
-  }
-  drawTrails(fight, c, scale) {
-    for (const f of fight.f) {
-      const model = this.models[f.side],
-        action = f.action,
-        m = action?.spec;
-      if (!model) continue;
-      if (
-        !this.ambient ||
-        this.reducedMotion ||
-        !m ||
-        m.projectile ||
-        action.frame < m.startup - 3 ||
-        action.frame > m.startup + m.active + 2
-      ) {
-        model.trail = [];
-        continue;
-      }
-      if (model.trailAction !== action) {
-        model.trail = [];
-        model.trailAction = action;
-      }
-      const foot = /kick|sweep|rush/i.test(m.pose),
-        p = model.pose[foot ? "footF" : "handF"];
-      const point = [
-        model.root.position.x + p[0] * f.facing * f.c.size,
-        model.root.position.y + p[1] * f.c.size,
-      ];
-      const tail = model.trail.at(-1);
-      if (!tail || Math.hypot(tail[0] - point[0], tail[1] - point[1]) > 0.015)
-        model.trail.push(point);
-      if (model.trail.length > 5) model.trail.shift();
-      if (model.trail.length < 2) continue;
-      c.save();
-      c.globalCompositeOperation = "lighter";
-      c.lineCap = "round";
-      c.lineJoin = "round";
-      for (let i = 1; i < model.trail.length; i++) {
-        const a = this.screen(...model.trail[i - 1]),
-          b = this.screen(...model.trail[i]);
-        c.globalAlpha = (i / model.trail.length) * 0.42;
-        c.strokeStyle = f.side ? "#ffd39b" : "#a5ffe5";
-        c.lineWidth = Math.max(1.2, scale * 0.035);
-        c.beginPath();
-        c.moveTo(...a);
-        c.lineTo(...b);
-        c.stroke();
-      }
-      c.restore();
-    }
-  }
   diagnostics() {
     return {
-      renderer: "Three.js / Blender GLB",
+      renderer: "Canvas 2D / original frame atlases",
       ready: this.ready,
       dpr: this.dpr,
-      drawCalls: this.renderer.info.render.calls,
-      triangles: this.renderer.info.render.triangles,
-      geometries: this.renderer.info.memory.geometries,
-      textures: this.renderer.info.memory.textures,
+      drawCalls: this.drawCalls ?? 0,
+      triangles: 0,
       effects: this.effects.length,
       models: this.models.length,
-      modelVersion: 3,
+      rigSources: { ...this.rigSources },
+      actorCels: this.actorCels,
       cameraZoom: this.camera.zoom,
-      activeLights: this.pulseLights.filter((l) => l.intensity > 0).length,
       ambient: this.ambient,
     };
   }
   dispose() {
-    for (const source of this.cache.values())
-      source.traverse((o) => {
-        if (o.isMesh) {
-          o.geometry.dispose();
-          (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) =>
-            m.dispose(),
-          );
-        }
-      });
-    [...this.shadows, ...this.footShadows].forEach((o) => {
-      o.geometry.dispose();
-      o.material.dispose();
-    });
-    this.shadowTexture.dispose();
-    this.clothTexture?.dispose();
-    this.backdropTexture?.dispose();
-    this.atmosphereTexture?.dispose();
-    this.backdrop?.geometry.dispose();
-    this.backdrop?.material.dispose();
-    this.renderer.dispose();
-    this.cache.clear();
+    this.ready = false;
+    this.assets.clear();
   }
 }

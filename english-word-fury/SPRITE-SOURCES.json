@@ -1,0 +1,1512 @@
+{
+  "linAndMei": "Original project artwork for Lin and Mei, including the revised heavy-punch recovery frames for Mei.",
+  "shan": "The original english-word-fury/assets/bruiser-atlas-v3.webp. Low kick and sweep accents composite this character’s own boot and crouch parts in independent offline cels.",
+  "cels": {
+    "lin": {
+      "idle/0": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "idle/0@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "idle/1": [
+        "lin-neutral.webp",
+        "50925606f8e6108019cb66b99fee51c0373b642b6868ed2cb3576f50bfbb1714"
+      ],
+      "idle/1@left": [
+        "lin-neutral.webp",
+        "50925606f8e6108019cb66b99fee51c0373b642b6868ed2cb3576f50bfbb1714"
+      ],
+      "idle/2": [
+        "lin-neutral.webp",
+        "50925606f8e6108019cb66b99fee51c0373b642b6868ed2cb3576f50bfbb1714"
+      ],
+      "idle/2@left": [
+        "lin-neutral.webp",
+        "50925606f8e6108019cb66b99fee51c0373b642b6868ed2cb3576f50bfbb1714"
+      ],
+      "crouch/hold": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "crouch/hold@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "hit/impact": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "hit/impact@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "hit/release": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "hit/release@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "kick/load": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "kick/load@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "kick/active": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "kick/active@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "kick/return": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "kick/return@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkForward/0": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkForward/0@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkForward/3": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkForward/3@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkForward/6": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkForward/6@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkForward/9": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkForward/9@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkBack/0": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkBack/0@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkBack/3": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkBack/3@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkBack/6": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkBack/6@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkBack/9": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "walkBack/9@left": [
+        "lin-v6.webp",
+        "17519cf06f0b557e17e81ce7c9dfef3f514f7e2ae28102da9886e572c36a4185"
+      ],
+      "jab/load": [
+        "lin-jab.webp",
+        "580bdbedddbbdf32f8b775069794ee4796c59e14305f913536d4cb04a98c07fa"
+      ],
+      "jab/commit": [
+        "lin-jab.webp",
+        "580bdbedddbbdf32f8b775069794ee4796c59e14305f913536d4cb04a98c07fa"
+      ],
+      "jab/active": [
+        "lin-jab.webp",
+        "580bdbedddbbdf32f8b775069794ee4796c59e14305f913536d4cb04a98c07fa"
+      ],
+      "jab/return": [
+        "lin-jab.webp",
+        "580bdbedddbbdf32f8b775069794ee4796c59e14305f913536d4cb04a98c07fa"
+      ],
+      "jab/settle": [
+        "lin-jab.webp",
+        "580bdbedddbbdf32f8b775069794ee4796c59e14305f913536d4cb04a98c07fa"
+      ],
+      "punch/load": [
+        "lin-heavy.webp",
+        "abc6cbd78320d0319cc3d2695a0c1cf1c48d6da2307601b94bc764e34fcfba03"
+      ],
+      "punch/commit": [
+        "lin-heavy.webp",
+        "abc6cbd78320d0319cc3d2695a0c1cf1c48d6da2307601b94bc764e34fcfba03"
+      ],
+      "punch/active": [
+        "lin-heavy.webp",
+        "abc6cbd78320d0319cc3d2695a0c1cf1c48d6da2307601b94bc764e34fcfba03"
+      ],
+      "punch/return": [
+        "lin-heavy.webp",
+        "abc6cbd78320d0319cc3d2695a0c1cf1c48d6da2307601b94bc764e34fcfba03"
+      ],
+      "punch/settle": [
+        "lin-heavy.webp",
+        "abc6cbd78320d0319cc3d2695a0c1cf1c48d6da2307601b94bc764e34fcfba03"
+      ],
+      "highKick/load": [
+        "lin-highkick.webp",
+        "627f0cc3b368631d9353ff8b22f46acd24dc58bcbc2cf46383842e00b8a7e08c"
+      ],
+      "highKick/commit": [
+        "lin-highkick.webp",
+        "627f0cc3b368631d9353ff8b22f46acd24dc58bcbc2cf46383842e00b8a7e08c"
+      ],
+      "highKick/active": [
+        "lin-highkick.webp",
+        "627f0cc3b368631d9353ff8b22f46acd24dc58bcbc2cf46383842e00b8a7e08c"
+      ],
+      "highKick/return": [
+        "lin-highkick.webp",
+        "627f0cc3b368631d9353ff8b22f46acd24dc58bcbc2cf46383842e00b8a7e08c"
+      ],
+      "highKick/settle": [
+        "lin-highkick.webp",
+        "627f0cc3b368631d9353ff8b22f46acd24dc58bcbc2cf46383842e00b8a7e08c"
+      ],
+      "lowKick/load": [
+        "lin-lowkick.webp",
+        "552bfac505a2146d95f990fefbcebb519cb6f9239db5c5061af9acd9753e4d58"
+      ],
+      "lowKick/commit": [
+        "lin-lowkick.webp",
+        "552bfac505a2146d95f990fefbcebb519cb6f9239db5c5061af9acd9753e4d58"
+      ],
+      "lowKick/active": [
+        "lin-lowkick.webp",
+        "552bfac505a2146d95f990fefbcebb519cb6f9239db5c5061af9acd9753e4d58"
+      ],
+      "lowKick/return": [
+        "lin-lowkick.webp",
+        "552bfac505a2146d95f990fefbcebb519cb6f9239db5c5061af9acd9753e4d58"
+      ],
+      "lowKick/settle": [
+        "lin-lowkick.webp",
+        "552bfac505a2146d95f990fefbcebb519cb6f9239db5c5061af9acd9753e4d58"
+      ],
+      "sweep/load": [
+        "lin-sweep.webp",
+        "9abb3e21505a97acfaa3ec0b3b98b9dfcd3e23312be1d9bf61046e01f4caef39"
+      ],
+      "sweep/commit": [
+        "lin-sweep.webp",
+        "9abb3e21505a97acfaa3ec0b3b98b9dfcd3e23312be1d9bf61046e01f4caef39"
+      ],
+      "sweep/active": [
+        "lin-sweep.webp",
+        "9abb3e21505a97acfaa3ec0b3b98b9dfcd3e23312be1d9bf61046e01f4caef39"
+      ],
+      "sweep/return": [
+        "lin-sweep.webp",
+        "9abb3e21505a97acfaa3ec0b3b98b9dfcd3e23312be1d9bf61046e01f4caef39"
+      ],
+      "sweep/settle": [
+        "lin-sweep.webp",
+        "9abb3e21505a97acfaa3ec0b3b98b9dfcd3e23312be1d9bf61046e01f4caef39"
+      ],
+      "upper/load": [
+        "lin-upper.webp",
+        "a6957f90aab5d6402febe2684bcd9bf47a57ea1b8b6fb358a464999ea9d6424c"
+      ],
+      "upper/commit": [
+        "lin-upper.webp",
+        "a6957f90aab5d6402febe2684bcd9bf47a57ea1b8b6fb358a464999ea9d6424c"
+      ],
+      "upper/active": [
+        "lin-upper.webp",
+        "a6957f90aab5d6402febe2684bcd9bf47a57ea1b8b6fb358a464999ea9d6424c"
+      ],
+      "upper/return": [
+        "lin-upper.webp",
+        "a6957f90aab5d6402febe2684bcd9bf47a57ea1b8b6fb358a464999ea9d6424c"
+      ],
+      "upper/settle": [
+        "lin-upper.webp",
+        "a6957f90aab5d6402febe2684bcd9bf47a57ea1b8b6fb358a464999ea9d6424c"
+      ],
+      "punch/return/whiff": [
+        "lin-continuity.webp",
+        "31aeb4c8aaeaf5ca4dc020e34fca52b6ddf6286335bd72df1d7861644670cb37"
+      ],
+      "punch/return/whiff-late": [
+        "lin-continuity.webp",
+        "31aeb4c8aaeaf5ca4dc020e34fca52b6ddf6286335bd72df1d7861644670cb37"
+      ],
+      "jump/rise": [
+        "lin-motion.webp",
+        "b6fd99ea638fc66251ddfc599cffd3dd684a20f0dc5c9bc0760baf48a441422e"
+      ],
+      "jump/apex": [
+        "lin-motion.webp",
+        "b6fd99ea638fc66251ddfc599cffd3dd684a20f0dc5c9bc0760baf48a441422e"
+      ],
+      "jump/descent": [
+        "lin-motion.webp",
+        "b6fd99ea638fc66251ddfc599cffd3dd684a20f0dc5c9bc0760baf48a441422e"
+      ],
+      "land/compress": [
+        "lin-motion.webp",
+        "b6fd99ea638fc66251ddfc599cffd3dd684a20f0dc5c9bc0760baf48a441422e"
+      ],
+      "land/release": [
+        "lin-motion.webp",
+        "b6fd99ea638fc66251ddfc599cffd3dd684a20f0dc5c9bc0760baf48a441422e"
+      ],
+      "down/ground": [
+        "lin-motion.webp",
+        "b6fd99ea638fc66251ddfc599cffd3dd684a20f0dc5c9bc0760baf48a441422e"
+      ],
+      "rise/start": [
+        "lin-motion.webp",
+        "b6fd99ea638fc66251ddfc599cffd3dd684a20f0dc5c9bc0760baf48a441422e"
+      ],
+      "rise/recover": [
+        "lin-motion.webp",
+        "b6fd99ea638fc66251ddfc599cffd3dd684a20f0dc5c9bc0760baf48a441422e"
+      ],
+      "block/impact": [
+        "lin-reaction.webp",
+        "c158cd42b6194e39adeadc3a272fc9d02ca711bc47f2d93ab706146453f1c00a"
+      ],
+      "block/release": [
+        "lin-reaction.webp",
+        "c158cd42b6194e39adeadc3a272fc9d02ca711bc47f2d93ab706146453f1c00a"
+      ],
+      "block/crouch-impact": [
+        "lin-reaction.webp",
+        "c158cd42b6194e39adeadc3a272fc9d02ca711bc47f2d93ab706146453f1c00a"
+      ],
+      "block/crouch-release": [
+        "lin-reaction.webp",
+        "c158cd42b6194e39adeadc3a272fc9d02ca711bc47f2d93ab706146453f1c00a"
+      ],
+      "ko/contact": [
+        "lin-ko.webp",
+        "70339dedef40cd8b5f7d0387800dd6319a18cefca0cca94aca1a8d2329df0a3c"
+      ],
+      "ko/seated": [
+        "lin-ko.webp",
+        "70339dedef40cd8b5f7d0387800dd6319a18cefca0cca94aca1a8d2329df0a3c"
+      ],
+      "airKick/load": [
+        "lin-air.webp",
+        "02b20b2ecff0f42756fb4a29f5a2710d7fa781d1ef71e3a0d929b9cef30dfa9c"
+      ],
+      "airKick/return": [
+        "lin-air.webp",
+        "02b20b2ecff0f42756fb4a29f5a2710d7fa781d1ef71e3a0d929b9cef30dfa9c"
+      ],
+      "airKick/active": [
+        "lin-compact.webp",
+        "c490d90b252cda221374462c535be34cef9e1b620ed39009c174196b56c690bc"
+      ],
+      "airPunch/load": [
+        "lin-jumppunch.webp",
+        "22d49a6bf4dd9e5ef2c0ff8a81b2812c713a24f39ba91c90070f2576927ca338"
+      ],
+      "airPunch/commit": [
+        "lin-jumppunch.webp",
+        "22d49a6bf4dd9e5ef2c0ff8a81b2812c713a24f39ba91c90070f2576927ca338"
+      ],
+      "airPunch/active": [
+        "lin-jumppunch.webp",
+        "22d49a6bf4dd9e5ef2c0ff8a81b2812c713a24f39ba91c90070f2576927ca338"
+      ],
+      "airPunch/return": [
+        "lin-jumppunch.webp",
+        "22d49a6bf4dd9e5ef2c0ff8a81b2812c713a24f39ba91c90070f2576927ca338"
+      ],
+      "lowPunch/load": [
+        "lin-lowpunch.webp",
+        "4eeae7540d9f2ee2b43aa594f93458558c596cbf10189fe3dceb938bd010d913"
+      ],
+      "lowPunch/commit": [
+        "lin-lowpunch.webp",
+        "4eeae7540d9f2ee2b43aa594f93458558c596cbf10189fe3dceb938bd010d913"
+      ],
+      "lowPunch/active": [
+        "lin-lowpunch.webp",
+        "4eeae7540d9f2ee2b43aa594f93458558c596cbf10189fe3dceb938bd010d913"
+      ],
+      "lowPunch/return": [
+        "lin-lowpunch.webp",
+        "4eeae7540d9f2ee2b43aa594f93458558c596cbf10189fe3dceb938bd010d913"
+      ],
+      "lowPunch/settle": [
+        "lin-lowpunch.webp",
+        "4eeae7540d9f2ee2b43aa594f93458558c596cbf10189fe3dceb938bd010d913"
+      ],
+      "overhead/load": [
+        "lin-overhead.webp",
+        "0635bd79c0e610029ede3f8e943fd64c5ae867c311dbe7a71d826e03b82cf2d8"
+      ],
+      "overhead/commit": [
+        "lin-overhead.webp",
+        "0635bd79c0e610029ede3f8e943fd64c5ae867c311dbe7a71d826e03b82cf2d8"
+      ],
+      "overhead/active": [
+        "lin-overhead.webp",
+        "0635bd79c0e610029ede3f8e943fd64c5ae867c311dbe7a71d826e03b82cf2d8"
+      ],
+      "overhead/return": [
+        "lin-overhead.webp",
+        "0635bd79c0e610029ede3f8e943fd64c5ae867c311dbe7a71d826e03b82cf2d8"
+      ],
+      "overhead/settle": [
+        "lin-overhead.webp",
+        "0635bd79c0e610029ede3f8e943fd64c5ae867c311dbe7a71d826e03b82cf2d8"
+      ],
+      "rush/load": [
+        "lin-rush.webp",
+        "543f23670f3b8ebae32955f6010f5fe4b48f02fc4244932e14162e0b3aba7c9c"
+      ],
+      "rush/commit": [
+        "lin-rush.webp",
+        "543f23670f3b8ebae32955f6010f5fe4b48f02fc4244932e14162e0b3aba7c9c"
+      ],
+      "rush/active": [
+        "lin-rush.webp",
+        "543f23670f3b8ebae32955f6010f5fe4b48f02fc4244932e14162e0b3aba7c9c"
+      ],
+      "rush/return": [
+        "lin-rush.webp",
+        "543f23670f3b8ebae32955f6010f5fe4b48f02fc4244932e14162e0b3aba7c9c"
+      ],
+      "rush/settle": [
+        "lin-rush.webp",
+        "543f23670f3b8ebae32955f6010f5fe4b48f02fc4244932e14162e0b3aba7c9c"
+      ],
+      "roll/load": [
+        "lin-roll.webp",
+        "2ab46f508020a0e76c7849be5419ba77541b0309ea4cd20bfbc58b0df3849f90"
+      ],
+      "blow/load": [
+        "lin-blow.webp",
+        "c0271dd997e4792b470e78a8540ff223af2ba180e727341f14a4274b33311ef4"
+      ],
+      "blow/commit": [
+        "lin-blow.webp",
+        "c0271dd997e4792b470e78a8540ff223af2ba180e727341f14a4274b33311ef4"
+      ],
+      "blow/active": [
+        "lin-blow.webp",
+        "c0271dd997e4792b470e78a8540ff223af2ba180e727341f14a4274b33311ef4"
+      ],
+      "blow/return": [
+        "lin-blow.webp",
+        "c0271dd997e4792b470e78a8540ff223af2ba180e727341f14a4274b33311ef4"
+      ],
+      "blow/settle": [
+        "lin-blow.webp",
+        "c0271dd997e4792b470e78a8540ff223af2ba180e727341f14a4274b33311ef4"
+      ],
+      "wave/load": [
+        "lin-wave.webp",
+        "cfafe7dc25220546f4fc4a9e34d76b5c5bbacd56e93a0dceee1cd9235d1f7e18"
+      ],
+      "wave/commit": [
+        "lin-wave.webp",
+        "cfafe7dc25220546f4fc4a9e34d76b5c5bbacd56e93a0dceee1cd9235d1f7e18"
+      ],
+      "wave/active": [
+        "lin-wave.webp",
+        "cfafe7dc25220546f4fc4a9e34d76b5c5bbacd56e93a0dceee1cd9235d1f7e18"
+      ],
+      "wave/return": [
+        "lin-wave.webp",
+        "cfafe7dc25220546f4fc4a9e34d76b5c5bbacd56e93a0dceee1cd9235d1f7e18"
+      ],
+      "wave/settle": [
+        "lin-wave.webp",
+        "cfafe7dc25220546f4fc4a9e34d76b5c5bbacd56e93a0dceee1cd9235d1f7e18"
+      ],
+      "super/load": [
+        "lin-super.webp",
+        "55a089e92613f791098830c8aca54d63a9172dd92ad72790dca6f10da7e8744d"
+      ],
+      "super/commit": [
+        "lin-super.webp",
+        "55a089e92613f791098830c8aca54d63a9172dd92ad72790dca6f10da7e8744d"
+      ],
+      "super/active": [
+        "lin-super.webp",
+        "55a089e92613f791098830c8aca54d63a9172dd92ad72790dca6f10da7e8744d"
+      ],
+      "super/return": [
+        "lin-super.webp",
+        "55a089e92613f791098830c8aca54d63a9172dd92ad72790dca6f10da7e8744d"
+      ],
+      "super/settle": [
+        "lin-super.webp",
+        "55a089e92613f791098830c8aca54d63a9172dd92ad72790dca6f10da7e8744d"
+      ],
+      "throw/load": [
+        "lin-throw.webp",
+        "cf67acbbfc78dcdea609df3e8cb1a4a6b2f27a9b54a657d0144714fa073c9cb4"
+      ],
+      "throw/commit": [
+        "lin-throw.webp",
+        "cf67acbbfc78dcdea609df3e8cb1a4a6b2f27a9b54a657d0144714fa073c9cb4"
+      ],
+      "throw/active": [
+        "lin-throw.webp",
+        "cf67acbbfc78dcdea609df3e8cb1a4a6b2f27a9b54a657d0144714fa073c9cb4"
+      ],
+      "throw/return": [
+        "lin-throw.webp",
+        "cf67acbbfc78dcdea609df3e8cb1a4a6b2f27a9b54a657d0144714fa073c9cb4"
+      ],
+      "throw/settle": [
+        "lin-throw.webp",
+        "cf67acbbfc78dcdea609df3e8cb1a4a6b2f27a9b54a657d0144714fa073c9cb4"
+      ],
+      "grab/load": [
+        "lin-grab.webp",
+        "59051b6a14d28b0507fba3b61ecca94790835b798ac6e71b6765248471de0aa7"
+      ],
+      "grab/commit": [
+        "lin-grab.webp",
+        "59051b6a14d28b0507fba3b61ecca94790835b798ac6e71b6765248471de0aa7"
+      ],
+      "grab/active": [
+        "lin-grab.webp",
+        "59051b6a14d28b0507fba3b61ecca94790835b798ac6e71b6765248471de0aa7"
+      ],
+      "grab/return": [
+        "lin-grab.webp",
+        "59051b6a14d28b0507fba3b61ecca94790835b798ac6e71b6765248471de0aa7"
+      ],
+      "grab/settle": [
+        "lin-grab.webp",
+        "59051b6a14d28b0507fba3b61ecca94790835b798ac6e71b6765248471de0aa7"
+      ]
+    },
+    "mei": {
+      "idle/0": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "idle/0@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "idle/1": [
+        "mei-neutral.webp",
+        "b88dafc2de070ea5894dbac4d4f0d8f5d2dd7ba12422cdce522f3238e85db724"
+      ],
+      "idle/1@left": [
+        "mei-neutral.webp",
+        "b88dafc2de070ea5894dbac4d4f0d8f5d2dd7ba12422cdce522f3238e85db724"
+      ],
+      "idle/2": [
+        "mei-neutral.webp",
+        "b88dafc2de070ea5894dbac4d4f0d8f5d2dd7ba12422cdce522f3238e85db724"
+      ],
+      "idle/2@left": [
+        "mei-neutral.webp",
+        "b88dafc2de070ea5894dbac4d4f0d8f5d2dd7ba12422cdce522f3238e85db724"
+      ],
+      "crouch/hold": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "crouch/hold@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "hit/impact": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "hit/impact@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "hit/release": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "hit/release@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "kick/load": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "kick/load@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "kick/active": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "kick/active@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "kick/return": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "kick/return@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkForward/0": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkForward/0@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkForward/3": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkForward/3@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkForward/6": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkForward/6@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkForward/9": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkForward/9@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkBack/0": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkBack/0@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkBack/3": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkBack/3@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkBack/6": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkBack/6@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkBack/9": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "walkBack/9@left": [
+        "mei-v6.webp",
+        "6c8136410b53d3cb60a2195663395ead03a291dc5ddcd358c9c916eeae3f4bd2"
+      ],
+      "jab/load": [
+        "mei-jab.webp",
+        "4a89f27e353c65af1f013707e90508db121890e4edc59f7576a85051e0e63e9f"
+      ],
+      "jab/commit": [
+        "mei-jab.webp",
+        "4a89f27e353c65af1f013707e90508db121890e4edc59f7576a85051e0e63e9f"
+      ],
+      "jab/active": [
+        "mei-jab.webp",
+        "4a89f27e353c65af1f013707e90508db121890e4edc59f7576a85051e0e63e9f"
+      ],
+      "jab/return": [
+        "mei-jab.webp",
+        "4a89f27e353c65af1f013707e90508db121890e4edc59f7576a85051e0e63e9f"
+      ],
+      "jab/settle": [
+        "mei-jab.webp",
+        "4a89f27e353c65af1f013707e90508db121890e4edc59f7576a85051e0e63e9f"
+      ],
+      "punch/load": [
+        "mei-heavy.webp",
+        "bd0f8d6796db45467a312af171654a346a06d17f40d435152c23317aeccc753b"
+      ],
+      "punch/commit": [
+        "mei-heavy.webp",
+        "bd0f8d6796db45467a312af171654a346a06d17f40d435152c23317aeccc753b"
+      ],
+      "punch/active": [
+        "mei-heavy.webp",
+        "bd0f8d6796db45467a312af171654a346a06d17f40d435152c23317aeccc753b"
+      ],
+      "punch/return": [
+        "mei-heavy.webp",
+        "bd0f8d6796db45467a312af171654a346a06d17f40d435152c23317aeccc753b"
+      ],
+      "punch/settle": [
+        "mei-heavy.webp",
+        "bd0f8d6796db45467a312af171654a346a06d17f40d435152c23317aeccc753b"
+      ],
+      "highKick/load": [
+        "mei-highkick.webp",
+        "2289cc3099e74f9459129ae201a9d9651fa1a90c3a824b74301d006777a5f009"
+      ],
+      "highKick/commit": [
+        "mei-highkick.webp",
+        "2289cc3099e74f9459129ae201a9d9651fa1a90c3a824b74301d006777a5f009"
+      ],
+      "highKick/active": [
+        "mei-highkick.webp",
+        "2289cc3099e74f9459129ae201a9d9651fa1a90c3a824b74301d006777a5f009"
+      ],
+      "highKick/return": [
+        "mei-highkick.webp",
+        "2289cc3099e74f9459129ae201a9d9651fa1a90c3a824b74301d006777a5f009"
+      ],
+      "highKick/settle": [
+        "mei-highkick.webp",
+        "2289cc3099e74f9459129ae201a9d9651fa1a90c3a824b74301d006777a5f009"
+      ],
+      "lowKick/load": [
+        "mei-lowkick.webp",
+        "014ee4595bb52f89e3c9faea6e89040f8cd7d0b499ce3beff6e325de44aca331"
+      ],
+      "lowKick/commit": [
+        "mei-lowkick.webp",
+        "014ee4595bb52f89e3c9faea6e89040f8cd7d0b499ce3beff6e325de44aca331"
+      ],
+      "lowKick/active": [
+        "mei-lowkick.webp",
+        "014ee4595bb52f89e3c9faea6e89040f8cd7d0b499ce3beff6e325de44aca331"
+      ],
+      "lowKick/return": [
+        "mei-lowkick.webp",
+        "014ee4595bb52f89e3c9faea6e89040f8cd7d0b499ce3beff6e325de44aca331"
+      ],
+      "lowKick/settle": [
+        "mei-lowkick.webp",
+        "014ee4595bb52f89e3c9faea6e89040f8cd7d0b499ce3beff6e325de44aca331"
+      ],
+      "sweep/load": [
+        "mei-sweep.webp",
+        "2c506d8d45b8fea9f28d4612c14ebc80370e37b5a0d1fa00fc5a9b3b1209a901"
+      ],
+      "sweep/commit": [
+        "mei-sweep.webp",
+        "2c506d8d45b8fea9f28d4612c14ebc80370e37b5a0d1fa00fc5a9b3b1209a901"
+      ],
+      "sweep/active": [
+        "mei-sweep.webp",
+        "2c506d8d45b8fea9f28d4612c14ebc80370e37b5a0d1fa00fc5a9b3b1209a901"
+      ],
+      "sweep/return": [
+        "mei-sweep.webp",
+        "2c506d8d45b8fea9f28d4612c14ebc80370e37b5a0d1fa00fc5a9b3b1209a901"
+      ],
+      "sweep/settle": [
+        "mei-sweep.webp",
+        "2c506d8d45b8fea9f28d4612c14ebc80370e37b5a0d1fa00fc5a9b3b1209a901"
+      ],
+      "upper/load": [
+        "mei-upper.webp",
+        "b0683d7e320901e5c7c7063d6f5d22017016b0ede1aae93a16f511651de874cc"
+      ],
+      "upper/commit": [
+        "mei-upper.webp",
+        "b0683d7e320901e5c7c7063d6f5d22017016b0ede1aae93a16f511651de874cc"
+      ],
+      "upper/active": [
+        "mei-upper.webp",
+        "b0683d7e320901e5c7c7063d6f5d22017016b0ede1aae93a16f511651de874cc"
+      ],
+      "upper/return": [
+        "mei-upper.webp",
+        "b0683d7e320901e5c7c7063d6f5d22017016b0ede1aae93a16f511651de874cc"
+      ],
+      "upper/settle": [
+        "mei-upper.webp",
+        "b0683d7e320901e5c7c7063d6f5d22017016b0ede1aae93a16f511651de874cc"
+      ],
+      "jump/rise": [
+        "mei-motion.webp",
+        "162bf0bdadabcefe02cc7cc76906adca36a4c61b2813d1693accd6e0912bf2bd"
+      ],
+      "jump/apex": [
+        "mei-motion.webp",
+        "162bf0bdadabcefe02cc7cc76906adca36a4c61b2813d1693accd6e0912bf2bd"
+      ],
+      "jump/descent": [
+        "mei-motion.webp",
+        "162bf0bdadabcefe02cc7cc76906adca36a4c61b2813d1693accd6e0912bf2bd"
+      ],
+      "land/compress": [
+        "mei-motion.webp",
+        "162bf0bdadabcefe02cc7cc76906adca36a4c61b2813d1693accd6e0912bf2bd"
+      ],
+      "land/release": [
+        "mei-motion.webp",
+        "162bf0bdadabcefe02cc7cc76906adca36a4c61b2813d1693accd6e0912bf2bd"
+      ],
+      "down/ground": [
+        "mei-motion.webp",
+        "162bf0bdadabcefe02cc7cc76906adca36a4c61b2813d1693accd6e0912bf2bd"
+      ],
+      "rise/start": [
+        "mei-motion.webp",
+        "162bf0bdadabcefe02cc7cc76906adca36a4c61b2813d1693accd6e0912bf2bd"
+      ],
+      "rise/recover": [
+        "mei-motion.webp",
+        "162bf0bdadabcefe02cc7cc76906adca36a4c61b2813d1693accd6e0912bf2bd"
+      ],
+      "block/impact": [
+        "mei-reaction.webp",
+        "adc17142215eebca6df45a2dee89de3418de5f3536343efa04e4f49956931b21"
+      ],
+      "block/release": [
+        "mei-reaction.webp",
+        "adc17142215eebca6df45a2dee89de3418de5f3536343efa04e4f49956931b21"
+      ],
+      "block/crouch-impact": [
+        "mei-reaction.webp",
+        "adc17142215eebca6df45a2dee89de3418de5f3536343efa04e4f49956931b21"
+      ],
+      "block/crouch-release": [
+        "mei-reaction.webp",
+        "adc17142215eebca6df45a2dee89de3418de5f3536343efa04e4f49956931b21"
+      ],
+      "ko/contact": [
+        "mei-ko.webp",
+        "a9651e1124c6126ce400f05245c439d8f17a824b03f3ca5a415c9538713328a8"
+      ],
+      "ko/seated": [
+        "mei-ko.webp",
+        "a9651e1124c6126ce400f05245c439d8f17a824b03f3ca5a415c9538713328a8"
+      ],
+      "airKick/load": [
+        "mei-air.webp",
+        "379affa2ee71acffce59c5b3d90659e000bb81de2e0f902513d91430518be609"
+      ],
+      "airKick/return": [
+        "mei-air.webp",
+        "379affa2ee71acffce59c5b3d90659e000bb81de2e0f902513d91430518be609"
+      ],
+      "airKick/active": [
+        "mei-compact.webp",
+        "85ee2606fbfc26de14d321724226a66e4922202824d84e320f1af19c95085c92"
+      ],
+      "airPunch/load": [
+        "mei-jumppunch.webp",
+        "ea00e7c2de18202b91b8fa64068a2a9231e145fdcdc7953fdb05f546b15d7e95"
+      ],
+      "airPunch/commit": [
+        "mei-jumppunch.webp",
+        "ea00e7c2de18202b91b8fa64068a2a9231e145fdcdc7953fdb05f546b15d7e95"
+      ],
+      "airPunch/active": [
+        "mei-jumppunch.webp",
+        "ea00e7c2de18202b91b8fa64068a2a9231e145fdcdc7953fdb05f546b15d7e95"
+      ],
+      "airPunch/return": [
+        "mei-jumppunch.webp",
+        "ea00e7c2de18202b91b8fa64068a2a9231e145fdcdc7953fdb05f546b15d7e95"
+      ],
+      "lowPunch/load": [
+        "mei-lowpunch.webp",
+        "acbef6d44199cc7cfc4655574ba781b8376d05f0c7cefa37685c4608015326a3"
+      ],
+      "lowPunch/commit": [
+        "mei-lowpunch.webp",
+        "acbef6d44199cc7cfc4655574ba781b8376d05f0c7cefa37685c4608015326a3"
+      ],
+      "lowPunch/active": [
+        "mei-lowpunch.webp",
+        "acbef6d44199cc7cfc4655574ba781b8376d05f0c7cefa37685c4608015326a3"
+      ],
+      "lowPunch/return": [
+        "mei-lowpunch.webp",
+        "acbef6d44199cc7cfc4655574ba781b8376d05f0c7cefa37685c4608015326a3"
+      ],
+      "lowPunch/settle": [
+        "mei-lowpunch.webp",
+        "acbef6d44199cc7cfc4655574ba781b8376d05f0c7cefa37685c4608015326a3"
+      ],
+      "overhead/load": [
+        "mei-overhead.webp",
+        "65c1d6cb70d12fcdec0f7799d3e625c1c2858cfc17914fef7f1baf35dd4ba913"
+      ],
+      "overhead/commit": [
+        "mei-overhead.webp",
+        "65c1d6cb70d12fcdec0f7799d3e625c1c2858cfc17914fef7f1baf35dd4ba913"
+      ],
+      "overhead/active": [
+        "mei-overhead.webp",
+        "65c1d6cb70d12fcdec0f7799d3e625c1c2858cfc17914fef7f1baf35dd4ba913"
+      ],
+      "overhead/return": [
+        "mei-overhead.webp",
+        "65c1d6cb70d12fcdec0f7799d3e625c1c2858cfc17914fef7f1baf35dd4ba913"
+      ],
+      "overhead/settle": [
+        "mei-overhead.webp",
+        "65c1d6cb70d12fcdec0f7799d3e625c1c2858cfc17914fef7f1baf35dd4ba913"
+      ],
+      "rush/load": [
+        "mei-rush.webp",
+        "fb47f155f8f88fb9d5dc917ff24b73d3a88468dd215170f33f0e567001ddbaaa"
+      ],
+      "rush/commit": [
+        "mei-rush.webp",
+        "fb47f155f8f88fb9d5dc917ff24b73d3a88468dd215170f33f0e567001ddbaaa"
+      ],
+      "rush/return": [
+        "mei-rush.webp",
+        "fb47f155f8f88fb9d5dc917ff24b73d3a88468dd215170f33f0e567001ddbaaa"
+      ],
+      "rush/settle": [
+        "mei-rush.webp",
+        "fb47f155f8f88fb9d5dc917ff24b73d3a88468dd215170f33f0e567001ddbaaa"
+      ],
+      "roll/load": [
+        "mei-roll.webp",
+        "d1edca8d46eeadc86ce2a039a1eeea430cd66c4fe945b18756b18368569af6d7"
+      ],
+      "blow/load": [
+        "mei-blow.webp",
+        "699408181daa9dd50286e620a997f2b3ff2db26c49a750605e4a6df06421db5d"
+      ],
+      "blow/commit": [
+        "mei-blow.webp",
+        "699408181daa9dd50286e620a997f2b3ff2db26c49a750605e4a6df06421db5d"
+      ],
+      "blow/active": [
+        "mei-blow.webp",
+        "699408181daa9dd50286e620a997f2b3ff2db26c49a750605e4a6df06421db5d"
+      ],
+      "blow/return": [
+        "mei-blow.webp",
+        "699408181daa9dd50286e620a997f2b3ff2db26c49a750605e4a6df06421db5d"
+      ],
+      "blow/settle": [
+        "mei-blow.webp",
+        "699408181daa9dd50286e620a997f2b3ff2db26c49a750605e4a6df06421db5d"
+      ],
+      "wave/load": [
+        "mei-wave.webp",
+        "3aaaf1d6656fd00304c831c488137090cefd073aa28e0f03ca1eab80dec7111a"
+      ],
+      "wave/commit": [
+        "mei-wave.webp",
+        "3aaaf1d6656fd00304c831c488137090cefd073aa28e0f03ca1eab80dec7111a"
+      ],
+      "wave/active": [
+        "mei-wave.webp",
+        "3aaaf1d6656fd00304c831c488137090cefd073aa28e0f03ca1eab80dec7111a"
+      ],
+      "wave/return": [
+        "mei-wave.webp",
+        "3aaaf1d6656fd00304c831c488137090cefd073aa28e0f03ca1eab80dec7111a"
+      ],
+      "wave/settle": [
+        "mei-wave.webp",
+        "3aaaf1d6656fd00304c831c488137090cefd073aa28e0f03ca1eab80dec7111a"
+      ],
+      "super/load": [
+        "mei-super.webp",
+        "ab88ead804694a42f3fba18440ffb6c190325b090b264ec89dc64cb478d4bd7e"
+      ],
+      "super/commit": [
+        "mei-super.webp",
+        "ab88ead804694a42f3fba18440ffb6c190325b090b264ec89dc64cb478d4bd7e"
+      ],
+      "super/active": [
+        "mei-super.webp",
+        "ab88ead804694a42f3fba18440ffb6c190325b090b264ec89dc64cb478d4bd7e"
+      ],
+      "super/return": [
+        "mei-super.webp",
+        "ab88ead804694a42f3fba18440ffb6c190325b090b264ec89dc64cb478d4bd7e"
+      ],
+      "super/settle": [
+        "mei-super.webp",
+        "ab88ead804694a42f3fba18440ffb6c190325b090b264ec89dc64cb478d4bd7e"
+      ],
+      "throw/load": [
+        "mei-throw.webp",
+        "d6003db68397a488426f5bd523c21712085f98d7e60410cab6255d29bbe8b6f5"
+      ],
+      "throw/commit": [
+        "mei-throw.webp",
+        "d6003db68397a488426f5bd523c21712085f98d7e60410cab6255d29bbe8b6f5"
+      ],
+      "throw/active": [
+        "mei-throw.webp",
+        "d6003db68397a488426f5bd523c21712085f98d7e60410cab6255d29bbe8b6f5"
+      ],
+      "throw/return": [
+        "mei-throw.webp",
+        "d6003db68397a488426f5bd523c21712085f98d7e60410cab6255d29bbe8b6f5"
+      ],
+      "throw/settle": [
+        "mei-throw.webp",
+        "d6003db68397a488426f5bd523c21712085f98d7e60410cab6255d29bbe8b6f5"
+      ],
+      "grab/load": [
+        "mei-grab.webp",
+        "68575e9abadc227c7299f6a40defd921e20827340be42f3ae6237912f0734554"
+      ],
+      "grab/commit": [
+        "mei-grab.webp",
+        "68575e9abadc227c7299f6a40defd921e20827340be42f3ae6237912f0734554"
+      ],
+      "grab/active": [
+        "mei-grab.webp",
+        "68575e9abadc227c7299f6a40defd921e20827340be42f3ae6237912f0734554"
+      ],
+      "grab/return": [
+        "mei-grab.webp",
+        "68575e9abadc227c7299f6a40defd921e20827340be42f3ae6237912f0734554"
+      ],
+      "grab/settle": [
+        "mei-grab.webp",
+        "68575e9abadc227c7299f6a40defd921e20827340be42f3ae6237912f0734554"
+      ]
+    },
+    "shan": {
+      "idle/0": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "idle/1": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "idle/2": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "walkForward/0": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "walkForward/3": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "walkForward/6": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "walkForward/9": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "walkBack/0": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "walkBack/3": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "walkBack/6": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "walkBack/9": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "run/0": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "run/3": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "run/6": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "run/9": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "crouch/hold": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "jump/rise": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "jump/apex": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "jump/descent": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "land/compress": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "land/release": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "block/impact": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "block/release": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "block/crouch-impact": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "block/crouch-release": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "hit/impact": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "hit/release": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "down/ground": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "ko/contact": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "ko/seated": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "rise/start": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "rise/recover": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "jab/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "jab/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "jab/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "jab/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "jab/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "punch/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "punch/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "punch/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "punch/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "punch/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "kick/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "kick/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "kick/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "kick/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "kick/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "highKick/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "highKick/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "highKick/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "highKick/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "highKick/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowKick/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowKick/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowKick/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowKick/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowKick/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowPunch/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowPunch/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowPunch/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowPunch/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "lowPunch/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "sweep/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "sweep/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "sweep/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "sweep/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "sweep/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "overhead/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "overhead/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "overhead/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "overhead/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "overhead/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airPunch/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airPunch/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airPunch/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airPunch/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airPunch/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airKick/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airKick/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airKick/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airKick/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "airKick/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "roll/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "roll/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "roll/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "roll/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "roll/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "wave/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "wave/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "wave/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "wave/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "wave/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "upper/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "upper/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "upper/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "upper/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "upper/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "rush/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "rush/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "rush/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "rush/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "rush/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "throw/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "throw/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "throw/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "throw/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "throw/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "grab/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "grab/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "grab/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "grab/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "grab/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "blow/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "blow/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "blow/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "blow/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "blow/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "super/load": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "super/commit": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "super/active": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "super/return": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ],
+      "super/settle": [
+        "bruiser-atlas-v3.webp",
+        "4b7c90f7a21c4e49ff647a258fc57e1431766c2f8c8f829e787b296f81296a0e"
+      ]
+    }
+  }
+}

@@ -6,7 +6,7 @@ import {
   VERSION,
   clamp,
 } from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
-import { ArenaView } from "./view.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
+import { ArenaView } from "./view.mjs?v=arcade-cels-r3";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 const fighterSnapshots = new FighterSnapshots();
@@ -276,14 +276,28 @@ function tick(now) {
   if (perf.work.length > 1200) perf.work.shift();
   if (mode === "playing") raf = requestAnimationFrame(tick);
 }
-function startMatch(next = false) {
-  if (!view?.ready) return;
+let loadingMatch = false;
+async function startMatch(next = false) {
+  if (!view?.ready || loadingMatch || destroyed) return;
+  loadingMatch = true;
+  $("start-btn").disabled = $("next-btn").disabled = true;
   stop();
   if (!next) {
     ladder = 0;
     wordsDone = 0;
     opponent = (hero + 1) % 3;
   }
+  try {
+    await view.select([hero, opponent]);
+  } catch (error) {
+    setText("status", "角色画格未加载，可重试进入擂台");
+    console.error(error);
+    return;
+  } finally {
+    loadingMatch = false;
+    $("start-btn").disabled = $("next-btn").disabled = false;
+  }
+  if (destroyed) return;
   game = new Fight({
     hero,
     enemy: opponent,
@@ -296,7 +310,6 @@ function startMatch(next = false) {
   mode = "playing";
   previous = null;
   view.effects = [];
-  view.select([hero, opponent]);
   document.body.classList.add("playing");
   document.body.classList.toggle("training", game.mode === "training");
   $("menu").hidden = $("pause").hidden = $("result").hidden = true;
@@ -357,10 +370,9 @@ function menu() {
   $("announcement").hidden = true;
   document.body.classList.remove("playing", "training");
   game = new Fight({ hero, enemy: opponent });
-  view?.select([hero, opponent]);
-  preview();
+  void updateRosterPreview();
   setText("status", "港城会馆 · 暮色擂台");
-  setText("hint", "Blender 模型 · WebGL · 四键格斗");
+  setText("hint", "逐帧角色 · 四键格斗");
 }
 function finish() {
   mode = "result";
@@ -547,6 +559,7 @@ $("pause-btn").addEventListener("click", pause);
 for (const id of ["exit-btn", "pause-exit", "result-exit"])
   $(id).addEventListener("click", menu);
 $("next-btn").addEventListener("click", () => {
+  if (loadingMatch) return;
   if (game.winner === 0 && game.mode !== "versus") {
     ladder++;
     opponent = (opponent + 1) % 3;
@@ -572,6 +585,7 @@ $("guide").addEventListener("close", () => {
 });
 document.querySelectorAll("[data-hero]").forEach((button) =>
   button.addEventListener("click", () => {
+    if (loadingMatch) return;
     hero = Number(button.dataset.hero);
     opponent = (hero + 1) % 3;
     document
@@ -580,8 +594,7 @@ document.querySelectorAll("[data-hero]").forEach((button) =>
     setText("hero-description", ROSTER[hero].text);
     refreshDojoRecord();
     game = new Fight({ hero, enemy: opponent });
-    view?.select([hero, opponent]);
-    preview();
+    void updateRosterPreview();
   }),
 );
 $("dummy").addEventListener("change", () => {
@@ -626,7 +639,7 @@ window.addEventListener("pagehide", () => {
 window.addEventListener("pageshow", (e) => {
   if (e.persisted && destroyed) location.reload();
 });
-$("game").addEventListener("webglcontextlost", (e) => {
+$("game").addEventListener("contextlost", (e) => {
   e.preventDefault();
   pause();
   setText("status", "图形上下文丢失，请刷新页面恢复。");
@@ -663,10 +676,28 @@ window.furyDiagnostics = () => ({
     scrollHeight: document.documentElement.scrollHeight,
   },
 });
+async function updateRosterPreview() {
+  if (!view?.ready || destroyed) return;
+  const selection = [hero, opponent];
+  $("start-btn").disabled = true;
+  try {
+    await view.select(selection);
+    if (!destroyed && mode === "menu" && selection[0] === hero && selection[1] === opponent) {
+      $("start-btn").disabled = false;
+      preview();
+    }
+  } catch (error) {
+    console.error(error);
+    if (selection[0] === hero && selection[1] === opponent) {
+      $("start-btn").disabled = false;
+      setText("status", "角色画格未加载，可重试进入擂台");
+    }
+  }
+}
 try {
   view = new ArenaView($("game"), $("fx"));
   await view.preload();
-  view.select([hero, opponent]);
+  await view.select([hero, opponent]);
   $("loading").hidden = true;
   $("start-btn").disabled = false;
   setText("start-btn", "进入擂台 →");
@@ -674,7 +705,7 @@ try {
   preview();
 } catch (error) {
   console.error(error);
-  setText("loading", "3D 画面未能启动。需要 WebGL 2 与完整角色资源，可刷新重试或返回合集。 ");
+  setText("loading", "角色画格未能启动。可刷新重试或返回合集。 ");
   $("loading").setAttribute("role", "alert");
   // The arena is an isolated stacking context below the menu. A startup
   // failure must escape it so its message and return link are usable.

@@ -25,7 +25,7 @@
       </header>
       <div class="stage-zone">
         <div id="arena" class="arena" aria-label="截风擂台，键盘或触屏操作">
-          <canvas id="game" aria-label="实时 3D 格斗画面"></canvas
+          <canvas id="game" aria-label="实时逐帧格斗画面"></canvas
           ><canvas id="fx" aria-hidden="true"></canvas>
           <section id="hud" hidden>
             <div class="fighter-hud p1">
@@ -61,7 +61,7 @@
           </section>
           <div id="dojo-coach" hidden><b id="dojo-title"></b><span id="dojo-tip"></span></div>
           <div id="announcement" class="announcement" hidden></div>
-          <div id="loading">正在准备 Blender 角色模型…</div>
+          <div id="loading">正在准备逐帧角色…</div>
         </div>
       </div>
       <footer id="statusbar">
@@ -248,6 +248,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20260930-polish-r1&mobile=20260930-quality-r4"></script>
+    <script type="module" src="main.mjs?v=arcade-cels-r3"></script>
   </body>
 </html>
