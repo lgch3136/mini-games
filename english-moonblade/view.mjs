@@ -1,5 +1,6 @@
 import * as T from "../shared/vendor/three-0.185.1/three.module.min.js";
 import { GLTFLoader } from "../shared/vendor/three-0.185.1/GLTFLoader.js";
+import { createSuye, poseSuye } from "./suye-hero-v1.mjs?v=20261123-suye-r3";
 import { MotionTrack } from "./motion.mjs?v=20260929-fluid-r2&mobile=20260930-quality-r2";
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
 import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
@@ -103,6 +104,16 @@ export class View {
       tex = new T.TextureLoader();
     await Promise.all(
       ["shinobi", "warden", "abbot"].map(async (n) => {
+        if (n === "shinobi") {
+          try {
+            const sheet = await tex.loadAsync(new URL("./assets/suye-motion-v1.webp", import.meta.url).href);
+            sheet.colorSpace = T.SRGBColorSpace;
+            this.heroSheet = sheet;
+            return;
+          } catch {
+            this.heroSheet = null;
+          }
+        }
         const r = await loader.loadAsync(
           new URL(`./assets/${n}.glb`, import.meta.url).href,
         );
@@ -200,7 +211,8 @@ export class View {
     }
     for (const a of this.actors.values()) {
       this.scene.remove(a.root);
-      a.skeleton.dispose();
+      a.skeleton?.dispose();
+      a.painted?.releaseGeometry();
       a.materials.forEach((m) => m.dispose());
       a.shadow.geometry.dispose();
       a.shadow.material.dispose();
@@ -441,15 +453,21 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.stage = world.stage;
   }
   makeActor(id, type) {
-    const { root, parts, skin, skeleton } = createRigidSkin(
-      this.cache.get(type),
-      this.rigs.get(type),
-    );
-    // Hit/death uniforms are local to each actor; geometry stays shared.
-    const materials = (Array.isArray(skin.material) ? skin.material : [skin.material]).map((m) => {
-      const clone = m.clone(); clone.transparent = true; clone.forceSinglePass = true; return clone;
-    });
-    skin.material = materials;
+    let actor;
+    if (type === "shinobi" && this.heroSheet) {
+      actor = createSuye(this.heroSheet);
+    } else {
+      actor = createRigidSkin(this.cache.get(type), this.rigs.get(type));
+      const source = actor.skin.material;
+      actor.materials = (Array.isArray(source) ? source : [source]).map(m => {
+        const clone = m.clone();
+        clone.transparent = true;
+        clone.forceSinglePass = true;
+        return clone;
+      });
+      actor.skin.material = actor.materials;
+    }
+    const { root } = actor;
     this.scene.add(root);
     const shadow = new T.Mesh(
       new T.PlaneGeometry(1.65, 0.85),
@@ -463,11 +481,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     this.scene.add(shadow);
     const ribbon = new BladeRibbon();
     this.actors.set(id, {
-      root,
-      parts,
-      skin,
-      skeleton,
-      materials,
+      ...actor,
       shadow,
       ribbon,
       trail: ribbon.nodes,
@@ -491,6 +505,13 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     for (const t of world.level.platforms)
       if (rx >= t.x && rx <= t.x + t.w && t.y <= ry + 0.12)
         floor = Math.max(floor, t.y);
+    if (isHero && a.painted) {
+      poseSuye(a, b, {
+        x: rx, y: ry, floor, phase: lerp(old?.run ?? b.run, b.run, alpha),
+        dt, time: this.elapsed, reduced: this.reduced, striking: !!world.attackRect(),
+      });
+      return;
+    }
     const height = Math.max(0, ry - floor),
       p = a.motion.sample(
         { ...b, clearance: height },
@@ -897,6 +918,9 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
         impact: this.follow.impact,
       },
       hero: {
+        visual: this.actors.get("hero")?.painted ? "suye-painted-v1" : "rig",
+        pose: this.actors.get("hero")?.painted?.frame,
+        bladeBase: this.actors.get("hero")?.bladeBase?.toArray(),
         yaw: this.actors.get("hero")?.motion.yaw,
         weights: { ...this.actors.get("hero")?.motion.weights },
         position: this.actors.get("hero")?.root.position.toArray(),
@@ -904,7 +928,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
         trail: this.actors.get("hero")?.trail.length,
       },
       localLights: this.lampLights.length + 1,
-      characterDraws: this.rigs.get("shinobi")?.materials.length,
+      characterDraws: this.heroSheet ? 2 : this.rigs.get("shinobi")?.materials.length,
       originalCharacterDraws: this.rigs.get("shinobi")?.sourceDraws,
       terrainProbe: this.screen(9, 0),
       dpr: this.dpr,
@@ -914,7 +938,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
   dispose() {
     this.feedback.clear();
     this.gpuClock.dispose();
-    for (const a of this.actors.values()) a.skeleton.dispose();
+    for (const a of this.actors.values()) a.skeleton?.dispose();
     this.scene.traverse((o) => {
       if (o.isMesh) {
         if (o.isInstancedMesh) o.dispose();
@@ -925,6 +949,7 @@ vStoneWorld=(modelMatrix*stoneP).xy;`,
     });
     this.backgrounds?.forEach((t) => t.dispose());
     this.stone?.dispose();
+    this.heroSheet?.dispose();
     this.shadowMap.dispose();
     this.glowMap.dispose();
     this.paperMap.dispose();
