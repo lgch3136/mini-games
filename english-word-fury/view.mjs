@@ -1,6 +1,29 @@
 import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
 import atlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 
+const ironLegs = {
+  file: "iron-footwork-v1.webp",
+  width: 1050,
+  height: 600,
+  cells: {
+    "highKick/load": [38, 7, 134, 185, -47.494, -144.875, 212.8, 292.6],
+    "highKick/commit": [262, 8, 106, 184, -56.4786, -144.4, 168.15, 291.65],
+    "highKick/active": [437, 9, 176, 182, -53.8509, -142.5, 279.3, 287.85],
+    "highKick/return": [686, 9, 97, 182, -48.6651, -142.975, 153.9, 288.8],
+    "highKick/settle": [876, 7, 137, 185, -47.969, -145.35, 217.55, 292.6],
+    "lowKick/load": [40, 212, 129, 175, -46.069, -137.275, 204.25, 277.4],
+    "lowKick/commit": [262, 211, 105, 178, -56.4988, -140.125, 166.25, 282.15],
+    "lowKick/active": [446, 212, 158, 176, -53.1738, -138.225, 250.8, 279.3],
+    "lowKick/return": [685, 212, 100, 176, -52.6988, -137.75, 157.7, 278.35],
+    "lowKick/settle": [880, 212, 130, 176, -46.544, -138.225, 205.2, 278.35],
+    "sweep/load": [39, 421, 131, 158, -48.1631, -123.975, 208.05, 249.85],
+    "sweep/commit": [255, 421, 119, 157, -71.4381, -123.5, 189.05, 248.9],
+    "sweep/active": [427, 424, 196, 151, -66.2131, -118.75, 309.7, 239.4],
+    "sweep/return": [680, 421, 110, 157, -64.7881, -123.5, 173.85, 248.9],
+    "sweep/settle": [877, 414, 135, 172, -48.6381, -135.375, 213.75, 272.65],
+  },
+};
+
 const TAU = Math.PI * 2;
 const gaitFrames = [0, 3, 6, 9];
 const phases = ["load", "commit", "active", "return", "settle"];
@@ -65,6 +88,8 @@ export class ArenaView {
     this.effects = [];
     this.assets = new Map();
     this.rigSources = {};
+    this.ironImage = null;
+    this.ironLoad = null;
     this.actorCels = [];
     this.models = [];
     this.ready = false;
@@ -94,13 +119,33 @@ export class ArenaView {
     }
     return this.assets.get(id).promise;
   }
+  loadIronLegs() {
+    if (this.ironLoad) return this.ironLoad;
+    const image = new Image();
+    image.src = new URL("./assets/" + ironLegs.file, import.meta.url).href;
+    const pending = image.decode().then(() => {
+      if (image.naturalWidth !== ironLegs.width || image.naturalHeight !== ironLegs.height) {
+        throw new Error("Unexpected iron footwork atlas dimensions");
+      }
+      if (this.ironLoad === pending) this.ironImage = image;
+    }).catch(() => {
+      // The base atlas contains all three moves while this optional sheet is unavailable.
+      if (this.ironLoad === pending) this.ironLoad = null;
+    });
+    this.ironLoad = pending;
+    return pending;
+  }
   async preload() {
     await this.select([0, 1]);
     this.ready = true;
   }
-  async select(ids) {
-    await Promise.all(ids.map((id) => this.load(id)));
+  async select(ids, ironIds = []) {
+    const resources = ids.map(id => this.load(id));
+    const useIronLegs = ironIds.some(id => ROSTER[id].id === "shan");
+    if (useIronLegs) resources.push(this.loadIronLegs());
+    await Promise.all(resources);
     this.models = ids;
+    this.useIronLegs = useIronLegs;
   }
   resize() {
     const rect = this.canvas.getBoundingClientRect();
@@ -146,17 +191,20 @@ export class ArenaView {
       if (!entry?.image.naturalWidth) continue;
       const { cells } = atlases[f.c.id];
       const role = celFor(f, cells, fight.frame);
-      const ownFace = f.facing < 0 && cells[role + "@left"];
-      const [sx, sy, w, h, dx, dy] = ownFace || cells[role] || cells["idle/0"];
-      const size = scale * (f.c.id === "shan" ? 0.93 : 1);
+      const iron = f.c.id === "shan" && this.useIronLegs && this.ironImage;
+      const leg = iron && f.action && role.startsWith(f.action.name + "/") && ironLegs.cells[role];
+      const ownFace = !leg && f.facing < 0 && cells[role + "@left"];
+      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = leg || ownFace || cells[role] || cells["idle/0"];
+      const size = scale * (f.c.id === "shan" ? (iron ? 0.84 : 0.93) : 1);
+      const image = leg ? this.ironImage : entry.image;
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
       c.scale(ownFace ? 1 : f.facing, 1);
-      c.drawImage(entry.image, sx, sy, w, h, dx * size, dy * size, w * size / 2, h * size / 2);
+      c.drawImage(image, sx, sy, w, h, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
-      this.actorCels[f.side] = { id:f.c.id, role, facing:f.facing, ownFace:!!ownFace };
+      this.actorCels[f.side] = { id:f.c.id, role, facing:f.facing, ownFace:!!ownFace, authoredLeg:!!leg };
     }
   }
   event(e) {
@@ -338,6 +386,7 @@ export class ArenaView {
       models: this.models.length,
       rigSources: { ...this.rigSources },
       actorCels: this.actorCels,
+      ironFootwork: this.ironImage ? "original-15-cels" : "base-cels",
       cameraZoom: this.camera.zoom,
       ambient: this.ambient,
     };
@@ -345,5 +394,7 @@ export class ArenaView {
   dispose() {
     this.ready = false;
     this.assets.clear();
+    this.ironLoad = null;
+    this.ironImage = null;
   }
 }

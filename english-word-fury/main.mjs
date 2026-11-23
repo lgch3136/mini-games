@@ -6,7 +6,7 @@ import {
   VERSION,
   clamp,
 } from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
-import { ArenaView } from "./view.mjs?v=arcade-cels-r3";
+import { ArenaView } from "./view.mjs?v=20261124-iron-r3";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 const fighterSnapshots = new FighterSnapshots();
@@ -288,7 +288,7 @@ async function startMatch(next = false) {
     opponent = (hero + 1) % 3;
   }
   try {
-    await view.select([hero, opponent]);
+    await view.select([hero, opponent], [hero, opponent]);
   } catch (error) {
     setText("status", "角色画格未加载，可重试进入擂台");
     console.error(error);
