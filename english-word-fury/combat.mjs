@@ -1125,6 +1125,7 @@ export class Fight {
       punish,
       justGuard,
       x: target.x - attacker.facing * 0.22,
+      sourceId:attacker.c.id, sourceX:attacker.x, sourceY:attacker.y, sourceFacing:attacker.facing,
       y: target.y + clamp(spec.y, 0.45, target.crouch ? 1.6 : 2.8),
       combo: attacker.combo,
     });

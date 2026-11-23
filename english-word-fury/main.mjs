@@ -6,8 +6,8 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20261124-harbor-hands1";
-import { ArenaView } from "./view.mjs?v=20261124-harbor-hands1";
+} from "./combat.mjs?v=20261124-fist-contact1";
+import { ArenaView } from "./view.mjs?v=20261124-fist-contact1";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
