@@ -149,17 +149,54 @@ export class ArenaView {
   }
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    if (!rect.width || !rect.height) return;
+    const portrait = rect.width / rect.height < 1.36;
+    const cap = portrait ? Math.sqrt(300000 / (rect.width * rect.height)) : 1.5;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5, cap);
     if (this.w === rect.width && this.h === rect.height && this.dpr === dpr) return;
+    this.portrait = portrait;
+    this.portraitFight = null;
+    this.portraitSpan = 0;
+    this.portraitCenter = 0;
+    this.pan = null;
     this.w = rect.width;
     this.h = rect.height;
     this.dpr = dpr;
     for (const el of [this.canvas, this.overlay]) {
-      el.width = Math.round(this.w * dpr);
-      el.height = Math.round(this.h * dpr);
+      const round = portrait ? Math.floor : Math.round;
+      el.width = Math.max(1,round(this.w*dpr));
+      el.height = Math.max(1,round(this.h*dpr));
+    }
+  }
+  framePortrait(fight, alpha, dt) {
+    if (!this.portrait) return;
+    const first = fight.f[0], second = fight.f[1];
+    const ax = lerp(first.px,first.x,alpha), bx = lerp(second.px,second.x,alpha);
+    const left = Math.min(ax,bx), right = Math.max(ax,bx);
+    const span = clamp(right-left+5.0,8.5,18);
+    const reset = fight !== this.portraitFight || !this.portraitSpan;
+    this.portraitFight = fight;
+    const follow = 1-Math.exp(-10*Math.min(Math.max(0,dt),.15));
+    this.portraitSpan = reset ? span : Math.max(span,lerp(this.portraitSpan,span,follow));
+    this.portraitFloor = this.h*.79;
+    this.portraitUnit = Math.min(this.w/this.portraitSpan,(this.portraitFloor-Math.min(57,this.h*.14))/6.9);
+    const halfWidth = this.w/(2*this.portraitUnit);
+    const limit = Math.max(0,9-halfWidth);
+    const middle = (left+right)/2;
+    const desired = clamp(middle,-limit,limit);
+    const next = reset ? desired : lerp(this.portraitCenter,desired,follow);
+    // Keep both players in shot even when a roll or a throw changes spacing.
+    const lo = Math.max(-limit,right+2.0-halfWidth);
+    const hi = Math.min(limit,left-2.0+halfWidth);
+    this.portraitCenter = lo<=hi ? clamp(next,lo,hi) : desired;
+    const pan = Math.round(50+this.portraitCenter*5);
+    if (pan!==this.pan) {
+      this.canvas.parentElement?.style?.setProperty("--harbor-pan",pan+"%");
+      this.pan=pan;
     }
   }
   screen(x, y) {
+    if(this.portrait) return [this.w/2+(x-this.portraitCenter)*this.portraitUnit,this.portraitFloor-y*this.portraitUnit];
     return [
       (0.5 + x * this.camera.zoom / 16) * this.w,
       (0.5 + (2.7 - y) * this.camera.zoom / 9) * this.h,
@@ -170,7 +207,7 @@ export class ArenaView {
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, this.w, this.h);
     const floor = this.screen(0, 0)[1];
-    const scale = this.h * this.camera.zoom / (9 * 34);
+    const scale = this.portrait ? this.portraitUnit/34 : this.h * this.camera.zoom / (9 * 34);
     const figures = fight.f.map(f => {
       const [x, y] = this.screen(lerp(f.px, f.x, alpha), lerp(f.py, f.y, alpha));
       return { f, x, y };
@@ -234,11 +271,12 @@ export class ArenaView {
     const intro = this.cinematic && !this.reducedMotion && fight.state === "intro"
       ? clamp((fight.intro - 28) / 47, 0, 1) : 0;
     this.camera.zoom = 1 + 0.035 * intro * intro * (3 - 2 * intro);
+    this.framePortrait(fight, alpha, dt);
     this.drawFighters(fight, alpha);
     const c = this.ctx;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, this.w, this.h);
-    const scale = (this.w / 16) * this.camera.zoom;
+    const scale = this.portrait ? this.portraitUnit : (this.w / 16) * this.camera.zoom;
     for (const f of fight.f)
       if (f.maxTime > 0) {
         const [x, y] = this.screen(lerp(f.px, f.x, alpha), f.y + 1.5);
@@ -388,11 +426,14 @@ export class ArenaView {
       actorCels: this.actorCels,
       ironFootwork: this.ironImage ? "original-15-cels" : "base-cels",
       cameraZoom: this.camera.zoom,
+      portraitRing: this.portrait ? {center:this.portraitCenter,unit:this.portraitUnit,
+        floor:this.portraitFloor,pixels:this.canvas.width*this.canvas.height} : null,
       ambient: this.ambient,
     };
   }
   dispose() {
     this.ready = false;
+    this.portraitFight = null;
     this.assets.clear();
     this.ironLoad = null;
     this.ironImage = null;

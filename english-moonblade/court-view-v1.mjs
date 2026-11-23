@@ -1,9 +1,9 @@
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
 import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2";
-import { drawHero, drawFoe } from "./court-actors-v1.mjs";
+import { drawHero, drawFoe } from "./court-actors-v1.mjs?v=20261124-temple-sweep1";
 import { bakePlatform, bakeSky, glowCard } from "./court-terrain-v1.mjs";
-import { drawCourtFx } from "./court-fx-v1.mjs";
+import { drawCourtFx } from "./court-fx-v1.mjs?v=20261124-temple-sweep1";
 
 const cityFacades = [[4,0,4.65,218,224,4,107],[16,0,5.8,139,318,230,13],[30,.5,5.3,208,278,377,53]];
 
@@ -78,6 +78,13 @@ export class View {
     if(!this.ready||this.disposed)return;
     this.world=world;
     this.resize();
+    if (world.stage === 2 && !this.sweepLoad) {
+      this.sweepLoad = picture("temple-guardian-sweep.webp").then(image => {
+        if (this.disposed) return;
+        this.sweepAtlas = image;
+        if (this.stage === 2) this.onSceneryChange?.();
+      }).catch(() => { this.sweepLoad = null; });
+    }
     const nextTheme=world.stage===0?"city":"mist";
     if(nextTheme!=="city" && !this.backgrounds.has(nextTheme) && !this.pendingSkies.has(nextTheme)) {
       const job=picture("mist-temple.webp").then(img=>{
@@ -183,7 +190,7 @@ export class View {
     const h=this.hero;
     return {ready:this.ready,renderer:"painted-court-canvas2d-v1",dpr:this.dpr,drawCalls:null,
       canvasImages:{...this.counts},platformCaches:this.platforms.length,
-      textures:3+this.backgrounds.size,triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},
+      textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas)),triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},
       hero:{visual:"suye-painted-v1",pose:h?.pose,position:[h?.x,h?.y,.9],
         bladeBase:h?.base?[h.base.x,h.base.y,h.base.z]:null,bladeTip:h?.tip?[h.tip.x,h.tip.y,h.tip.z]:null,trail:h?.ribbon.nodes.length},
       reduced:this.reduced,camera:{x:this.cx,y:this.cy,width:2*this.follow.halfWidth},
@@ -193,6 +200,7 @@ export class View {
     this.disposed=true;this.ready=false;this.feedback.clear();this.actors.clear();this.deaths.clear();
     for(const {art} of this.platforms){art.width=1;art.height=1;}
     this.platforms=[];this.backgrounds.clear();this.heroAtlas=this.foeAtlas=this.facades=this.sky=null;
+    this.sweepAtlas=this.sweepLoad=null;
     this.canvas.width=this.canvas.height=this.fx.width=this.fx.height=1;
   }
 }

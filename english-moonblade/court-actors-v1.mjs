@@ -1,6 +1,7 @@
 import { frames } from "./suye-frames-v1.mjs";
 import { sampleSuye } from "./suye-poses-v1.mjs";
 import { foes } from "./court-frames-v1.mjs";
+import { sweepFrames } from "./temple-guardian-frames.mjs";
 
 export function foePose(e, time) {
   if (e.kind === "archer") {
@@ -9,8 +10,14 @@ export function foePose(e, time) {
     return e.state === "recover" && e.timer > .76 ? "archerLoose" : "archerReady";
   }
   if (e.kind === "boss") {
-    if (e.dead || e.stun > 0 || e.state === "recover") return "abbotRecover";
-    if (e.state === "tell") return ["abbotCoil","abbotSweep","abbotGather"][e.choice];
+    if (e.dead) return "abbotRecover";
+    if (e.choice === 1) {
+      if (e.state === "tell") return e.timer > (e.tellLength || .55)*.53 ? "abbotDrawBack" : "abbotLowWind";
+      if (e.state === "sweep" && e.timer > .34) return "abbotUnwind";
+      if (e.state === "recover" && e.timer > .20) return "abbotSpent";
+    }
+    if (e.stun > 0 || e.state === "recover") return "abbotRecover";
+    if (e.state === "tell") return e.choice === 0 ? "abbotCoil" : "abbotGather";
     if (e.state === "rush") return "abbotRush";
     if (e.state === "sweep") return "abbotSweep";
     if (e.state === "leap") return e.vy < -5 && e.y < .7 ? "abbotLand" : "abbotLeap";
@@ -35,7 +42,13 @@ export function drawFoe(view, world, e, alpha, dt) {
   const dx = e.px + (e.x-e.px)*alpha, dy=e.py+(e.y-e.py)*alpha;
   const [x,y] = view.screen(dx,dy), unit=view.unit;
   if (x < -unit*4 || x > view.w+unit*4) return;
-  const name=foePose(e,view.elapsed), f=foes[name];
+  let name=foePose(e,view.elapsed);
+  if (sweepFrames[name] && !view.sweepAtlas) {
+    const fallback = {abbotDrawBack:"abbotReady", abbotLowWind:"abbotCoil", abbotUnwind:"abbotSweep", abbotSpent:"abbotRecover"};
+    name = fallback[name];
+  }
+  const isSweepCel = Boolean(sweepFrames[name]);
+  const f = isSweepCel ? sweepFrames[name] : foes[name];
   const scale=unit*(e.kind==="boss"?.0092:.0073);
   const face = ["strike","rush","sweep","leap"].includes(e.state) || (e.kind==="guard" && e.state==="tell")
     ? (e.lockDir || e.facing) : e.facing;
@@ -50,7 +63,7 @@ export function drawFoe(view, world, e, alpha, dt) {
     c.translate(-unit*Math.min(.16,e.stun*.7),0);
   }
   const [w,h]=f.size;
-  c.drawImage(view.foeAtlas,...f.rect,-f.foot[0]*scale,-f.foot[1]*scale,w*scale,h*scale);
+  c.drawImage(isSweepCel ? view.sweepAtlas : view.foeAtlas,...f.rect,-f.foot[0]*scale,-f.foot[1]*scale,w*scale,h*scale);
   c.restore();
   view.enemyPoses[e.kind]=name;
   view.counts.actors++;

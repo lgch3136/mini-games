@@ -157,7 +157,7 @@ export const STAGES = [
     ],
     hints: [
       { x: 3, text: "空中按 ↓ + J 下落斩 · 破开脚下敌人的架势" },
-      { x: 78, text: "寺门守卫：看清红色预兆，跳过横扫，趁收招反击" },
+      { x: 78, text: "寺门守将起手锁向。看见贴地金弧时起跳，落地趁他垂刃回击。" },
     ],
   },
 ];
@@ -377,7 +377,7 @@ export class World {
     }
     return true;
   }
-  hitEnemy(e, damage, dir, id) {
+  hitEnemy(e, damage, dir, id, melee = false) {
     if (e.dead || e.lastHit === id) return false;
     const bossArmored =
       e.kind === "boss" && ["tell", "rush", "sweep", "leap"].includes(e.state);
@@ -391,6 +391,13 @@ export class World {
     this.comboLife = 2.2;
     this.score += 25 + this.combo * 5;
     this.emit("hit", { x: e.x, y: e.y + e.h * 0.6, dir, target: e.id, heavy: damage >= 3 });
+    if (melee && e.kind === "boss" && e.choice === 1 && e.state === "recover" &&
+        e.lastSweepOpening !== e.attackId) {
+      e.lastSweepOpening = e.attackId;
+      const before = this.player.energy;
+      this.player.energy = Math.min(10, before + 1);
+      this.emit("sweepOpening", { x:e.x, y:e.y+1, energyGain:this.player.energy-before });
+    }
     if (e.hp <= 0) {
       e.dead = true;
       this.kills++;
@@ -529,7 +536,7 @@ export class World {
       if (p.attack?.kind === "dive") {
         for (const e of this.enemies)
           if (!e.dead && Math.abs(e.x - p.x) < 2 && Math.abs(e.y - p.y) < 1)
-            this.hitEnemy(e, 3, p.facing, p.attack.id);
+            this.hitEnemy(e, 3, p.facing, p.attack.id, true);
         p.attack = null;
       }
     }
@@ -573,7 +580,7 @@ export class World {
               e,
               (a.kind === "dive" ? 3 : [2, 2, 3][a.chain]) + (riposte ? 1 : 0),
               p.facing,
-              a.id,
+              a.id, true,
             );
             if (struck && riposte) {
               p.focus = 0;
@@ -695,17 +702,18 @@ export class World {
       if (!this.bossLocked) return;
       if (e.state === "idle" && e.timer <= 0) {
         e.state = "tell";
-        e.timer = e.hp < 24 ? 0.38 : 0.55;
+        e.tellLength = e.hp < 24 ? 0.38 : 0.55;
+        e.timer = e.tellLength;
+        e.lockDir = dir;
         e.attackId++;
         e.choice = e.cycle++ % 3;
         this.emit("tell", { x: e.x, y: e.y + 2 });
       } else if (e.state === "tell" && e.timer <= 0) {
         e.state = ["rush", "sweep", "leap"][e.choice];
         e.timer = [0.55, 0.44, 0.85][e.choice];
-        e.lockDir = dir;
         if (e.choice === 2) {
           e.vy = 12;
-          e.vx = dir * 6;
+          e.vx = e.lockDir * 6;
         }
         this.emit("bossSwing", { x: e.x, y: e.y + 1 });
       } else if (["rush", "sweep", "leap"].includes(e.state) && e.timer <= 0) {
@@ -717,6 +725,7 @@ export class World {
               y: e.y + 0.55,
               px: e.x,
               vx: d * 7,
+              kind: "templeWave",
               owner: "enemy",
               life: 2,
               w: 1,
@@ -731,13 +740,16 @@ export class World {
         e.state = "idle";
         e.timer = 0.36;
       }
+      if (e.state !== "idle") e.facing = e.lockDir;
       if (e.state === "rush") e.vx = e.lockDir * (e.hp < 24 ? 13 : 10);
       else if (e.state !== "leap") e.vx = 0;
       if (["rush", "sweep", "leap"].includes(e.state)) {
+        // The low cut extends with the first cel before reaching full span.
+        const reach = e.state === "sweep" ? 1.55 + .85 * clamp((.44-e.timer)/.10, 0, 1) : 2.4;
         const r = {
-          x: e.x + (e.lockDir > 0 ? 0 : -2.4),
+          x: e.x + (e.lockDir > 0 ? 0 : -reach),
           y: e.y,
-          w: 2.4,
+          w: reach,
           h: e.state === "sweep" ? 0.75 : 2,
         };
         if (overlap(r, box(p))) this.hurt(2, e.lockDir);

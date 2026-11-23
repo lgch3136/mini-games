@@ -1,6 +1,6 @@
 import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
-import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260929-fluid-r2&mobile=20260930-quality-r2";
-import { View } from "./court-view-v1.mjs";
+import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261124-temple-sweep1";
+import { View } from "./court-view-v1.mjs?v=20261124-temple-sweep1";
 import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
@@ -161,6 +161,7 @@ function event(e) {
   if (e.type === "break") toast("补给箱破开 · 靠近收取忍力", 1.2);
   if (e.type === "deflect") toast(e.focusGranted ? `刀锋截弹${e.energyGain ? " · 忍力 +1" : ""} · 月息反击就绪` : "刀锋截弹", 1.1);
   if (e.type === "riposte") toast("月息反击 · 伤害 +1", .9);
+  if (e.type === "sweepOpening") toast(e.energyGain ? "看破横扫 · 忍力 +1" : "看破横扫", .9);
   if (e.type === "bossClear") toast("月印已夺回 · 前往寺门", 3);
 }
 function hud() {

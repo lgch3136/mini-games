@@ -6,7 +6,7 @@ import {
   VERSION,
   clamp,
 } from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
-import { ArenaView } from "./view.mjs?v=20261124-iron-r3";
+import { ArenaView } from "./view.mjs?v=20261124-portrait-ring1";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 const fighterSnapshots = new FighterSnapshots();
@@ -35,7 +35,11 @@ const sources = new Map(),
 let joyPointer = null,
   guideResume = false,
   destroyed = false;
-const coarse = matchMedia("(pointer:coarse)");
+const coarse = matchMedia("(any-pointer:coarse)");
+const portraitControls = matchMedia("(max-width:680px) and (orientation:portrait)");
+function useTouchControls() {
+  return portraitControls.matches || coarse.matches || navigator.maxTouchPoints > 0;
+}
 const bank = Object.values(window.PROJECT_VOCAB || {})
   .flat()
   .filter((w) => /^[a-z]{3,10}$/.test(w.en));
@@ -316,7 +320,7 @@ async function startMatch(next = false) {
   $("hud").hidden = false;
   $("pause-btn").hidden = $("exit-btn").hidden = false;
   $("practice").hidden = game.mode !== "training";
-  $("touch").hidden = !coarse.matches;
+  $("touch").hidden = !useTouchControls();
   $("word-line").hidden = !$("learning").checked;
   wordDelay = 0;
   letterIndex = 0;
@@ -331,8 +335,8 @@ async function startMatch(next = false) {
   );
   setText(
     "hint",
-    coarse.matches
-      ? "横屏更舒适 · 左手移动，右手出招"
+    useTouchControls()
+      ? "左手移动或蹲防 · 右手出招"
       : "J K U I 拳脚 · 空格 气波 · P 暂停",
   );
   document.activeElement?.blur();
@@ -626,9 +630,11 @@ document.addEventListener("visibilitychange", () => {
 });
 const observer = new ResizeObserver(() => preview());
 observer.observe($("arena"));
-coarse.addEventListener("change", () => {
-  if (mode === "playing") $("touch").hidden = !coarse.matches;
-});
+function syncInputLayout() {
+  if (mode === "playing" || mode === "paused") $("touch").hidden = !useTouchControls();
+}
+coarse.addEventListener("change", syncInputLayout);
+portraitControls.addEventListener("change", syncInputLayout);
 window.addEventListener("pagehide", () => {
   stop();
   sound.ctx?.close().catch(() => {});

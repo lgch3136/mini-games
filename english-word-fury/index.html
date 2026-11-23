@@ -10,7 +10,46 @@
     <title>单词斗魂 · 截风擂台</title>
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
-</head>
+<style>
+@media (max-width: 680px) and (orientation: portrait) {
+  body.playing .stage-zone { align-items: stretch; }
+  body.playing .arena, body.playing.training .arena {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    background-size: auto 100%;
+    background-position: var(--harbor-pan, 50%) center;
+  }
+  body.playing #statusbar { height: 22px; }
+  body.playing #touch:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(76px, .9fr) minmax(116px, 1.15fr);
+    gap: 8px 10px;
+    align-items: center;
+    padding: 7px max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left));
+    background: linear-gradient(#203641, #142731);
+  }
+  #touch .touch-actions { display: contents; }
+  #touch #stick {
+    grid-column: 1; grid-row: 1; justify-self: center;
+    width: clamp(86px, 25vw, 108px); height: clamp(86px, 25vw, 108px);
+  }
+  #touch #stick-knob { left: calc(50% - 26.5px); top: calc(50% - 26.5px); }
+  #touch #stick b { left: calc(50% - 4px); }
+  #touch #stick small { display: none; }
+  #touch .four-keys {
+    grid-column: 2; grid-row: 1; justify-self: center; display: grid;
+    grid-template-columns: repeat(2, 1fr); gap: 6px 12px;
+  }
+  #touch .four-keys button { width: clamp(46px, 13vw, 56px); height: clamp(46px, 13vw, 56px); }
+  #touch .utility {
+    grid-row: 2; grid-column: 1 / -1; display: grid; gap: 4px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  #touch .utility button { min-width: 0; min-height: 44px; padding: 2px; }
+  body.playing #word-line { bottom: 2%; }
+}
+</style></head>
   <body>
     <main id="shell">
       <header class="topbar">
@@ -248,6 +287,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20261124-iron-r3"></script>
+    <script type="module" src="main.mjs?v=20261124-portrait-ring1"></script>
   </body>
 </html>

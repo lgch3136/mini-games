@@ -1,4 +1,5 @@
-import { clamp, lerp } from "./world.mjs?v=20260929-fluid-r2&mobile=20260930-quality-r2";
+import { drawGuardianTell, drawTempleWave } from "./temple-cues.mjs";
+import { clamp, lerp } from "./world.mjs?v=20261124-temple-sweep1";
 export function drawCourtFx(world, dt, alpha) {
     const c = this.ctx,
       unit = this.h / this.viewHeight;
@@ -83,7 +84,9 @@ export function drawCourtFx(world, dt, alpha) {
         c.fillRect(2, -2, 3, 2);
         c.restore();
       }
-      if (e.state === "tell") {
+      if (e.state === "tell" && e.kind === "boss") {
+        drawGuardianTell(c, x, this.screen(ex, ey)[1], unit, e);
+      } else if (e.state === "tell") {
         c.fillStyle = "#ffb18a";
         c.font = `700 ${Math.max(12, unit * 0.4)}px system-ui`;
         c.textAlign = "center";
@@ -103,6 +106,10 @@ export function drawCourtFx(world, dt, alpha) {
     }
     for (const s of world.projectiles) {
       const [x, y] = this.screen(lerp(s.px, s.x, alpha), s.y);
+      if (s.kind === "templeWave") {
+        drawTempleWave(c, x, y, unit, s.vx);
+        continue;
+      }
       const [tx, ty] = this.screen(lerp(s.px, s.x, alpha) - s.vx * 0.025, s.y);
       c.strokeStyle =
         s.owner === "player" ? "rgba(169,226,247,.42)" : "rgba(255,153,110,.5)";
