@@ -1,6 +1,6 @@
 import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261124-suye-blade1";
-import { View } from "./court-view-v1.mjs?v=20261124-suye-blade1";
+import { View } from "./court-view-v1.mjs?v=20261124-court-perf1";
 import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
@@ -271,8 +271,16 @@ function finish() {
       `得分 ${world.score} · 击倒 ${world.kills} · 本章重试 ${world.chapterSkills.retries} 次\n${report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join("\n")}\n${report.tip}${report.improved ? "\n本章勋章已升级" : ""}`,
       mode === "won" ? "再走一程" : "进入下一章",
     );
-    $("chapter-medal").hidden = !report.stars;
-    if (report.stars) $("chapter-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
+    const medal = $("chapter-medal");
+    medal.hidden = true;
+    if (report.stars) {
+      const result = world;
+      const tier = ["", "bronze", "silver", "gold"][report.stars];
+      medal.src = new URL(`../shared/mobile-art/medal-${tier}.webp`, import.meta.url);
+      medal.decode().then(() => {
+        if (world === result && (mode === "clear" || mode === "won")) medal.hidden = false;
+      }).catch(() => {});
+    }
   }
 }
 function menu() {

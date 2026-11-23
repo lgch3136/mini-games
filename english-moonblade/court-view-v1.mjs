@@ -3,7 +3,7 @@ import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-
 import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2";
 import { drawHero, drawFoe } from "./court-actors-v1.mjs?v=20261124-suye-blade1";
 import { bakePlatform, bakeSky, glowCard } from "./court-terrain-v1.mjs";
-import { drawCourtFx } from "./court-fx-v1.mjs?v=20261124-temple-sweep1";
+import { drawCourtFx } from "./court-fx-v1.mjs?v=20261124-court-perf1";
 
 const cityFacades = [[4,0,4.65,218,224,4,107],[16,0,5.8,139,318,230,13],[30,.5,5.3,208,278,377,53]];
 
@@ -33,6 +33,7 @@ function diamond(c,x,y,r,kind) {
 export class View {
   constructor(canvas,fx) {
     this.canvas=canvas;this.fx=fx;
+    fx.style.backgroundImage="linear-gradient(to bottom, rgba(3,13,20,.22), transparent 38%, transparent 72%, rgba(3,13,20,.4))";
     this.context=canvas.getContext("2d",{alpha:false});
     this.ctx=fx.getContext("2d");
     this.detail=true;this.reduced=matchMedia("(prefers-reduced-motion:reduce)").matches;

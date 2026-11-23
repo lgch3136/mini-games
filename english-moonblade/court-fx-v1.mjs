@@ -5,15 +5,6 @@ export function drawCourtFx(world, dt, alpha) {
       unit = this.h / this.viewHeight;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, this.w, this.h);
-    if (!this.vignette || this.vignetteHeight !== this.h) {
-      this.vignette = c.createLinearGradient(0, 0, 0, this.h);
-      this.vignette.addColorStop(0, "rgba(3,13,20,.22)");
-      this.vignette.addColorStop(0.38, "rgba(3,13,20,0)");
-      this.vignette.addColorStop(0.72, "rgba(3,13,20,0)");
-      this.vignette.addColorStop(1, "rgba(3,13,20,.4)");
-      this.vignetteHeight = this.h;
-    }
-    c.fillStyle = this.vignette; c.fillRect(0, 0, this.w, this.h);
     if (this.detail && !this.reduced) {
       c.strokeStyle = "rgba(173,205,235,.12)";
       c.lineWidth = 0.75;
