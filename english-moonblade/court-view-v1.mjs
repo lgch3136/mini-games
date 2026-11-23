@@ -1,12 +1,12 @@
-import { drawEaveBell } from "./eave-bell.mjs?v=20261124-eave-return1";
+import { drawEaveBell } from "./eave-bell.mjs?v=20261124-roof-canvas1";
 import { stonePanel, drawStone } from "./stone-panels.mjs?v=20261124-stone-court1";
 import { drawWaymark } from "./temple-waymarks.mjs?v=20261124-temple-way1";
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
 import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2";
-import { drawHero, drawFoe } from "./court-actors-v1.mjs?v=20261124-eave-return1";
+import { drawHero, drawFoe } from "./court-actors-v1.mjs?v=20261124-roof-canvas1";
 import { bakePlatform, bakeSky, glowCard } from "./court-terrain-v1.mjs";
-import { drawCourtFx } from "./court-fx-v1.mjs?v=20261124-court-perf1";
+import { drawCourtFx } from "./court-fx-v1.mjs?v=20261124-roof-canvas1";
 
 const cityFacades = [[4,0,4.65,218,224,4,107],[16,0,5.8,139,318,230,13],[30,.5,5.3,208,278,377,53]];
 
@@ -38,7 +38,13 @@ export class View {
     this.canvas=canvas;this.fx=fx;
     fx.style.backgroundImage="linear-gradient(to bottom, rgba(3,13,20,.22), transparent 38%, transparent 72%, rgba(3,13,20,.4))";
     this.context=canvas.getContext("2d",{alpha:true});
-    this.ctx=fx.getContext("2d");
+    // Combat, silhouettes and their cues are drawn in order on one surface.
+    // The top and bottom atmosphere is a static CSS overlay.
+    this.ctx=this.context;
+    this.fx.width=this.fx.height=1;
+    Object.assign(fx.style,{width:"100%",height:"100%",pointerEvents:"none"});
+    this.powerSaving=false;
+    this.paints=0;
     this.detail=true;this.reduced=matchMedia("(prefers-reduced-motion:reduce)").matches;
     this.ready=false;this.disposed=false;this.elapsed=0;
     this.follow=new FollowCamera({halfWidth:10.04,elevation:1.85});
@@ -117,7 +123,8 @@ export class View {
   resize() {
     const {width:w,height:h}=this.canvas.getBoundingClientRect();
     if(!w||!h)return;
-    const dpr=Math.min(devicePixelRatio||1,1.5,Math.sqrt(980000/(w*h)));
+    const budget=this.powerSaving?390000:980000;
+    const dpr=Math.min(devicePixelRatio||1,this.powerSaving?1.15:1.5,Math.sqrt(budget/(w*h)));
     if(this.w===w&&this.h===h&&this.dpr===dpr)return;
     this.w=w;this.h=h;this.dpr=dpr;
     // Wide shots include the next landing surface; narrow shots keep a
@@ -127,10 +134,8 @@ export class View {
     this.viewHeight=h/this.unit;
     this.follow.halfWidth=w/(2*this.unit);
     if(this.world) this.follow.reset(this.world.player,this.world.level.length);
-    for(const target of [this.canvas,this.fx]) {
-      target.width=Math.max(1,Math.round(w*dpr));
-      target.height=Math.max(1,Math.round(h*dpr));
-    }
+    this.canvas.width=Math.max(1,Math.round(w*dpr));
+    this.canvas.height=Math.max(1,Math.round(h*dpr));
     this.resetSky();
   }
   build(world) {
@@ -287,7 +292,10 @@ export class View {
     drawHero(this,world,previous?.player,alpha,dt);
     this.feedback.locomotion(p,dt,this.reduced||!this.detail);
     this.feedback.advance(dt,world.level.platforms);
+    this.context.save();
     drawCourtFx.call(this,world,dt,alpha);
+    this.context.restore();
+    this.paints++;
   }
   diagnostics() {
     const h=this.hero;
@@ -295,7 +303,8 @@ export class View {
       canvasImages:{...this.counts},platformCaches:this.platforms.filter(row=>row.art).length,
       platformPixels:this.platforms.reduce((n,row)=>n+(row.art?row.art.width*row.art.height:0),0)
         +(this.stone ? this.stone.width*this.stone.height : 0), skyLayers:this.canvas.parentElement.querySelectorAll(".court-sky").length,
-      stonePainted:!!this.stone,wallSheet:!!this.wallSheet,
+      stonePainted:!!this.stone,wallSheet:!!this.wallSheet,paints:this.paints,powerSaving:this.powerSaving,
+      paintSurfaces:[this.canvas.width*this.canvas.height],overlayPixels:this.fx.width*this.fx.height,
       textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas))+Number(Boolean(this.bladeAtlas))+Number(Boolean(this.waymarks))+Number(Boolean(this.wallSheet)),
       waymarkPixels:(this.waymarks?.naturalWidth || 0)*(this.waymarks?.naturalHeight || 0),triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},
       hero:{visual:"suye-painted-v1",pose:h?.pose,bladeAtlas:!!this.bladeAtlas,position:[h?.x,h?.y,.9],

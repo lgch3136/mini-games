@@ -1,6 +1,6 @@
 import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261124-eave-return1";
-import { View } from "./court-view-v1.mjs?v=20261124-eave-return1";
+import { View } from "./court-view-v1.mjs?v=20261124-roof-canvas1";
 import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
@@ -89,7 +89,7 @@ function input() {
 }
 const capture = () => frameSnapshot.capture(world);
 function preview() {
-  if (!view?.ready) return;
+  if (!view?.ready || destroyed || document.hidden) return;
   view.resize();
   view.render(world, null, 1, 0);
 }
@@ -324,6 +324,11 @@ $("sound-btn").addEventListener("click", async () => {
   await audio.setMuted(!audio.muted);
   text("sound-btn", audio.muted ? "声音 关" : "声音 开");
 });
+$("power-saving").addEventListener("change", () => {
+  const enabled=$("power-saving").checked;
+  try {localStorage.setItem("moonblade-power-v1",enabled?"on":"off");} catch {}
+  if (view) {view.powerSaving=enabled;preview();}
+});
 $("detail").addEventListener("change", () => {
   if (view) view.detail = $("detail").checked;
   preview();
@@ -498,6 +503,8 @@ window.moonDiagnostics = () => ({
 });
 try {
   view = new View($("game"), $("fx"));
+  try {view.powerSaving=localStorage.getItem("moonblade-power-v1")==="on";} catch {}
+  $("power-saving").checked=view.powerSaving;
   view.onSceneryChange = preview;
   $("comfort").checked = view.reduced;
   await view.preload();

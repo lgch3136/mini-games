@@ -4,20 +4,21 @@ export function drawCourtFx(world, dt, alpha) {
     const c = this.ctx,
       unit = this.h / this.viewHeight;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    c.clearRect(0, 0, this.w, this.h);
+    // Scenery already cleared the shared surface before the actors were drawn.
     if (this.detail && !this.reduced) {
       c.strokeStyle = "rgba(173,205,235,.12)";
       c.lineWidth = 0.75;
-      if (world.stage === 0)
+      if (world.stage === 0) {
+        c.beginPath();
         for (let i = 0; i < 38; i++) {
           const x =
               ((((i * 0.618 - this.elapsed * 0.065) % 1) + 1) % 1) * this.w,
             y = ((i * 0.373 + this.elapsed * 0.7) % 1) * this.h;
-          c.beginPath();
           c.moveTo(x, y);
           c.lineTo(x - 3, y + 13);
-          c.stroke();
         }
+        c.stroke();
+      }
     }
     // The ribbon is made from actual blade endpoints after the model's pose
     // and 3D turn, rather than an unrelated circle painted ahead of the player.

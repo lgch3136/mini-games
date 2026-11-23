@@ -1,4 +1,4 @@
-import { drawWallReturn } from "./eave-bell.mjs?v=20261124-eave-return1";
+import { drawWallReturn } from "./eave-bell.mjs?v=20261124-roof-canvas1";
 import { bladePose, drawBladePose, drawDiveImpact } from "./suye-strikes.mjs";
 import { frames } from "./suye-frames-v1.mjs";
 import { sampleSuye } from "./suye-poses-v1.mjs";
@@ -81,9 +81,17 @@ export function drawHero(view, world, old, alpha, dt) {
   const floor=view.floorAt(world,x,y);
   if(floor>-10 && y-floor<6) shadow(view.context,sx,view.screen(x,floor)[1]+1,view.unit*.47,view.unit*.074);
   const active=world.attackRect();
-  if (p.attack?.kind==="wallSlash" && view.wallSheet) {
-    drawWallReturn(view,p,x+offset,y,sx,sy,dt,!!active);
-    return;
+  if (view.wallSheet && !p.ground && !p.stun && p.dash<=0) {
+    const cutting=p.attack?.kind==="wallSlash";
+    const braced=!p.attack && p.wall && p.vy<=1.5;
+    const kicking=!p.attack && p.wallBladeWindow>.14;
+    if (cutting || braced || kicking) {
+      const name=braced?"wallGather":kicking || p.attack.frame<4?"wallSpring":active?"wallCut":"wallFall";
+      const direction=braced ? -p.wall : p.wallLaunchFacing || p.facing;
+      const [wx,wy]=view.screen(x,y);
+      drawWallReturn(view,p,x,y,wx,wy,dt,!!active,name,direction);
+      return;
+    }
   }
   const strike=view.bladeAtlas && (p.attack?.kind==="wallSlash" ? (active?"first":"draw") : bladePose(p,active,s.diveImpact||0));
   if (s.diveImpact>0) drawDiveImpact(view,s);

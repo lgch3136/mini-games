@@ -1,9 +1,12 @@
 const poses={"wallGather": {"rect": [23, 3, 177, 186], "position": [-1.04025, -2.3655, 2.35125, 2.47475], "grip": [-0.532, 1.6055], "tip": [-0.05225, 1.48675]}, "wallSpring": {"rect": [242, 3, 188, 186], "position": [-1.27912, -2.42136, 2.45912, 2.43552], "grip": [-0.86848, 1.6756], "tip": [-1.24608, 1.26024]}, "wallCut": {"rect": [3, 211, 218, 154], "position": [-1.4896, -2.2687, 3.3075, 2.3422], "grip": [1.2887, 1.6709], "tip": [1.8375, 1.9061]}, "wallFall": {"rect": [251, 195, 170, 186], "position": [-1.06015, -2.3751, 2.2477, 2.46155], "grip": [0.7098, 1.2012], "tip": [1.19665, 0.9464]}};
 
-export function drawWallReturn(view,p,x,y,sx,sy,dt,active) {
-  const frame=p.attack.frame;
-  const name=frame<=1?"wallGather":frame<4?"wallSpring":active?"wallCut":"wallFall";
-  const pose=poses[name],u=view.unit,dir=p.facing,c=view.context;
+export function drawWallReturn(view,p,x,y,sx,sy,dt,active,name,dir) {
+  const pose=poses[name],u=view.unit,c=view.context;
+  if (name==="wallGather") {
+    // The rear boot touches the solid face while the fighter is still on it.
+    const lean=dir*(1.01-p.w/2);
+    x+=lean;sx+=lean*u;
+  }
   const [dx,dy,w,h]=pose.position;
   c.save();c.translate(sx,sy);c.scale(dir,1);
   c.drawImage(view.wallSheet,...pose.rect,dx*u,dy*u,w*u,h*u);
