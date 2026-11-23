@@ -1,6 +1,6 @@
 import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
-import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261124-suye-blade1";
-import { View } from "./court-view-v1.mjs?v=20261124-court-perf1";
+import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261124-temple-way1";
+import { View } from "./court-view-v1.mjs?v=20261124-temple-way1";
 import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
@@ -109,6 +109,7 @@ function begin() {
   previous = null;
   view.build(world);
   view.loadBlade();
+  view.loadWaymarks();
   document.body.classList.add("playing");
   $("menu").hidden = $("panel").hidden = true;
   $("hud").hidden = false;

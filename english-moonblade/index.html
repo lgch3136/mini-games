@@ -11,6 +11,11 @@
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 <style>
+      .vitals #moon-mastery {
+        position:static;
+        margin-top:4px;
+        line-height:1.25;
+      }
       @media (max-width:600px) and (orientation:portrait) {
         body.playing #arena {
           width:100%;
@@ -42,9 +47,10 @@
               <div class="energy">
                 <span>忍力</span><b id="energy"></b><span id="score"></span>
               </div>
+              <div id="moon-mastery"></div>
             </div>
             <div id="combo"></div>
-            <div id="moon-mastery"></div><div id="dash-state"></div>
+            <div id="dash-state"></div>
             <div class="boss" id="boss" hidden>
               <span>无明 · 寺门守卫</span>
               <div><i id="boss-fill"></i></div>
@@ -159,6 +165,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20261124-court-perf1"></script>
+    <script type="module" src="main.mjs?v=20261124-temple-way1"></script>
   </body>
 </html>

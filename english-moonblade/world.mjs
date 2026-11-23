@@ -1,6 +1,7 @@
 import { strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2";
 export const VERSION = "20260929-fluid-r2";
 export const DT = 1 / 60;
+const SLASH_START = [3, 4, 6];
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
 const approach = (a, b, s) => (a < b ? Math.min(a + s, b) : Math.max(a - s, b));
@@ -216,6 +217,7 @@ export class World {
       attackBuffer: 0,
       attack: null,
       queue: false,
+      queueFacing: 0,
       run: 0,
       held: {},
     };
@@ -297,6 +299,8 @@ export class World {
   startAttack(kind = "slash", chain = 0) {
     const p = this.player;
     if (p.stun || p.dash > 0) return false;
+    if (kind === "slash" && p.queueFacing) p.facing = p.queueFacing;
+    p.queueFacing = 0;
     p.attack = { kind, chain, frame: 0, id: ++this.serial, hits: new Set() };
     p.attackBuffer = 0;
     p.queue = false;
@@ -307,7 +311,7 @@ export class World {
     const p = this.player,
       a = p.attack;
     if (!a) return null;
-    const start = a.kind === "dive" ? 2 : [3, 4, 6][a.chain],
+    const start = a.kind === "dive" ? 2 : SLASH_START[a.chain],
       active = a.kind === "dive" ? 70 : [5, 6, 7][a.chain];
     if (a.frame < start || a.frame >= start + active) return null;
     if (a.kind === "dive")
@@ -368,6 +372,8 @@ export class World {
     p.vx = dir * 4;
     p.vy = 3.7;
     p.attack = null;
+    p.queue = false;
+    p.queueFacing = 0;
     p.dash = 0;
     this.combo = 0;
     this.emit("hurt", { x: p.x, y: p.y + 1 });
@@ -440,23 +446,36 @@ export class World {
     p.attackBuffer = edge("attack") ? 0.14 : Math.max(0, p.attackBuffer - dt);
     p.coyote = p.ground ? 0.1 : Math.max(0, p.coyote - dt);
     if (!input.jump && p.held.jump && p.vy > 5) p.vy *= 0.48;
-    const move = Number.isFinite(input.moveX)
+    let move = Number.isFinite(input.moveX)
       ? Math.sign(input.moveX)
       : Number(!!input.right) - Number(!!input.left);
     p.moveIntent = move;
     const facingIntent = move || Math.sign(input.facingHint || 0);
     if (p.stun <= 0) {
-      // Resolve direction BEFORE creating an attack, projectile or dash. A turn
-      // cancels the previous slash instead of sliding backwards with its hitbox.
+      if (facingIntent && facingIntent === p.facing) p.queueFacing = 0;
       if (facingIntent && facingIntent !== p.facing && p.wallKick <= 0) {
-        p.facing = facingIntent;
-        if (p.attack?.kind === "slash") {
-          p.attack = null;
-          p.queue = false;
+        const slash = p.attack?.kind === "slash" ? p.attack : null;
+        const activeOrLater = slash && slash.frame >= SLASH_START[slash.chain];
+        const preparingNextSlash = activeOrLater && (p.queue || p.attackBuffer > 0);
+        const finishingDash = p.dash > 0 && p.dash <= 0.105 && p.attackBuffer > 0;
+        if (preparingNextSlash || finishingDash) {
+          // Finish the current motion facing its original direction. The next blade
+          // consumes the side the player explicitly chose, including a released tap.
+          p.queueFacing = facingIntent;
+          if (preparingNextSlash) move = p.moveIntent = 0;
+        } else {
+          p.facing = facingIntent;
+          p.queueFacing = 0;
+          if (activeOrLater) {
+            p.attack = null;
+            p.queue = false;
+          }
+          p.dash = 0;
         }
-        p.dash = 0;
       }
       if (edge("dash") && p.dashCool <= 0) {
+        p.queue = false;
+        p.queueFacing = 0;
         p.dash = 0.17;
         p.dashCool = 0.6;
         p.inv = Math.max(p.inv, 0.18);
@@ -857,6 +876,7 @@ export class World {
         facing: p.facing,
         moveIntent: p.moveIntent,
         attackBuffer: p.attackBuffer,
+        queuedFacing: p.queueFacing,
         attack: p.attack
           ? {
               kind: p.attack.kind,

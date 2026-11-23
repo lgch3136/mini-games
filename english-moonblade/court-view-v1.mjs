@@ -1,3 +1,4 @@
+import { drawWaymark } from "./temple-waymarks.mjs?v=20261124-temple-way1";
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
 import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2";
@@ -55,6 +56,15 @@ export class View {
     this.heroAtlas=hero;this.foeAtlas=foes;this.facades=facades;
     this.backgrounds.set("city",city);
     this.ready=true;
+  }
+  loadWaymarks() {
+    if (this.waymarksLoad || this.disposed) return this.waymarksLoad;
+    this.waymarksLoad = picture("temple-waymarks-r1.webp").then(image => {
+      if (this.disposed) return;
+      this.waymarks = image;
+      this.onSceneryChange?.();
+    }).catch(() => {this.waymarksLoad = null;});
+    return this.waymarksLoad;
   }
   loadBlade() {
     if (this.bladeLoad || this.disposed) return this.bladeLoad;
@@ -155,6 +165,10 @@ export class View {
     }
     for(const h of world.level.hazards){
       const [x,y]=this.screen(h.x,h.y);if(x>this.w||x+h.w*u<0)continue;
+      if (this.waymarks) {
+        drawWaymark(c,this.waymarks,"spikes",x+h.w*u/2,y,h.w*u,.52*u);
+        continue;
+      }
       const n=Math.ceil(h.w/.24);c.fillStyle="#a4b5b8";c.strokeStyle="#52636b";c.lineWidth=1;
       c.beginPath();c.moveTo(x,y);
       for(let i=0;i<n;i++){const step=h.w*u/n;c.lineTo(x+(i+.5)*step,y-u*.48);c.lineTo(x+(i+1)*step,y);}
@@ -162,17 +176,29 @@ export class View {
     }
     world.level.checkpoints.forEach(([wx,wy],i)=>{
       const [x,y]=this.screen(wx+.22,wy);
-      if(x>-u&&x<this.w+u)lamp(c,x,y,u,i<=world.checkpoint);
+      if (x<=-u || x>=this.w+u) return;
+      const lit=i<=world.checkpoint;
+      if (this.waymarks) drawWaymark(c,this.waymarks,lit?"lit":"dim",x,y,.58*u,1.75*u);
+      else lamp(c,x,y,u,lit);
     });
     if(world.goalX<=this.cx+this.follow.halfWidth+2) {
       const [x,y]=this.screen(world.goalX, this.floorAt(world,world.goalX,12));
-      c.strokeStyle="#423c3a";c.lineWidth=u*.21;c.beginPath();
-      c.moveTo(x-u*.65,y);c.lineTo(x-u*.65,y-u*2.7);c.lineTo(x+u*.65,y-u*2.7);c.lineTo(x+u*.65,y);c.stroke();
-      c.fillStyle="#cdb081";c.fillRect(x-u*.9,y-u*2.84,u*1.8,u*.13);
+      if (this.waymarks) {
+        const open=world.stage<2 || world.bossDefeated;
+        drawWaymark(c,this.waymarks,open?"open":"closed",x,y,3.07*u,2.92*u);
+      } else {
+        c.strokeStyle="#423c3a";c.lineWidth=u*.21;c.beginPath();
+        c.moveTo(x-u*.65,y);c.lineTo(x-u*.65,y-u*2.7);c.lineTo(x+u*.65,y-u*2.7);c.lineTo(x+u*.65,y);c.stroke();
+        c.fillStyle="#cdb081";c.fillRect(x-u*.9,y-u*2.84,u*1.8,u*.13);
+      }
     }
     for(const box of world.props) {
       if(box.broken)continue;
       const [x,y]=this.screen(box.x,box.y);if(x<-u||x>this.w+u)continue;
+      if (this.waymarks) {
+        drawWaymark(c,this.waymarks,"chest",x,y,box.w*u,box.h*u);
+        continue;
+      }
       c.fillStyle="#5b4232";c.fillRect(x-u*.35,y-u*.64,u*.7,u*.64);
       c.strokeStyle="#bc9563";c.lineWidth=Math.max(1,u*.055);c.strokeRect(x-u*.32,y-u*.61,u*.64,u*.59);
       c.beginPath();c.moveTo(x-u*.3,y-u*.57);c.lineTo(x+u*.31,y-u*.04);c.stroke();
@@ -204,7 +230,8 @@ export class View {
     const h=this.hero;
     return {ready:this.ready,renderer:"painted-court-canvas2d-v1",dpr:this.dpr,drawCalls:null,
       canvasImages:{...this.counts},platformCaches:this.platforms.length,
-      textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas)),triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},
+      textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas))+Number(Boolean(this.bladeAtlas))+Number(Boolean(this.waymarks)),
+      waymarkPixels:(this.waymarks?.naturalWidth || 0)*(this.waymarks?.naturalHeight || 0),triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},
       hero:{visual:"suye-painted-v1",pose:h?.pose,bladeAtlas:!!this.bladeAtlas,position:[h?.x,h?.y,.9],
         bladeBase:h?.base?[h.base.x,h.base.y,h.base.z]:null,bladeTip:h?.tip?[h.tip.x,h.tip.y,h.tip.z]:null,trail:h?.ribbon.nodes.length},
       reduced:this.reduced,camera:{x:this.cx,y:this.cy,width:2*this.follow.halfWidth},
@@ -215,6 +242,7 @@ export class View {
     for(const {art} of this.platforms){art.width=1;art.height=1;}
     this.platforms=[];this.backgrounds.clear();this.heroAtlas=this.foeAtlas=this.facades=this.sky=null;
     this.sweepAtlas=this.sweepLoad=this.bladeAtlas=this.bladeLoad=null;
+    this.waymarks=this.waymarksLoad=null;
     this.canvas.width=this.canvas.height=this.fx.width=this.fx.height=1;
   }
 }
