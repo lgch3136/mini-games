@@ -1,7 +1,7 @@
 import rosterPoses from "./roster-poses.mjs";
-import signatures from "./signature-frames.mjs?v=20261124-iron-response1";
-import { signaturePose } from "./signature-timing.mjs?v=20261124-iron-response1";
-import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-iron-response1";
+import signatures from "./signature-frames.mjs?v=20261124-tumble1";
+import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261124-tumble1";
+import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-tumble1";
 import atlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 
 const ironLegs = {
@@ -59,6 +59,11 @@ function actionCel(fighter, cells) {
 }
 
 function celFor(f, cells, frame) {
+  const reaction = airborneReaction(f);
+  if (reaction) {
+    if (reaction === "air-lift") return "hit/impact";
+    return reaction === "air-turn" ? "jump/apex" : "hit/release";
+  }
   if (f.hp <= 0 || f.state === "ko") return f.down > 20 ? "ko/contact" : "ko/seated";
   if (f.down) return f.down < 6 && f.y === 0 ? "rise/start" : "down/ground";
   if (f.state === "hurt") return f.stateFrame < 7 ? "hit/impact" : "hit/release";
@@ -292,8 +297,12 @@ export class ArenaView {
       const [x, y] = this.screen(lerp(f.px, f.x, alpha), lerp(f.py, f.y, alpha));
       return { f, x, y };
     });
-    const priority = f => f.action && f.action.frame >= f.action.spec.startup
-      && f.action.frame < f.action.spec.startup + f.action.spec.active ? 2 : f.stun ? 0 : 1;
+    const priority = f => {
+      const a = f.action;
+      if (a?.spec.level === "throw" && a.connected) return 3;
+      if (a && a.frame >= a.spec.startup && a.frame < a.spec.startup + a.spec.active) return 2;
+      return f.stun ? 0 : 1;
+    };
     this.actorCels = [];
     this.drawCalls = 0;
     c.fillStyle = "rgba(11,20,30,.44)";
@@ -313,7 +322,8 @@ export class ArenaView {
       const sheet = this.signatureUsers.has(f.c.id) && this.signatureSheets.get(f.c.id);
       const key = sheet?.decoded && signaturePose(f);
       const signature = key && signatures[f.c.id].cells[key];
-      const ownFace = !signature && !leg && f.facing < 0 && cells[role + "@left"];
+      const facing = ((f.down || f.hp <= 0) && f.tossFacing) || f.facing;
+      const ownFace = !signature && !leg && facing < 0 && cells[role + "@left"];
       const fallback = f.c.id === "shan" && role === "hit/impact"
         ? cells["block/impact"] : cells[role];
       const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || ownFace || fallback || cells["idle/0"];
@@ -322,11 +332,11 @@ export class ArenaView {
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
-      c.scale(ownFace ? 1 : f.facing, 1);
+      c.scale(ownFace ? 1 : facing, 1);
       c.drawImage(image, sx, sy, w, h, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
-      this.actorCels[f.side] = { id:f.c.id, role, facing:f.facing, ownFace:!!ownFace, authoredLeg:!!leg, signature:signature ? key : null };
+      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, signature:signature ? key : null };
     }
   }
   event(e) {

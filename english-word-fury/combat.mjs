@@ -1,4 +1,5 @@
-import { swallowPhase } from "./signature-timing.mjs?v=20261124-iron-response1";
+import { beginOpening, chooseOpening, holdOpening } from "./rival-openings.mjs?v=20261124-tumble1";
+import { swallowPhase } from "./signature-timing.mjs?v=20261124-tumble1";
 import { DojoCourse } from "./dojo.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
 export const VERSION = "20260918-play-r1";
@@ -295,6 +296,7 @@ export function fighter(id, side) {
     freeze: 0,
     inv: 0,
     down: 0,
+    tossFacing: 0,
     land: 0,
     run: false,
     crouch: false,
@@ -317,6 +319,8 @@ export function fighter(id, side) {
     aiIntent: 0,
     aiHeld: 0,
     aiQueue: null,
+    rivalOpening: null,
+    rivalReady: 0,
     throwImmune: 0,
     techUntil: 0,
     flash: 0,
@@ -462,6 +466,7 @@ export class Fight {
   clearInputs() {
     for (const f of this.f) {
       f.held.clear();
+      f.rivalOpening = null;
       f.buffer = [];
       f.history = [];
       f.run = false;
@@ -530,7 +535,7 @@ export class Fight {
     )
       return false;
     if (
-      m.level === "throw" &&
+      m.level === "throw" && !(f.c.id === "shan" && name === "grab") &&
       (this.f[1 - f.side].y > 0.15 || this.f[1 - f.side].throwImmune)
     )
       return false;
@@ -681,6 +686,7 @@ export class Fight {
       if (this.training === "spar") {
       } else return;
     }
+    if (this.mode === "arcade" && holdOpening(this, e)) return;
     if (e.aiQueue && this.frame >= e.aiQueue.at) {
       this.queue(e, e.aiQueue.key);
       e.aiQueue = null;
@@ -725,6 +731,16 @@ export class Fight {
     if (e.meter >= 200 && !e.maxTime && dist > 2.4 && r < 0.32) {
       attack("max", 2);
       return;
+    }
+    if (this.mode === "arcade" && this.frame >= e.rivalReady &&
+        e.y === 0 && !e.land && e.state !== "roll" && e.state !== "backstep" &&
+        p.y < 0.05 && !p.down && !p.stun && !p.action &&
+        !this.projectiles.some(shot => shot.owner === 0 && Math.abs(shot.x - e.x) < 3.7)) {
+      const opening = chooseOpening(e.c.id, dist);
+      if (opening) {
+        beginOpening(this, e, opening);
+        return;
+      }
     }
     // Mix a readable low / overhead / throw against a passive blocker instead
     // of always feeding the same guarded normal into an inert opponent.
@@ -833,7 +849,7 @@ export class Fight {
     f.stateFrame++;
     f.inv = Math.max(0, f.inv - 1);
     const o = this.f[1 - f.side];
-    if (!f.action && !f.down && !f.stun && f.y === 0 && f.state !== "roll") {
+    if (!f.action && !f.rivalOpening && !f.down && !f.stun && f.y === 0 && f.state !== "roll") {
       const face = o.x >= f.x ? 1 : -1;
       if (face !== f.facing) {
         f.facing = face;
@@ -1030,6 +1046,7 @@ export class Fight {
       damage = Math.round(damage * 0.8);
     target.hp = clamp(target.hp - damage, 0, 100);
     target.lastReceived = this.frame;
+    target.tossFacing = isThrow ? -attacker.facing : 0;
     target.action = null;
     target.run = false;
     target.stun = guard ? spec.blockstun : spec.stun + (counter ? 5 : 0);
@@ -1282,6 +1299,8 @@ export class Fight {
         down: f.down,
         guard: f.guard,
         blocking: f.blocking,
+        rivalOpening: f.rivalOpening ? {move: f.rivalOpening.move, at: f.rivalOpening.at,
+          facing: f.rivalOpening.facing, pose: f.rivalOpening.pose} : null,
         crouch: f.crouch,
         facing: f.facing,
         combo: f.combo,

@@ -1,4 +1,4 @@
-import {arcadeStop,arcadeResult} from "./arcade-stops.mjs";
+import {arcadeStop,arcadeResult} from "./arcade-stops.mjs?v=20261124-tumble1";
 import { rememberCombat, storedMedal } from "./dojo.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   Fight,
@@ -6,8 +6,8 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20261124-iron-response1";
-import { ArenaView } from "./view.mjs?v=20261124-ferry-cup1";
+} from "./combat.mjs?v=20261124-tumble1";
+import { ArenaView } from "./view.mjs?v=20261124-tumble1";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 const fighterSnapshots = new FighterSnapshots();
