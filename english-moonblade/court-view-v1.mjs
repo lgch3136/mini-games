@@ -1,9 +1,10 @@
+import { drawEaveBell } from "./eave-bell.mjs?v=20261124-eave-return1";
 import { stonePanel, drawStone } from "./stone-panels.mjs?v=20261124-stone-court1";
 import { drawWaymark } from "./temple-waymarks.mjs?v=20261124-temple-way1";
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
 import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2";
-import { drawHero, drawFoe } from "./court-actors-v1.mjs?v=20261124-suye-blade1";
+import { drawHero, drawFoe } from "./court-actors-v1.mjs?v=20261124-eave-return1";
 import { bakePlatform, bakeSky, glowCard } from "./court-terrain-v1.mjs";
 import { drawCourtFx } from "./court-fx-v1.mjs?v=20261124-court-perf1";
 
@@ -86,6 +87,14 @@ export class View {
     this.heroAtlas=hero;this.foeAtlas=foes;this.facades=facades;
     this.backgrounds.set("city",city);
     this.ready=true;
+  }
+  loadWallSheet() {
+    if (this.wallRequest || this.disposed || this.wallFailed) return;
+    this.wallRequest=picture("suye-wall-return-r1.webp").then(img=>{
+      if (this.disposed) return;
+      if (img.naturalWidth!==448 || img.naturalHeight!==384) throw new Error("壁返图集尺寸错误");
+      this.wallSheet=img;
+    }).catch(()=>{this.wallFailed=true;});
   }
   loadWaymarks() {
     if (this.waymarksLoad || this.disposed) return this.waymarksLoad;
@@ -271,6 +280,8 @@ export class View {
     this.context.setTransform(this.dpr,0,0,this.dpr,0,0);
     this.counts.actors=this.counts.facades=this.counts.platforms=0;
     this.scenery(world);
+    if (dt>0 && !this.wallRequest && (p.wall || Math.abs(x-world.bell.x)<13)) this.loadWallSheet();
+    drawEaveBell(this,world);
     for(const [id,death] of this.deaths){death.age+=dt;if(death.age>.3)this.deaths.delete(id);}
     for(const e of world.enemies)drawFoe(this,world,e,alpha,dt);
     drawHero(this,world,previous?.player,alpha,dt);
@@ -284,8 +295,8 @@ export class View {
       canvasImages:{...this.counts},platformCaches:this.platforms.filter(row=>row.art).length,
       platformPixels:this.platforms.reduce((n,row)=>n+(row.art?row.art.width*row.art.height:0),0)
         +(this.stone ? this.stone.width*this.stone.height : 0), skyLayers:this.canvas.parentElement.querySelectorAll(".court-sky").length,
-      stonePainted:!!this.stone,
-      textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas))+Number(Boolean(this.bladeAtlas))+Number(Boolean(this.waymarks)),
+      stonePainted:!!this.stone,wallSheet:!!this.wallSheet,
+      textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas))+Number(Boolean(this.bladeAtlas))+Number(Boolean(this.waymarks))+Number(Boolean(this.wallSheet)),
       waymarkPixels:(this.waymarks?.naturalWidth || 0)*(this.waymarks?.naturalHeight || 0),triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},
       hero:{visual:"suye-painted-v1",pose:h?.pose,bladeAtlas:!!this.bladeAtlas,position:[h?.x,h?.y,.9],
         bladeBase:h?.base?[h.base.x,h.base.y,h.base.z]:null,bladeTip:h?.tip?[h.tip.x,h.tip.y,h.tip.z]:null,trail:h?.ribbon.nodes.length},
@@ -298,7 +309,7 @@ export class View {
     this.dropStone();
     this.resetSky();
     this.platforms=[];this.backgrounds.clear();this.heroAtlas=this.foeAtlas=this.facades=this.sky=null;
-    this.sweepAtlas=this.sweepLoad=this.bladeAtlas=this.bladeLoad=null;
+    this.sweepAtlas=this.sweepLoad=this.bladeAtlas=this.bladeLoad=this.wallSheet=this.wallRequest=null;
     this.waymarks=this.waymarksLoad=null;
     this.canvas.width=this.canvas.height=this.fx.width=this.fx.height=1;
   }

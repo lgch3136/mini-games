@@ -1,3 +1,4 @@
+import { drawWallReturn } from "./eave-bell.mjs?v=20261124-eave-return1";
 import { bladePose, drawBladePose, drawDiveImpact } from "./suye-strikes.mjs";
 import { frames } from "./suye-frames-v1.mjs";
 import { sampleSuye } from "./suye-poses-v1.mjs";
@@ -80,7 +81,11 @@ export function drawHero(view, world, old, alpha, dt) {
   const floor=view.floorAt(world,x,y);
   if(floor>-10 && y-floor<6) shadow(view.context,sx,view.screen(x,floor)[1]+1,view.unit*.47,view.unit*.074);
   const active=world.attackRect();
-  const strike=view.bladeAtlas && bladePose(p,active,s.diveImpact||0);
+  if (p.attack?.kind==="wallSlash" && view.wallSheet) {
+    drawWallReturn(view,p,x+offset,y,sx,sy,dt,!!active);
+    return;
+  }
+  const strike=view.bladeAtlas && (p.attack?.kind==="wallSlash" ? (active?"first":"draw") : bladePose(p,active,s.diveImpact||0));
   if (s.diveImpact>0) drawDiveImpact(view,s);
   if (s.freshDiveImpact) s.freshDiveImpact=false;
   else s.diveImpact=Math.max(0,(s.diveImpact||0)-dt);

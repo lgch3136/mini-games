@@ -1,6 +1,6 @@
 import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
-import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261124-temple-way1";
-import { View } from "./court-view-v1.mjs?v=20261124-stone-court1";
+import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20261124-eave-return1";
+import { View } from "./court-view-v1.mjs?v=20261124-eave-return1";
 import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
@@ -165,6 +165,10 @@ function event(e) {
   if (e.type === "deflect") toast(e.focusGranted ? `刀锋截弹${e.energyGain ? " · 忍力 +1" : ""} · 月息反击就绪` : "刀锋截弹", 1.1);
   if (e.type === "riposte") toast("月息反击 · 伤害 +1", .9);
   if (e.type === "sweepOpening") toast(e.energyGain ? "看破横扫 · 忍力 +1" : "看破横扫", .9);
+  if (e.type === "eaveBell") {
+    audio.event({type:"loot",kind:"energy"});
+    toast((e.double?"檐铃双响 · 90 分":"檐铃一响 · 30 分")+(e.gain?" · 忍力 +"+e.gain:""),1.45);
+  }
   if (e.type === "bossClear") toast("月印已夺回 · 前往寺门", 3);
 }
 function hud() {
@@ -270,7 +274,7 @@ function finish() {
     panel(
       mode === "won" ? "DAWN RETURNS" : "CHAPTER COMPLETE",
       mode === "won" ? "长夜已尽" : "这一程，已过",
-      `得分 ${world.score} · 击倒 ${world.kills} · 本章重试 ${world.chapterSkills.retries} 次\n${report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join("\n")}\n${report.tip}${report.improved ? "\n本章勋章已升级" : ""}`,
+      `得分 ${world.score} · 击倒 ${world.kills} · 本章重试 ${world.chapterSkills.retries} 次\n${report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join("\n")}\n${world.chapterSkills.bell ? (world.chapterSkills.bell==="double" ? "檐铃双响" : "檐铃一响")+" · " : ""}${report.tip}${report.improved ? "\n本章勋章已升级" : ""}`,
       mode === "won" ? "再走一程" : "进入下一章",
     );
     const medal = $("chapter-medal");

@@ -2,6 +2,7 @@ import { strideAdvance } from "./cadence.mjs?v=20260929-fluid-r2";
 export const VERSION = "20260929-fluid-r2";
 export const DT = 1 / 60;
 const SLASH_START = [3, 4, 6];
+const eaveBells = [[27.8,3.15],[25.85,4.55],[46.95,2.6]];
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
 const approach = (a, b, s) => (a < b ? Math.min(a + s, b) : Math.max(a - s, b));
@@ -64,7 +65,7 @@ export const STAGES = [
     hints: [
       { x: 3, text: "A / D 移动 · 空格 / K 跳跃 · J 刀击" },
       { x: 15, text: "长按跳得更高 · 空中仍可出刀" },
-      { x: 28, text: "贴住高墙，再按跳跃蹬墙；可反复攀升" },
+      { x: 28, text: "贴墙再跳，腾空时按斩折返。檐铃可敲出双响" },
       { x: 47, text: "L 疾步穿过来袭攻击 · I 发射手里剑" },
     ],
   },
@@ -174,7 +175,7 @@ export class World {
     this.load(stage);
   }
   load(stage, checkpoint = 0) {
-    if (!this.chapterSkills || this.stage !== stage) this.chapterSkills = { started: this.time, damage: 0, deflects: 0, ripostes: 0, retries: 0 };
+    if (!this.chapterSkills || this.stage !== stage) this.chapterSkills = { started: this.time, damage: 0, deflects: 0, ripostes: 0, retries: 0, wallHits: 0, bell: null };
     this.stage = stage;
     this.level = STAGES[stage];
     this.checkpoint = checkpoint;
@@ -214,6 +215,8 @@ export class World {
       focus: 0,
       deflectCool: 0,
       wallKick: 0,
+      wallBladeWindow: 0,
+      wallLaunchFacing: 1,
       attackBuffer: 0,
       attack: null,
       queue: false,
@@ -279,6 +282,8 @@ export class World {
         return { id: `cache-${i}`, x: cx, y: cy, w: 0.82, h: 0.86, broken: false, reward };
       });
     this.hint = "";
+    const [bellX,bellY]=eaveBells[stage];
+    this.bell={x:bellX,y:bellY,w:.58,h:.70,rung:this.chapterSkills.bell,ringFrame:-1000};
     this.goalX = this.level.length - 2;
   }
   emit(type, data = {}) {
@@ -299,6 +304,13 @@ export class World {
   startAttack(kind = "slash", chain = 0) {
     const p = this.player;
     if (p.stun || p.dash > 0) return false;
+    if (kind === "wallSlash") {
+      p.wallBladeWindow=0;
+      p.wallKick=0;
+      p.facing=p.wallLaunchFacing;
+      p.vx=p.facing*10.4;
+      p.vy=clamp(p.vy,-3.5,4.4);
+    }
     if (kind === "slash" && p.queueFacing) p.facing = p.queueFacing;
     p.queueFacing = 0;
     p.attack = { kind, chain, frame: 0, id: ++this.serial, hits: new Set() };
@@ -311,6 +323,11 @@ export class World {
     const p = this.player,
       a = p.attack;
     if (!a) return null;
+    if (a.kind === "wallSlash") {
+      if (a.frame<4 || a.frame>9) return null;
+      const reach=1.8375;
+      return {x:p.facing>0?p.x:p.x-reach,y:p.y+.66,w:reach,h:1.28};
+    }
     const start = a.kind === "dive" ? 2 : SLASH_START[a.chain],
       active = a.kind === "dive" ? 70 : [5, 6, 7][a.chain];
     if (a.frame < start || a.frame >= start + active) return null;
@@ -365,6 +382,7 @@ export class World {
     const p = this.player;
     if (p.inv > 0 || this.state !== "playing") return false;
     this.chapterSkills.damage += damage;
+    p.wallBladeWindow=0;
     p.focus = 0;
     p.hp = Math.max(0, p.hp - damage);
     p.inv = this.easy ? 1.4 : 1.0;
@@ -438,7 +456,7 @@ export class World {
     p.px = p.x;
     p.py = p.y;
     const edge = (k) => !!input[k + "Pressed"] || (!!input[k] && !p.held[k]);
-    for (const k of ["inv", "stun", "dashCool", "wallMemory", "comboLife", "focus", "deflectCool"])
+    for (const k of ["inv", "stun", "dashCool", "wallMemory", "comboLife", "focus", "deflectCool", "wallBladeWindow"])
       if (k === "comboLife") this.comboLife = Math.max(0, this.comboLife - dt);
       else p[k] = Math.max(0, p[k] - dt);
     if (!this.comboLife) this.combo = 0;
@@ -453,7 +471,7 @@ export class World {
     const facingIntent = move || Math.sign(input.facingHint || 0);
     if (p.stun <= 0) {
       if (facingIntent && facingIntent === p.facing) p.queueFacing = 0;
-      if (facingIntent && facingIntent !== p.facing && p.wallKick <= 0) {
+      if (facingIntent && facingIntent !== p.facing && p.wallKick <= 0 && p.attack?.kind !== "wallSlash") {
         const slash = p.attack?.kind === "slash" ? p.attack : null;
         const activeOrLater = slash && slash.frame >= SLASH_START[slash.chain];
         const preparingNextSlash = activeOrLater && (p.queue || p.attackBuffer > 0);
@@ -474,6 +492,7 @@ export class World {
         }
       }
       if (edge("dash") && p.dashCool <= 0) {
+        p.wallBladeWindow=0;
         p.queue = false;
         p.queueFacing = 0;
         p.dash = 0.17;
@@ -493,6 +512,8 @@ export class World {
         if (wall) {
           p.facing = -wall;
           p.wallKick = 0.1;
+          p.wallBladeWindow=.26;
+          p.wallLaunchFacing=-wall;
         }
         p.jumpBuffer = 0;
         p.coyote = 0;
@@ -506,7 +527,10 @@ export class World {
             p.queue = true;
             p.attackBuffer = 0;
           }
-        } else this.startAttack(input.down && !p.ground ? "dive" : "slash");
+        } else if (input.down && !p.ground) {
+          p.wallBladeWindow=0;
+          this.startAttack("dive");
+        } else this.startAttack(p.wallBladeWindow>0 && !p.ground ? "wallSlash" : "slash");
       }
       if (edge("ninja") && p.energy > 0) {
         p.energy--;
@@ -527,6 +551,8 @@ export class World {
         p.dash = Math.max(0, p.dash - dt);
         p.vx = p.facing * 15;
         p.vy = 0;
+      } else if (p.attack?.kind==="wallSlash" && p.attack.frame<10) {
+        p.vx=p.facing*10.4;
       } else if (p.wallKick > 0) p.wallKick -= dt;
       else {
         // Physics changes direction immediately; cosmetic pivot/weight transfer
@@ -551,6 +577,7 @@ export class World {
       p.wallMemory = 0.08;
     }
     if (p.ground && !wasGround) {
+      p.wallBladeWindow=0;
       this.emit("land", { x: p.x, y: p.y, speed: landingSpeed, dive: p.attack?.kind === "dive" });
       if (p.attack?.kind === "dive") {
         for (const e of this.enemies)
@@ -571,6 +598,15 @@ export class World {
       const a = p.attack,
         r = this.attackRect();
       if (r) {
+        if (!this.bell.rung && overlap(r,box(this.bell))) {
+          const double=a.kind==="wallSlash";
+          this.bell.rung=this.chapterSkills.bell=double?"double":"single";
+          this.bell.ringFrame=this.frame;
+          this.score+=double?90:30;
+          const before=p.energy;
+          p.energy=Math.min(10,p.energy+(double?2:1));
+          this.emit("eaveBell",{double,gain:p.energy-before,x:this.bell.x,y:this.bell.y+.35});
+        }
         for (const prop of this.props)
           if (!prop.broken && overlap(r, box(prop))) this.breakProp(prop, p.facing);
         // A visible blade can actually cut an incoming projectile. This uses
@@ -597,20 +633,25 @@ export class World {
             const riposte = p.focus > 0 && !(e.kind === "boss" && ["tell", "rush", "sweep", "leap"].includes(e.state));
             const struck = this.hitEnemy(
               e,
-              (a.kind === "dive" ? 3 : [2, 2, 3][a.chain]) + (riposte ? 1 : 0),
+              (a.kind === "dive" || a.kind === "wallSlash" ? 3 : [2, 2, 3][a.chain]) + (riposte ? 1 : 0),
               p.facing,
               a.id, true,
             );
+            if (struck && a.kind==="wallSlash" && !a.wallCredited) {
+              a.wallCredited=true;
+              this.chapterSkills.wallHits++;
+            }
             if (struck && riposte) {
               p.focus = 0;
               this.chapterSkills.ripostes++;
               this.emit("riposte", { x: e.x, y: e.y + 1, dir: p.facing });
             }
           }
-      const end = a.kind === "dive" ? 85 : [17, 20, 26][a.chain];
+      const end = a.kind === "wallSlash" ? 17 : a.kind === "dive" ? 85 : [17, 20, 26][a.chain];
       if (a.frame >= end) {
         p.attack = null;
-        if (p.queue && a.kind === "slash")
+        if (p.queue && a.kind === "wallSlash") this.startAttack("slash",0);
+        else if (p.queue && a.kind === "slash")
           this.startAttack("slash", (a.chain + 1) % 3);
       }
     }
@@ -873,6 +914,7 @@ export class World {
         ground: p.ground,
         wall: p.wall,
         wallKick: p.wallKick,
+        wallBladeWindow:p.wallBladeWindow,
         facing: p.facing,
         moveIntent: p.moveIntent,
         attackBuffer: p.attackBuffer,
@@ -906,6 +948,7 @@ export class World {
         y: s.y,
         vx: s.vx,
       })),
+      bell:{...this.bell},
       bossLocked: this.bossLocked,
       bossDefeated: this.bossDefeated,
     };
