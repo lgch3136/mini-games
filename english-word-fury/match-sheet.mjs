@@ -7,8 +7,26 @@ export const stanceRoles = {
 
 // CSS coordinates and combat rules always use the original atlas coordinates.
 // The optional lower-resolution bitmap is owned by the current match.
-export async function loadMatchSheet(url, atlas, compact, signal) {
-  if (compact && typeof createImageBitmap === "function") {
+export async function loadMatchSheet(url, atlas, compact, signal, compactUrl) {
+  if (compact && compactUrl && !signal.aborted) {
+    const width = Math.round(atlas.width * .7);
+    const height = Math.round(atlas.height * .7);
+    try {
+      const image = new Image();
+      image.src = compactUrl;
+      await image.decode();
+      if (image.naturalWidth !== width || image.naturalHeight !== height) {
+        throw new Error("Unexpected compact fighter atlas size");
+      }
+      if (!signal.aborted) {
+        return {image, scaleX:width / atlas.width, scaleY:height / atlas.height, close:null};
+      }
+    } catch (error) {
+      if (signal.aborted) throw error;
+      // The original atlas remains available if the small asset fails.
+    }
+  }
+  if (compact && !compactUrl && typeof createImageBitmap === "function") {
     const width = Math.round(atlas.width * .7);
     const height = Math.round(atlas.height * .7);
     try {

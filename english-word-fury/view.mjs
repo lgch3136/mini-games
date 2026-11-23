@@ -1,7 +1,7 @@
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
 import rosterPoses from "./harbor-roster-guard.mjs?v=20261124-harbor-guard1";
 import stanceAtlas from "./harbor-guard-cels.mjs?v=20261124-harbor-guard1";
-import {loadMatchSheet, stanceRoles} from "./match-sheet.mjs?v=20261124-harbor-guard1";
+import {loadMatchSheet, stanceRoles} from "./match-sheet.mjs?v=20261124-compact-baked1";
 import signatures from "./signature-frames.mjs?v=20261124-tumble1";
 import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261124-tumble1";
 import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-harbor-guard1";
@@ -133,9 +133,12 @@ export class ArenaView {
     this.releaseBase(id);
     const atlas = atlases[id];
     const url = new URL("./assets/" + atlas.file + "?v=arcade-cels-r3", import.meta.url).href;
+    const compactUrl = id === "lin" || id === "mei"
+      ? new URL("./assets/" + atlas.file.replace(".webp", "-compact.webp"), import.meta.url).href
+      : null;
     const entry = {compact, control:new AbortController()};
     this.assets.set(id, entry);
-    entry.promise = loadMatchSheet(url, atlas, compact, entry.control.signal).then(sheet => {
+    entry.promise = loadMatchSheet(url, atlas, compact, entry.control.signal, compactUrl).then(sheet => {
       if (this.assets.get(id) !== entry) {
         sheet.close?.();
         return;
