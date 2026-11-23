@@ -1,0 +1,1 @@
+export default Object.assign((ok,why='declined asset')=>{if(!ok)throw Error(why)},{equal(a,b){if(a!==b)throw Error('not exact')},deepEqual(a,b){if(JSON.stringify(a)!==JSON.stringify(b))throw Error('not exact')}});
