@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><meta name="arcade-build" content="qa-fury-duo-canvas-20261123-v4">
+<title>斗魂 · 地面对决 v4 · 角色重做候选</title><link rel="stylesheet" href="../qa-fury-mei-heavy-windup-20261121-r1/play.css">
+<style>
+.recap {border-left:2px solid #cfab72;padding:.25rem .62rem;margin:.42rem 0 .65rem;background:#32283d;color:#fff0d6;font-size:clamp(.65rem,1.4vw,.95rem)}
+</style></head>
+<body>
+<main>
+<header><div><span class="kicker">CROSSWIND FURY <b>01</b> · 更新<time datetime="2026-11-23">2026-11-23</time></span><h1>霓虹夜斗</h1></div><span class="stamp">地面对决 v4 · 角色重做候选</span></header>
+<section class="cabinet" aria-label="斗魂霓虹夜斗">
+<div id="screen" class="screen">
+<canvas id="game" width="480" height="270" tabindex="0" aria-label="1 对 1 斗魂擂台，A / D 移动"></canvas>
+<div class="hud" aria-hidden="true">
+ <div class="vitals left"><strong><span id="name0">凌风</span> <small>P1</small></strong><i><b id="hp0"></b></i><div><span id="score0"></span><span id="meter0"></span></div></div>
+ <div class="time"><strong id="timer">75</strong><small id="round">ROUND 01</small></div>
+ <div class="vitals right"><strong><small>P2</small> <span id="name1">赤绫</span></strong><i><b id="hp1"></b></i><div><span id="meter1"></span><span id="score1"></span></div></div>
+</div>
+<div id="announce" class="announce" hidden></div>
+<div id="contact" class="contact" hidden></div>
+<div id="panel" class="veil">
+ <div class="panel" role="group" aria-label="对局菜单">
+  <span class="kicker" id="panel-meta">新角色候选 · 独立 Canvas 对决</span>
+  <h2 id="panel-title">地面拆招 · 完整一局</h2>
+  <p id="panel-copy">等待两位新角色装载。</p>
+  <p id="round-receipt" class="recap" hidden></p>
+  <div id="mode-block" class="modes">
+     <label id="fighter-block">己方 <select id="fighter-choice"><option value="lin" selected>凌风 · 近身压迫</option><option value="mei">赤绫 · 中距试探</option></select></label>
+   <label id="level-block">难度 <select id="difficulty"><option value="easy">入门</option><option value="normal" selected>标准</option><option value="hard">高手</option></select></label>
+  </div>
+  <div class="modes"><label><input id="quiet" type="checkbox"> 隐藏判定字样</label></div>
+  <div class="actions"><button id="start" class="primary" disabled>进入对决 ↗</button><button id="retry-art" type="button" hidden>重新加载画面</button><button id="restart" hidden>重开对局</button><button id="menu" hidden>返回开场</button></div>
+ </div>
+</div>
+</div>
+<div class="under"><span id="asset-note">角色和场景装载中</span><div class="under-actions"><button id="sound" type="button" aria-pressed="false">开启音效</button><button id="pause" type="button" hidden>暂停 / Esc</button><a href="../index.html">返回大厅</a></div></div>
+<div id="touch" class="touch" hidden>
+ <fieldset><legend>方向</legend><div data-group="move"><button data-action="left" aria-label="向左">←</button><button data-action="right" aria-label="向右">→</button><button data-action="up">跳</button><button data-action="down">蹲</button></div></fieldset>
+ <fieldset><legend>攻击</legend><div data-group="fight"><button data-action="A">轻拳</button><button data-action="B">轻脚</button><button data-action="C">重拳</button><button data-action="D">重脚</button><button data-action="guard">防</button><button data-action="roll">闪</button><button data-action="wave">气波</button></div></fieldset>
+</div>
+</section>
+<details><summary>按键说明</summary>
+ <p>角色打法：凌风贴身用 J 接 U；赤绫在中距用站踢或燕啄，打完退一步。<br>地面试玩：A / D 走退、S 蹲、Shift 防、J 轻拳、K 站踢、S＋K 低踢、U 重拳；蹲下时只出低踢；无跳、闪、投、气波、必杀或连按方向冲刺。单局 75 秒，击倒或按剩余生命判胜负。对手停在脚尖外时，可以晚半拍踢，或先调整距离。</p>
+</details>
+<p class="sr" id="status" aria-live="polite">准备对战</p>
+</main><script type="module" src="main.mjs"></script>
+</body></html>
