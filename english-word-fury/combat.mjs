@@ -1,3 +1,4 @@
+import { swallowPhase } from "./signature-timing.mjs?v=20261124-iron-response1";
 import { DojoCourse } from "./dojo.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
 export const VERSION = "20260918-play-r1";
@@ -30,7 +31,7 @@ export const ROSTER = [
     power: 0.92,
     size: 0.94,
     plan: "rush",
-    text: "二段飞燕突进、快速下段与小跳施压。命中后接 MAX 超必杀；被防住就别继续硬抢。",
+    text: "飞燕穿风近身以膝先到，隔一步用第二脚打远端。快速下段与小跳都能掩护起手。命中后接 MAX 超必杀；被防住就别继续硬抢。",
   },
   {
     id: "shan",
@@ -214,6 +215,8 @@ export function moveFor(f, name) {
       damage: 7,
       active: 14,
       hitFrames: [0, 6],
+      firstReach: 0.82,
+      range: 2.0,
       stun: 23,
       push: 0.06,
       lunge: 0.105,
@@ -349,12 +352,18 @@ export function attackBox(f) {
     a.frame >= a.spec.startup + a.spec.active
   )
     return null;
-  const m = a.spec,
-    end = f.x + f.facing * m.range * f.c.size;
+  const m = a.spec;
+  let reach = m.range;
+  if (m.firstReach) {
+    const phase = swallowPhase(a.frame,m);
+    if (phase !== "knee" && phase !== "kick") return null;
+    if (phase === "knee") reach = m.firstReach;
+  }
+  const end = f.x + f.facing * reach * f.c.size;
   return {
     x: f.facing > 0 ? f.x + 0.2 : end,
     y: f.y + (m.y - m.h / 2) * f.c.size,
-    w: m.range * f.c.size - 0.2,
+    w: reach * f.c.size - 0.2,
     h: m.h * f.c.size,
   };
 }

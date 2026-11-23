@@ -5,8 +5,8 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
-import { ArenaView } from "./view.mjs?v=20261124-portrait-ring1";
+} from "./combat.mjs?v=20261124-iron-response1";
+import { ArenaView } from "./view.mjs?v=20261124-iron-response1";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 const fighterSnapshots = new FighterSnapshots();

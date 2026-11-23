@@ -1,4 +1,6 @@
-import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20260918-play-r1&mobile=20260930-quality-r2";
+import signatures from "./signature-frames.mjs?v=20261124-iron-response1";
+import { signaturePose } from "./signature-timing.mjs?v=20261124-iron-response1";
+import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-iron-response1";
 import atlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 
 const ironLegs = {
@@ -90,6 +92,9 @@ export class ArenaView {
     this.rigSources = {};
     this.ironImage = null;
     this.ironLoad = null;
+    this.signatureSheets = new Map();
+    this.signatureUsers = new Set();
+    this.selectionSerial = 0;
     this.actorCels = [];
     this.models = [];
     this.ready = false;
@@ -135,15 +140,38 @@ export class ArenaView {
     this.ironLoad = pending;
     return pending;
   }
+  loadSignature(id) {
+    const cached = this.signatureSheets.get(id);
+    if (cached) return cached.ready;
+    const atlas = signatures[id];
+    const image = new Image();
+    image.src = new URL("./assets/" + atlas.file, import.meta.url).href;
+    const entry = { image, ready:null, decoded:false };
+    entry.ready = image.decode().then(() => {
+      if (image.naturalWidth !== atlas.width || image.naturalHeight !== atlas.height) {
+        throw new Error("Unexpected signature atlas for " + id);
+      }
+      entry.decoded = true;
+    }).catch(() => {
+      if (this.signatureSheets.get(id) === entry) this.signatureSheets.delete(id);
+    });
+    this.signatureSheets.set(id,entry);
+    return entry.ready;
+  }
   async preload() {
     await this.select([0, 1]);
     this.ready = true;
   }
-  async select(ids, ironIds = []) {
+  async select(ids, matchIds = []) {
+    const request = ++this.selectionSerial;
     const resources = ids.map(id => this.load(id));
-    const useIronLegs = ironIds.some(id => ROSTER[id].id === "shan");
+    const actual = new Set(matchIds.map(index => ROSTER[index].id));
+    const useIronLegs = actual.has("shan");
+    for (const id of actual) if (signatures[id]) resources.push(this.loadSignature(id));
     if (useIronLegs) resources.push(this.loadIronLegs());
     await Promise.all(resources);
+    if (request !== this.selectionSerial) return;
+    this.signatureUsers = actual;
     this.models = ids;
     this.useIronLegs = useIronLegs;
   }
@@ -230,10 +258,15 @@ export class ArenaView {
       const role = celFor(f, cells, fight.frame);
       const iron = f.c.id === "shan" && this.useIronLegs && this.ironImage;
       const leg = iron && f.action && role.startsWith(f.action.name + "/") && ironLegs.cells[role];
-      const ownFace = !leg && f.facing < 0 && cells[role + "@left"];
-      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = leg || ownFace || cells[role] || cells["idle/0"];
+      const sheet = this.signatureUsers.has(f.c.id) && this.signatureSheets.get(f.c.id);
+      const key = sheet?.decoded && signaturePose(f);
+      const signature = key && signatures[f.c.id].cells[key];
+      const ownFace = !signature && !leg && f.facing < 0 && cells[role + "@left"];
+      const fallback = f.c.id === "shan" && role === "hit/impact"
+        ? cells["block/impact"] : cells[role];
+      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || ownFace || fallback || cells["idle/0"];
       const size = scale * (f.c.id === "shan" ? (iron ? 0.84 : 0.93) : 1);
-      const image = leg ? this.ironImage : entry.image;
+      const image = signature ? sheet.image : leg ? this.ironImage : entry.image;
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
@@ -241,7 +274,7 @@ export class ArenaView {
       c.drawImage(image, sx, sy, w, h, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
-      this.actorCels[f.side] = { id:f.c.id, role, facing:f.facing, ownFace:!!ownFace, authoredLeg:!!leg };
+      this.actorCels[f.side] = { id:f.c.id, role, facing:f.facing, ownFace:!!ownFace, authoredLeg:!!leg, signature:signature ? key : null };
     }
   }
   event(e) {
@@ -305,6 +338,28 @@ export class ArenaView {
       c.save();
       c.translate(x, y);
       c.scale(shot.dir, 1);
+      if (shot.name === "wave" && fight.f[shot.owner].c.id === "lin") {
+        // The bright leading edge travels inside the actual projectile radius.
+        // The open ribbons behind it indicate direction during a crossover.
+        c.fillStyle = "#d3fff1";
+        c.beginPath();
+        c.moveTo(-r*.93,-r*.69);
+        c.quadraticCurveTo(r*.48,-r,r*.94,0);
+        c.quadraticCurveTo(r*.53,r*.76,-r*.75,r*.85);
+        c.quadraticCurveTo(r*.12,r*.18,r*.16,0);
+        c.quadraticCurveTo(-r*.14,-r*.51,-r*.93,-r*.69);
+        c.fill();
+        c.strokeStyle = "#79d8cb";
+        c.lineWidth = Math.max(1,r*.15);
+        for (const side of [-1,1]) {
+          c.beginPath();
+          c.moveTo(-r*1.95,side*r*.24);
+          c.quadraticCurveTo(-r*.48,side*r*1.1,r*.5,side*r*.28);
+          c.stroke();
+        }
+        c.restore();
+        continue;
+      }
       const g = c.createRadialGradient(0, 0, 0, 0, 0, r * 1.8);
       g.addColorStop(0, "#fffce2");
       g.addColorStop(0.3, shot.owner === 0 ? "#bcffef" : "#ffc9a8");
@@ -434,6 +489,9 @@ export class ArenaView {
   dispose() {
     this.ready = false;
     this.portraitFight = null;
+    this.selectionSerial++;
+    this.signatureUsers.clear();
+    this.signatureSheets.clear();
     this.assets.clear();
     this.ironLoad = null;
     this.ironImage = null;
