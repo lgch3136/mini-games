@@ -11,6 +11,13 @@
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 <style>
+      #arena > .court-sky {
+        position:absolute;
+        inset:0 auto auto -19px;
+        width:calc(100% + 38px);
+        height:100%;
+        pointer-events:none;
+      }
       .vitals #moon-mastery {
         position:static;
         margin-top:4px;
@@ -19,7 +26,7 @@
       @media (max-width:600px) and (orientation:portrait) {
         body.playing #arena {
           width:100%;
-          height:clamp(230px,min(90vw,calc(100dvh - 218px)),460px);
+          height:clamp(230px,min(120vw,calc(100dvh - 218px)),540px);
           max-height:100%; aspect-ratio:auto;
         }
       }
@@ -165,6 +172,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20261124-temple-way1"></script>
+    <script type="module" src="main.mjs?v=20261124-stone-court1"></script>
   </body>
 </html>

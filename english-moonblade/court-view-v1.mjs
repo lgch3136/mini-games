@@ -1,3 +1,4 @@
+import { stonePanel, drawStone } from "./stone-panels.mjs?v=20261124-stone-court1";
 import { drawWaymark } from "./temple-waymarks.mjs?v=20261124-temple-way1";
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
 import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
@@ -35,7 +36,7 @@ export class View {
   constructor(canvas,fx) {
     this.canvas=canvas;this.fx=fx;
     fx.style.backgroundImage="linear-gradient(to bottom, rgba(3,13,20,.22), transparent 38%, transparent 72%, rgba(3,13,20,.4))";
-    this.context=canvas.getContext("2d",{alpha:false});
+    this.context=canvas.getContext("2d",{alpha:true});
     this.ctx=fx.getContext("2d");
     this.detail=true;this.reduced=matchMedia("(prefers-reduced-motion:reduce)").matches;
     this.ready=false;this.disposed=false;this.elapsed=0;
@@ -46,6 +47,35 @@ export class View {
     this.glowImage=glowCard();this.platforms=[];this.stage=-1;
     this.backgrounds=new Map();this.pendingSkies=new Map();
     this.counts={actors:0,platforms:0,facades:0};this.enemyPoses={};
+  }
+  resetSky() {
+    if (this.sky) {
+      this.sky.remove();
+      this.sky.width=this.sky.height=1;
+      this.sky=null;
+    }
+    this.skyOffset=null;
+  }
+  dropStone() {
+    if (this.stone) this.stone.width=this.stone.height=1;
+    this.stone=null;
+    this.stoneLoad=null;
+  }
+  loadStone() {
+    if (this.stage<1 || this.stoneLoad || this.disposed) return;
+    const file=this.stage===1 ? "mist-slate-r1.webp" : "temple-granite-r1.webp";
+    const job=picture(file).then(image=>{
+      if (this.disposed || job!==this.stoneLoad) return;
+      this.stone=stonePanel(image);
+      for (const item of this.platforms) {
+        if (item.p.kind==="stone" && item.art) {
+          item.art.width=item.art.height=1;
+          item.art=null;
+        }
+      }
+      if (!document.hidden) this.onSceneryChange?.();
+    }).catch(()=>{if(job===this.stoneLoad) this.stoneLoad=null;});
+    this.stoneLoad=job;
   }
   async preload() {
     const [hero,foes,facades,city]=await Promise.all([
@@ -92,7 +122,7 @@ export class View {
       target.width=Math.max(1,Math.round(w*dpr));
       target.height=Math.max(1,Math.round(h*dpr));
     }
-    this.sky=null;
+    this.resetSky();
   }
   build(world) {
     if(!this.ready||this.disposed)return;
@@ -110,14 +140,15 @@ export class View {
       const job=picture("mist-temple.webp").then(img=>{
         if(this.disposed)return;
         this.backgrounds.set(nextTheme,img);
-        if(this.theme===nextTheme){this.sky=null;this.onSceneryChange?.();}
+        if(this.theme===nextTheme){this.resetSky();if(!document.hidden)this.onSceneryChange?.();}
       }).catch(()=>{}).finally(()=>this.pendingSkies.delete(nextTheme));
       this.pendingSkies.set(nextTheme,job);
     }
     if(this.stage!==world.stage || !this.platforms.length) {
-      for(const {art} of this.platforms) {art.width=1;art.height=1;}
-      this.platforms=world.level.platforms.map(p=>({p,art:bakePlatform(p,this.facades)}));
-      this.sky=null;
+      for(const {art} of this.platforms) if(art) art.width=art.height=1;
+      this.platforms=world.level.platforms.map(p=>({p,art:null}));
+      this.dropStone();
+      this.resetSky();
     }
     this.stage=world.stage;this.theme=nextTheme;
     this.follow.reset(world.player,world.level.length);
@@ -145,9 +176,18 @@ export class View {
   scenery(world) {
     const c=this.context,u=this.unit;
     const bg=this.backgrounds.get(this.theme)||this.backgrounds.get("city");
-    if(!this.sky)this.sky=bakeSky(bg,this.w,this.h,this.theme==="city");
-    const drift=this.reduced?0:Math.sin(this.cx*.045)*12;
-    c.drawImage(this.sky,-19+drift,0,this.w+38,this.h);
+    if (!this.sky) {
+      this.sky=bakeSky(bg,this.w,this.h,this.theme==="city");
+      this.sky.setAttribute("aria-hidden","true");
+      this.sky.className="court-sky";
+      this.canvas.before(this.sky);
+    }
+    const drift=this.reduced ? 0 : Math.round(Math.sin(this.cx*.045)*24)/2;
+    if (drift!==this.skyOffset) {
+      this.sky.style.transform="translateX("+drift+"px)";
+      this.skyOffset=drift;
+    }
+    c.clearRect(0,0,this.w,this.h);
     if(this.stage===0) {
       c.save();c.globalAlpha=.59;
       for(let offset=0;offset<world.level.length;offset+=42)for(const [x,base,h,sw,sh,tx,ty] of cityFacades){
@@ -158,10 +198,22 @@ export class View {
       }
       c.restore();
     }
-    for(const {p,art} of this.platforms) {
-      const [x,y]=this.screen(p.x,p.y),w=p.w*u;
-      if(x+w<0||x>this.w||y>this.h)continue;
-      c.drawImage(art,x,y,w,p.h*u);this.counts.platforms++;
+    for (const item of this.platforms) {
+      const p=item.p,[x,y]=this.screen(p.x,p.y),w=p.w*u;
+      if (x+w<0 || x>this.w || y>this.h || y+p.h*u<0) {
+        if (item.art && (x+w < -u*4 || x > this.w+u*4)) {
+          item.art.width=item.art.height=1;
+          item.art=null;
+        }
+        continue;
+      }
+      if (p.kind==="stone" && this.stone) {
+        drawStone(c,this.stone,x,y,p,u,this.w,this.h);
+      } else {
+        if (!item.art) item.art=bakePlatform(p,this.facades);
+        c.drawImage(item.art,x,y,w,p.h*u);
+      }
+      this.counts.platforms++;
     }
     for(const h of world.level.hazards){
       const [x,y]=this.screen(h.x,h.y);if(x>this.w||x+h.w*u<0)continue;
@@ -229,7 +281,10 @@ export class View {
   diagnostics() {
     const h=this.hero;
     return {ready:this.ready,renderer:"painted-court-canvas2d-v1",dpr:this.dpr,drawCalls:null,
-      canvasImages:{...this.counts},platformCaches:this.platforms.length,
+      canvasImages:{...this.counts},platformCaches:this.platforms.filter(row=>row.art).length,
+      platformPixels:this.platforms.reduce((n,row)=>n+(row.art?row.art.width*row.art.height:0),0)
+        +(this.stone ? this.stone.width*this.stone.height : 0), skyLayers:this.canvas.parentElement.querySelectorAll(".court-sky").length,
+      stonePainted:!!this.stone,
       textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas))+Number(Boolean(this.bladeAtlas))+Number(Boolean(this.waymarks)),
       waymarkPixels:(this.waymarks?.naturalWidth || 0)*(this.waymarks?.naturalHeight || 0),triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},
       hero:{visual:"suye-painted-v1",pose:h?.pose,bladeAtlas:!!this.bladeAtlas,position:[h?.x,h?.y,.9],
@@ -239,7 +294,9 @@ export class View {
   }
   dispose(){
     this.disposed=true;this.ready=false;this.feedback.clear();this.actors.clear();this.deaths.clear();
-    for(const {art} of this.platforms){art.width=1;art.height=1;}
+    for(const {art} of this.platforms) if(art) art.width=art.height=1;
+    this.dropStone();
+    this.resetSky();
     this.platforms=[];this.backgrounds.clear();this.heroAtlas=this.foeAtlas=this.facades=this.sky=null;
     this.sweepAtlas=this.sweepLoad=this.bladeAtlas=this.bladeLoad=null;
     this.waymarks=this.waymarksLoad=null;
