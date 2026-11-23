@@ -286,6 +286,8 @@ export function fighter(id, side) {
     facing: side === 0 ? 1 : -1,
     hp: 100,
     guard: 100,
+    guardTapFrame: -999,
+    guardTapReady: -999,
     meter: 0,
     maxTime: 0,
     rollDirection: 1,
@@ -330,6 +332,7 @@ export function fighter(id, side) {
     stats: {
       hits: 0,
       blocks: 0,
+      justGuards: 0,
       counters: 0,
       throws: 0,
       specials: 0,
@@ -436,8 +439,17 @@ export class Fight {
     if (!f) return;
     if (["left", "right", "down", "up", "guard"].includes(key)) {
       if (pressed && f.held.has(key)) return;
+      const back = f.facing > 0 ? "left" : "right";
+      const wasGuarding = f.held.has(back) || f.held.has("guard");
       if (pressed) f.held.add(key);
       else f.held.delete(key);
+      const isGuarding = f.held.has(back) || f.held.has("guard");
+      if (!isGuarding) f.guardTapFrame = -999;
+      if (this.state === "fight" && !wasGuarding && isGuarding && f.y === 0 &&
+          !f.stun && !f.down && !f.action && !f.freeze && this.frame >= f.guardTapReady) {
+        f.guardTapFrame = this.frame;
+        f.guardTapReady = this.frame + 16;
+      }
       if (key === "up" && pressed) this.queue(f, "jump");
       if (key === "up" && !pressed && f.vy > 0.13 && f.stateFrame < 11)
         f.vy = 0.13;
@@ -468,6 +480,7 @@ export class Fight {
   clearInputs() {
     for (const f of this.f) {
       f.held.clear();
+      f.guardTapFrame = -999;
       f.rivalOpening = null;
       f.buffer = [];
       f.history = [];
@@ -1023,6 +1036,8 @@ export class Fight {
         : spec.level === "high"
           ? !target.crouch
           : true);
+    const justGuard = guard && !target.stun && this.frame - target.guardTapFrame < 5;
+    if (justGuard) target.guardTapFrame = -999;
     const counter =
       !!target.action && target.action.frame <= target.action.spec.startup;
     const punish =
@@ -1052,6 +1067,10 @@ export class Fight {
     target.action = null;
     target.run = false;
     target.stun = guard ? spec.blockstun : spec.stun + (counter ? 5 : 0);
+    if (justGuard) {
+      target.stun = Math.max(4, target.stun - 4);
+      target.stats.justGuards++;
+    }
     target.state = guard ? "block" : "hurt";
     target.stateFrame = 0;
     target.vx = attacker.facing * spec.push * (guard ? 0.7 : 1);
@@ -1060,10 +1079,8 @@ export class Fight {
     if (!projectile && Math.abs(target.x) > 6.25)
       attacker.x -= attacker.facing * 0.12;
     if (guard) {
-      target.guard = Math.max(
-        0,
-        target.guard - (spec.heavy ? 18 : spec.special ? 16 : 7),
-      );
+      const cost = spec.heavy ? 18 : spec.special ? 16 : 7;
+      target.guard = Math.max(0, target.guard - (justGuard ? Math.ceil(cost / 2) : cost));
       target.stats.blocks++;
       if (target.guard === 0) {
         target.stun = 50;
@@ -1097,7 +1114,7 @@ export class Fight {
       }
     }
     attacker.meter = clamp(attacker.meter + (guard ? 5 : 11), 0, 300);
-    target.meter = clamp(target.meter + (guard ? 4 : 6), 0, 300);
+    target.meter = clamp(target.meter + (justGuard ? 10 : guard ? 4 : 6), 0, 300);
     this.emit(guard ? "block" : "hit", {
       side: attacker.side,
       target: target.side,
@@ -1106,6 +1123,7 @@ export class Fight {
       heavy: spec.heavy || spec.special,
       counter,
       punish,
+      justGuard,
       x: target.x - attacker.facing * 0.22,
       y: target.y + clamp(spec.y, 0.45, target.crouch ? 1.6 : 2.8),
       combo: attacker.combo,

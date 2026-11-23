@@ -1,8 +1,10 @@
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
-import rosterPoses from "./roster-poses.mjs";
+import rosterPoses from "./harbor-roster-guard.mjs?v=20261124-harbor-guard1";
+import stanceAtlas from "./harbor-guard-cels.mjs?v=20261124-harbor-guard1";
+import {loadMatchSheet, stanceRoles} from "./match-sheet.mjs?v=20261124-harbor-guard1";
 import signatures from "./signature-frames.mjs?v=20261124-tumble1";
 import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261124-tumble1";
-import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-iron-stride1";
+import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-harbor-guard1";
 import atlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 
 const ironLegs = {
@@ -104,6 +106,7 @@ export class ArenaView {
     this.ironImage = null;
     this.ironLoad = null;
     this.signatureSheets = new Map();
+    this.stanceSheets = new Map();
     this.signatureUsers = new Set();
     this.selectionSerial = 0;
     this.actorCels = [];
@@ -115,25 +118,36 @@ export class ArenaView {
     this.reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.camera = { zoom: 1 };
   }
-  load(index) {
+  releaseBase(id) {
+    const entry = this.assets.get(id);
+    if (!entry) return;
+    this.assets.delete(id);
+    delete this.rigSources[id];
+    entry.control.abort();
+    entry.close?.();
+  }
+  load(index, compact) {
     const id = ROSTER[index].id;
-    if (!this.assets.has(id)) {
-      const atlas = atlases[id];
-      const image = new Image();
-      image.src = new URL("./assets/" + atlas.file + "?v=arcade-cels-r3", import.meta.url).href;
-      const promise = image.decode().then(() => {
-        if (image.naturalWidth !== atlas.width || image.naturalHeight !== atlas.height) {
-          throw new Error("Unexpected atlas dimensions for " + id);
-        }
-        if (this.assets.get(id)?.image===image) this.rigSources[id] = "original-frame-atlas";
-        return image;
-      }).catch((error) => {
-        if (this.assets.get(id)?.image===image) this.assets.delete(id);
-        throw error;
-      });
-      this.assets.set(id, { image, promise });
-    }
-    return this.assets.get(id).promise;
+    const cached = this.assets.get(id);
+    if (cached?.compact === compact) return cached.promise;
+    this.releaseBase(id);
+    const atlas = atlases[id];
+    const url = new URL("./assets/" + atlas.file + "?v=arcade-cels-r3", import.meta.url).href;
+    const entry = {compact, control:new AbortController()};
+    this.assets.set(id, entry);
+    entry.promise = loadMatchSheet(url, atlas, compact, entry.control.signal).then(sheet => {
+      if (this.assets.get(id) !== entry) {
+        sheet.close?.();
+        return;
+      }
+      Object.assign(entry, sheet);
+      this.rigSources[id] = sheet.scaleX < 1 ? "compact-original-frame-atlas" : "original-frame-atlas";
+    }).catch(error => {
+      if (this.assets.get(id) !== entry) return;
+      this.releaseBase(id);
+      throw error;
+    });
+    return entry.promise;
   }
   loadIronLegs() {
     if (this.ironLoad) return this.ironLoad;
@@ -162,10 +176,10 @@ export class ArenaView {
     this.strideLoad=job;
     return job;
   }
-  loadSignature(id) {
-    const cached = this.signatureSheets.get(id);
+  loadSheet(id, definition, sheets) {
+    const cached = sheets.get(id);
     if (cached) return cached.ready;
-    const atlas = signatures[id];
+    const atlas = definition[id];
     const image = new Image();
     image.src = new URL("./assets/" + atlas.file, import.meta.url).href;
     const entry = { image, ready:null, decoded:false };
@@ -175,14 +189,14 @@ export class ArenaView {
       }
       entry.decoded = true;
     }).catch(() => {
-      if (this.signatureSheets.get(id) === entry) this.signatureSheets.delete(id);
+      if (sheets.get(id) === entry) sheets.delete(id);
     });
-    this.signatureSheets.set(id,entry);
+    sheets.set(id,entry);
     return entry.ready;
   }
   async preload() {
     const image = new Image();
-    image.src = new URL("./assets/harbor-roster-r1.webp", import.meta.url).href;
+    image.src = new URL("./assets/harbor-roster-guard-r1.webp", import.meta.url).href;
     try {
       await image.decode();
       if (image.naturalWidth === 768 && image.naturalHeight === 576) this.previewImage = image;
@@ -192,22 +206,25 @@ export class ArenaView {
     await this.select([0,1]);
     this.ready = true;
   }
-  async select(ids, matchIds = []) {
+  async select(ids, matchIds = [], compact = false) {
     const request = ++this.selectionSerial;
     const actual = new Set(matchIds.map(index => ROSTER[index].id));
     const previewOnly = !actual.size && Boolean(this.previewImage);
     const keep = previewOnly ? new Set() : new Set(ids.map(index => ROSTER[index].id));
     for (const id of this.assets.keys()) if (!keep.has(id)) {
-      this.assets.delete(id);
-      delete this.rigSources[id];
+      this.releaseBase(id);
     }
     for (const id of this.signatureSheets.keys()) if (!actual.has(id)) this.signatureSheets.delete(id);
+    for (const id of this.stanceSheets.keys()) if (!actual.has(id)) this.stanceSheets.delete(id);
     const useIronLegs = actual.has("shan");
     if (!useIronLegs) {
       this.ironLoad=this.ironImage=this.strideLoad=this.strideImage=null;
     }
-    const resources = previewOnly ? [] : ids.map(index => this.load(index));
-    for (const id of actual) if (signatures[id]) resources.push(this.loadSignature(id));
+    const resources = previewOnly ? [] : ids.map(index => this.load(index, compact && ROSTER[index].id !== "shan"));
+    for (const id of actual) {
+      if (signatures[id]) resources.push(this.loadSheet(id, signatures, this.signatureSheets));
+      if (stanceAtlas[id]) resources.push(this.loadSheet(id, stanceAtlas, this.stanceSheets));
+    }
     if (useIronLegs) resources.push(this.loadIronLegs(),this.loadIronStride());
     await Promise.all(resources);
     if (request !== this.selectionSerial) return;
@@ -354,8 +371,9 @@ export class ArenaView {
       c.fill();
     }
     for (const { f, x, y } of figures.sort((a, b) => priority(a.f) - priority(b.f))) {
-      const baseImage=this.previewOnly ? this.previewImage : this.assets.get(f.c.id)?.image;
-      if (!baseImage?.naturalWidth) continue;
+      const base = this.assets.get(f.c.id);
+      const baseImage = this.previewOnly ? this.previewImage : base?.image;
+      if (!baseImage?.width) continue;
       const cells=this.previewOnly ? rosterPoses[f.c.id] : atlases[f.c.id].cells;
       const role = this.previewOnly ? "idle/"+[0,1,2,1][Math.floor(fight.frame/11+f.side*2)%4] : celFor(f,cells,fight.frame);
       const iron = f.c.id === "shan" && this.useIronLegs && this.ironImage;
@@ -365,13 +383,20 @@ export class ArenaView {
       const sheet = this.signatureUsers.has(f.c.id) && this.signatureSheets.get(f.c.id);
       const key = sheet?.decoded && signaturePose(f);
       const signature = key && signatures[f.c.id].cells[key];
+      const closeSheet = !this.previewOnly && this.stanceSheets.get(f.c.id);
+      const holdingCover = role === "block/release" && f.state !== "block";
+      const stanceName = closeSheet?.decoded && (holdingCover ? "cover" : stanceRoles[role]);
+      const stance = stanceName && stanceAtlas[f.c.id].cells[stanceName];
       const facing = ((f.down || f.hp <= 0) && f.tossFacing) || f.facing;
-      const ownFace = !signature && !leg && !stride && facing < 0 && cells[role + "@left"];
+      const ownFace = !signature && !leg && !stride && !stance && facing < 0 && cells[role + "@left"];
       const fallback = f.c.id === "shan" && role === "hit/impact"
         ? cells["block/impact"] : cells[role];
-      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || stride || ownFace || fallback || cells["idle/0"];
+      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || stride || stance || ownFace || fallback || cells["idle/0"];
       const size = scale * (f.c.id === "shan" ? (iron || stride ? 0.84 : 0.93) : 1);
-      const image = signature ? sheet.image : leg ? this.ironImage : stride ? this.strideImage : baseImage;
+      const image = signature ? sheet.image : leg ? this.ironImage : stride ? this.strideImage : stance ? closeSheet.image : baseImage;
+      const scaledBase = !this.previewOnly && image === baseImage;
+      const sourceX = scaledBase ? base.scaleX : 1;
+      const sourceY = scaledBase ? base.scaleY : 1;
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
@@ -386,10 +411,10 @@ export class ArenaView {
       bounds.right=Math.max(bounds.right,ax+Math.max(px,px2)+Math.max(shear*py,shear*py2));
       bounds.top=Math.min(bounds.top,ay+py*stretch);
       bounds.bottom=Math.max(bounds.bottom,ay+py2*stretch);
-      c.drawImage(image, sx, sy, w, h, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
+      c.drawImage(image, sx * sourceX, sy * sourceY, w * sourceX, h * sourceY, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
-      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, signature:signature ? key : null };
+      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, stance:stance ? stanceName : null, signature:signature ? key : null };
     }
   }
   event(e) {
@@ -610,7 +635,9 @@ export class ArenaView {
       rosterOnly:Boolean(this.previewOnly),
       matchAtlases:this.assets.size,
       strideSheetPixels:(this.strideImage?.naturalWidth || 0)*(this.strideImage?.naturalHeight || 0),
-      decodedMatchPixels:[...this.assets.values()].reduce((sum,v)=>sum+(v.image.naturalWidth||0)*(v.image.naturalHeight||0),0),
+      decodedMatchPixels:[...this.assets.values()].reduce((sum,v)=>sum+(v.image?.width||0)*(v.image?.height||0),0),
+      stancePixels:[...this.stanceSheets.values()].reduce((sum,s)=>sum+(s.decoded?s.image.width*s.image.height:0),0),
+      atlasResolution:Object.fromEntries([...this.assets].map(([id,e])=>[id,e.scaleX||0])),
       portraitRing: this.portrait ? {center:this.portraitCenter,unit:this.portraitUnit,
         floor:this.portraitFloor,pixels:this.canvas.width*this.canvas.height} : null,
       ambient: this.ambient,
@@ -624,7 +651,8 @@ export class ArenaView {
     this.strideLoad=this.strideImage=null;
     this.signatureUsers.clear();
     this.signatureSheets.clear();
-    this.assets.clear();
+    this.stanceSheets.clear();
+    for (const id of this.assets.keys()) this.releaseBase(id);
     this.ironLoad = null;
     this.ironImage = null;
   }

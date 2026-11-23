@@ -6,8 +6,8 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20261124-iron-stride1";
-import { ArenaView } from "./view.mjs?v=20261124-iron-stride1";
+} from "./combat.mjs?v=20261124-harbor-guard1";
+import { ArenaView } from "./view.mjs?v=20261124-harbor-guard1";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
@@ -139,6 +139,10 @@ function event(e) {
     rememberCombat(game);
     setText("callout", e.completed === 4 ? "道场课程完成 · 攻防入门" : "✓ " + e.title + " 达成");
     calloutUntil = game.frame + 120;
+  }
+  if (e.type === "block" && e.justGuard) {
+    setText("callout", "寸接 · 抢回四帧");
+    calloutUntil = game.frame + 45;
   }
   if (e.type === "coachTell") {
     setText("callout", "陪练准备重拳 · 先防守");
@@ -303,7 +307,7 @@ async function startMatch(next = false) {
     opponent = (hero + 1) % 3;
   }
   try {
-    await view.select([hero, opponent], [hero, opponent]);
+    await view.select([hero, opponent], [hero, opponent], ecoPaint.checked);
   } catch (error) {
     setText("status", "角色画格未加载，可重试进入擂台");
     console.error(error);
