@@ -1,3 +1,4 @@
+import { bladePose, drawBladePose, drawDiveImpact } from "./suye-strikes.mjs";
 import { frames } from "./suye-frames-v1.mjs";
 import { sampleSuye } from "./suye-poses-v1.mjs";
 import { foes } from "./court-frames-v1.mjs";
@@ -78,6 +79,18 @@ export function drawHero(view, world, old, alpha, dt) {
   const [sx,sy]=view.screen(x+offset,y), scale=view.unit*.0064;
   const floor=view.floorAt(world,x,y);
   if(floor>-10 && y-floor<6) shadow(view.context,sx,view.screen(x,floor)[1]+1,view.unit*.47,view.unit*.074);
+  const active=world.attackRect();
+  const strike=view.bladeAtlas && bladePose(p,active,s.diveImpact||0);
+  if (s.diveImpact>0) drawDiveImpact(view,s);
+  if (s.freshDiveImpact) s.freshDiveImpact=false;
+  else s.diveImpact=Math.max(0,(s.diveImpact||0)-dt);
+  if (strike) {
+    const {base,tip}=drawBladePose(view,p,strike,x+offset,y,sx,sy);
+    if (dt>0) s.ribbon.update(base,tip,dt,!!active,p.facing);
+    s.pose=strike;s.x=x+offset;s.y=y;s.base=base;s.tip=tip;
+    view.counts.actors++;
+    return;
+  }
   const c=view.context;
   const breathe=pose.name==="guard"&&!view.reduced?1+Math.sin(view.elapsed*3)*.006:1;
   const hiltX=f.grip[0]*.0064, hiltY=f.grip[1]*.0064;
@@ -94,6 +107,6 @@ export function drawHero(view, world, old, alpha, dt) {
   c.restore(); view.counts.actors++;
   const bx=x+offset+p.facing*hiltX, by=y+hiltY*breathe, co=Math.cos(pose.angle), si=Math.sin(pose.angle);
   const base={x:bx,y:by,z:.9},tip={x:bx+p.facing*(1.05*co-.036*si),y:by+(1.05*si+.036*co)*breathe,z:.9};
-  if(dt>0)s.ribbon.update(base,tip,dt,!!world.attackRect(),p.facing);
+  if(dt>0)s.ribbon.update(base,tip,dt,!!active,p.facing);
   s.pose=pose.name;s.x=x+offset;s.y=y;s.base=base;s.tip=tip;
 }

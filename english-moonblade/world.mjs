@@ -532,7 +532,7 @@ export class World {
       p.wallMemory = 0.08;
     }
     if (p.ground && !wasGround) {
-      this.emit("land", { x: p.x, y: p.y, speed: landingSpeed });
+      this.emit("land", { x: p.x, y: p.y, speed: landingSpeed, dive: p.attack?.kind === "dive" });
       if (p.attack?.kind === "dive") {
         for (const e of this.enemies)
           if (!e.dead && Math.abs(e.x - p.x) < 2 && Math.abs(e.y - p.y) < 1)

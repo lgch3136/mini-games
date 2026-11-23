@@ -1,7 +1,7 @@
 import { FollowCamera } from "./camera.mjs?v=20260929-reaction-r1";
 import { Feedback } from "./feedback.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { BladeRibbon } from "./ribbon.mjs?v=20260929-fluid-r2";
-import { drawHero, drawFoe } from "./court-actors-v1.mjs?v=20261124-temple-sweep1";
+import { drawHero, drawFoe } from "./court-actors-v1.mjs?v=20261124-suye-blade1";
 import { bakePlatform, bakeSky, glowCard } from "./court-terrain-v1.mjs";
 import { drawCourtFx } from "./court-fx-v1.mjs?v=20261124-temple-sweep1";
 
@@ -54,6 +54,15 @@ export class View {
     this.heroAtlas=hero;this.foeAtlas=foes;this.facades=facades;
     this.backgrounds.set("city",city);
     this.ready=true;
+  }
+  loadBlade() {
+    if (this.bladeLoad || this.disposed) return this.bladeLoad;
+    this.bladeLoad=picture("suye-blade-r1.webp").then(image=>{
+      if (this.disposed) return;
+      if (image.naturalWidth!==696 || image.naturalHeight!==576) throw new Error("Unexpected blade atlas");
+      this.bladeAtlas=image;
+    }).catch(()=>{this.bladeLoad=null;});
+    return this.bladeLoad;
   }
   resize() {
     const {width:w,height:h}=this.canvas.getBoundingClientRect();
@@ -115,6 +124,10 @@ export class View {
   }
   event(e) {
     this.feedback.emit(e,this.reduced||!this.detail);
+    if (e.type==="land" && e.dive && this.hero) {
+      this.hero.diveImpact=.105;this.hero.diveX=e.x;this.hero.diveY=e.y;
+      this.hero.freshDiveImpact=true;
+    }
     if(e.type==="kill")this.deaths.set(e.target,{age:0});
     if(e.type==="land"&&this.detail&&!this.reduced&&e.speed>17)this.follow.land(Math.min(1,e.speed/18));
   }
@@ -191,7 +204,7 @@ export class View {
     return {ready:this.ready,renderer:"painted-court-canvas2d-v1",dpr:this.dpr,drawCalls:null,
       canvasImages:{...this.counts},platformCaches:this.platforms.length,
       textures:3+this.backgrounds.size+Number(Boolean(this.sweepAtlas)),triangles:0,actors:this.counts.actors,enemyPoses:{...this.enemyPoses},
-      hero:{visual:"suye-painted-v1",pose:h?.pose,position:[h?.x,h?.y,.9],
+      hero:{visual:"suye-painted-v1",pose:h?.pose,bladeAtlas:!!this.bladeAtlas,position:[h?.x,h?.y,.9],
         bladeBase:h?.base?[h.base.x,h.base.y,h.base.z]:null,bladeTip:h?.tip?[h.tip.x,h.tip.y,h.tip.z]:null,trail:h?.ribbon.nodes.length},
       reduced:this.reduced,camera:{x:this.cx,y:this.cy,width:2*this.follow.halfWidth},
       pixels:this.canvas.width*this.canvas.height,feedback:{active:this.feedback.active,capacity:this.feedback.particles.length}};
@@ -200,7 +213,7 @@ export class View {
     this.disposed=true;this.ready=false;this.feedback.clear();this.actors.clear();this.deaths.clear();
     for(const {art} of this.platforms){art.width=1;art.height=1;}
     this.platforms=[];this.backgrounds.clear();this.heroAtlas=this.foeAtlas=this.facades=this.sky=null;
-    this.sweepAtlas=this.sweepLoad=null;
+    this.sweepAtlas=this.sweepLoad=this.bladeAtlas=this.bladeLoad=null;
     this.canvas.width=this.canvas.height=this.fx.width=this.fx.height=1;
   }
 }
