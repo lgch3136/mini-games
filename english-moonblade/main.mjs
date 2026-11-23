@@ -1,6 +1,6 @@
 import { moonCoach, rememberChapter, storedMedal } from "./mastery.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import { World, STAGES, DT, VERSION, clamp } from "./world.mjs?v=20260929-fluid-r2&mobile=20260930-quality-r2";
-import { View } from "./view.mjs?v=20261123-suye-r3";
+import { View } from "./court-view-v1.mjs";
 import { MoonAudio } from "./audio.mjs?v=20260929-reaction-r1&mobile=20260930-quality-r2";
 import { InputBuffer } from "./input.mjs?v=20260918-play-r1";
 import { pacingStats } from "./cadence.mjs?v=20260929-fluid-r2";
@@ -482,6 +482,7 @@ window.moonDiagnostics = () => ({
 });
 try {
   view = new View($("game"), $("fx"));
+  view.onSceneryChange = preview;
   $("comfort").checked = view.reduced;
   await view.preload();
   view.build(world);
@@ -491,7 +492,7 @@ try {
   text("sound-btn", audio.muted ? "声音 关" : "声音 开");
   preview();
 } catch (e) {
-  text("loading", "3D 画面未能启动。需要 WebGL 2 与完整角色资源，可刷新重试或返回合集。 ");
+  text("loading", "角色或场景素材载入失败。可刷新重试或返回合集。 ");
   $("loading").setAttribute("role", "alert");
   const back = document.createElement("a"); back.href = "../"; back.textContent = "返回游戏合集"; $("loading").append(back);
   text("status", e.message);

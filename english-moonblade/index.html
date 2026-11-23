@@ -10,7 +10,15 @@
     <title>月影忍途 · Moonblade</title>
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
-</head>
+<style>
+      @media (max-width:600px) and (orientation:portrait) {
+        body.playing #arena {
+          width:100%;
+          height:clamp(230px,min(90vw,calc(100dvh - 218px)),460px);
+          max-height:100%; aspect-ratio:auto;
+        }
+      }
+    </style></head>
   <body>
     <main id="shell">
       <header class="topbar">
@@ -149,6 +157,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20261123-suye-r3"></script>
+    <script type="module" src="main.mjs?v=20261123-painted-court1"></script>
   </body>
 </html>

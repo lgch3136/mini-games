@@ -1,0 +1,18 @@
+export const foes = {
+  guardReady: {"rect":[57,28,78,136],"size":[160,278],"foot":[80,277]},
+  guardStep: {"rect":[231,32,114,127],"size":[232,260],"foot":[110,254]},
+  guardTell: {"rect":[413,28,133,136],"size":[271,277],"foot":[114,275]},
+  guardStrike: {"rect":[598,37,147,117],"size":[301,238],"foot":[96,235]},
+  archerReady: {"rect":[51,217,90,141],"size":[183,288],"foot":[79,287]},
+  archerDraw: {"rect":[230,216,115,144],"size":[235,293],"foot":[90,293]},
+  archerLoose: {"rect":[424,217,112,141],"size":[229,287],"foot":[103,287]},
+  archerHurt: {"rect":[611,229,121,118],"size":[247,240],"foot":[106,241]},
+  abbotReady: {"rect":[44,406,103,147],"size":[211,301],"foot":[111,296]},
+  abbotCoil: {"rect":[219,423,137,114],"size":[280,232],"foot":[142,229]},
+  abbotRush: {"rect":[394,425,172,109],"size":[352,222],"foot":[101,223]},
+  abbotSweep: {"rect":[597,431,149,98],"size":[305,199],"foot":[69,201]},
+  abbotGather: {"rect":[41,619,109,105],"size":[223,214],"foot":[118,210]},
+  abbotLeap: {"rect":[231,608,114,128],"size":[232,262],"foot":[117,291]},
+  abbotLand: {"rect":[406,618,148,108],"size":[303,221],"foot":[130,221]},
+  abbotRecover: {"rect":[604,608,135,127],"size":[275,260],"foot":[126,258]},
+};
