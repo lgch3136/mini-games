@@ -1,7 +1,8 @@
+import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
 import rosterPoses from "./roster-poses.mjs";
 import signatures from "./signature-frames.mjs?v=20261124-tumble1";
 import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261124-tumble1";
-import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-tumble1";
+import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-iron-stride1";
 import atlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 
 const ironLegs = {
@@ -150,6 +151,17 @@ export class ArenaView {
     this.ironLoad = pending;
     return pending;
   }
+  loadIronStride() {
+    if (this.strideLoad) return this.strideLoad;
+    const image=new Image();
+    image.src=new URL("./assets/iron-stride-and-jab-r1.webp",import.meta.url).href;
+    const job=image.decode().then(()=>{
+      if (image.naturalWidth!==672 || image.naturalHeight!==372) throw new Error("Unexpected stride sheet");
+      if (this.strideLoad===job) this.strideImage=image;
+    }).catch(()=>{if(this.strideLoad===job)this.strideLoad=null;});
+    this.strideLoad=job;
+    return job;
+  }
   loadSignature(id) {
     const cached = this.signatureSheets.get(id);
     if (cached) return cached.ready;
@@ -191,10 +203,12 @@ export class ArenaView {
     }
     for (const id of this.signatureSheets.keys()) if (!actual.has(id)) this.signatureSheets.delete(id);
     const useIronLegs = actual.has("shan");
-    if (!useIronLegs) this.ironLoad = this.ironImage = null;
+    if (!useIronLegs) {
+      this.ironLoad=this.ironImage=this.strideLoad=this.strideImage=null;
+    }
     const resources = previewOnly ? [] : ids.map(index => this.load(index));
     for (const id of actual) if (signatures[id]) resources.push(this.loadSignature(id));
-    if (useIronLegs) resources.push(this.loadIronLegs());
+    if (useIronLegs) resources.push(this.loadIronLegs(),this.loadIronStride());
     await Promise.all(resources);
     if (request !== this.selectionSerial) return;
     this.previewOnly = previewOnly;
@@ -266,15 +280,24 @@ export class ArenaView {
     const x0=lerp(first.px,first.x,alpha), x1=lerp(second.px,second.x,alpha);
     // This margin covers the outermost authored hand or boot in all three rosters.
     const margin=2.64*Math.max(1,(16/9)*this.h/this.w), left=Math.min(x0,x1)-margin, right=Math.max(x0,x1)+margin;
-    const cap=Math.min(openingZoom,16/(right-left));
+    const gap=Math.abs(x1-x0);
+    if (this.wideFight!==fight || gap>5.1) this.closeFraming=false;
+    if (gap<3.25) this.closeFraming=true;
+    const frameClose=this.cinematic && !this.reducedMotion && this.closeFraming;
+    this.wideFloor=this.h*(.5+2.7*openingZoom/9);
+    const highest=Math.max(lerp(first.py,first.y,alpha),lerp(second.py,second.y,alpha));
+    const headRoom=(this.wideFloor-Math.min(66,this.h*.125))*9/(this.h*(highest+4.75));
+    const cap=Math.min(openingZoom*(frameClose?1.24:1),16/(right-left),headRoom);
     const reset=this.wideFight!==fight || !this.wideZoom;
     const k=1-Math.exp(-8*Math.min(.15,Math.max(0,dt)));
     const zoom=reset?cap:Math.min(cap,lerp(this.wideZoom,cap,k));
     const half=8/zoom;
     const lo=right-half,hi=left+half;
-    const goal=clamp(0,lo,hi);
+    const edge=Math.max(0,9.35-half),middle=(x0+x1)*.5;
+    const settled=this.wideCenter || 0;
+    const keepCenter=middle<settled-.65?middle+.65:middle>settled+.65?middle-.65:settled;
+    const goal=clamp(clamp(frameClose?keepCenter:0,-edge,edge),lo,hi);
     this.wideCenter=reset?goal:clamp(lerp(this.wideCenter,goal,k),lo,hi);
-    this.wideFloor=this.h*(.5+2.7*openingZoom/9);
     this.wideFight=fight;this.wideZoom=this.camera.zoom=zoom;
     const shift=Math.round(-this.wideCenter*this.w*zoom/16);
     const coverage=Math.max(Math.round(1160*zoom)/10,Math.ceil(101+200*Math.abs(shift)/this.w));
@@ -337,16 +360,18 @@ export class ArenaView {
       const role = this.previewOnly ? "idle/"+[0,1,2,1][Math.floor(fight.frame/11+f.side*2)%4] : celFor(f,cells,fight.frame);
       const iron = f.c.id === "shan" && this.useIronLegs && this.ironImage;
       const leg = iron && f.action && role.startsWith(f.action.name + "/") && ironLegs.cells[role];
+      const strideRole=this.useIronLegs && this.strideImage && f.c.id==="shan" && ironStrideRoles[role];
+      const stride=strideRole && ironStrideCells[strideRole];
       const sheet = this.signatureUsers.has(f.c.id) && this.signatureSheets.get(f.c.id);
       const key = sheet?.decoded && signaturePose(f);
       const signature = key && signatures[f.c.id].cells[key];
       const facing = ((f.down || f.hp <= 0) && f.tossFacing) || f.facing;
-      const ownFace = !signature && !leg && facing < 0 && cells[role + "@left"];
+      const ownFace = !signature && !leg && !stride && facing < 0 && cells[role + "@left"];
       const fallback = f.c.id === "shan" && role === "hit/impact"
         ? cells["block/impact"] : cells[role];
-      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || ownFace || fallback || cells["idle/0"];
-      const size = scale * (f.c.id === "shan" ? (iron ? 0.84 : 0.93) : 1);
-      const image = signature ? sheet.image : leg ? this.ironImage : baseImage;
+      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || stride || ownFace || fallback || cells["idle/0"];
+      const size = scale * (f.c.id === "shan" ? (iron || stride ? 0.84 : 0.93) : 1);
+      const image = signature ? sheet.image : leg ? this.ironImage : stride ? this.strideImage : baseImage;
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
@@ -364,7 +389,7 @@ export class ArenaView {
       c.drawImage(image, sx, sy, w, h, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
-      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, signature:signature ? key : null };
+      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, signature:signature ? key : null };
     }
   }
   event(e) {
@@ -584,6 +609,7 @@ export class ArenaView {
       wideCenter:this.wideCenter || 0,
       rosterOnly:Boolean(this.previewOnly),
       matchAtlases:this.assets.size,
+      strideSheetPixels:(this.strideImage?.naturalWidth || 0)*(this.strideImage?.naturalHeight || 0),
       decodedMatchPixels:[...this.assets.values()].reduce((sum,v)=>sum+(v.image.naturalWidth||0)*(v.image.naturalHeight||0),0),
       portraitRing: this.portrait ? {center:this.portraitCenter,unit:this.portraitUnit,
         floor:this.portraitFloor,pixels:this.canvas.width*this.canvas.height} : null,
@@ -595,6 +621,7 @@ export class ArenaView {
     this.wideFight=this.previewImage=null;
     this.portraitFight = null;
     this.selectionSerial++;
+    this.strideLoad=this.strideImage=null;
     this.signatureUsers.clear();
     this.signatureSheets.clear();
     this.assets.clear();

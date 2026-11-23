@@ -6,8 +6,8 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20261124-tumble1";
-import { ArenaView } from "./view.mjs?v=20261124-ring-paint2";
+} from "./combat.mjs?v=20261124-iron-stride1";
+import { ArenaView } from "./view.mjs?v=20261124-iron-stride1";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
@@ -27,6 +27,13 @@ let calloutUntil = 0,
   wordsDone = 0,
   lastHud = -1,
   ladder = 0;
+let nextPaint=0,paintedAt=0,paintCount=0;
+const ecoPaint=$("eco-paint");
+try { ecoPaint.checked=localStorage.getItem("fury-render-rate-v1")==="30"; } catch {}
+ecoPaint.addEventListener("change",()=>{
+  nextPaint=paintedAt=0;
+  try { localStorage.setItem("fury-render-rate-v1",ecoPaint.checked?"30":"60"); } catch {}
+});
 const perf = { frames: [], work: [], steps: 0, inputEvents: 0, dropped: 0 };
 const sources = new Map(),
   keys = new Map();
@@ -109,6 +116,7 @@ function release() {
     .forEach((el) => el.classList.remove("held"));
 }
 function stop() {
+  nextPaint=paintedAt=0;
   if (raf) cancelAnimationFrame(raf);
   raf = 0;
   last = 0;
@@ -266,7 +274,17 @@ function tick(now) {
       showWord();
     }
   }
-  view.render(game, null, clamp(accumulator * 60, 0, 1), delta);
+  if (!ecoPaint.checked || now+.7>=nextPaint || mode!=="playing") {
+    const elapsed=paintedAt?Math.min((now-paintedAt)/1000,.125):delta;
+    view.render(game,null,clamp(accumulator*60,0,1),elapsed);
+    paintedAt=now;
+    paintCount++;
+    if (ecoPaint.checked) {
+      const period=1000/30;
+      nextPaint=nextPaint>0 && now-nextPaint<period*3
+        ? nextPaint+Math.max(1,Math.floor((now+.7-nextPaint)/period)+1)*period : now+period;
+    }
+  }
   updateHud();
   perf.work.push(performance.now() - start);
   if (perf.frames.length > 1200) perf.frames.shift();
@@ -667,6 +685,7 @@ window.furyDiagnostics = () => ({
     completed: wordsDone,
   },
   performance: {
+    targetPaintHz:ecoPaint.checked?30:60,paintCount,
     samples: perf.frames.length,
     frameMedian: percentile(perf.frames, 0.5),
     frameP95: percentile(perf.frames, 0.95),

@@ -257,6 +257,8 @@ export function moveFor(f, name) {
     return { ...base, name: "燕返", startup: 4, recovery: 26, damage: 13 };
   if (f.id === 2 && name === "throw")
     return { ...base, name: "山岳摔", startup: 7, damage: 22, range: 1.08 };
+  if (f.id === 2 && name === "jab")
+    return { ...base,name:"探步拳",range:1.46,startup:5,recovery:12 };
   if (f.id === 2 && name === "punch")
     return {
       ...base,
