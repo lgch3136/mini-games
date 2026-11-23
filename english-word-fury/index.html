@@ -11,6 +11,11 @@
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 <style>
+.arena[data-venue="ferry"] { background-image: url("assets/midnight-ferry-r1.webp"), url("assets/harbor-dusk-v2.webp"); }
+.arena.ring-wide {
+  background-size: var(--ring-coverage,116%) var(--ring-coverage,116%);
+  background-position: calc(50% + var(--ring-shift,0px)) 80%;
+}
 @media (max-width: 680px) and (orientation: portrait) {
   body.playing .stage-zone { align-items: stretch; }
   body.playing .arena, body.playing.training .arena {
@@ -169,7 +174,7 @@
           <div class="settings">
             <label
               >模式<select id="mode">
-                <option value="arcade">街机挑战 · 三局两胜</option>
+                <option value="arcade">双馆街机 · 每馆三局两胜</option>
                 <option value="training">练习道场 · 无限体力</option>
                 <option value="versus">本地双人 · 同屏对战</option>
               </select></label
@@ -287,6 +292,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20261124-iron-response1"></script>
+    <script type="module" src="main.mjs?v=20261124-ferry-cup1"></script>
   </body>
 </html>

@@ -1,3 +1,4 @@
+import {arcadeStop,arcadeResult} from "./arcade-stops.mjs";
 import { rememberCombat, storedMedal } from "./dojo.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 import {
   Fight,
@@ -6,7 +7,7 @@ import {
   VERSION,
   clamp,
 } from "./combat.mjs?v=20261124-iron-response1";
-import { ArenaView } from "./view.mjs?v=20261124-iron-response1";
+import { ArenaView } from "./view.mjs?v=20261124-ferry-cup1";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
 import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
 const fighterSnapshots = new FighterSnapshots();
@@ -225,7 +226,7 @@ function updateHud(force = false) {
   ann.hidden = !["intro", "roundEnd"].includes(game.state);
   if (game.state === "intro") {
     const message = game.intro > 36
-      ? `<small>港城会馆 · ${game.f[1].c.title}</small>ROUND ${game.round}`
+      ? `<small>${game.mode==="arcade" ? arcadeStop(ladder).venue : "港城会馆"} · ${game.f[1].c.title}</small>ROUND ${game.round}`
       : "FIGHT";
     if (ann.innerHTML !== message) ann.innerHTML = message;
   } else if (game.state === "roundEnd") {
@@ -310,6 +311,9 @@ async function startMatch(next = false) {
     seed: 7181 + ladder * 31,
   });
   game.training = $("dummy").value;
+  const stopInfo=arcadeStop(ladder);
+  if(game.mode==="arcade" && stopInfo.final) $("arena").dataset.venue="ferry";
+  else delete $("arena").dataset.venue;
   if (game.mode === "training") game.f.forEach((f) => (f.meter = 200));
   mode = "playing";
   previous = null;
@@ -331,7 +335,7 @@ async function startMatch(next = false) {
   setText("callout", "");
   setText(
     "status",
-    `${ROSTER[hero].title} · ${game.mode === "training" ? "练习道场" : game.mode === "versus" ? "本地双人" : `第 ${ladder + 1} 场挑战`}`,
+    `${ROSTER[hero].title} · ${game.mode === "training" ? "练习道场" : game.mode === "versus" ? "本地双人" : `${stopInfo.venue} · ${stopInfo.bout}`}`,
   );
   setText(
     "hint",
@@ -361,6 +365,7 @@ function resume() {
 function menu() {
   stop();
   mode = "menu";
+  delete $("arena").dataset.venue;
   refreshDojoRecord();
   $("dojo-coach").hidden = true;
   $("menu").hidden = false;
@@ -385,9 +390,10 @@ function finish() {
   $("announcement").hidden = true;
   const win = game.winner === 0,
     versus = game.mode === "versus";
+  const route=game.mode==="arcade" ? arcadeResult(ladder,win,hero,opponent,ROSTER) : null;
   setText(
     "result-title",
-    versus
+    route ? route.title : versus
       ? `${game.f[game.winner < 0 ? 0 : game.winner].c.name} 胜出`
       : win
         ? "截风，破阵。"
@@ -396,12 +402,17 @@ function finish() {
   setText("result-eyebrow", win ? "VICTORY / 港城新锐" : "MATCH COMPLETE");
   const p = game.f[0];
   const report = rememberCombat(game);
-  $("fight-medal").hidden = !report.stars || versus;
-  if (report.stars) $("fight-medal").src = `../shared/mobile-art/medal-${["", "bronze", "silver", "gold"][report.stars]}.webp`;
-  setText("fight-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + report.tip);
+  const medal=$("fight-medal");
+  medal.hidden=true;
+  if(report.stars && !versus){
+    const result=game;
+    medal.src=new URL(`../shared/mobile-art/medal-${["","bronze","silver","gold"][report.stars]}.webp`,import.meta.url);
+    medal.decode().then(()=>{if(game===result && mode==="result")medal.hidden=false;}).catch(()=>{});
+  }
+  setText("fight-recap", report.goals.map(g => `${g.done ? "✓" : "○"} ${g.label}`).join(" · ") + "\n" + (route?.read || report.tip));
   $("result-stats").innerHTML =
     `<div><b>${p.stats.hits}</b><small>有效命中</small></div><div><b>${p.best}</b><small>最高连击</small></div><div><b>${wordsDone}</b><small>记忆单词</small></div>`;
-  setText("next-btn", win && !versus ? "迎战下一位" : "再战一场");
+  setText("next-btn",route?.next ?? (win && !versus ? "迎战下一位" : "再战一场"));
 }
 const p1 = {
   KeyA: "left",

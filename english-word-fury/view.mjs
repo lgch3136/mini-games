@@ -1,3 +1,4 @@
+import rosterPoses from "./roster-poses.mjs";
 import signatures from "./signature-frames.mjs?v=20261124-iron-response1";
 import { signaturePose } from "./signature-timing.mjs?v=20261124-iron-response1";
 import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-iron-response1";
@@ -114,10 +115,10 @@ export class ArenaView {
         if (image.naturalWidth !== atlas.width || image.naturalHeight !== atlas.height) {
           throw new Error("Unexpected atlas dimensions for " + id);
         }
-        this.rigSources[id] = "original-frame-atlas";
+        if (this.assets.get(id)?.image===image) this.rigSources[id] = "original-frame-atlas";
         return image;
       }).catch((error) => {
-        this.assets.delete(id);
+        if (this.assets.get(id)?.image===image) this.assets.delete(id);
         throw error;
       });
       this.assets.set(id, { image, promise });
@@ -159,22 +160,40 @@ export class ArenaView {
     return entry.ready;
   }
   async preload() {
-    await this.select([0, 1]);
+    const image = new Image();
+    image.src = new URL("./assets/harbor-roster-r1.webp", import.meta.url).href;
+    try {
+      await image.decode();
+      if (image.naturalWidth === 768 && image.naturalHeight === 576) this.previewImage = image;
+    } catch {
+      // The original full roster still serves the selector if the small image is unavailable.
+    }
+    await this.select([0,1]);
     this.ready = true;
   }
   async select(ids, matchIds = []) {
     const request = ++this.selectionSerial;
-    const resources = ids.map(id => this.load(id));
     const actual = new Set(matchIds.map(index => ROSTER[index].id));
+    const previewOnly = !actual.size && Boolean(this.previewImage);
+    const keep = previewOnly ? new Set() : new Set(ids.map(index => ROSTER[index].id));
+    for (const id of this.assets.keys()) if (!keep.has(id)) {
+      this.assets.delete(id);
+      delete this.rigSources[id];
+    }
+    for (const id of this.signatureSheets.keys()) if (!actual.has(id)) this.signatureSheets.delete(id);
     const useIronLegs = actual.has("shan");
+    if (!useIronLegs) this.ironLoad = this.ironImage = null;
+    const resources = previewOnly ? [] : ids.map(index => this.load(index));
     for (const id of actual) if (signatures[id]) resources.push(this.loadSignature(id));
     if (useIronLegs) resources.push(this.loadIronLegs());
     await Promise.all(resources);
     if (request !== this.selectionSerial) return;
+    this.previewOnly = previewOnly;
     this.signatureUsers = actual;
     this.models = ids;
     this.useIronLegs = useIronLegs;
   }
+
   resize() {
     const rect = this.canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -183,6 +202,10 @@ export class ArenaView {
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5, cap);
     if (this.w === rect.width && this.h === rect.height && this.dpr === dpr) return;
     this.portrait = portrait;
+    this.canvas.parentElement?.classList?.toggle("ring-wide",!portrait);
+    this.wideFight=null;
+    this.wideCenter=0;
+    this.wideShift=this.wideCoverage=null;
     this.portraitFight = null;
     this.portraitSpan = 0;
     this.portraitCenter = 0;
@@ -201,7 +224,8 @@ export class ArenaView {
     const first = fight.f[0], second = fight.f[1];
     const ax = lerp(first.px,first.x,alpha), bx = lerp(second.px,second.x,alpha);
     const left = Math.min(ax,bx), right = Math.max(ax,bx);
-    const span = clamp(right-left+5.0,8.5,18);
+    const margin=2.64;
+    const span = clamp(right-left+2*(margin+.06),8.5,18.6);
     const reset = fight !== this.portraitFight || !this.portraitSpan;
     this.portraitFight = fight;
     const follow = 1-Math.exp(-10*Math.min(Math.max(0,dt),.15));
@@ -209,13 +233,13 @@ export class ArenaView {
     this.portraitFloor = this.h*.79;
     this.portraitUnit = Math.min(this.w/this.portraitSpan,(this.portraitFloor-Math.min(57,this.h*.14))/6.9);
     const halfWidth = this.w/(2*this.portraitUnit);
-    const limit = Math.max(0,9-halfWidth);
+    const limit = Math.max(0,9.35-halfWidth);
     const middle = (left+right)/2;
     const desired = clamp(middle,-limit,limit);
     const next = reset ? desired : lerp(this.portraitCenter,desired,follow);
     // Keep both players in shot even when a roll or a throw changes spacing.
-    const lo = Math.max(-limit,right+2.0-halfWidth);
-    const hi = Math.min(limit,left-2.0+halfWidth);
+    const lo = Math.max(-limit,right+margin-halfWidth);
+    const hi = Math.min(limit,left-margin+halfWidth);
     this.portraitCenter = lo<=hi ? clamp(next,lo,hi) : desired;
     const pan = Math.round(50+this.portraitCenter*5);
     if (pan!==this.pan) {
@@ -223,11 +247,39 @@ export class ArenaView {
       this.pan=pan;
     }
   }
+  frameWide(fight,alpha,dt,openingZoom) {
+    const first=fight.f[0], second=fight.f[1];
+    const x0=lerp(first.px,first.x,alpha), x1=lerp(second.px,second.x,alpha);
+    // This margin covers the outermost authored hand or boot in all three rosters.
+    const margin=2.64*Math.max(1,(16/9)*this.h/this.w), left=Math.min(x0,x1)-margin, right=Math.max(x0,x1)+margin;
+    const cap=Math.min(openingZoom,16/(right-left));
+    const reset=this.wideFight!==fight || !this.wideZoom;
+    const k=1-Math.exp(-8*Math.min(.15,Math.max(0,dt)));
+    const zoom=reset?cap:Math.min(cap,lerp(this.wideZoom,cap,k));
+    const half=8/zoom;
+    const lo=right-half,hi=left+half;
+    const goal=clamp(0,lo,hi);
+    this.wideCenter=reset?goal:clamp(lerp(this.wideCenter,goal,k),lo,hi);
+    this.wideFloor=this.h*(.5+2.7*openingZoom/9);
+    this.wideFight=fight;this.wideZoom=this.camera.zoom=zoom;
+    const shift=Math.round(-this.wideCenter*this.w*zoom/16);
+    const coverage=Math.max(Math.round(1160*zoom)/10,Math.ceil(101+200*Math.abs(shift)/this.w));
+    const arena=this.canvas.parentElement;
+    if(shift!==this.wideShift) {
+      arena?.style?.setProperty("--ring-shift",shift+"px");
+      this.wideShift=shift;
+    }
+    if(coverage!==this.wideCoverage) {
+      arena?.style?.setProperty("--ring-coverage",coverage+"%");
+      this.wideCoverage=coverage;
+    }
+  }
+
   screen(x, y) {
     if(this.portrait) return [this.w/2+(x-this.portraitCenter)*this.portraitUnit,this.portraitFloor-y*this.portraitUnit];
     return [
-      (0.5 + x * this.camera.zoom / 16) * this.w,
-      (0.5 + (2.7 - y) * this.camera.zoom / 9) * this.h,
+      (0.5 + (x-(this.wideCenter||0)) * this.camera.zoom / 16) * this.w,
+      (this.wideFloor ?? this.h*(.5+2.7*this.camera.zoom/9)) - y*this.camera.zoom*this.h/9,
     ];
   }
   drawFighters(fight, alpha) {
@@ -252,10 +304,10 @@ export class ArenaView {
       c.fill();
     }
     for (const { f, x, y } of figures.sort((a, b) => priority(a.f) - priority(b.f))) {
-      const entry = this.assets.get(f.c.id);
-      if (!entry?.image.naturalWidth) continue;
-      const { cells } = atlases[f.c.id];
-      const role = celFor(f, cells, fight.frame);
+      const baseImage=this.previewOnly ? this.previewImage : this.assets.get(f.c.id)?.image;
+      if (!baseImage?.naturalWidth) continue;
+      const cells=this.previewOnly ? rosterPoses[f.c.id] : atlases[f.c.id].cells;
+      const role = this.previewOnly ? "idle/"+[0,1,2,1][Math.floor(fight.frame/11+f.side*2)%4] : celFor(f,cells,fight.frame);
       const iron = f.c.id === "shan" && this.useIronLegs && this.ironImage;
       const leg = iron && f.action && role.startsWith(f.action.name + "/") && ironLegs.cells[role];
       const sheet = this.signatureUsers.has(f.c.id) && this.signatureSheets.get(f.c.id);
@@ -266,7 +318,7 @@ export class ArenaView {
         ? cells["block/impact"] : cells[role];
       const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || ownFace || fallback || cells["idle/0"];
       const size = scale * (f.c.id === "shan" ? (iron ? 0.84 : 0.93) : 1);
-      const image = signature ? sheet.image : leg ? this.ironImage : entry.image;
+      const image = signature ? sheet.image : leg ? this.ironImage : baseImage;
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
@@ -304,7 +356,8 @@ export class ArenaView {
     const intro = this.cinematic && !this.reducedMotion && fight.state === "intro"
       ? clamp((fight.intro - 28) / 47, 0, 1) : 0;
     this.camera.zoom = 1 + 0.035 * intro * intro * (3 - 2 * intro);
-    this.framePortrait(fight, alpha, dt);
+    if(this.portrait)this.framePortrait(fight,alpha,dt);
+    else this.frameWide(fight,alpha,dt,this.camera.zoom);
     this.drawFighters(fight, alpha);
     const c = this.ctx;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -480,7 +533,11 @@ export class ArenaView {
       rigSources: { ...this.rigSources },
       actorCels: this.actorCels,
       ironFootwork: this.ironImage ? "original-15-cels" : "base-cels",
-      cameraZoom: this.camera.zoom,
+      cameraZoom:this.camera.zoom,
+      wideCenter:this.wideCenter || 0,
+      rosterOnly:Boolean(this.previewOnly),
+      matchAtlases:this.assets.size,
+      decodedMatchPixels:[...this.assets.values()].reduce((sum,v)=>sum+(v.image.naturalWidth||0)*(v.image.naturalHeight||0),0),
       portraitRing: this.portrait ? {center:this.portraitCenter,unit:this.portraitUnit,
         floor:this.portraitFloor,pixels:this.canvas.width*this.canvas.height} : null,
       ambient: this.ambient,
@@ -488,6 +545,7 @@ export class ArenaView {
   }
   dispose() {
     this.ready = false;
+    this.wideFight=this.previewImage=null;
     this.portraitFight = null;
     this.selectionSerial++;
     this.signatureUsers.clear();
