@@ -91,6 +91,10 @@ export class ArenaView {
   constructor(canvas, overlay) {
     this.canvas = canvas;
     this.overlay = overlay;
+    this.scenery = canvas.parentElement.querySelector(".ring-scenery");
+    this.actorBounds = [];
+    this.fxHadInk = false;
+    this.paintCounts = {actorClears:0,actorClearPixels:0,fxClears:0,fxIdle:0};
     this.actorContext = canvas.getContext("2d");
     this.ctx = overlay.getContext("2d");
     this.effects = [];
@@ -203,10 +207,16 @@ export class ArenaView {
     const rect = this.canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const portrait = rect.width / rect.height < 1.36;
-    const cap = portrait ? Math.sqrt(300000 / (rect.width * rect.height)) : 1.5;
+    const cap = Math.sqrt((portrait ? 300000 : 1200000) / (rect.width * rect.height));
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5, cap);
     if (this.w === rect.width && this.h === rect.height && this.dpr === dpr) return;
     this.portrait = portrait;
+    this.actorBounds.length = 0;
+    this.fxHadInk = false;
+    if (this.scenery) {
+      this.scenery.style.transform = "";
+      this.scenery.style.backgroundPosition = "";
+    }
     this.canvas.parentElement?.classList?.toggle("ring-wide",!portrait);
     this.wideFight=null;
     this.wideCenter=0;
@@ -219,9 +229,8 @@ export class ArenaView {
     this.h = rect.height;
     this.dpr = dpr;
     for (const el of [this.canvas, this.overlay]) {
-      const round = portrait ? Math.floor : Math.round;
-      el.width = Math.max(1,round(this.w*dpr));
-      el.height = Math.max(1,round(this.h*dpr));
+      el.width = Math.max(1,Math.floor(this.w*dpr));
+      el.height = Math.max(1,Math.floor(this.h*dpr));
     }
   }
   framePortrait(fight, alpha, dt) {
@@ -248,7 +257,7 @@ export class ArenaView {
     this.portraitCenter = lo<=hi ? clamp(next,lo,hi) : desired;
     const pan = Math.round(50+this.portraitCenter*5);
     if (pan!==this.pan) {
-      this.canvas.parentElement?.style?.setProperty("--harbor-pan",pan+"%");
+      if (this.scenery) this.scenery.style.backgroundPosition=pan+"% center";
       this.pan=pan;
     }
   }
@@ -269,13 +278,9 @@ export class ArenaView {
     this.wideFight=fight;this.wideZoom=this.camera.zoom=zoom;
     const shift=Math.round(-this.wideCenter*this.w*zoom/16);
     const coverage=Math.max(Math.round(1160*zoom)/10,Math.ceil(101+200*Math.abs(shift)/this.w));
-    const arena=this.canvas.parentElement;
-    if(shift!==this.wideShift) {
-      arena?.style?.setProperty("--ring-shift",shift+"px");
+    if (shift!==this.wideShift || coverage!==this.wideCoverage) {
+      if (this.scenery) this.scenery.style.transform="translate3d("+shift+"px,0,0) scale("+coverage/100+")";
       this.wideShift=shift;
-    }
-    if(coverage!==this.wideCoverage) {
-      arena?.style?.setProperty("--ring-coverage",coverage+"%");
       this.wideCoverage=coverage;
     }
   }
@@ -290,7 +295,17 @@ export class ArenaView {
   drawFighters(fight, alpha) {
     const c = this.actorContext;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    c.clearRect(0, 0, this.w, this.h);
+    for (const bounds of this.actorBounds) {
+      const x=Math.max(0,Math.floor(bounds.left-2));
+      const y=Math.max(0,Math.floor(bounds.top-2));
+      const width=Math.min(this.w,Math.ceil(bounds.right+2))-x;
+      const height=Math.min(this.h,Math.ceil(bounds.bottom+2))-y;
+      if (width>0 && height>0) {
+        c.clearRect(x,y,width,height);
+        this.paintCounts.actorClears++;
+        this.paintCounts.actorClearPixels+=width*height*this.dpr*this.dpr;
+      }
+    }
     const floor = this.screen(0, 0)[1];
     const scale = this.portrait ? this.portraitUnit/34 : this.h * this.camera.zoom / (9 * 34);
     const figures = fight.f.map(f => {
@@ -303,12 +318,15 @@ export class ArenaView {
       if (a && a.frame >= a.spec.startup && a.frame < a.spec.startup + a.spec.active) return 2;
       return f.stun ? 0 : 1;
     };
+    this.actorBounds = [];
     this.actorCels = [];
     this.drawCalls = 0;
     c.fillStyle = "rgba(11,20,30,.44)";
     for (const { f, x } of figures) {
       const spread = scale * clamp(1 - f.y * 0.16, 0.4, 1);
       c.beginPath();
+      this.actorBounds[f.side]={left:x-28*spread,right:x+28*spread,
+        top:floor+1-4.7*spread,bottom:floor+1+4.7*spread};
       c.ellipse(x, floor + 1, 28 * spread, 4.7 * spread, 0, 0, TAU);
       c.fill();
     }
@@ -332,7 +350,17 @@ export class ArenaView {
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
-      c.scale(ownFace ? 1 : facing, 1);
+      const mirror=ownFace ? 1 : facing;
+      c.scale(mirror,1);
+      const py=dy*size, py2=(dy+displayH/2)*size;
+      const px=mirror*dx*size, px2=mirror*(dx+displayW/2)*size;
+      const shear=f.state==="run" ? -.10*f.facing : 0;
+      const stretch=f.state==="run" ? .95 : 1;
+      const bounds=this.actorBounds[f.side], ax=Math.round(x), ay=Math.round(y);
+      bounds.left=Math.min(bounds.left,ax+Math.min(px,px2)+Math.min(shear*py,shear*py2));
+      bounds.right=Math.max(bounds.right,ax+Math.max(px,px2)+Math.max(shear*py,shear*py2));
+      bounds.top=Math.min(bounds.top,ay+py*stretch);
+      bounds.bottom=Math.max(bounds.bottom,ay+py2*stretch);
       c.drawImage(image, sx, sy, w, h, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
@@ -371,7 +399,15 @@ export class ArenaView {
     this.drawFighters(fight, alpha);
     const c = this.ctx;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    c.clearRect(0, 0, this.w, this.h);
+    if (this.fxHadInk) {
+      c.clearRect(0,0,this.w,this.h);
+      this.paintCounts.fxClears++;
+    }
+    this.fxHadInk=Boolean(this.boxes || this.effects.length || fight.projectiles.length || fight.f.some(f=>f.maxTime>0));
+    if (!this.fxHadInk) {
+      this.paintCounts.fxIdle++;
+      return;
+    }
     const scale = this.portrait ? this.portraitUnit : (this.w / 16) * this.camera.zoom;
     for (const f of fight.f)
       if (f.maxTime > 0) {
@@ -539,6 +575,7 @@ export class ArenaView {
       drawCalls: this.drawCalls ?? 0,
       triangles: 0,
       effects: this.effects.length,
+      paintCounts:{...this.paintCounts},layerPixels:this.canvas.width*this.canvas.height,
       models: this.models.length,
       rigSources: { ...this.rigSources },
       actorCels: this.actorCels,

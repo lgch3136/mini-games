@@ -11,11 +11,17 @@
     <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
   <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
 <style>
-.arena[data-venue="ferry"] { background-image: url("assets/midnight-ferry-r1.webp"), url("assets/harbor-dusk-v2.webp"); }
-.arena.ring-wide {
-  background-size: var(--ring-coverage,116%) var(--ring-coverage,116%);
-  background-position: calc(50% + var(--ring-shift,0px)) 80%;
+.arena { background-image:none; }
+.ring-scenery {
+  position:absolute; inset:0; pointer-events:none;
+  background: url("assets/harbor-dusk-v2.webp") center/100% 100% no-repeat;
+  transform-origin:50% 80%;
 }
+.arena[data-venue="ferry"] > .ring-scenery {
+  background-image:url("assets/midnight-ferry-r1.webp"),url("assets/harbor-dusk-v2.webp");
+}
+.arena.ring-wide > .ring-scenery { transform:scale(1.16); }
+.arena:not(.ring-wide) > .ring-scenery { background-size:auto 100%; }
 @media (max-width: 680px) and (orientation: portrait) {
   body.playing .stage-zone { align-items: stretch; }
   body.playing .arena, body.playing.training .arena {
@@ -69,6 +75,7 @@
       </header>
       <div class="stage-zone">
         <div id="arena" class="arena" aria-label="截风擂台，键盘或触屏操作">
+          <div class="ring-scenery" aria-hidden="true"></div>
           <canvas id="game" aria-label="实时逐帧格斗画面"></canvas
           ><canvas id="fx" aria-hidden="true"></canvas>
           <section id="hud" hidden>
@@ -292,6 +299,6 @@
       </dialog>
     </main>
     <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
-    <script type="module" src="main.mjs?v=20261124-tumble1"></script>
+    <script type="module" src="main.mjs?v=20261124-ring-paint2"></script>
   </body>
 </html>

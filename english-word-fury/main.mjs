@@ -7,10 +7,8 @@ import {
   VERSION,
   clamp,
 } from "./combat.mjs?v=20261124-tumble1";
-import { ArenaView } from "./view.mjs?v=20261124-tumble1";
+import { ArenaView } from "./view.mjs?v=20261124-ring-paint2";
 import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
-import { FighterSnapshots } from "./render-state.mjs?v=20260930-polish-r1&mobile=20260930-quality-r2";
-const fighterSnapshots = new FighterSnapshots();
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio();
 let view,
@@ -20,8 +18,7 @@ let view,
   mode = "menu",
   raf = 0,
   last = 0,
-  accumulator = 0,
-  previous = null;
+  accumulator = 0;
 let calloutUntil = 0,
   comboUntil = 0,
   wordIndex = 0,
@@ -62,9 +59,6 @@ function preview() {
     view.resize();
     view.render(game, null, 1, 0);
   }
-}
-function snapshotFighters() {
-  return fighterSnapshots.capture(game.f);
 }
 function showWord() {
   const w = words[wordIndex % words.length];
@@ -182,7 +176,6 @@ function event(e) {
   }
   if (e.type === "round") {
     release();
-    previous = null;
   }
   if (e.type === "match") finish();
 }
@@ -262,7 +255,6 @@ function tick(now) {
   accumulator += delta;
   let steps = 0;
   while (accumulator >= 1 / 60 && steps < 6 && mode === "playing") {
-    previous = snapshotFighters();
     game.step();
     perf.steps++;
     for (const e of game.events) event(e);
@@ -274,7 +266,7 @@ function tick(now) {
       showWord();
     }
   }
-  view.render(game, previous, clamp(accumulator * 60, 0, 1), delta);
+  view.render(game, null, clamp(accumulator * 60, 0, 1), delta);
   updateHud();
   perf.work.push(performance.now() - start);
   if (perf.frames.length > 1200) perf.frames.shift();
@@ -316,7 +308,6 @@ async function startMatch(next = false) {
   else delete $("arena").dataset.venue;
   if (game.mode === "training") game.f.forEach((f) => (f.meter = 200));
   mode = "playing";
-  previous = null;
   view.effects = [];
   document.body.classList.add("playing");
   document.body.classList.toggle("training", game.mode === "training");
@@ -628,7 +619,6 @@ $("ambient").addEventListener("change", () => {
 $("reset-btn").addEventListener("click", () => {
   game.resetPositions();
   game.clearInputs();
-  previous = null;
   view.effects = [];
   setText("combo", "");
   document.activeElement?.blur();
