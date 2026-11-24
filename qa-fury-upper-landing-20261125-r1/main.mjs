@@ -9,7 +9,7 @@ import {
   clamp,
 } from "../english-word-fury/combat.mjs?v=20261124-fist-contact1";
 import { ArenaView } from "./view.mjs?v=20261125-private-upper-boot";
-import { FuryAudio } from "../english-word-fury/sound.mjs?mobile=20260930-quality-r2";
+import { FuryAudio } from "./sound.mjs?v=20261125-upper-r1-audio-pin1";
 const namespace = "qa-fury-upper-landing-20261125-r1:";
 const candidateStorage = Object.freeze({
   getItem: (key) => globalThis.localStorage.getItem(namespace + key),
