@@ -7,8 +7,8 @@ import {
   VERSION,
   clamp,
 } from "./combat.mjs?v=20261125-swallow-read3";
-import { ArenaView } from "./view.mjs?v=20261125-swallow-read3";
-import {sampleLandings} from "./neutral-landing-r2.mjs?v=landing2";
+import { ArenaView } from "./view.mjs?v=harbor-guard3";
+import {sampleLandings} from "./neutral-landing-r2.mjs?v=harbor-guard3";
 import { FuryAudio } from "./sound.mjs?v=20261125-sound-park1";
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio(checkAudioFrame);
