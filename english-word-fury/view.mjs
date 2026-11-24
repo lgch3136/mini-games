@@ -4,8 +4,8 @@ import {bases as harborBases, hands as stanceAtlas, reactions as reactionAtlas} 
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
 import rosterPoses from "./harbor-roster-guard.mjs?v=20261124-harbor-guard3";
 import {loadMatchSheet, stanceRoles} from "./match-sheet.mjs?v=20261124-compact-baked1";
-import signatures from "./signature-frames.mjs?v=20261125-swallow-read3";
-import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261125-swallow-read3";
+import signatures from "./signature-frames.mjs?v=iron-grab-tell2";
+import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=iron-grab-tell2";
 import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261125-swallow-read3";
 import stockAtlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 const atlases={...stockAtlases,...harborBases};
@@ -414,6 +414,8 @@ export class ArenaView {
         if ((a?.name === "rush" && a.frame < a.spec.startup) ||
             (!a && !f.stun && !f.down && opening?.move === "rush" && opening.pose === "set")) return 1.5;
       }
+      if (f.c.id === "shan" && this.signatureSheets.get("shan")?.decoded && !f.down && !f.stun &&
+          ((!a && f.rivalOpening?.move === "grab") || (a?.name === "grab" && a.frame < a.spec.startup))) return 1.5;
       return f.stun ? 0 : 1;
     };
     this.actorBounds = [];
@@ -439,7 +441,7 @@ export class ArenaView {
       const strideRole=this.useIronLegs && this.strideImage && f.c.id==="shan" && ironStrideRoles[role];
       const stride=strideRole && ironStrideCells[strideRole];
       const sheet = this.signatureUsers.has(f.c.id) && this.signatureSheets.get(f.c.id);
-      const key = sheet?.decoded && signaturePose(f);
+      const key = sheet?.decoded && signaturePose(f, fight.frame);
       const signature = key && signatures[f.c.id].cells[key];
       const closeSheet = !this.previewOnly && this.stanceSheets.get(f.c.id);
       const holdingCover = role === "block/release" && f.state !== "block";

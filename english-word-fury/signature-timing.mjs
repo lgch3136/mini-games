@@ -27,19 +27,24 @@ function ironReaction(fighter) {
   return null;
 }
 
-export function signaturePose(fighter) {
+export function signaturePose(fighter, matchFrame) {
   if (fighter.c.id === "shan") {
     const reaction = ironReaction(fighter);
     if (reaction) return reaction;
     const a = fighter.action;
     if (fighter.state === "attack" && a && (a.name === "grab" || a.name === "throw")) {
       const offset = a.frame - a.spec.startup;
-      if (offset < -3) return "clinch-set";
+      if (offset < -3) return a.name === "grab" ? "clinch-open" : "clinch-set";
       if (offset < a.spec.active) return "clinch-reach";
       if (offset < a.spec.active + 16) return a.connected ? "clinch-lift" : "clinch-miss";
       return offset < a.spec.active + 24 && a.connected ? "clinch-miss" : "clinch-set";
     }
-    return fighter.rivalOpening?.move === "grab" ? "clinch-set" : null;
+    const plan = fighter.rivalOpening;
+    if (plan?.move !== "grab") return null;
+    if (!Number.isFinite(matchFrame)) return "clinch-set";
+    const span = Math.max(1, plan.at - plan.start);
+    const progress = (matchFrame - plan.start) / span;
+    return progress < .48 ? "clinch-load" : "clinch-open";
   }
   const airborne = airborneReaction(fighter);
   if (airborne) return airborne;

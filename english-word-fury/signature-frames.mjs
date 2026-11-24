@@ -234,12 +234,12 @@ export default {
     }
   },
   "shan": {
-    "file": "iron-clinch-and-reactions-r1.webp",
+    "file": "iron-clinch-and-reactions-r2.webp",
     "width": 872,
     "height": 666,
     "cells": {
       "iron-impact": [
-        41,
+        6,
         4,
         163,
         214,
@@ -249,7 +249,7 @@ export default {
         296.43
       ],
       "iron-catch": [
-        297,
+        177,
         4,
         143,
         213,
@@ -259,7 +259,7 @@ export default {
         294.585
       ],
       "iron-fall": [
-        499,
+        328,
         36,
         232,
         150,
@@ -269,7 +269,7 @@ export default {
         207.255
       ],
       "iron-floor": [
-        12,
+        6,
         272,
         222,
         121,
@@ -279,7 +279,7 @@ export default {
         167.895
       ],
       "iron-rise": [
-        274,
+        236,
         250,
         189,
         166,
@@ -289,7 +289,7 @@ export default {
         228.78
       ],
       "iron-set": [
-        535,
+        433,
         228,
         160,
         210,
@@ -337,6 +337,26 @@ export default {
         -134.0,
         305.5,
         269.5
+      ],
+      "clinch-load": [
+        568,
+        19,
+        174,
+        184,
+        -60.821,
+        -135.915,
+        258.311,
+        273.0
+      ],
+      "clinch-open": [
+        601,
+        243,
+        194,
+        180,
+        -57.904,
+        -132.99,
+        288.056,
+        267.15
       ]
     }
   }
