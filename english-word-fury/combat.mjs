@@ -1,5 +1,5 @@
 import { beginOpening, chooseOpening, holdOpening } from "./rival-openings.mjs?v=20261124-tumble1";
-import { swallowPhase } from "./signature-timing.mjs?v=20261124-tumble1";
+import { swallowPhase } from "./signature-timing.mjs?v=20261125-swallow-read3";
 import { DojoCourse } from "./dojo.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
 export const VERSION = "20260918-play-r1";
@@ -1036,6 +1036,10 @@ export class Fight {
         : spec.level === "high"
           ? !target.crouch
           : true);
+    // The last actual contact drives the recovery drawing of Mei's two-part rush.
+    if (!projectile && name === "rush" && attacker.c.id === "mei" && attacker.action?.name === name) {
+      attacker.action.swallowContact = guard ? "block" : "hit";
+    }
     const justGuard = guard && !target.stun && this.frame - target.guardTapFrame < 5;
     if (justGuard) target.guardTapFrame = -999;
     const counter =

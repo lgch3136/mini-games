@@ -4,9 +4,9 @@ import {bases as harborBases, hands as stanceAtlas, reactions as reactionAtlas} 
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
 import rosterPoses from "./harbor-roster-guard.mjs?v=20261124-harbor-guard1";
 import {loadMatchSheet, stanceRoles} from "./match-sheet.mjs?v=20261124-compact-baked1";
-import signatures from "./signature-frames.mjs?v=20261124-tumble1";
-import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261124-tumble1";
-import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-fist-contact1";
+import signatures from "./signature-frames.mjs?v=20261125-swallow-read3";
+import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261125-swallow-read3";
+import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261125-swallow-read3";
 import stockAtlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 const atlases={...stockAtlases,...harborBases};
 
@@ -408,6 +408,12 @@ export class ArenaView {
       const a = f.action;
       if (a?.spec.level === "throw" && a.connected) return 3;
       if (a && a.frame >= a.spec.startup && a.frame < a.spec.startup + a.spec.active) return 2;
+      // Keep the chambered knee readable over an idle guard. A live opposing strike still takes foreground.
+      if (f.c.id === "mei" && this.signatureSheets.get("mei")?.decoded) {
+        const opening = f.rivalOpening;
+        if ((a?.name === "rush" && a.frame < a.spec.startup) ||
+            (!a && !f.stun && !f.down && opening?.move === "rush" && opening.pose === "set")) return 1.5;
+      }
       return f.stun ? 0 : 1;
     };
     this.actorBounds = [];

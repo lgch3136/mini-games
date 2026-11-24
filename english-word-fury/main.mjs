@@ -6,8 +6,8 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20261124-fist-contact1";
-import { ArenaView } from "./view.mjs?v=20261125-landing2-late1";
+} from "./combat.mjs?v=20261125-swallow-read3";
+import { ArenaView } from "./view.mjs?v=20261125-swallow-read3";
 import {sampleLandings} from "./neutral-landing-r2.mjs?v=landing2";
 import { FuryAudio } from "./sound.mjs?v=20261125-sound-park1";
 const $ = (id) => document.getElementById(id);

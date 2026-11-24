@@ -51,7 +51,18 @@ export function signaturePose(fighter) {
   const { name, frame, spec } = fighter.action;
   if (fighter.c.id === "mei" && name === "rush") {
     if (frame >= spec.startup+spec.active+spec.recovery-6) return null;
-    return swallowPhase(frame,spec);
+    if (frame < spec.startup) return frame < 3 ? "coil" : "launch";
+    const recovered = frame - spec.startup - spec.active;
+    const phase = swallowPhase(frame,spec);
+    if (recovered < 0 && phase === "gather") return "kick";
+    if (recovered >= 0 && recovered < 9) {
+      if (fighter.action.swallowContact === "block") return "blocked-fold";
+      if (!fighter.action.connected) {
+        if (recovered < 3) return "missed-fall";
+        return recovered < 6 ? "missed-reach" : "missed-step";
+      }
+    }
+    return phase;
   }
   if (fighter.c.id !== "lin" || name !== "wave") return null;
   const offset=frame-spec.startup;
