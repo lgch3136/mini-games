@@ -1,3 +1,4 @@
+import {legContactLine,contactOnLeg} from "./leg-contact.mjs?v=20261124-boot-fx1";
 import {bases as harborBases, hands as stanceAtlas, reactions as reactionAtlas} from "./harbor-foundation-r1.mjs?v=20261124-harbor-foundation1";
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
 import rosterPoses from "./harbor-roster-guard.mjs?v=20261124-harbor-guard1";
@@ -31,12 +32,26 @@ const ironLegs = {
   },
 };
 
+// Reuse the original painted cels and the match's current bitmap.
+const kickReturnArt = {
+  "kick/fold": "kick/commit", "highKick/fold": "highKick/commit",
+  "kick/knee": "kick/load", "highKick/knee": "highKick/load",
+  "kick/lower": "walkForward/0", "highKick/lower": "walkForward/0",
+};
 const TAU = Math.PI * 2;
 const gaitFrames = [0, 3, 6, 9];
 const phases = ["load", "commit", "active", "return", "settle"];
 
 function actionCel(fighter, cells) {
   const { name, spec, frame, connected } = fighter.action;
+  const recoveryFrame = frame - spec.startup - spec.active;
+  if (recoveryFrame >= 0 && harborBases[fighter.c.id] && (name === "kick" || name === "highKick")) {
+    const progress = recoveryFrame / spec.recovery;
+    if (progress < .27) return name + "/fold";
+    if (progress < .52) return name + "/knee";
+    if (progress < .77) return name + "/lower";
+    return name + "/settle";
+  }
   let phase;
   if (frame < spec.startup) phase = frame < spec.startup * 0.55 ? 0 : 1;
   else if (frame < spec.startup + spec.active) phase = 2;
@@ -106,8 +121,8 @@ export class ArenaView {
     this.overlay = overlay;
     this.scenery = canvas.parentElement.querySelector(".ring-scenery");
     this.actorBounds = [];
-    this.fxHadInk = false;
-    this.paintCounts = {actorClears:0,actorClearPixels:0,fxClears:0,fxIdle:0};
+    this.fxBounds = {left:0,top:0,right:0,bottom:0};
+    this.paintCounts = {actorClears:0,actorClearPixels:0,fxClears:0,fxClearPixels:0,fxIdle:0};
     this.actorContext = canvas.getContext("2d");
     this.ctx = overlay.getContext("2d");
     this.effects = [];
@@ -270,7 +285,7 @@ export class ArenaView {
     if (this.w === rect.width && this.h === rect.height && this.dpr === dpr) return;
     this.portrait = portrait;
     this.actorBounds.length = 0;
-    this.fxHadInk = false;
+    this.fxBounds.right = this.fxBounds.left = 0;
     if (this.scenery) {
       this.scenery.style.transform = "";
       this.scenery.style.backgroundPosition = "";
@@ -431,7 +446,7 @@ export class ArenaView {
       const reaction = responseKey && reactionAtlas[f.c.id].cells[responseKey];
       const ownFace = !reaction && !signature && !leg && !stride && !stance && facing < 0 && cells[role + "@left"];
       const fallback = f.c.id === "shan" && role === "hit/impact"
-        ? cells["block/impact"] : cells[role];
+        ? cells["block/impact"] : cells[kickReturnArt[role] || role];
       const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || stride || reaction || stance || ownFace || fallback || cells["idle/0"];
       const size = scale * (f.c.id === "shan" ? (iron || stride ? 0.84 : 0.93) : 1);
       const image = signature ? sheet.image : leg ? this.ironImage : stride ? this.strideImage : reaction ? motionSheet.image : stance ? closeSheet.image : baseImage;
@@ -476,8 +491,15 @@ export class ArenaView {
       const hand = (e.type === "hit" || e.type === "block") &&
         (e.name === "jab" || e.name === "punch") && this.stanceSheets.get(e.sourceId)?.decoded &&
         reactionAtlas[e.sourceId]?.tips[e.name + (e.sourceFacing < 0 ? "/L" : "/R")];
+      const canContact = (e.type === "hit" || e.type === "block") && !this.previewOnly &&
+        (e.sourceFacing === 1 || e.sourceFacing === -1) && Number.isFinite(e.sourceX) && Number.isFinite(e.sourceY);
+      const useIron = e.sourceId === "shan" && this.useIronLegs && Boolean(this.ironImage);
+      const line = canContact && legContactLine(e.sourceId, e.name, useIron);
+      const role = line && e.name + "/active";
+      const legCell = line && ((useIron && ironLegs.cells[role]) || atlases[e.sourceId]?.cells[role]);
       this.effects.push({
         ...e,
+        ...(legCell ? {legLine:line, legCell, legSize:e.sourceId === "shan" ? (useIron ? .84 : .93) : 1} : {}),
         ...(hand ? {x:e.sourceX+hand[0], y:e.sourceY+hand[1], drawnKnuckles:true} : {}),
         age: 0,
         duration: e.type === "hit" ? 0.32 : e.type === "land" ? 0.22 : 0.35,
@@ -494,16 +516,30 @@ export class ArenaView {
     else this.frameWide(fight,alpha,dt,this.camera.zoom);
     this.drawFighters(fight, alpha);
     const c = this.ctx;
-    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    if (this.fxHadInk) {
-      c.clearRect(0,0,this.w,this.h);
-      this.paintCounts.fxClears++;
+    const area = this.fxBounds;
+    if (area.right > area.left && area.bottom > area.top) {
+      // Clear last frame's ink at whole device pixels, including after a camera move.
+      const left = Math.max(0,Math.floor(area.left*this.dpr));
+      const top = Math.max(0,Math.floor(area.top*this.dpr));
+      const width = Math.min(this.overlay.width,Math.ceil(area.right*this.dpr))-left;
+      const height = Math.min(this.overlay.height,Math.ceil(area.bottom*this.dpr))-top;
+      if (width > 0 && height > 0) {
+        c.setTransform(1,0,0,1,0,0);
+        c.clearRect(left,top,width,height);
+        this.paintCounts.fxClears++;
+        this.paintCounts.fxClearPixels += width*height;
+      }
     }
-    this.fxHadInk=Boolean(this.boxes || this.effects.length || fight.projectiles.length || fight.f.some(f=>f.maxTime>0));
-    if (!this.fxHadInk) {
+    const full = this.boxes || fight.projectiles.length > 0 || fight.f.some(f=>f.maxTime>0);
+    area.left = full ? 0 : this.w;
+    area.top = full ? 0 : this.h;
+    area.right = full ? this.w : 0;
+    area.bottom = full ? this.h : 0;
+    if (!full && !this.effects.length) {
       this.paintCounts.fxIdle++;
       return;
     }
+    c.setTransform(this.dpr,0,0,this.dpr,0,0);
     const scale = this.portrait ? this.portraitUnit : (this.w / 16) * this.camera.zoom;
     for (const f of fight.f)
       if (f.maxTime > 0) {
@@ -577,9 +613,23 @@ export class ArenaView {
       e.age += dt;
       const t = e.age / e.duration;
       if (t >= 1) continue;
-      const f = fight.f[e.side ?? 0],
-        [x, y] = this.screen(e.x ?? f.x, e.y ?? 0.06),
-        r = (e.heavy ? 0.42 : 0.29) * scale;
+      const f = fight.f[e.side ?? 0];
+      let [x, y] = this.screen(e.x ?? f.x, e.y ?? .06);
+      if (e.legCell) {
+        const facing = e.sourceFacing;
+        const bias = e.sourceId === "shan" ? 0 : .37 * facing;
+        const [ax, ay] = this.screen(e.sourceX - bias, e.sourceY);
+        const unit = this.portrait ? this.portraitUnit : this.h * this.camera.zoom / 9;
+        [x, y] = contactOnLeg(e.legLine, e.legCell, unit*e.legSize/34, facing, ax, ay, x);
+      }
+      const r = (e.heavy ? .42 : .29) * scale;
+      if (!full) {
+        const radius = (e.type === "max" || e.type === "superCancel" ? 2.4*scale : 2.05*r) + 3;
+        area.left = Math.min(area.left,x-radius);
+        area.right = Math.max(area.right,x+radius);
+        area.top = Math.min(area.top,y-radius);
+        area.bottom = Math.max(area.bottom,y+radius);
+      }
       c.save();
       c.globalAlpha = 1 - t;
       c.translate(x, y);
