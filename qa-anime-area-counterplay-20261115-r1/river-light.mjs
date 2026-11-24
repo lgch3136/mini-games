@@ -1,0 +1,57 @@
+import {bindImpact} from "./surface-impact.mjs?v=robot-cat1";
+// Low-power opaque geometry shares vertex lighting. The ordinary texture, fog and colour pipeline stays intact.
+export function riverLight(T) {
+  const saved=new WeakMap();
+  const vertex=T.ShaderLib.basic.vertexShader.replace("#include <common>","#include <common>\nvarying vec3 vRiverLight;")
+    .replace("#include <begin_vertex>",`#include <begin_vertex>
+      vec3 riverNormal=normal;
+      #ifdef USE_SKINNING
+        riverNormal=objectNormal;
+      #endif
+      #ifdef USE_INSTANCING
+        mat3 riverInstance=mat3(instanceMatrix);
+        riverNormal=riverInstance*(riverNormal/max(vec3(.0001),vec3(dot(riverInstance[0],riverInstance[0]),dot(riverInstance[1],riverInstance[1]),dot(riverInstance[2],riverInstance[2]))));
+      #endif
+      mat3 riverModel=mat3(modelMatrix);
+      riverNormal=normalize(riverModel*(riverNormal/max(vec3(.0001),vec3(dot(riverModel[0],riverModel[0]),dot(riverModel[1],riverModel[1]),dot(riverModel[2],riverModel[2])))));
+      float riverSky=riverNormal.y*.5+.5;
+      float riverSun=smoothstep(-.29,.65,dot(riverNormal,vec3(-.403,.863,.304)));
+      
+      float lightBand=mix(riverSun,smoothstep(.42,.59,riverSun),.25);
+      vRiverLight=mix(vec3(.50,.58,.71),vec3(1.24,1.14,1.02),.28*riverSky+.72*lightBand);`);
+  const fragment=T.ShaderLib.basic.fragmentShader.replace("#include <common>","#include <common>\nvarying vec3 vRiverLight;")
+    .replace("#include <color_fragment>","#include <color_fragment>\ndiffuseColor.rgb *= vRiverLight;");
+  const skinVertex=vertex.replace("#include <skinbase_vertex>", `#ifdef USE_SKINNING
+        mat4 riverSkin=getBoneMatrix(skinIndex.x);
+        if(skinWeight.y>0.00001)riverSkin=riverSkin*skinWeight.x+getBoneMatrix(skinIndex.y)*skinWeight.y;
+        riverSkin=bindMatrixInverse*riverSkin*bindMatrix;
+      #endif`).replace("#include <skinnormal_vertex>",`#ifdef USE_SKINNING
+        objectNormal=(riverSkin*vec4(objectNormal,0.)).xyz;
+      #endif`).replace("#include <skinning_vertex>",`#ifdef USE_SKINNING
+        transformed=(riverSkin*vec4(transformed,1.)).xyz;
+      #endif`);
+  const skinFragment=fragment.replace("#include <map_fragment>",`#ifdef USE_MAP
+        if(vMapUv.x<.665||vMapUv.y>.50)diffuseColor*=texture2D(map,vMapUv);
+      #endif`);
+  let active=false;
+  function update(mat){
+    if(!mat||(!mat.isMeshStandardMaterial&&!mat.isMeshLambertMaterial)||mat.map&&!mat.userData.riverFigure||mat.transparent||mat.emissiveMap)return;
+    const original=saved.get(mat);
+    if(active&&!original){
+      saved.set(mat,{compile:mat.onBeforeCompile,key:mat.customProgramCacheKey});
+      mat.onBeforeCompile=shader=>{shader.vertexShader=mat.userData.riverFigure?skinVertex:vertex;shader.fragmentShader=mat.userData.riverFigure?skinFragment:fragment;bindImpact(shader,mat)};
+      mat.customProgramCacheKey=()=>mat.userData.riverFigure?"river-painted-2-joints-v1":"river-vertex-lit-v1";mat.needsUpdate=true;
+    }else if(!active&&original){
+      mat.onBeforeCompile=original.compile;mat.customProgramCacheKey=original.key;saved.delete(mat);mat.needsUpdate=true;
+    }
+  }
+  function object(item){
+    if(Array.isArray(item.material))item.material.forEach(update);
+    else update(item.material);
+  }
+  return {object,tree(root){root.traverse(object);},tier(index){active=index!==0;}};
+}
+export function firstRiverTier(store,nav,coarse) {
+  try{const raw=store?.getItem("river-court-picture-v1");if(raw==="0"||raw==="1"||raw==="2")return Number(raw);}catch{}
+  return coarse||Number(nav?.deviceMemory)>0&&nav.deviceMemory<=4?2:1;
+}

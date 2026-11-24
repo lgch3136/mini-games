@@ -7,3 +7,10 @@
 #performance{position:fixed;left:12px;top:130px;padding:10px;background:#0d2436e8;color:#cfe7dc;font:11px/1.6 monospace;pointer-events:none;border-radius:8px}#top{flex-wrap:wrap}#top button{padding:8px 10px}@media(max-width:750px){#top{gap:5px}#top button{padding:6px;font-size:10px}.score{margin-left:auto;margin-right:0}.score b{font-size:17px}.score span{font-size:10px}#top h1{font-size:13px}#objective{top:80px}#performance{top:110px;left:8px;font-size:10px}}
 
 #mapPanel{position:fixed;right:12px;top:126px;border:1px solid #678e92;border-radius:7px;background:#112d3ae8;padding:5px;pointer-events:none}#mapPanel small{font-size:9px;letter-spacing:0;display:block;text-align:center;margin-bottom:4px}#minimap{width:150px;height:90px;display:block}@media(max-width:750px){#mapPanel{top:110px;right:7px;padding:3px}#mapPanel small{font-size:7px}#minimap{width:100px;height:60px}}
+
+#routeHint{position:fixed;top:131px;left:50%;transform:translateX(-50%);z-index:4;pointer-events:none;box-sizing:border-box;width:max-content;max-width:94vw;padding:6px 10px;border:1px solid #769d96;background:#112529e8;color:#e2eee4;font-size:12px;border-radius:6px;text-align:left}
+#routeHint:not([hidden]){display:flex;gap:0}#routeHint div{padding:2px 12px}#routeHint div+div{border-left:1px solid #577e74}#routeHint b{color:#d0dfc7;display:block;font-size:14px}#routeHint div+div b{color:#a5e4cf}#routeHint small{display:block;font-size:11px;margin-top:2px;letter-spacing:0;color:#d7e7dd}
+#minimap{width:180px;height:108px}
+@media(max-width:750px){#routeHint{top:108px;left:7px;transform:none;width:calc(100vw - 128px);font-size:11px}#routeHint div{padding:1px 5px;flex:1}#routeHint b{font-size:11px}#routeHint small{font-size:9px}#minimap{width:110px;height:66px}}
+
+#routeHint{border-inline-start:3px solid #79dac0;background:#102633ea;padding:.45em .65em}

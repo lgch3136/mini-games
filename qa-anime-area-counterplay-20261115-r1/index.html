@@ -1,1 +1,290 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>次元交锋 · 动漫战场 r9 候选</title><link rel="stylesheet" href="style.css"></head><body><canvas id="world"></canvas><div id="top"><div><small>ANIME CROSSROADS / r9 CANDIDATE · 2026.11.15</small><h1>次元交锋</h1></div><div class="score"><b id="time">00:00</b><span id="stats">蓝方先锋</span></div><button id="quality">画质 高</button><button id="perfToggle">性能</button><button id="focus" title="F 切换：范围内优先攻击可攻击的塔与核心">最近目标</button><button id="pause">暂停</button><button id="sound">音乐 开</button></div><div id="objective">护送兵线破核心装甲 · 随兵线推进 → 摧毁敌方防御塔 → 击破核心</div><section id="menu" class="veil"><div class="panel"><small>独立同人试玩 · 5 对 5 AI 战场</small><h2>刀光、水流与术式。</h2><p>r9 候选：鸣人和五条悟的范围技能在蓄力时标出锁定落点与进度，移动躲开红色圆环；气功与橡胶直线招式在蓄力时显示攻击走廊，横线推进到端点即将出招；红色避让、青色友方。单路 5v5：红色粗环提示敌方攻击，青色细环表示友方支援，避免团战中认错威胁。小地图显示双方核心与塔。可切换画质，性能面板显示本机当前帧率。按 F 切换推塔优先，别让残血核心被身边的敌人挡住。</p><div id="choices"><button data-hero="0" class="selected"><b>漩涡鸣人</b><em>突进 / 近战</em><span>螺旋丸 · 影分身突进 · 风遁旋涡</span></button><button data-hero="1"><b>灶门炭治郎</b><em>剑术 / 机动</em><span>水面斩 · 流水步 · 生生流转</span></button><button data-hero="2"><b>五条悟</b><em>远程 / 控制</em><span>术式·苍 · 无下限 · 虚式·茈</span></button><button data-hero="3"><b>孙悟空</b><em>气功 / 爆发</em><span>气弹 · 瞬身 · 龟派气功</span></button><button data-hero="4"><b>蒙奇·D·路飞</b><em>伸缩 / 近战</em><span>橡胶手枪 · 橡胶火箭 · 橡胶机关枪</span></button></div><button id="start" class="primary">进入战场 →</button><p class="hint">WASD 移动 · J 普攻 · Q / E / R 技能 · P 暂停 · F 推塔优先<br>单机 AI 纵切，不是真人联网；程序化同人形象，非官方作品。视觉/FPS独立验收待完成。</p></div></section><section id="end" class="veil hidden"><div class="panel"><small>战斗结束</small><h2 id="endtitle"></h2><p id="endstats"></p><button id="restart" class="primary">回到选人</button></div></section><div id="bottom"><div class="portrait"><b id="heroName">鸣人</b><span id="level">Lv.1</span><div class="health"><i id="hpbar"></i></div><small id="hp">生命值</small></div><div class="skills"><button data-key="attack"><kbd>J</kbd><b>普攻</b><span>最近目标</span></button><button data-key="q"><kbd>Q</kbd><b id="qn">技能</b><span id="qc">就绪</span></button><button data-key="e"><kbd>E</kbd><b id="en">技能</b><span id="ec">就绪</span></button><button data-key="r"><kbd>R</kbd><b id="rn">终极技能</b><span id="rc">就绪</span></button></div><div id="log">等待出击</div></div><div id="pad"><button data-dir="0,-1">▲</button><button data-dir="-1,0">◀</button><button data-dir="0,1">▼</button><button data-dir="1,0">▶</button></div><aside id="mapPanel"><small>单路 5v5 · 河面浅滩可通行</small><canvas id="minimap" aria-label="单路战场小地图，白圈为玩家"></canvas></aside><pre id="performance" class="hidden"></pre><div id="error" class="hidden"></div><script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script><script type="module" src="game.min.js?v=r9-area-r1"></script></body></html>
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>次元交锋 · 河庭交锋</title><link rel="stylesheet" href="style.css?v=20261124-river-garden1"><style>#role-tip:not([hidden]){display:block;max-width:16em;line-height:1.25;margin-top:2px;color:#ffdc99;font-size:11px;white-space:normal}.portrait:has(#role-tip:not([hidden])){align-self:center}@media(max-width:620px){#role-tip:not([hidden]){font-size:10px;max-width:11em}}</style><style>#camera-view{display:block;width:100%;margin-top:3px;border:0;border-top:1px solid #547072;border-radius:0;background:transparent;color:#e3eee3;cursor:pointer;font:600 10px/1.6 system-ui;pointer-events:auto}#camera-view:focus-visible{outline:2px solid #f9db88}@media(pointer:coarse){#camera-view{min-height:28px}}</style><style>@media(max-width:750px){#pad{bottom:calc(var(--fight-hud-height,144px) + 20px + env(safe-area-inset-bottom,0px))}}</style><style>
+#map-size{display:none}
+@media(max-width:750px){
+  #mapPanel:not(.map-expanded){top:62px;padding:2px;line-height:1}
+  #mapPanel:not(.map-expanded) #minimap{width:76px;height:46px}
+  #mapPanel:not(.map-expanded) small,#mapPanel:not(.map-expanded) #camera-view{display:none}
+  #map-size{display:block;position:absolute;inset:0 0 auto;width:100%;height:100%;min-height:44px;
+    padding:0;border:0;background:transparent;pointer-events:auto;border-radius:5px;touch-action:manipulation}
+  #mapPanel.map-expanded #map-size{height:calc(100% - 30px)}
+  #mapPanel.map-expanded #camera-view{min-height:30px;position:relative}
+  #map-size:focus-visible{outline:2px solid #ffd58a}
+}
+</style><style>
+#choices .roster-window{display:grid;place-items:center;background:#173b48;width:100%;height:130px;border-radius:5px;overflow:hidden}
+.roster-window i{display:block;width:104px;max-width:100%;height:100%;background-image:url("./assets/robot-roster.webp");background-repeat:no-repeat;background-size:500% 100%}
+@media(max-width:750px){#choices .roster-window{height:84px}.roster-window i{width:67.2px}}
+#start[aria-busy=true]{cursor:progress}
+</style><style>
+.skills button{touch-action:none;user-select:none;-webkit-user-select:none}
+#aim-cancel{position:fixed;right:12px;bottom:calc(var(--fight-hud-height,110px) + 28px + env(safe-area-inset-bottom,0px));
+ z-index:8;pointer-events:none;border:1px solid #f2b7a2;background:#542b32ed;color:#ffdfc6;border-radius:24px;
+ padding:10px 14px;font:600 13px/1.2 system-ui;box-shadow:0 2px 8px #13152077}
+#aim-cancel.over{color:white;background:#a43d45;border-color:white}
+</style><style>.thumb-guide{display:none}@media(max-width:750px),(pointer:coarse) and (max-width:1050px){.thumb-guide{display:inline}}
+#top{gap:8px;align-items:center;flex-wrap:nowrap;padding:9px 14px;z-index:4}
+#top h1{font-size:16px;line-height:1.25;letter-spacing:.16em}
+#top>div:first-child small{display:none}
+#top .score{margin:0 auto 0 6px;align-items:flex-start;text-align:left}
+#top .score b{font:700 16px/1.12 system-ui;font-variant-numeric:tabular-nums}
+#top .score span{font-size:10px}
+#battle-options{position:relative;pointer-events:auto;z-index:7}
+#battle-options summary,#top>button{border:1px solid #77969794;border-radius:6px;background:#112a32ed;
+ color:#f2eddb;padding:7px 10px;line-height:1.2;font-size:12px;cursor:pointer}
+#battle-options summary{list-style:none}
+#battle-options summary::-webkit-details-marker{display:none}
+#battle-options summary:focus-visible{outline:2px solid #f1d188}
+#battle-options>div{position:absolute;top:calc(100% + 3px);right:0;display:grid;min-width:96px;gap:4px;
+ padding:5px;border:1px solid #698783;border-radius:7px;background:#112b32fa;box-shadow:0 3px 10px #12212a55}
+#battle-options:not([open])>div{display:none}
+#battle-options button{text-align:left}
+#objective{top:11px;max-width:37vw;overflow:hidden;text-overflow:ellipsis;padding:4px 10px}
+#routeHint{top:40px}
+#performance{top:83px}
+#mapPanel{top:58px}
+#bottom{left:16px;right:16px;bottom:12px;transform:none;width:auto;padding:0;border:0;border-radius:0;
+ background:transparent;box-shadow:none;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+ gap:12px;align-items:end;pointer-events:none}
+#bottom .portrait,#bottom .skills button,#bottom #log:not(:empty){
+ background:linear-gradient(150deg,#19363be8,#0e232eeb);border:1px solid #819a8e66}
+#bottom .portrait{width:fit-content;min-width:136px;max-width:180px;padding:7px 10px;border-radius:8px}
+#bottom .portrait small{font-variant-numeric:tabular-nums}
+#bottom .portrait .health{margin:4px 0;height:5px}
+#bottom .skills{pointer-events:auto;gap:6px;align-items:end}
+#bottom .skills button{width:74px;height:57px;border-radius:9px;border-bottom:2px solid var(--rim,#d3b978);
+ gap:1px;align-items:center;padding:2px 3px;line-height:1.05}
+.skills button[data-key=q]{--rim:#91ceed}.skills button[data-key=e]{--rim:#9ee0be}.skills button[data-key=r]{--rim:#d8a0bc}
+#bottom .skills button::before{content:"";display:block;width:14px;height:12px;background:var(--rim,#e6ca8a)}
+.skills [data-art=slash]::before{clip-path:polygon(0 84%,28% 68%,96% 0,72% 49%,100% 25%,56% 84%,19% 100%)}
+.skills [data-art=orb]::before{border-radius:50%;background:radial-gradient(circle at 40% 40%,#fff6ce 8%,var(--rim) 42%,#395777 75%)!important}
+.skills [data-art=dash]::before{clip-path:polygon(0 24%,55% 24%,47% 0,100% 44%,44% 100%,54% 64%,0 64%,30% 45%)}
+.skills [data-art=shield]::before{clip-path:polygon(50% 0,95% 17%,89% 59%,70% 83%,50% 100%,27% 81%,9% 59%,5% 17%)}
+.skills [data-art=wave]::before{clip-path:polygon(0 78%,19% 33%,39% 10%,65% 9%,83% 30%,59% 28%,47% 44%,48% 61%,68% 69%,100% 55%,85% 85%,60% 98%,30% 92%,18% 75%)}
+.skills [data-art=beam]::before{clip-path:polygon(0 75%,64% 25%,59% 8%,100% 0,93% 41%,77% 37%,9% 100%)}
+#bottom .skills button:active{border-color:#ffe3a1;background:#35525a}
+#bottom .skills kbd{top:2px;left:4px;font-size:9px;line-height:1;padding:2px}
+#bottom .skills b{font-size:12px}
+#bottom .skills span{font-size:10px;line-height:1.25}
+#bottom #log{width:fit-content;max-width:230px;justify-self:end;border-radius:7px;padding:4px 8px}
+#bottom #log:empty{padding:0}
+@media(max-width:750px),(pointer:coarse) and (max-width:1050px){
+  #top{padding:3px 7px;gap:4px}
+  #top>div:first-child{display:none}
+  #top .score{margin:0 auto 0 0}
+  #top>button,#battle-options summary,#battle-options button{min-height:44px;min-width:44px;font-size:12px;
+    display:flex;align-items:center;justify-content:center;padding:6px 8px}
+  #objective{top:49px;left:7px;transform:none;max-width:calc(100vw - 101px);font-size:11px}
+  #routeHint{top:74px;left:7px;transform:none;max-width:calc(100vw - 100px);width:fit-content;font-size:11px}
+  #mapPanel,#mapPanel:not(.map-expanded){top:51px}
+  #performance{top:104px;max-width:75vw}
+  #bottom{left:0;right:0;bottom:0;display:block;height:0;padding:0}
+  #bottom .portrait{position:absolute;left:8px;bottom:calc(5px + env(safe-area-inset-bottom,0px));width:fit-content;
+    max-width:min(39vw,168px);min-width:min(31vw,130px);padding:4px 7px;line-height:1.05}
+  #bottom .portrait b{font-size:13px}#bottom .portrait span,#bottom .portrait small{font-size:10px}
+  #bottom .portrait span{margin-left:.3em}#bottom .portrait .health{margin:3px 0}
+  #bottom #role-tip:not([hidden]){font-size:10px;max-width:14em;line-height:1.1}
+  #bottom .skills{position:absolute;right:8px;bottom:calc(7px + env(safe-area-inset-bottom,0px));
+    display:grid;grid-template-columns:repeat(2,clamp(52px,15vw,68px));gap:4px}
+  #bottom .skills button{width:100%;height:54px;border-radius:14px;padding:3px 1px}
+  #bottom .skills button::before{width:12px;height:10px}
+  #bottom .skills b{font-size:11px;line-height:1.12}
+  #bottom .skills kbd{display:none}
+  #bottom .skills [data-key=attack]{grid-area:2/2}
+  #bottom .skills [data-key=q]{grid-area:2/1}
+  #bottom .skills [data-key=e]{grid-area:1/1}
+  #bottom .skills [data-key=r]{grid-area:1/2}
+  #bottom #log{display:none}
+  #pad{position:fixed;display:block;width:104px;height:104px;border:1px solid #d3cf9d99;border-radius:50%;
+    left:10px;bottom:calc(76px + env(safe-area-inset-bottom,0px));touch-action:none;user-select:none;
+    background:radial-gradient(circle at center,#72918430 0 46%,#34524f8c 48% 66%,#182f30bb 69%);
+    box-shadow:inset 0 0 0 3px #cadaac26;pointer-events:auto}
+  #pad button{position:absolute;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;
+    background:transparent;color:#c6dcbdde;font:9px system-ui;line-height:1}
+  #pad [data-dir="0,-1"]{left:calc(50% - 16px);top:0}
+  #pad [data-dir="0,1"]{left:calc(50% - 16px);bottom:0}
+  #pad [data-dir="-1,0"]{left:0;top:calc(50% - 16px)}
+  #pad [data-dir="1,0"]{right:0;top:calc(50% - 16px)}
+  .thumb-handle{position:absolute;left:calc(50% - 16px);top:calc(50% - 16px);width:32px;height:32px;
+    border:1px solid #dbddae;border-radius:50%;pointer-events:none;background:radial-gradient(ellipse at 38% 30%,#95b5a2,#41685d 70%);
+    box-shadow:0 2px 4px #162a2f55}
+  #pad.engaged{border-color:#f6df96}.engaged .thumb-handle{border-color:#ffe4a6}
+  #aim-cancel{right:8px;bottom:calc(134px + env(safe-area-inset-bottom,0px));min-height:40px}
+}
+@media(max-height:450px) and (max-width:1050px){
+  #pad{width:88px;height:88px;bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+  #bottom .skills button{height:45px}
+  #aim-cancel{bottom:calc(111px + env(safe-area-inset-bottom,0px))}
+}
+</style><style>
+#bottom #field-supplies{pointer-events:auto;text-align:left;color:#eff3e4;cursor:pointer}
+#purse-line{display:block;letter-spacing:0;font-weight:650;color:#f2cc89;margin-top:3px}
+#field-stock[hidden]{display:none}#field-stock{position:fixed;z-index:5;left:16px;bottom:148px;width:min(285px,calc(100vw - 24px));
+ border:1px solid #a9b3a0;border-radius:11px;padding:10px;color:#eeefdc;background:#102b30fa;
+ box-shadow:0 5px 16px #13212c66;font:13px/1.3 system-ui}
+#field-stock header{display:flex;align-items:center;justify-content:space-between}
+#field-stock header button{padding:5px 8px;font:inherit}
+#field-stock p{margin:6px 0;color:#cbd9d2;font-size:12px}
+#field-counter,#field-kit-note{color:#f1d094;letter-spacing:0;font-size:12px}
+#field-kit-note{margin-top:6px;display:block}
+#field-stock [data-gear]{width:100%;min-height:43px;padding:4px 8px;margin-top:4px;display:grid;
+ grid-template-columns:1fr auto;text-align:left;border-color:#77938e}
+#field-stock [data-gear] span{grid-row:2;font-size:11px}
+#field-stock [data-gear] em{grid-column:2;grid-row:1 / 3;align-self:center;color:#edc97d;font-style:normal}
+#field-stock [data-gear]:disabled{opacity:.68;cursor:default}
+@media(max-width:750px),(pointer:coarse) and (max-width:1050px){
+ #field-stock{left:8px;bottom:auto;top:126px;max-height:calc(100dvh - 146px);overflow:auto}
+ #field-stock header button{min-width:44px;min-height:40px}
+ #pad{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+}
+@media(max-height:450px) and (max-width:1050px){#field-stock{top:45px;max-height:calc(100dvh - 53px)}}
+</style>
+<style>
+.field-floats{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.field-float{position:absolute;left:0;top:0;pointer-events:none;color:#fff5d2;
+ font:800 clamp(14px,1.25vw,21px)/1 system-ui;font-variant-numeric:tabular-nums;
+ text-shadow:0 1px 1px #29251e,1px 0 1px #29251e,-1px 0 1px #29251e,0 2px 4px #282a2b}
+.field-float[hidden],.damage-leader[hidden]{display:none}.damage-leader{position:absolute;left:0;top:0;height:1.5px;background:#fff3c8;box-shadow:0 1px 1px #302c27;transform-origin:0 50%}.field-float.taken{color:#ffc7b6}
+.field-float.coin{font-size:clamp(16px,1.55vw,24px);color:#ffdf72}
+.field-float.coin:before{content:"";display:inline-block;width:.49em;height:.49em;border:.1em solid #ffc155;
+ border-radius:50%;margin-right:.1em;background:#fff0a2;box-shadow:0 1px 2px #75450d}
+</style><style>
+#mapPanel #minimap{width:112px;height:112px;aspect-ratio:1}
+#field-recall{position:fixed;left:16px;bottom:calc(var(--fight-hud-height,110px) + 12px);
+ z-index:3;color:#dff9e8;background:#21473fed;border:1px solid #abc5ac;border-radius:50%;width:48px;height:48px;cursor:pointer;font:650 12px system-ui}
+#field-recall[aria-pressed=true]{background:#3d7768;border-color:#c4ffe6}
+#field-recall:focus-visible{outline:2px solid #f8cf7c}
+body:has(#menu:not(.hidden)) #field-recall,body:has(#end:not(.hidden)) #field-recall{display:none}
+@media(max-width:750px){#mapPanel:not(.map-expanded) #minimap{width:70px;height:70px}#field-recall{left:auto;right:9px;bottom:calc(var(--fight-hud-height,110px) + 13px);width:44px;height:44px}}
+</style><style>
+#bottom .skills {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 196px;
+  height: 172px;
+  display: block;
+  pointer-events: none;
+}
+#bottom .skills button {
+  --size: 53px;
+  width: var(--size);
+  height: var(--size);
+  min-width: 0;
+  min-height: 0;
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  border: 2px solid #c2ba96;
+  border-radius: 50%;
+  background: #183039;
+  box-shadow: 0 0 0 2px #1b2b30, inset 0 0 0 2px #a0916c, 0 3px 6px #15232877;
+  color: #fff8dd;
+  pointer-events: auto;
+}
+#bottom .skills button::before { content: none !important; display: none !important; }
+#bottom .skills [data-key=attack] { --size: 69px; right: 2px; bottom: 2px; border-color: #efda99; }
+#bottom .skills [data-key=q] { right: 87px; bottom: 3px; }
+#bottom .skills [data-key=e] { right: 70px; bottom: 69px; }
+#bottom .skills [data-key=r] { right: 9px; bottom: 94px; border-color: #d6b8db; }
+#bottom .skills .ability-art {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background-image: url("./assets/robot-skills.webp");
+  background-size: 400% 400%;
+  background-position: var(--icon-x) var(--icon-y);
+  pointer-events: none;
+}
+#bottom .skills button::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #091721c9 0deg var(--cool,0deg), transparent var(--cool,0deg) 360deg);
+  pointer-events: none;
+}
+#bottom .skills button[data-art=pellet] .ability-art {
+  background-image: url("./assets/robot-air-pellet.webp");
+  background-size: cover;
+  background-position: center;
+}
+#bottom .skills b {
+  position: absolute;
+  z-index: 1;
+  bottom: 2px;
+  font: 650 9px/1.15 system-ui;
+  color: #fff6d7;
+  background: #111f25b8;
+  border-radius: 8px;
+  padding: 1px 4px;
+  white-space: nowrap;
+}
+#bottom .skills kbd {
+  top: -6px;
+  left: 0;
+  z-index: 1;
+  border: 1px solid #9c9e86;
+  border-radius: 50%;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  font: 650 10px/15px ui-monospace,monospace;
+  text-align: center;
+  color: #f8f0d2;
+  background: #294047;
+}
+#bottom .skills button > span {
+  position: relative;
+  z-index: 1;
+  font: 750 13px/1.1 system-ui;
+  color: #fff4d3;
+  text-shadow: 0 1px 3px #10212a;
+  visibility: hidden;
+}
+#bottom .skills button.cooling > span { visibility: visible; }
+#bottom .skills button:active, #bottom .skills button.raising {
+  transform: scale(.94);
+  border-color: #fff3c6;
+  box-shadow: 0 0 0 2px #708e82, 0 0 7px #ffe7a0a8;
+}
+#bottom .skills button:focus-visible { outline: 2px solid #fff1b9; outline-offset: 3px; }
+#bottom #log { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); max-width: 35vw; }
+#field-recall { bottom: max(15px,env(safe-area-inset-bottom)); left: 199px; width: 46px; height: 46px; }
+@media (max-width:750px), (pointer:coarse) and (max-width:1050px) {
+  #bottom .skills { right: max(10px,env(safe-area-inset-right)); bottom: max(13px,env(safe-area-inset-bottom)); width: 158px; height: 148px; }
+  #bottom .skills button { --size: 46px; }
+  #bottom .skills [data-key=attack] { --size: 60px; right: 0; bottom: 0; }
+  #bottom .skills [data-key=q] { right: 72px; bottom: 2px; }
+  #bottom .skills [data-key=e] { right: 57px; bottom: 59px; }
+  #bottom .skills [data-key=r] { right: 1px; bottom: 83px; }
+  #bottom .skills kbd { display: none; }
+  #bottom .skills b { font-size: 8px; }
+  #bottom .portrait { position: fixed; left: 9px; bottom: max(121px,calc(111px + env(safe-area-inset-bottom))); min-width: 0; max-width: 137px; }
+  #pad { bottom: max(18px,env(safe-area-inset-bottom)); left: 13px; }
+  #field-recall { left: 116px; right: auto; bottom: max(17px,env(safe-area-inset-bottom)); width: 44px; height: 44px; }
+  #bottom #log { display: none; }
+}
+@media (max-height:450px) and (max-width:1050px) {
+  #bottom .portrait { bottom: 8px; left: 112px; max-width: 117px; }
+  #bottom .portrait #role-tip { display: none; }
+  #field-recall { bottom: 13px; left: 242px; }
+}
+
+</style><style>
+#field-stock{max-height:calc(100dvh - 125px);overflow:auto}
+#bottom #field-supplies.received{border-color:#f6d486;box-shadow:0 0 7px #f1c8746b}
+#field-stock .build-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0;color:#d6d3ae;font-size:11px}
+#field-stock [data-build]{white-space:nowrap;padding:4px 6px;font:inherit;min-height:31px;color:#bdebd4}
+#field-stock [data-gear][aria-pressed=true]{border-left:3px solid #95d5ba;opacity:.86}
+</style></head><body><canvas id="world"></canvas><div id="top"><div><small>ANIME CROSSROADS</small><h1>次元交锋</h1></div><div class="score"><b id="time">00:00</b><span id="stats">蓝方先锋</span></div><button id="focus" aria-pressed="false" title="F 切换：范围内优先攻击可攻击的塔与核心">最近目标</button><button id="pause">暂停</button><details id="battle-options"><summary>设置</summary><div><button id="quality">画质 高</button><button id="sound">音乐 开</button><button id="perfToggle">性能</button></div></details></div><div id="objective">沿同一路推掉三座塔，护送兵线击破核心</div><aside id="routeHint" hidden></aside><section id="menu" class="veil"><div class="panel"><small>独立同人试玩 · 5 对 5 AI 战场</small><h2>选择英雄</h2><p>从左下泉水出发。护送兵线，沿同一路攻破外塔、二塔和高地塔，再带兵攻入右上核心。</p><div id="choices"><button data-hero="0" class="selected" aria-pressed="true"><span class="roster-window" aria-hidden="true"><i style="background-position:0% center"></i></span><b>漩涡鸣人</b><em>突进 / 近战</em><span>螺旋丸 · 影分身突进 · 风遁旋涡</span></button><button data-hero="1" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:25% center"></i></span><b>机器猫</b><em>哆啦A梦 · 道具支援</em><span>空气炮 · 竹蜻蜓 · 任意门</span></button><button data-hero="2" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:50% center"></i></span><b>五条悟</b><em>术式 · 迎弹护送</em><span>术式·苍 · 无下限 · 虚式·茈</span></button><button data-hero="3" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:75% center"></i></span><b>孙悟空</b><em>气功 · 站定蓄劲</em><span>气弹 · 瞬身 · 龟派气功</span></button><button data-hero="4" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:100% center"></i></span><b>蒙奇·D·路飞</b><em>伸缩 / 近战</em><span>橡胶手枪 · 橡胶火箭 · 橡胶机关枪</span></button></div><small class="aim-guide"><span class="thumb-guide">点地前往，点敌人追击。左侧摇杆可斜走，移动能打断回城。</span>范围与直线技能可拖动瞄准，松手施放。键盘按住 Shift 和技能键，指向地面后松开技能键。</small><button id="start" class="primary">进入战场 →</button><p class="hint">WASD 移动 · J 普攻 · Q / E / R 技能 · T 回城 · P 暂停 · F 推塔优先<br>单人 5 对 5 · 四名队友协同对线</p></div></section><section id="end" class="veil hidden"><div class="panel"><small>战斗结束</small><h2 id="endtitle"></h2><p id="endstats"></p><button id="restart" class="primary">回到选人</button></div></section><div id="bottom"><button type="button" class="portrait" id="field-supplies" aria-expanded="false" aria-controls="field-stock" aria-label="战场补给，查看铜钱与装备"><b id="heroName">鸣人</b><span id="level">Lv.1</span><div class="health"><i id="hpbar"></i></div><small id="hp">生命值</small><small id="role-tip" hidden></small><small id="purse-line">0 铜钱 · 置装 ›</small></button><div class="skills"><button data-key="attack"><kbd>J</kbd><b>普攻</b><span id="attackPriority">最近目标</span></button><button data-key="q"><kbd>Q</kbd><b id="qn">技能</b><span id="qc">就绪</span></button><button data-key="e"><kbd>E</kbd><b id="en">技能</b><span id="ec">就绪</span></button><button data-key="r"><kbd>R</kbd><b id="rn">终极技能</b><span id="rc">就绪</span></button></div><div id="log"></div></div><aside id="field-stock" role="dialog" aria-labelledby="field-heading" hidden>
+<header><b id="field-heading">战场商店</b><button type="button" data-close aria-label="关闭补给">关闭</button></header>
+<div id="field-counter"></div><div class="build-row"><span data-owned></span><button type="button" data-build aria-pressed="true">自动出装已开</button></div>
+<button type="button" data-gear="boots"><b>渡风履</b><span>移动速度提高 18%</span><em>20 铜钱</em></button>
+<button type="button" data-gear="coat"><b>守楼甲</b><span>生命上限和当前生命各加 75</span><em>20 铜钱</em></button>
+<button type="button" data-gear="blade"><b>听潮刃</b><span>普攻伤害增加 14</span><em>55 铜钱</em></button>
+<button type="button" data-gear="focus"><b>流光佩</b><span>技能冷却缩短 16%</span><em>58 铜钱</em></button>
+<button type="button" data-gear="standard"><b>先登旗</b><span>自己在塔前时，友方兵对建筑伤害增加 32%</span><em>76 铜钱</em></button>
+<small id="field-kit-note" aria-live="polite"></small></aside><div id="aim-cancel" hidden>拖到这里取消</div><div id="pad" role="group" aria-label="移动摇杆，推得越远移动越快"><i class="thumb-handle" aria-hidden="true"></i><button aria-label="向上移动" data-dir="0,-1">▲</button><button aria-label="向左移动" data-dir="-1,0">◀</button><button aria-label="向下移动" data-dir="0,1">▼</button><button aria-label="向右移动" data-dir="1,0">▶</button></div><aside id="mapPanel"><button type="button" id="map-size" aria-label="放大战场地图" aria-expanded="false" aria-controls="minimap"></button><small>上中下三路 · 浅绿为草丛</small><canvas id="minimap" aria-label="三路战场小地图，白圈为玩家，细点为小兵"></canvas><button type="button" id="camera-view" aria-pressed="false">查看全景</button></aside><button type="button" id="field-recall" aria-label="回城，原地引导五秒，T 键" aria-pressed="false">回城</button><pre id="performance" class="hidden"></pre><div id="error" class="hidden"></div><script type="importmap">{"imports":{"three":"../qa-anime-area-counterplay-20261115-r1/vendor/three.module.min.js"}}</script><script type="module" src="river-lobby.mjs?v=robot-field3"></script></body></html>
