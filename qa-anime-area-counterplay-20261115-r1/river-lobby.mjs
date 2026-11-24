@@ -1,6 +1,6 @@
 const choices = document.getElementById("choices");
 const start = document.getElementById("start");
-const runtime = new URL("./game.min.js?v=robot-field3",import.meta.url);
+const runtime = new URL("./game.min.js?v=pavilion1",import.meta.url);
 let warming = false, opening = false, selected = 0;
 
 // Download on a deliberate hero choice. No WebGL context is needed to browse these cards.
@@ -50,6 +50,7 @@ async function enter() {
   const audio = pendingAudio = unlockAudio();
   try {
     const battle = await import(runtime.href);
+    await battle.prepareFromLobby(selected);
     if (document.hidden || (audio && pendingAudio !== audio)) {
       releasePendingAudio();
       opening = false; start.onclick = null;

@@ -1,9 +1,12 @@
-import {buildLaneGeometry} from "./lane-minions.mjs?v=20261124-river-garden1";
+import {buildLaneGeometry} from "./lane-minions.mjs?v=river-volley3";
+import {laneCompany} from "./lane-company.mjs?v=river-volley3";
 
 // Bodies, walking feet and health bars keep their original shapes and colours.
 // One set of instance matrices per faction replaces five individual meshes per soldier.
 export function makeWaveBatches(T,scene,heightAt,prepare) {
   const rig=new T.Object3D(),part=new T.Object3D(),world=new T.Matrix4(),actors=new Map();
+  const company=laneCompany(T,scene,heightAt);
+  let drewFallback=false;
   const barShape=new T.BoxGeometry(1,1,1);
   const barMaterial=new T.MeshStandardMaterial({roughness:.78});
   const backs=new T.Color("#162735"),fills=[new T.Color("#6eecd3"),new T.Color("#ff6377")];
@@ -41,6 +44,11 @@ export function makeWaveBatches(T,scene,heightAt,prepare) {
   }
   let serial=0;const impactColour=new T.Color();
   function draw(match,dt,visible) {
+    if(company.ready&&company.draw(match,dt,visible)){
+      if(drewFallback){clearFallback();drewFallback=false;}
+      return;
+    }
+    company.reset();drewFallback=true;
     serial++;
     for(const team of teams)team.used=0;
     for(const unit of match.units)if(unit.kind==="minion"&&!unit.dead&&unit.hp>0)teams[unit.team].used++;
@@ -76,14 +84,15 @@ export function makeWaveBatches(T,scene,heightAt,prepare) {
       for(const mesh of [team.bodies,team.feet,team.bars]){mesh.visible=team.used>0;if(mesh.visible){mesh.instanceMatrix.needsUpdate=true;if(mesh!==team.bars&&mesh.instanceColor)mesh.instanceColor.needsUpdate=true;}}
     }
   }
-  function reset(){
+  function clearFallback(){
     actors.clear();
     for(const team of teams)if(team.capacity)for(const mesh of [team.bodies,team.feet,team.bars]){mesh.count=0;mesh.visible=false;}
   }
+  function reset(){clearFallback();company.reset();drewFallback=false;}
   function dispose(){
-    reset();
+    reset();company.dispose();
     for(const team of teams){releaseMeshes(team);team.shapes.body.dispose();team.shapes.foot.dispose();team.cloth.dispose();}
     barShape.dispose();barMaterial.dispose();
   }
-  return {draw,reset,dispose};
+  return {start:company.start,draw,reset,dispose};
 }

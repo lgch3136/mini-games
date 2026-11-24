@@ -1,5 +1,5 @@
-import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=estuary-lane1";
-import {visibleTo} from "./river-reeds.mjs?v=estuary-lane1";
+import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=river-volley3";
+import {visibleTo} from "./river-reeds.mjs?v=river-volley3";
 const alive=u=>u&&!u.dead&&u.hp>0;
 const far=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const labels=["上路","中路","下路"],names=["外塔","二塔","高地塔"],lanes=[-1,1,0,0,1];
@@ -20,8 +20,12 @@ export function assignHeroLane(hero,slot){
     hero.face=sign*.55;
     return;
   }
-  hero.homeX=hero.x=base.x+sign*(1.15+(slot%3)*.86);
-  hero.homeZ=hero.z=base.z+sign*(-.7-Math.floor(slot/3)*1.3+(slot%3)*.27);
+  // Keep the whole party visible around the fountain while each lane starts inside its healing court.
+  const places=[[-2.72,-2.82],null,[2.82,-2.93],[-2.60,1.65],[.06,3.44]];
+  const [x,z]=places[hero.hero]||places[slot%places.length]||places[0];
+  hero.homeX=hero.x=base.x+sign*x;
+  hero.homeZ=hero.z=base.z+z;
+  hero.face=sign*(hero.hero===0?-.54:hero.hero===3?.32:-.21);
 }
 export function spawnRiverWave(match,spawn){
   for(let team=0;team<2;team++)for(let lane=-1;lane<=1;lane++){
@@ -30,8 +34,10 @@ export function spawnRiverWave(match,spawn){
     const openHigh=!alive(match.fieldKeeps[1-team][lane+1][2]);
     const count=Math.min(9-total,openHigh||match.wave%3===0?4:3);
     for(let i=0;i<count;i++){
-      const d=4.2-i*.62,p=along(route,team?route.length-d:d,((i%2)-.5)*.90*s);
-      const u=spawn(match,team,"minion",p.x,p.z);u.lane=lane;u.pathOffset=((i%2)-.5)*.72*s;
+      const d=i<2?4.65:i===2?3.0:1.70;
+      const offset=(i===0?-.76:i===1?.76:i===2?(match.wave%2?.24:-.24):0)*s;
+      const p=along(route,team?route.length-d:d,offset);
+      const u=spawn(match,team,"minion",p.x,p.z);u.lane=lane;u.pathOffset=offset;
       u.formation=i<2?"melee":i===2?"ranged":"siege";
       if(i===2){u.range=4.0;u.hp=u.maxHp=83;u.damage=15;}
       if(i===3){u.range=4.6;u.hp=u.maxHp=openHigh?285:195;u.damage=openHigh?29:22;u.speed=2.50;u.radius=.5;}
@@ -78,7 +84,11 @@ export function laneEnemy(match,actor){
 }
 export function steerLane(actor,target,dt,move){
   const route=routes[(actor.lane??0)+1];
-  if(!["rally","core","tower"].includes(target.kind)||far(actor,target)<3.25){move(actor,target.x-actor.x,target.z-actor.z,dt);return;}
+  if(!["rally","core","tower"].includes(target.kind)||far(actor,target)<3.25){
+    const x=target.x-actor.x,z=target.z-actor.z;
+    const flank=actor.formation==="melee"?actor.pathOffset/Math.max(2.0,Math.hypot(x,z)):0;
+    move(actor,x-z*flank,z+x*flank,dt);return;
+  }
   const pos=measure(route,actor.x,actor.z),end=measure(route,target.x,target.z).at;
   const lead=Math.max(-3.5,Math.min(3.5,end-pos.at));
   const p=along(route,pos.at+lead,actor.pathOffset||0);move(actor,p.x-actor.x,p.z-actor.z,dt);

@@ -1,5 +1,5 @@
-import {bindImpact} from "./surface-impact.mjs?v=robot-cat1";
-import {paintedCheeks} from "./river-tailoring.mjs?v=20261124-cut-coat1";
+import {bindImpact} from "./surface-impact.mjs?v=river-volley3";
+import {paintedCheeks} from "./river-tailoring.mjs?v=river-volley3";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };
 
@@ -150,8 +150,9 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
       point.fromBufferAttribute(attr.position,j).applyMatrix4(mesh.matrixWorld);out.p.push(point.x,point.y,point.z);
       normal.fromBufferAttribute(attr.normal,j).applyNormalMatrix(normals);out.n.push(normal.x,normal.y,normal.z);
       if(sheet){
-        if(geom.userData.faceUV)out.uv.push(attr.uv.getX(j),attr.uv.getY(j));
-        else out.uv.push(5/6,.25);
+        if(geom.userData.uniformUV)out.uv.push(attr.uv.getX(j),attr.uv.getY(j));
+        else if(geom.userData.faceUV)out.uv.push(attr.uv.getX(j),.5+.5*attr.uv.getY(j));
+        else out.uv.push(5/6,.625);
       }
       const col=attr.color;
       out.c.push(mat.color.r*(col?col.getX(j):1),mat.color.g*(col?col.getY(j):1),mat.color.b*(col?col.getZ(j):1));

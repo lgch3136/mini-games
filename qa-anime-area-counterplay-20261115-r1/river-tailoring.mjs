@@ -1,7 +1,7 @@
-// One tiny albedo sheet serves the entire roster. The lower-right white cell preserves all costume vertex colours.
+// One draw samples the roster's portraits and the front and back of each uniform.
 export async function readFaceSheet(T) {
   try{
-    const map=await new T.TextureLoader().loadAsync(new URL("./assets/robot-faces.webp",import.meta.url).href);
+    const map=await new T.TextureLoader().loadAsync(new URL("./assets/river-faces-and-uniforms.webp",import.meta.url).href);
     map.colorSpace=T.SRGBColorSpace;return map;
   }catch{return null;}
 }
@@ -28,6 +28,35 @@ export function paintedCheeks(T,hero,head,attach) {
   }
   const g=geometry(T,pos,idx,uv);g.userData.faceUV=true;
   attach(head,g,0xffffff);
+}
+
+// Cut front and back panels follow the ribcage. Their shared side seam stays under the arm.
+export function paintedUniform(T,hero,hip,attach) {
+  const cell=[0,-1,1,2,3][hero];
+  if(cell==null||cell<0)return;
+  const width=[1,0,.96,1.17,.91][hero],depth=[1,0,.90,1.07,.94][hero];
+  const rings=[
+    [-.016,.257,.227],[.08,.284,.238],[.20,.290,.254],[.37,.335,.268],
+    [.54,.370,.281],[.64,.376,.268],[.72,.322,.223],[.781,.168,.156]
+  ];
+  const rows=rings.length,columns=10,pos=[],uv=[],idx=[];
+  for(let side=0;side<2;side++){
+    const start=pos.length/3,column=cell%2*2+side,row=Math.floor(cell/2);
+    for(let j=0;j<rows;j++){
+      const [y,rx,rz]=rings[j],height=(y-rings[0][0])/(rings[rows-1][0]-rings[0][0]);
+      for(let i=0;i<=columns;i++){
+        const u=i/columns,angle=(u-.5+side)*Math.PI;
+        pos.push(width*rx*Math.sin(angle),y,depth*rz*Math.cos(angle));
+        uv.push((column+.018+u*.964)/4,.5*(1-(row+.018+(1-height)*.964)/2));
+        if(j&&i){
+          const a=start+(j-1)*(columns+1)+i-1,b=a+1,c=a+columns+1;
+          idx.push(a,b,c,b,c+1,c);
+        }
+      }
+    }
+  }
+  const g=geometry(T,pos,idx,uv);g.userData.uniformUV=true;
+  attach(hip,g,0xffffff);
 }
 
 // Readable palms use a tapered heel, separate knuckles and an inward thumb.

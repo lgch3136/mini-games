@@ -1,4 +1,4 @@
-import {bindImpact} from "./surface-impact.mjs?v=robot-cat1";
+import {bindImpact} from "./surface-impact.mjs?v=river-volley3";
 // Low-power opaque geometry shares vertex lighting. The ordinary texture, fog and colour pipeline stays intact.
 export function riverLight(T) {
   const saved=new WeakMap();
@@ -17,8 +17,15 @@ export function riverLight(T) {
       float riverSky=riverNormal.y*.5+.5;
       float riverSun=smoothstep(-.29,.65,dot(riverNormal,vec3(-.403,.863,.304)));
       
-      float lightBand=mix(riverSun,smoothstep(.42,.59,riverSun),.25);
-      vRiverLight=mix(vec3(.50,.58,.71),vec3(1.24,1.14,1.02),.28*riverSky+.72*lightBand);`);
+      float lightBand=mix(riverSun,smoothstep(.34,.62,riverSun),.36);
+      vRiverLight=mix(vec3(.43,.51,.65),vec3(1.28,1.15,1.03),.24*riverSky+.76*lightBand);
+      #ifdef USE_SKINNING
+        vec3 localEye=normalize(cameraPosition-(modelMatrix*vec4(position,1.)).xyz);
+        float facing=clamp(dot(riverNormal,localEye),0.,1.);
+        float rim=(1.-facing)*(1.-facing);
+        vRiverLight*=.71+.29*smoothstep(.04,.34,facing);
+        vRiverLight+=rim*riverSun*vec3(.25,.17,.095);
+      #endif`);
   const fragment=T.ShaderLib.basic.fragmentShader.replace("#include <common>","#include <common>\nvarying vec3 vRiverLight;")
     .replace("#include <color_fragment>","#include <color_fragment>\ndiffuseColor.rgb *= vRiverLight;");
   const skinVertex=vertex.replace("#include <skinbase_vertex>", `#ifdef USE_SKINNING
@@ -31,7 +38,7 @@ export function riverLight(T) {
         transformed=(riverSkin*vec4(transformed,1.)).xyz;
       #endif`);
   const skinFragment=fragment.replace("#include <map_fragment>",`#ifdef USE_MAP
-        if(vMapUv.x<.665||vMapUv.y>.50)diffuseColor*=texture2D(map,vMapUv);
+        if(vMapUv.y<.5||vMapUv.x<.665||vMapUv.y>.75)diffuseColor*=texture2D(map,vMapUv);
       #endif`);
   let active=false;
   function update(mat){

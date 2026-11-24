@@ -72,6 +72,14 @@ function sample(data,x,z){
 }
 export const floorHeight=(x,z)=>sample(heights,x,z);
 export const waterDistance=(x,z)=>sample(water,x,z);
+export function groundContact(x,z){
+  const h=floorHeight(x,z);
+  if(Math.abs(x)>5.9||Math.abs(z)>5.3)return h;
+  const across=Math.max(0,Math.min(1,(2.04-Math.abs(.6*x+.8*z))/.16));
+  const length=Math.abs(.8*x-.6*z);
+  const deck=Math.max(0,Math.min(1,(5.23-length)/.15));
+  return h+.055*across*deck;
+}
 export const jungles=[
   [[-25,12],[-21,9],[-17,7],[-14,4],[-12,0],[-9,-4]],
   [[-22,-19],[-19,-15],[-16,-11],[-12,-9],[-8,-10],[-4,-14],[0,-17],[6,-19],[12,-22]],
@@ -97,7 +105,21 @@ for(let i=0;i<560&&garden.length<104;i++){
   if(overlapsRoad(x,z,k===2?2.55:3.15)||rd<3.3||homes.some(h=>Math.hypot(h.x-x,h.z-z)<5)||rushes.some(b=>Math.hypot(b.x-x,b.z-z)<2.3))continue;
   plant(x,z,k,k===2?2.10+random()*1.6:k===3?1.55+random():2.7+random()*1.65);
 }
-export const banks=garden.filter(p=>p.kind===2&&!overlapsRoad(p.x,p.z,2.46)).map(p=>({x:p.x,z:p.z,rx:p.size*.33,rz:p.size*.24}));
+// Keep nearby landmarks distinct, including the three objects seen together from the fountain.
+const placed=Array.from({length:8},()=>[]);
+for(const plant of garden){
+  const shore=waterDistance(plant.x,plant.z)<7;
+  const choices=plant.kind===2?[4,2,7]:plant.kind===3?[3,6,7]:
+    plant.kind===1?[1,5,7]:shore?[0,5,1]:[0,5];
+  let best=choices[0],room=-1;
+  for(const id of choices){
+    let distance=300;
+    for(const other of placed[id])distance=Math.min(distance,(plant.x-other.x)**2+(plant.z-other.z)**2);
+    if(distance>room){room=distance;best=id;}
+  }
+  plant.art=best;placed[best].push(plant);
+}
+export const banks=garden.filter(p=>p.kind===2&&(p.art===2||p.art===4)&&!overlapsRoad(p.x,p.z,2.46)).map(p=>({x:p.x,z:p.z,rx:p.size*.33,rz:p.size*.24}));
 const bankCells=new Map(),cellSize=5;
 function cell(x,z){return Math.floor((x+40)/cellSize)*32+Math.floor((z+40)/cellSize);}
 for(const b of banks){

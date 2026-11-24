@@ -1,5 +1,5 @@
 // Each bed is walkable. The visible plants and the sight rule use the same ellipse.
-import {rushes} from "./estuary-map.mjs?v=estuary-lane1";
+import {rushes} from "./estuary-map.mjs?v=river-volley3";
 export const reedBeds=rushes;
 export function patchAt(x,z) {
   for(let i=0;i<reedBeds.length;i++){

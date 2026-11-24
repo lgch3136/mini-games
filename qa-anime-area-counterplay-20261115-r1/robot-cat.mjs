@@ -1,4 +1,4 @@
-import {articulate} from "./river-figure.mjs?v=robot-view2";
+import {articulate} from "./river-figure.mjs?v=river-volley3";
 
 const blue=0x078dd0,white=0xfff9ed,ink=0x2e2833,red=0xe4373c,gold=0xf7bc2e;
 const limit=(n)=>Math.max(0,Math.min(1,n));
@@ -15,12 +15,26 @@ export function robotCat(T,team){
   }
   function add(parent,geom,tint){const obj=new T.Mesh(geom,material(tint));parent.add(obj);return obj;}
   function ball(parent,x,y,z,sx,sy,sz,tint,n=16){
-    const segments=Math.max(8,Math.round(n*.83));
+    const radius=Math.max(sx,sy,sz);
+    const segments=Math.min(radius<.085?8:radius<.18?12:32,Math.max(8,Math.round(n*.83)));
     const m=add(parent,new T.SphereGeometry(1,segments,Math.max(5,Math.round(segments*.60))),tint);
     m.position.set(x,y,z);m.scale.set(sx,sy,sz);return m;
   }
   function path(parent,xyz,tint,width){
     const curve=new T.CatmullRomCurve3(xyz.map(p=>new T.Vector3(...p)));
+    if(width<=.018){
+      // Ink on the cheek or the pocket follows the curved surface; the hidden side of a tube never shows.
+      const steps=Math.max(4,Math.ceil(xyz.length*1.45)),sample=curve.getPoints(steps),points=[],ix=[];
+      for(let i=0;i<=steps;i++){
+        const p=sample[i],before=sample[Math.max(0,i-1)],after=sample[Math.min(steps,i+1)];
+        const dx=after.x-before.x,dy=after.y-before.y,n=Math.hypot(dx,dy)||1;
+        const x=-dy*width/n,y=dx*width/n;
+        points.push(p.x-x,p.y-y,p.z+.0008,p.x+x,p.y+y,p.z+.0008);
+        if(i){const a=2*i-2;ix.push(a,a+2,a+1,a+2,a+3,a+1);}
+      }
+      const geo=new T.BufferGeometry();geo.setAttribute("position",new T.Float32BufferAttribute(points,3));
+      geo.setIndex(ix);geo.computeVertexNormals();return add(parent,geo,tint);
+    }
     return add(parent,new T.TubeGeometry(curve,Math.max(4,xyz.length*2),width,5,false),tint);
   }
   function group(parent,x,y,z){const m=new T.Group();parent.add(m);m.position.set(x,y,z);return m;}

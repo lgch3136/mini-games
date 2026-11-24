@@ -1,69 +1,76 @@
-import {extent,routes,streams,jungles,homes,keeps,rushes,garden,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=robot-cat1";
-import {addReeds} from "./river-reeds.mjs?v=robot-cat1";
-import {fieldVisibility} from "./field-visibility.mjs?v=robot-cat1";
+import {extent,routes,streams,jungles,homes,keeps,rushes,garden,floorHeight,waterDistance,along} from "./estuary-map.mjs?v=river-volley3";
+import {addReeds} from "./river-reeds.mjs?v=river-volley3";
+import {fieldVisibility} from "./field-visibility.mjs?v=river-volley3";
+import {terrainPaint} from "./field-mask.mjs?v=river-volley3";
 export function estuaryFloor(T,scene){
-  const p=[],uv=[],kind=[],flat=[],biomes=[],ix=[],n=73;
-  const fade=(lo,hi,v)=>{const k=Math.max(0,Math.min(1,(v-lo)/(hi-lo)));return k*k*(3-2*k);};
+  const p=[],uv=[],kind=[],flat=[],ix=[],n=73;
+  const classes=terrainPaint()[3];
+  const fallbacks=[[.42,.54,.31],[.73,.69,.56],[.28,.58,.56]];
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
     const u=i/(n-1),v=j/(n-1),x=(2*u-1)*extent,z=(2*v-1)*extent,wet=waterDistance(x,z);
-    const d=Math.min(...routes.map(r=>measure(r,x,z).distance));
-    const bridge=Math.abs(x)<5&&Math.abs(z)<5&&measure(routes[1],x,z).distance<2.15;
-    const earth=Math.min(...jungles.map(r=>measure(r,x,z).distance));
-    const dry=bridge?1:fade(2.65,3.43,wet);
-    const paving=(1-fade(1.38,2.05,d))*dry,water=(1-fade(2.08,2.85,wet))*(bridge?0:1);
-    const grass=fade(2.18,3.0,d)*fade(3.10,4.05,wet)*fade(.54,1.31,earth);
-    biomes.push(grass,paving,water);
+    const cell=j*n+i,bridge=classes[cell]&4;
     p.push(x,floorHeight(x,z),z);uv.push(u,1-v);kind.push(bridge?9:wet);
-    flat.push(...(wet<2.6&&!bridge?[.28,.58,.56]:d<1.95?[.73,.69,.56]:[.42,.54,.31]));
+    flat.push(...fallbacks[classes[cell]&3]);
     if(i<n-1&&j<n-1){const a=j*n+i;ix.push(a,a+n,a+1,a+1,a+n,a+n+1);}
+  }
+  // Continue the banks beyond the playable square so the base camera looks onto land.
+  const border=[];
+  for(let i=0;i<n;i++)border.push(i);
+  for(let j=1;j<n;j++)border.push(j*n+n-1);
+  for(let i=n-2;i>=0;i--)border.push((n-1)*n+i);
+  for(let j=n-2;j>0;j--)border.push(j*n);
+  let inside=border;
+  for(const reach of [2.2,7.0,16,32]){
+    const outside=[];
+    for(const edge of border){
+      const x=p[edge*3],z=p[edge*3+2],wx=x*(1+reach/extent),wz=z*(1+reach/extent);
+      const inward=Math.min(reach*.35,4.1),sx=x*(1-inward/extent),sz=z*(1-inward/extent);
+      const wet=waterDistance(sx,sz),land=Math.min(1,Math.max(0,(wet-2)/4));
+      const hill=reach*(.036+.027*Math.sin(x*.28+z*.16))+.18*Math.sin(wx*.40-wz*.36);
+      outside.push(p.length/3);p.push(wx,p[edge*3+1]+land*hill,wz);
+      uv.push((sx/extent+1)/2,(1-sz/extent)/2);kind.push(wet);
+      flat.push(...fallbacks[land>.3?0:2]);
+    }
+    for(let i=0;i<inside.length;i++){
+      const j=(i+1)%inside.length;
+      ix.push(inside[i],inside[j],outside[i],outside[i],inside[j],outside[j]);
+    }
+    inside=outside;
   }
   const g=new T.BufferGeometry();g.setIndex(ix);g.setAttribute("position",new T.Float32BufferAttribute(p,3));g.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
   g.setAttribute("river",new T.Float32BufferAttribute(kind,1));g.setAttribute("fallback",new T.Float32BufferAttribute(flat,3));
-  g.setAttribute("biome",new T.Float32BufferAttribute(biomes,3));
   const blank=new T.DataTexture(new Uint8Array([205,206,169,255]),1,1);blank.needsUpdate=true;
-  const uniforms={field:{value:blank},detailMap:{value:blank},grain:{value:0},ready:{value:0},time:{value:0},motion:{value:0}};
+  const uniforms={field:{value:blank},ready:{value:0},time:{value:0},motion:{value:0}};
   const mat=new T.RawShaderMaterial({uniforms,glslVersion:T.GLSL3,toneMapped:false,
-    vertexShader:`precision highp float;in vec3 position,fallback,biome;in vec2 uv;in float river;
-    uniform mat4 modelViewMatrix,projectionMatrix;uniform float time,motion;out mediump vec2 coord;out mediump vec3 base;out mediump vec2 current;
-    out mediump vec3 land;out highp vec2 materialUv;
-    void main(){coord=uv;base=fallback;current=vec2(0.);
-      land=biome;
-      vec2 world=position.xz;
-      materialUv=mat2(.90,.43,-.43,.90)*world/4.7
-        +.105*vec2(sin(world.y*.43+world.x*.17),sin(world.x*.32-world.y*.15));
-      if(river<3.05&&motion>.5){vec2 loc=position.xz;
-       current.x=smoothstep(.14,.99,sin(loc.x*.96+loc.y*1.41-time*1.53))*smoothstep(.12,.98,sin(loc.x*1.25-loc.y*.71+time*.39));
-       current.y=1.-smoothstep(.06,.49,abs(river-2.47-.14*sin(loc.x+time*.83)));}
-      gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-    fragmentShader:`precision mediump float;uniform sampler2D field,detailMap;uniform float ready,grain;
-    in mediump vec2 coord;in mediump vec3 base;in mediump vec2 current;out vec4 paint;
-    in mediump vec3 land;in highp vec2 materialUv;
-    void main(){vec3 c=mix(base,texture(field,coord).rgb,ready);
-      if(grain>.01){
-        vec2 dx=dFdx(materialUv),dy=dFdy(materialUv);
-        float fit=1.-smoothstep(.001,.012,max(dot(dx,dx),dot(dy,dy)));
-        float mask=max(land.x,max(land.y,land.z));
-        if(mask>.008&&fit>.008){
-          bool road=land.y>=land.x&&land.y>=land.z,water=land.z>land.x&&!road;
-          vec2 cell=road?vec2(.5,.5):water?vec2(0.):vec2(0.,.5);
-          vec2 at=cell+vec2(.005)+fract(materialUv)*.490;
-          vec3 ink=textureGrad(detailMap,at,.49*dx,.49*dy).rgb;
-          vec3 coated=road?mix(vec3(.64,.61,.51),c,.49)+(ink-vec3(.472,.441,.362))*.95:
-            water?c*.94+(ink-vec3(.186,.328,.294))*.77:c*vec3(.94,.96,.93)+(ink-vec3(.428,.440,.176))*.66;
-          c=mix(c,coated,mask*fit*grain);
-        }
+    vertexShader:`precision highp float;
+    in vec3 position,fallback;in vec2 uv;in float river;
+    uniform mat4 modelViewMatrix,projectionMatrix;uniform float time,motion;
+    out mediump vec2 coord;out lowp vec3 base;out lowp vec3 reflection;
+    void main(){
+      coord=uv;base=fallback;reflection=vec3(0.);
+      if(river<3.05&&motion>.5){
+        vec2 p=position.xz;
+        float glint=smoothstep(.14,.99,sin(p.x*.96+p.y*1.41-time*1.53))*smoothstep(.12,.98,sin(p.x*1.25-p.y*.71+time*.39));
+        float shore=1.-smoothstep(.06,.49,abs(river-2.47-.14*sin(p.x+time*.83)));
+        reflection=vec3(.017,.037,.028)*glint+vec3(.048,.048,.032)*shore;
       }
-      paint=vec4(c+vec3(.017,.037,.028)*current.x+vec3(.048,.048,.032)*current.y,1.);}`});
-  const m=new T.Mesh(g,mat);m.renderOrder=-30;scene.add(m);let begun=false,closed=false,texture=null,detail=null;
-  let detailStarted=false;
-  return {cull:fieldVisibility(T,g),start(){if(begun||closed)return;begun=true;new T.TextureLoader().load(new URL("./assets/estuary-field.webp",import.meta.url).href,a=>{
-    if(closed){a.dispose();return;}texture=a;a.colorSpace=T.NoColorSpace;a.anisotropy=1;uniforms.field.value=a;uniforms.ready.value=1;
-  });},tick(t,tier){
-    if(tier<2&&!detailStarted&&!closed){detailStarted=true;new T.TextureLoader().load(new URL("./assets/estuary-materials.webp",import.meta.url).href,a=>{
-      if(closed){a.dispose();return;}detail=a;a.colorSpace=T.NoColorSpace;uniforms.detailMap.value=a;
-    });}
-    uniforms.time.value=t%2048;uniforms.motion.value=tier<2?1:0;uniforms.grain.value=detail&&tier<2?1:0;
-  },dispose(){closed=true;scene.remove(m);g.dispose();texture?.dispose();detail?.dispose();blank.dispose();mat.dispose();}};
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);
+    }`,
+    fragmentShader:`precision mediump float;
+    uniform sampler2D field;uniform float ready;
+    in mediump vec2 coord;in lowp vec3 base,reflection;out vec4 paint;
+    void main(){paint=vec4((ready>.5?texture(field,coord).rgb:base)+reflection,1.);}`
+  });
+  const mesh=new T.Mesh(g,mat);mesh.renderOrder=-30;scene.add(mesh);
+  let loading=null,closed=false,texture=null;
+  return {cull:fieldVisibility(T,g),start(){
+    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/river-ground-settled.webp",import.meta.url).href).then(image=>{
+      if(closed){image.dispose();return;}
+      texture=image;image.colorSpace=T.NoColorSpace;image.anisotropy=1;uniforms.field.value=image;uniforms.ready.value=1;
+    }).catch(()=>{});
+    return loading;
+  },tick(time,tier){uniforms.time.value=time%2048;uniforms.motion.value=tier<2?1:0;},
+  dispose(){closed=true;mesh.removeFromParent();g.dispose();texture?.dispose();blank.dispose();mat.dispose();}};
 }
 export function estuaryStonework(T){
   const p=[],c=[],palette=new Map();
@@ -83,7 +90,7 @@ export function estuaryStonework(T){
     for(let d=4.15,k=0;d<r.length-4.15;d+=1.34,k++){
       const shift=side*(width+.035*Math.sin(k*.93));const a=along(r,d+.03,shift),b=along(r,d+1.30,shift),rd=waterDistance(a.x,a.z);
       const bridge=l===1&&rd<4.1&&Math.abs(a.x)<6&&Math.abs(a.z)<6;
-      if((rd<3.1&&!bridge)||(!bridge&&k%13===3))continue;
+      if(bridge||rd<3.1||k%13===3||(k%8===4&&Math.sin(k*.51+l)>.2))continue;
       block(a,b,bridge?.14:.11,bridge?.26:.11+(k%4)*.018,k+l,bridge);
       if(bridge&&k%2===0){const b2=along(r,d+.31,shift);block(a,b2,.19,.58,k,true);}
     }
@@ -97,11 +104,12 @@ export function estuaryStonework(T){
 export function estuaryGarden(T){
   const pos=[],uv=[],ix=[],base=[];
   for(const a of [...garden].sort((a,b)=>a.z-b.z)){
-    const {x,z,size,kind}=a,w=size*(kind===2?.73:.57),h=size*(kind>1?.84:1.08),y=floorHeight(x,z)+.018,s=pos.length/3;
+    const {x,z,size,art}=a,w=size*([.57,.61,.69,.48,.68,.49,.63,.52][art]);
+    const h=size*([1.08,1.09,.72,.72,.66,1.08,.83,.63][art]),y=floorHeight(x,z)+.018,s=pos.length/3;
     pos.push(x-w,y,z,x+w,y,z,x-w,y+h*.74,z-h*.67,x+w,y+h*.74,z-h*.67);
     for(let j=0;j<4;j++)base.push(x,z,size);
-    const u=(kind%2)*.5,v=(1-Math.floor(kind/2))*.5;
-    uv.push(u+.001,v+.002,u+.499,v+.002,u+.001,v+.499,u+.499,v+.499);ix.push(s,s+1,s+2,s+2,s+1,s+3);
+    const u=(art%4)*.25,v=(1-Math.floor(art/4))*.5;
+    uv.push(u+.001,v+.002,u+.249,v+.002,u+.001,v+.498,u+.249,v+.498);ix.push(s,s+1,s+2,s+2,s+1,s+3);
   }
   const g=new T.BufferGeometry();g.setAttribute("position",new T.Float32BufferAttribute(pos,3));g.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
   g.setAttribute("sceneryFoot",new T.Float32BufferAttribute(base,3));g.setIndex(ix);g.computeBoundingSphere();
@@ -125,7 +133,7 @@ export function estuaryGarden(T){
       "#include <alphatest_fragment>\nvec2 where=gl_FragCoord.xy*gardenPixel;float actor=max(nearActor(where,readZone0),max(nearActor(where,readZone1),nearActor(where,readZone2)));diffuseColor.a*=1.-max(.84*gardenCut,.96*actor);");
   };
   m.customProgramCacheKey=()=>"estuary-foliage-sight-v1";
-  const mesh=new T.Mesh(g,m);mesh.visible=false;let ended=false,begun=false;
+  const mesh=new T.Mesh(g,m);mesh.visible=false;let ended=false,loading=null;
   mesh.userData.sight=(hero,target,ally,camera,canvas)=>{
     viewer.value.set(hero?.x??1000,hero?.z??1000);
     opponent.value.set(target?.x??1000,target?.z??1000);
@@ -140,9 +148,9 @@ export function estuaryGarden(T){
       zone.set(mx*.5+.5,my*.5+.5,Math.max(.005,rx),Math.max(.007,ry));
     }
   };
-  mesh.userData.start=()=>{if(begun||ended)return;begun=true;new T.TextureLoader().load(new URL("./assets/estuary-garden.webp",import.meta.url).href,tex=>{
+  mesh.userData.start=()=>{if(loading||ended)return loading;loading=new T.TextureLoader().loadAsync(new URL("./assets/river-landmarks.webp",import.meta.url).href).then(tex=>{
     if(ended){tex.dispose();return;}tex.colorSpace=T.SRGBColorSpace;m.map=tex;m.needsUpdate=true;mesh.visible=true;
-  });};mesh.userData.close=()=>{ended=true;m.map?.dispose();};return mesh;
+  }).catch(()=>{});return loading;};mesh.userData.close=()=>{ended=true;m.map?.dispose();};return mesh;
 }
 export function fieldMini(ctx,width,height){
   const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height;
