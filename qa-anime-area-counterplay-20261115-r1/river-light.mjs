@@ -1,4 +1,4 @@
-import {bindImpact} from "./surface-impact.mjs?v=river-volley3";
+import {bindImpact} from "./surface-impact.mjs?v=river-duel4";
 // Low-power opaque geometry shares vertex lighting. The ordinary texture, fog and colour pipeline stays intact.
 export function riverLight(T) {
   const saved=new WeakMap();

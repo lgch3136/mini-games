@@ -1,15 +1,24 @@
-import {extent,routes,streams,jungles,homes,keeps,rushes,garden,floorHeight,waterDistance,along} from "./estuary-map.mjs?v=river-volley3";
-import {addReeds} from "./river-reeds.mjs?v=river-volley3";
-import {fieldVisibility} from "./field-visibility.mjs?v=river-volley3";
-import {terrainPaint} from "./field-mask.mjs?v=river-volley3";
+import {extent,routes,streams,jungles,homes,keeps,rushes,garden,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=river-duel4";
+import {addReeds} from "./river-reeds.mjs?v=river-duel4";
+import {fieldVisibility} from "./field-visibility.mjs?v=river-duel4";
+import {terrainPaint} from "./field-mask.mjs?v=river-duel4";
 export function estuaryFloor(T,scene){
   const p=[],uv=[],kind=[],flat=[],ix=[],n=73;
+  const bridgeRoad=routes[1],bridgeCentre=measure(bridgeRoad,0,0).at;
   const classes=terrainPaint()[3];
   const fallbacks=[[.42,.54,.31],[.73,.69,.56],[.28,.58,.56]];
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
     const u=i/(n-1),v=j/(n-1),x=(2*u-1)*extent,z=(2*v-1)*extent,wet=waterDistance(x,z);
     const cell=j*n+i,bridge=classes[cell]&4;
-    p.push(x,floorHeight(x,z),z);uv.push(u,1-v);kind.push(bridge?9:wet);
+    let y=floorHeight(x,z);
+    if(Math.abs(x)<8&&Math.abs(z)<8){
+      const local=measure(bridgeRoad,x,z);
+      // The coarse riverbed must remain below the separately meshed walkable flagstones.
+      const width=Math.max(0,Math.min(1,(3.15-local.distance)/.89));
+      const length=Math.max(0,Math.min(1,(6.25-Math.abs(local.at-bridgeCentre))/.95));
+      y-=.16*width*length;
+    }
+    p.push(x,y,z);uv.push(u,1-v);kind.push(bridge?9:wet);
     flat.push(...fallbacks[classes[cell]&3]);
     if(i<n-1&&j<n-1){const a=j*n+i;ix.push(a,a+n,a+1,a+1,a+n,a+n+1);}
   }
@@ -160,9 +169,23 @@ export function fieldMini(ctx,width,height){
   const middle=routes[1];const a=along(middle,middle.length*.46),b=along(middle,middle.length*.54);trace({points:[a,b]},"#d4c59f",3.2);
   ctx.fillStyle="#9cab6a";for(const r of rushes){ctx.beginPath();ctx.ellipse(x(r.x),z(r.z),r.rx*width/72,r.rz*height/72,0,0,2*Math.PI);ctx.fill();}
 }
-export function fieldCamera(actor,aspect,wide){
+export function fieldCamera(actor,aspect,wide,opponent=null){
   if(wide)return {x:0,z:1.8,height:72,back:37};
   const narrow=Math.min(1,Math.max(0,(1.05-aspect)/.56));
-  return {x:Math.max(-30,Math.min(30,actor?.x??0)),z:Math.max(-30,Math.min(30,actor?.z??0))-.65,
-    height:14.2+3.1*narrow,back:12.0+2.4*narrow};
+  const height=14.2+3.1*narrow,back=12.0+2.4*narrow;
+  let x=actor?.x??0,z=actor?.z??0,scale=1;
+  if(aspect>0&&aspect<.88){
+    const distance=Math.hypot(height,back);
+    // At 390×844 this leaves about seven world units on either side of the engagement.
+    scale=Math.max(1,Math.min(2.05,6.95/(Math.tan(41*Math.PI/360)*aspect*distance)));
+    if(actor&&opponent&&!opponent.dead){
+      const dx=opponent.x-actor.x,dz=opponent.z-actor.z,d=Math.hypot(dx,dz);
+      if(d>.01&&d<10){
+        const lead=Math.min(.25,1.65/d);
+        x+=dx*lead;z+=dz*lead;
+      }
+    }
+  }
+  return {x:Math.max(-31,Math.min(31,x)),z:Math.max(-31,Math.min(31,z))-.65,
+    height:height*scale,back:back*scale};
 }

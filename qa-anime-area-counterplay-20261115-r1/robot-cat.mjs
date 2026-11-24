@@ -1,4 +1,4 @@
-import {articulate} from "./river-figure.mjs?v=river-volley3";
+import {articulate} from "./river-figure.mjs?v=river-duel4";
 
 const blue=0x078dd0,white=0xfff9ed,ink=0x2e2833,red=0xe4373c,gold=0xf7bc2e;
 const limit=(n)=>Math.max(0,Math.min(1,n));
@@ -135,22 +135,27 @@ export function robotCat(T,team){
       const w=limit(weight||0),step=Math.sin(phase)*w,hover=!!actor&&!actor.dead&&actor.copterUntil>clock;
       const inAir=hover?Math.min(1,(actor.copterUntil-clock)/.25,(clock-(actor.copterStart??clock))/.19):0;
       const lift=Math.max(0,inAir);
-      const point=action?.kind==="attack"||action?.kind==="skill"&&action.skillIndex===0;
+      const cannon=action?.kind==="skill"&&action.skillIndex===0;
+      const point=action?.kind==="attack"||cannon;
       const door=action?.kind==="skill"&&action.skillIndex===2;
       const timing=action?limit(action.elapsed/Math.max(.01,action.windup)):0;
       const release=action?1-limit((action.elapsed-action.windup)/Math.max(.01,action.duration-action.windup)):0;
       const reach=point?Math.sin(timing*Math.PI*.5)*release:0;
+      const brace=cannon?Math.sin(timing*Math.PI*.5)*release:0;
+      const after=action?action.elapsed-action.windup:-1;
+      const recoil=cannon&&after>=0?Math.exp(-after*16):0;
       body.rotation.y=Number.isFinite(face)?face:0;
-      hip.position.y=.043*Math.abs(step)+lift*(.49+.045*Math.sin(time*8));
-      hip.rotation.set(.045*w-.12*reach,.07*step,-.072*step-.10*reach);
-      head.rotation.set(-.32-.035*w+.09*reach,.10*Math.sin(phase*.5)*w-.10*reach,.035*step);
+      hip.position.y=.043*Math.abs(step)+lift*(.49+.045*Math.sin(time*8))-.095*brace;
+      hip.rotation.set(.045*w-.12*reach+.23*brace-.37*recoil,.07*step-.18*brace,-.072*step-.10*reach);
+      head.rotation.set(-.32-.035*w+.09*reach-.12*brace-.10*recoil,.10*Math.sin(phase*.5)*w-.10*reach+.14*brace,.035*step);
       for(let j=0;j<2;j++){const k=j?1:-1;
-        legs[j].rotation.x=-step*k*.42+.21*lift;legs[j].position.z=.015+step*k*.105;
-        arms[j].rotation.set(step*k*.36-.17-(j?1.10*reach:door?.85*release:0),0,k*(.18+.42*lift));
+        legs[j].rotation.x=-step*k*.42+.21*lift+k*.19*brace;legs[j].position.z=.015+step*k*.105-k*.09*brace;
+        const armSet=j?1.10*reach-.22*recoil:door?.85*release:.74*brace;
+        arms[j].rotation.set(step*k*.36-.17-armSet,j?.10*brace:-.28*brace,k*(.18+.42*lift+.23*brace));
       }
       rotor.visible=hover||action?.kind==="skill"&&action.skillIndex===1;
       if(rotor.visible)blades.rotation.y=time*35;
       gadget.visible=!!point&&release>.07;
-      if(gadget.visible){gadget.rotation.x=-arms[1].rotation.x;gadget.scale.setScalar(.78+.35*reach);}
+      if(gadget.visible){gadget.rotation.x=-arms[1].rotation.x;gadget.scale.setScalar(.78+.35*reach+.15*brace);}
     },poseSignature(){return [head.rotation.x,arms[1].rotation.x,hip.position.y,Number(rotor.visible),Number(gadget.visible)];}};
 }

@@ -1,5 +1,5 @@
-import {bindImpact} from "./surface-impact.mjs?v=river-volley3";
-import {paintedCheeks} from "./river-tailoring.mjs?v=river-volley3";
+import {bindImpact} from "./surface-impact.mjs?v=river-duel4";
+import {paintedCheeks} from "./river-tailoring.mjs?v=river-duel4";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };
 

@@ -1,5 +1,5 @@
-import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=river-volley3";
-import {addUv,stone,paving,plain} from "./field-architecture.mjs?v=river-volley3";
+import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=river-duel4";
+import {addUv,stone,paving,plain} from "./field-architecture.mjs?v=river-duel4";
 
 // Coordinates are metres along the actual mid-lane and metres across it.
 // Each flagstone has a recessed joint, a broken corner and its own bevel.

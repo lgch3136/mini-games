@@ -1,5 +1,5 @@
-import {buildLaneGeometry} from "./lane-minions.mjs?v=river-volley3";
-import {laneCompany} from "./lane-company.mjs?v=river-volley3";
+import {buildLaneGeometry} from "./lane-minions.mjs?v=river-duel4";
+import {laneCompany} from "./lane-company.mjs?v=river-duel4";
 
 // Bodies, walking feet and health bars keep their original shapes and colours.
 // One set of instance matrices per faction replaces five individual meshes per soldier.

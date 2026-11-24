@@ -1,4 +1,4 @@
-import {addUv,stone,jadeTile,timber,plain,clayTile} from "./field-architecture.mjs?v=river-volley3";
+import {addUv,stone,jadeTile,timber,plain,clayTile} from "./field-architecture.mjs?v=river-duel4";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
 // Infantry, heroes and the tower share the same world coordinates as movement and hits.

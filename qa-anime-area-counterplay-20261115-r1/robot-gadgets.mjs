@@ -84,8 +84,61 @@ export function gadgetEffects(T,scene,land){
     return {group,hinge,material,start:-100};
   }
   const winds=[],doors=[];
-  let windCursor=0,doorCursor=0,last=0;
-  function clear(){last=0;for(const r of winds){r.start=-100;r.mesh.visible=false;}for(const d of doors){d.start=-100;d.group.visible=false;}}
+  const pressureSlots=Array(12);
+  let windCursor=0,doorCursor=0,pressureCursor=0,pressureMesh=null,last=0;
+  function remember(kind,event,time){
+    const x=event.fromX??event.x,z=event.fromZ??event.z,dx=event.targetX-x,dz=event.targetZ-z,length=Math.hypot(dx,dz);
+    if(!Number.isFinite(length)||length<.015)return;
+    pressureSlots[pressureCursor++%pressureSlots.length]={kind,x,z,dx:dx/length,dz:dz/length,length,start:time};
+  }
+  function pressure(time){
+    if(!pressureCursor)return;
+    if(!pressureMesh){
+      const geom=new T.BufferGeometry(),capacity=12*36;
+      geom.setAttribute("position",new T.BufferAttribute(new Float32Array(capacity*3),3).setUsage(T.DynamicDrawUsage));
+      geom.setAttribute("color",new T.BufferAttribute(new Float32Array(capacity*4),4).setUsage(T.DynamicDrawUsage));
+      const mat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,toneMapped:false,side:T.DoubleSide});
+      pressureMesh=new T.Mesh(geom,mat);pressureMesh.name="气压轨迹";pressureMesh.frustumCulled=false;scene.add(pressureMesh);
+    }
+    const geom=pressureMesh.geometry,pos=geom.attributes.position,rgba=geom.attributes.color;
+    let count=0,active=false;
+    function quad(a,b,c,d,opacity,warm){
+      for(const v of [a,b,c,a,c,d]){
+        pos.setXYZ(count,v[0],v[1],v[2]);
+        rgba.setXYZW(count,warm?1:.58,warm?.91:.91,warm?.57:1,opacity*v[3]);count++;
+      }
+    }
+    for(const item of pressureSlots){
+      if(!item)continue;
+      const trail=item.kind==="trail",age=(time-item.start)/(trail?.165:.20);
+      if(age<0||age>=1)continue;
+      active=true;
+      const loc=(along,side,up,fade)=>{
+        const x=item.x+item.dx*along+item.dz*side,z=item.z+item.dz*along-item.dx*side;
+        return [x,land(x,z)+up,z,fade];
+      };
+      if(trail){
+        const length=item.length,start=.55+age*.58,mid=length*.5,end=length*(.91+.09*age);
+        for(const side of [-1,1]){
+          const offset=side*(.065+.20*age),lift=.89+side*.075;
+          const a=loc(start,offset*.30,lift,.13),b=loc(mid,offset,lift+.023,.88),c=loc(end,offset*1.7,lift+.012,0);
+          quad(a,b,loc(mid,offset+side*.060,lift+.042,.84),a,.72*(1-age),false);
+          quad(b,c,c,loc(mid,offset+side*.060,lift+.042,.84),.72*(1-age),false);
+        }
+      }else{
+        const centre=item.length*age,r=.28+.24*age,opacity=.76*(1-age);
+        for(let k=0;k<6;k++){
+          const a=-1.05+k*.35,b=a+.35;
+          const tip=(v,w)=>loc(centre+Math.cos(v)*r,Math.sin(v)*(r+w),.70+Math.cos(v)*(.12+w),1-Math.abs(v)*.58);
+          quad(tip(a,0),tip(b,0),tip(b,.082),tip(a,.082),opacity,true);
+        }
+      }
+    }
+    pressureMesh.visible=count>0;geom.setDrawRange(0,count);
+    if(count){pos.clearUpdateRanges();rgba.clearUpdateRanges();pos.addUpdateRange(0,count*3);rgba.addUpdateRange(0,count*4);pos.needsUpdate=true;rgba.needsUpdate=true;}
+    if(!active){pressureSlots.fill(null);pressureCursor=0;}
+  }
+  function clear(){last=0;pressureSlots.fill(null);pressureCursor=0;if(pressureMesh)pressureMesh.visible=false;for(const r of winds){r.start=-100;r.mesh.visible=false;}for(const d of doors){d.start=-100;d.group.visible=false;}}
   function draw(match){
     const time=match.time;
     for(const e of match.events){
@@ -93,13 +146,13 @@ export function gadgetEffects(T,scene,land){
       if(e.hero!==1)continue;
       if(e.type==="gadgetPuff"||e.type==="miss"||e.type==="burst"&&e.gadget==="air"){
         const strong=e.gadget==="air",angle=e.face||0;
-        const total=strong?3:1;
-        for(let j=0;j<total;j++){
-          const slot=windCursor++%9,r=winds[slot]??=( {mesh:ring(),start:-100,life:.35} );
-          Object.assign(r,{start:time+j*.026,life:strong?.29:.17,angle,x:e.fromX??e.x,z:e.fromZ??e.z,
-            range:strong?cannon.length:1.4,width:strong?.62:.245,offset:j*.12});
-          r.mesh.rotation.set(0,angle,0);
-        }
+        if(strong)remember("trail",e,time);
+        const slot=windCursor++%9,r=winds[slot]??={mesh:ring(),start:-100};
+        Object.assign(r,{start:time,life:strong?.19:.17,angle,x:e.fromX??e.x,z:e.fromZ??e.z,
+          range:strong?2.15:1.4,width:strong?.43:.245});
+        r.mesh.rotation.set(0,angle,0);
+      }else if(e.type==="airPush"){
+        remember("contact",e,time);
       }else if(e.type==="anywhereDoor"){
         for(const [x,z] of [[e.fromX,e.fromZ],[e.targetX,e.targetZ]]){
           const slot=doorCursor++%4,d=doors[slot]??=makeDoor();d.start=time;
@@ -108,10 +161,11 @@ export function gadgetEffects(T,scene,land){
         }
       }
     }
+    pressure(time);
     for(const r of winds){
       const t=(time-r.start)/r.life;r.mesh.visible=t>=0&&t<1;
       if(!r.mesh.visible)continue;
-      const distance=.43+r.offset+r.range*t,x=r.x+Math.sin(r.angle)*distance,z=r.z+Math.cos(r.angle)*distance;
+      const distance=.43+r.range*t,x=r.x+Math.sin(r.angle)*distance,z=r.z+Math.cos(r.angle)*distance;
       r.mesh.position.set(x,land(x,z)+.86,z);r.mesh.scale.setScalar(r.width*(.62+t));
       r.mesh.material.opacity=.64*(1-t);
     }
@@ -122,6 +176,7 @@ export function gadgetEffects(T,scene,land){
       d.material.opacity=Math.min(1,(1-t)*4);
     }
   }
-  return {draw,clear,dispose(){for(const r of winds){r.mesh.removeFromParent();r.mesh.material.dispose();}ringGeometry.dispose();
+  return {draw,clear,dispose(){if(pressureMesh){pressureMesh.removeFromParent();pressureMesh.geometry.dispose();pressureMesh.material.dispose();}
+    for(const r of winds){r.mesh.removeFromParent();r.mesh.material.dispose();}ringGeometry.dispose();
     for(const d of doors){d.group.removeFromParent();d.material.dispose();}doorShapes?.forEach(g=>g.dispose());}};
 }

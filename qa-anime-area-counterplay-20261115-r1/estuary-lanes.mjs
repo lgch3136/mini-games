@@ -1,5 +1,5 @@
-import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=river-volley3";
-import {visibleTo} from "./river-reeds.mjs?v=river-volley3";
+import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=river-duel4";
+import {visibleTo} from "./river-reeds.mjs?v=river-duel4";
 const alive=u=>u&&!u.dead&&u.hp>0;
 const far=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const labels=["上路","中路","下路"],names=["外塔","二塔","高地塔"],lanes=[-1,1,0,0,1];
