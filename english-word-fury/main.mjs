@@ -7,7 +7,8 @@ import {
   VERSION,
   clamp,
 } from "./combat.mjs?v=20261124-fist-contact1";
-import { ArenaView } from "./view.mjs?v=20261124-boot-fx1";
+import { ArenaView } from "./view.mjs?v=20261125-landing2";
+import {sampleLandings} from "./neutral-landing-r2.mjs?v=landing2";
 import { FuryAudio } from "./sound.mjs?v=20261125-sound-park1";
 const $ = (id) => document.getElementById(id);
 const sound = new FuryAudio(checkAudioFrame);
@@ -289,6 +290,7 @@ function tick(now) {
   let steps = 0;
   while (accumulator >= 1 / 60 && steps < 6 && mode === "playing") {
     game.step();
+    sampleLandings(game);
     perf.steps++;
     for (const e of game.events) event(e);
     accumulator -= 1 / 60;

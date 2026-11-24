@@ -1,3 +1,4 @@
+import {landingPose,landingAtlases} from "./neutral-landing-r2.mjs?v=landing2";
 import {legContactLine,contactOnLeg} from "./leg-contact.mjs?v=20261124-boot-fx1";
 import {bases as harborBases, hands as stanceAtlas, reactions as reactionAtlas} from "./harbor-foundation-r1.mjs?v=20261124-harbor-foundation1";
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
@@ -131,6 +132,7 @@ export class ArenaView {
     this.ironImage = null;
     this.ironLoad = null;
     this.signatureSheets = new Map();
+    this.landingSheets = new Map();
     this.stanceSheets = new Map();
     this.reactionSheets = new Map();
     this.signatureUsers = new Set();
@@ -247,6 +249,7 @@ export class ArenaView {
     for (const id of this.assets.keys()) if (!keep.has(id)) {
       this.releaseBase(id);
     }
+    for (const id of this.landingSheets.keys()) if (!actual.has(id)) this.landingSheets.delete(id);
     for (const id of this.signatureSheets.keys()) if (!actual.has(id)) this.signatureSheets.delete(id);
     for (const id of this.stanceSheets.keys()) if (!actual.has(id)) this.stanceSheets.delete(id);
     for (const id of this.reactionSheets.keys()) if (!actual.has(id)) this.reactionSheets.delete(id);
@@ -256,6 +259,7 @@ export class ArenaView {
     }
     const resources = previewOnly ? [] : ids.map(index => this.load(index, compact && ROSTER[index].id !== "shan"));
     for (const id of actual) {
+      if (landingAtlases[id]) resources.push(this.loadSheet(id, landingAtlases, this.landingSheets));
       if (signatures[id]) resources.push(this.loadSheet(id, signatures, this.signatureSheets));
     }
     if (useIronLegs) resources.push(this.loadIronLegs(),this.loadIronStride());
@@ -444,19 +448,22 @@ export class ArenaView {
       }
       if (responseKey) responseKey += facing < 0 ? "/L" : "/R";
       const reaction = responseKey && reactionAtlas[f.c.id].cells[responseKey];
-      const ownFace = !reaction && !signature && !leg && !stride && !stance && facing < 0 && cells[role + "@left"];
+      const landingSheet = !this.previewOnly && this.landingSheets.get(f.c.id);
+      const landingKey = landingSheet?.decoded && landingPose(f);
+      const landing = landingKey && landingAtlases[f.c.id].cells[landingKey];
+      const ownFace = !landing && !reaction && !signature && !leg && !stride && !stance && facing < 0 && cells[role + "@left"];
       const fallback = f.c.id === "shan" && role === "hit/impact"
         ? cells["block/impact"] : cells[kickReturnArt[role] || role];
-      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = signature || leg || stride || reaction || stance || ownFace || fallback || cells["idle/0"];
+      const [sx, sy, w, h, dx, dy, displayW = w, displayH = h] = landing || signature || leg || stride || reaction || stance || ownFace || fallback || cells["idle/0"];
       const size = scale * (f.c.id === "shan" ? (iron || stride ? 0.84 : 0.93) : 1);
-      const image = signature ? sheet.image : leg ? this.ironImage : stride ? this.strideImage : reaction ? motionSheet.image : stance ? closeSheet.image : baseImage;
+      const image = landing ? landingSheet.image : signature ? sheet.image : leg ? this.ironImage : stride ? this.strideImage : reaction ? motionSheet.image : stance ? closeSheet.image : baseImage;
       const scaledBase = !this.previewOnly && image === baseImage;
       const sourceX = scaledBase ? base.scaleX : 1;
       const sourceY = scaledBase ? base.scaleY : 1;
       c.save();
       c.translate(Math.round(x), Math.round(y));
       if (f.state === "run") c.transform(1, 0, -.10 * f.facing, .95, 0, 0);
-      const mirror=ownFace || handName || reaction ? 1 : facing;
+      const mirror=landing ? facing : ownFace || handName || reaction ? 1 : facing;
       c.scale(mirror,1);
       const py=dy*size, py2=(dy+displayH/2)*size;
       const px=mirror*dx*size, px2=mirror*(dx+displayW/2)*size;
@@ -470,7 +477,7 @@ export class ArenaView {
       c.drawImage(image, sx * sourceX, sy * sourceY, w * sourceX, h * sourceY, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
-      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, stance:stance ? stanceName || null : null, hand:handName || null, reaction:reaction ? responseKey : null, baseFile:!this.previewOnly && atlases[f.c.id].file, anchorX:x, signature:signature ? key : null };
+      this.actorCels[f.side] = { id:f.c.id, role, landing:landing ? landingKey : null, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, stance:!landing && stance ? stanceName || null : null, hand:handName || null, reaction:reaction ? responseKey : null, baseFile:!this.previewOnly && atlases[f.c.id].file, anchorX:x, signature:signature ? key : null };
     }
   }
   event(e) {
@@ -731,6 +738,7 @@ export class ArenaView {
       rosterOnly:Boolean(this.previewOnly),
       matchAtlases:this.assets.size,
       strideSheetPixels:(this.strideImage?.naturalWidth || 0)*(this.strideImage?.naturalHeight || 0),
+      landingSheetPixels:[...this.landingSheets.values()].reduce((sum,s)=>sum+(s.decoded?s.image.width*s.image.height:0),0),
       decodedMatchPixels:[...this.assets.values()].reduce((sum,v)=>sum+(v.image?.width||0)*(v.image?.height||0),0),
       stancePixels:[...this.stanceSheets.values()].reduce((sum,s)=>sum+(s.decoded?s.image.width*s.image.height:0),0),
       atlasResolution:Object.fromEntries([...this.assets].map(([id,e])=>[id,e.scaleX||0])),
@@ -747,6 +755,7 @@ export class ArenaView {
     this.strideLoad=this.strideImage=null;
     this.signatureUsers.clear();
     this.signatureSheets.clear();
+    this.landingSheets.clear();
     this.reactionSheets.clear();
     this.stanceSheets.clear();
     for (const id of this.assets.keys()) this.releaseBase(id);
