@@ -8,9 +8,23 @@ import {
   clamp,
 } from "./combat.mjs?v=20261124-fist-contact1";
 import { ArenaView } from "./view.mjs?v=20261124-boot-fx1";
-import { FuryAudio } from "./sound.mjs?mobile=20260930-quality-r2";
+import { FuryAudio } from "./sound.mjs?v=20261125-sound-park1";
 const $ = (id) => document.getElementById(id);
-const sound = new FuryAudio();
+const sound = new FuryAudio(checkAudioFrame);
+let audioWaitingForFrame = false;
+function checkAudioFrame() {
+  if (document.hidden || (performance.now() - last > 1250 && !document.hasFocus())) {
+    pause();
+    return false;
+  }
+  // A focused window can stall too. Resume its audio on the next actual game frame.
+  if (performance.now() - last > 1250) {
+    sound.pause();
+    audioWaitingForFrame = true;
+    return false;
+  }
+  return mode === "playing" && !destroyed;
+}
 let view,
   game = new Fight(),
   hero = 0,
@@ -62,7 +76,7 @@ function setText(id, value) {
   if (e.textContent !== s) e.textContent = s;
 }
 function preview() {
-  if (view?.ready) {
+  if (view?.ready && !document.hidden) {
     view.resize();
     view.render(game, null, 1, 0);
   }
@@ -116,6 +130,7 @@ function release() {
     .forEach((el) => el.classList.remove("held"));
 }
 function stop() {
+  audioWaitingForFrame = false;
   nextPaint=paintedAt=0;
   if (raf) cancelAnimationFrame(raf);
   raf = 0;
@@ -126,7 +141,8 @@ function stop() {
   $("combo").getAnimations().forEach(animation => animation.cancel());
 }
 function startLoop() {
-  if (raf || destroyed || document.hidden || mode !== "playing") return;
+  if (raf || destroyed || mode !== "playing") return;
+  if (document.hidden) { pause(); return; }
   last = performance.now();
   accumulator = 0;
   raf = requestAnimationFrame(tick);
@@ -257,12 +273,17 @@ function updateHud(force = false) {
 }
 function tick(now) {
   raf = 0;
-  if (mode !== "playing" || document.hidden || destroyed) return;
+  if (mode !== "playing" || destroyed) return;
+  if (document.hidden) { pause(); return; }
   const start = performance.now(),
     delta = Math.min((now - last) / 1000, 0.1);
   if (now - last > 100) perf.dropped++;
   perf.frames.push(now - last);
   last = now;
+  if (audioWaitingForFrame) {
+    audioWaitingForFrame = false;
+    sound.start();
+  }
   pollGamepads();
   accumulator += delta;
   let steps = 0;

@@ -1,7 +1,14 @@
 import { Soundtrack } from "../english-word-ranger/sound.js?v=20260918-play-r1&mobile=20260930-quality-r2";
 // Original 32-bar broken-beat arrangement; bounded audio engine shared with Ranger.
 export class FuryAudio extends Soundtrack {
+  constructor(checkFrame) {
+    super();
+    this.checkFrame = checkFrame;
+  }
   schedule() {
+    // A new foreground tab can stop animation before it delivers visibilitychange.
+    if (this.timer && !this.checkFrame()) return;
+    if (document.hidden) return;
     if (!this.ctx || !this.running || this.muted) return;
     const beat = 60 / 132 / 4,
       freq = (n) => 440 * 2 ** ((n - 69) / 12);
@@ -58,7 +65,7 @@ export class FuryAudio extends Soundtrack {
     }
   }
   combat(e) {
-    if (!this.ctx || this.muted || this.ctx.state !== "running") return;
+    if (!this.ctx || this.muted || document.hidden || this.ctx.state !== "running") return;
     const t = this.ctx.currentTime,
       tone = (f, d, v, type = "triangle", end = null, delay = 0) =>
         this.tone(f, t + delay, d, v, type, this.effects, end);
