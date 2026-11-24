@@ -259,7 +259,6 @@ export class ArenaView {
     }
     const resources = previewOnly ? [] : ids.map(index => this.load(index, compact && ROSTER[index].id !== "shan"));
     for (const id of actual) {
-      if (landingAtlases[id]) resources.push(this.loadSheet(id, landingAtlases, this.landingSheets));
       if (signatures[id]) resources.push(this.loadSheet(id, signatures, this.signatureSheets));
     }
     if (useIronLegs) resources.push(this.loadIronLegs(),this.loadIronStride());
@@ -278,6 +277,10 @@ export class ArenaView {
     this.signatureUsers = actual;
     this.models = ids;
     this.useIronLegs = useIronLegs;
+    // Neutral landing cels enhance an already playable match; do not block entry on their decode.
+    for (const id of actual) {
+      if (landingAtlases[id]) void this.loadSheet(id, landingAtlases, this.landingSheets);
+    }
   }
 
   resize() {
