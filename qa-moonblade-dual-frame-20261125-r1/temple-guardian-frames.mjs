@@ -1,0 +1,1 @@
+export const sweepFrames = {"abbotDrawBack":{"rect":[3,3,189,189],"size":[265,265],"foot":[108.07,262.6]},"abbotLowWind":{"rect":[259,3,196,153],"size":[275,215],"foot":[88.88,212.6]},"abbotUnwind":{"rect":[3,211,218,164],"size":[306,230],"foot":[15.65,228.26]},"abbotSpent":{"rect":[259,211,199,155],"size":[280,217],"foot":[21.71,215.13]}};
