@@ -1,12 +1,12 @@
-import reactionAtlas from "./harbor-reaction-cels.mjs?v=20261124-fist-contact1";
+import {bases as harborBases, hands as stanceAtlas, reactions as reactionAtlas} from "./harbor-foundation-r1.mjs?v=20261124-harbor-foundation1";
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
 import rosterPoses from "./harbor-roster-guard.mjs?v=20261124-harbor-guard1";
-import stanceAtlas from "./harbor-contact-cels.mjs?v=20261124-harbor-hands1";
 import {loadMatchSheet, stanceRoles} from "./match-sheet.mjs?v=20261124-compact-baked1";
 import signatures from "./signature-frames.mjs?v=20261124-tumble1";
 import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=20261124-tumble1";
 import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261124-fist-contact1";
-import atlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
+import stockAtlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
+const atlases={...stockAtlases,...harborBases};
 
 const ironLegs = {
   file: "iron-footwork-v1.webp",
@@ -133,6 +133,10 @@ export class ArenaView {
     const entry = this.assets.get(id);
     if (!entry) return;
     this.assets.delete(id);
+    if (harborBases[id]) {
+      this.stanceSheets.delete(id);
+      this.reactionSheets.delete(id);
+    }
     delete this.rigSources[id];
     entry.control.abort();
     entry.close?.();
@@ -238,12 +242,19 @@ export class ArenaView {
     const resources = previewOnly ? [] : ids.map(index => this.load(index, compact && ROSTER[index].id !== "shan"));
     for (const id of actual) {
       if (signatures[id]) resources.push(this.loadSheet(id, signatures, this.signatureSheets));
-      if (reactionAtlas[id]) resources.push(this.loadSheet(id, reactionAtlas, this.reactionSheets));
-      if (stanceAtlas[id]) resources.push(this.loadSheet(id, stanceAtlas, this.stanceSheets));
     }
     if (useIronLegs) resources.push(this.loadIronLegs(),this.loadIronStride());
     await Promise.all(resources);
     if (request !== this.selectionSerial) return;
+    for (const id of actual) {
+      const match = this.assets.get(id);
+      if (harborBases[id] && match?.image) {
+        // The base, close hands and guards now share one decoded bitmap and the same compact scaling.
+        const sheet={image:match.image,decoded:true};
+        this.stanceSheets.set(id,sheet);
+        this.reactionSheets.set(id,sheet);
+      }
+    }
     this.previewOnly = previewOnly;
     this.signatureUsers = actual;
     this.models = ids;
@@ -412,7 +423,8 @@ export class ArenaView {
       const motionSheet = this.reactionSheets.get(f.c.id);
       let responseKey = null;
       if (motionSheet?.decoded && !signature && !f.down && !this.previewOnly) {
-        if (f.state === "hurt" && (role === "hit/impact" || role === "hit/release")) responseKey = role === "hit/impact" ? "hurt" : "recover";
+        if (role === "crouch/hold") responseKey = "low";
+        else if (f.state === "hurt" && (role === "hit/impact" || role === "hit/release")) responseKey = role === "hit/impact" ? "hurt" : "recover";
         else if (role.startsWith("block/") && (f.state === "block" || f.blocking)) responseKey = f.crouch ? "low" : "high";
       }
       if (responseKey) responseKey += facing < 0 ? "/L" : "/R";
@@ -443,7 +455,7 @@ export class ArenaView {
       c.drawImage(image, sx * sourceX, sy * sourceY, w * sourceX, h * sourceY, dx * size, dy * size, displayW * size / 2, displayH * size / 2);
       c.restore();
       this.drawCalls++;
-      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, stance:stance ? stanceName || null : null, hand:handName || null, reaction:reaction ? responseKey : null, anchorX:x, signature:signature ? key : null };
+      this.actorCels[f.side] = { id:f.c.id, role, facing, ownFace:!!ownFace, authoredLeg:!!leg, stride:strideRole || null, stance:stance ? stanceName || null : null, hand:handName || null, reaction:reaction ? responseKey : null, baseFile:!this.previewOnly && atlases[f.c.id].file, anchorX:x, signature:signature ? key : null };
     }
   }
   event(e) {
