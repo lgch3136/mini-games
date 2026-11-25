@@ -1,5 +1,5 @@
 // All field positions use x east and z south. Both teams follow the same measured polylines.
-import {stoneSites} from "./garden-stones.mjs?v=canyon-stonepath3";
+import {stoneSites,stoneFootprint} from "./garden-stones.mjs?v=canyon-archway1";
 export const extent=36;
 export const homes=[{x:-28,z:26},{x:28,z:-26}];
 // Fixed geography is public. An occupied camp or a missing monster needs allied sight.
@@ -78,13 +78,51 @@ function sample(data,x,z){
 }
 export const floorHeight=(x,z)=>sample(heights,x,z);
 export const waterDistance=(x,z)=>sample(water,x,z);
+// All four entrances share one frame. Length follows the middle lane, width follows the river.
+export const bridgePlan={end:5.16,bank:1.91,ramp:1.43,shoulder:1.20,toe:4.10,railT:2.015,railStart:1.65,railEnd:4.76};
+export const bridgeX=(s,t)=>.8*s+.6*t;
+export const bridgeZ=(s,t)=>-.6*s+.8*t;
+const {end,bank,ramp,toe,railT,railStart,railEnd}=bridgePlan;
+const westBed=floorHeight(bridgeX(-end,0),bridgeZ(-end,0));
+const eastBed=floorHeight(bridgeX(end,0),bridgeZ(end,0));
+export function bridgeCrown(s){
+  const u=clamp(s/end,-1,1),curve=1-u*u;
+  return westBed+(eastBed-westBed)*(u+1)*.5+.55*curve*curve;
+}
+export function riverbedHeight(x,z){
+  if(Math.abs(x)>6.2||Math.abs(z)>6.2)return floorHeight(x,z);
+  const d=waterDistance(x,z),w=clamp((d-2.15)/1.65,0,1);
+  return .085+.42*w*w*(3-2*w)+.038*w*Math.sin(x*.23+z*.16);
+}
+export function rampHeight(s,t){
+  const u=clamp((Math.abs(t)-bank)/(toe-bank),0,1),ease=u*u*(3-2*u);
+  const far=riverbedHeight(bridgeX(s,Math.sign(t)*toe),bridgeZ(s,Math.sign(t)*toe))+.025;
+  return (bridgeCrown(s)+.050)*(1-ease)+far*ease;
+}
+// The side of a landing feathers into the gravel. Lateral movement must
+// follow the same slope as an approach from the river.
+export function shoulderHeight(s,t){
+  const bed=riverbedHeight(bridgeX(s,t),bridgeZ(s,t));
+  const u=clamp((Math.abs(s)-ramp)/bridgePlan.shoulder,0,1);
+  const weight=1-u*u*(3-2*u);
+  return bed+(rampHeight(Math.sign(s)*ramp,t)-bed)*weight;
+}
+export const bridgeRails=[];
+for(const direction of [-1,1])for(const side of [-1,1]){
+  const s0=direction>0?railStart:-railEnd,s1=direction>0?railEnd:-railStart,t=side*railT;
+  const a=s0-.15,b=s1+.15,w=.157,corner=.055;
+  const outline=[[a+corner,t-w],[b-corner,t-w],[b,t-w+corner],[b,t+w-corner],
+    [b-corner,t+w],[a+corner,t+w],[a,t+w-corner],[a,t-w+corner]];
+  bridgeRails.push({...stoneFootprint(outline.map(([s,t])=>({x:bridgeX(s,t),z:bridgeZ(s,t)}))),
+    id:-2000-bridgeRails.length,hp:1,kind:"parapet",s0,s1,t,length:(b-a)*.5,width:w});
+}
 export function groundContact(x,z){
-  const h=floorHeight(x,z);
-  if(Math.abs(x)>5.9||Math.abs(z)>5.3)return h;
-  const across=Math.max(0,Math.min(1,(2.04-Math.abs(.6*x+.8*z))/.16));
-  const length=Math.abs(.8*x-.6*z);
-  const deck=Math.max(0,Math.min(1,(5.23-length)/.15));
-  return h+.055*across*deck;
+  if(Math.abs(x)>6.2||Math.abs(z)>6.2)return floorHeight(x,z);
+  const s=.8*x-.6*z,t=.6*x+.8*z;
+  if(Math.abs(s)<=end && Math.abs(t)<=bank+.11)return bridgeCrown(s)+.050;
+  if(Math.abs(s)<=ramp && Math.abs(t)<toe)return rampHeight(s,t);
+  if(Math.abs(t)>bank && Math.abs(t)<toe && Math.abs(s)<ramp+bridgePlan.shoulder)return shoulderHeight(s,t);
+  return riverbedHeight(x,z);
 }
 export const jungles=[
   [[-25,12],[-21,9],[-17,7],[-14,4],[-12,0],[-9,-4]],

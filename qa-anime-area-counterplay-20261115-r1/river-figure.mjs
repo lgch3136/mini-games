@@ -2,7 +2,7 @@ import {actorStrides,footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1"
 import {bindImpact} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
 import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-keep-lit2";
 import {skullBand} from "./character-plates.mjs?v=canyon-clavicle1";
-import {elasticHands} from "./elastic-arm.mjs?v=canyon-tower-lock1";
+import {elasticHands} from "./elastic-arm.mjs?v=canyon-archway3";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };
 

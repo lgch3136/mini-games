@@ -1,7 +1,7 @@
 // Each stand grows from its map coordinate. Solid stone and soft foliage share
 // vertex buffers, but stone establishes real depth before the fighters are drawn.
-import {garden,floorHeight,stoneLandmarks} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {rockRings} from "./garden-stones.mjs?v=canyon-stonepath3";
+import {garden,floorHeight,stoneLandmarks} from "./estuary-map.mjs?v=canyon-archway3";
+import {rockRings} from "./garden-stones.mjs?v=canyon-archway1";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {spellVertex} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
 import {sceneryOcclusion} from "./scenery-occlusion.mjs?v=canyon-eave-batch1";

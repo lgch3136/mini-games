@@ -1,5 +1,5 @@
-import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,stoneLandmarks,huntingGrounds,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {addReeds} from "./river-reeds.mjs?v=canyon-tower-lock1";
+import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,stoneLandmarks,huntingGrounds,floorHeight,riverbedHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=canyon-archway3";
+import {addReeds} from "./river-reeds.mjs?v=canyon-archway3";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
@@ -7,7 +7,6 @@ import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-tower-lampl
 export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
   let filterLevel=1;
   const p=[],uv=[],kind=[],flat=[],ix=[],flow=[],n=73;
-  const bridgeRoad=routes[1],bridgeCentre=measure(bridgeRoad,0,0).at;
   const middleOfRiver=measure(streams,0,0).at;
   function streamCoords(x,z,wet){
     if(wet>5.5){flow.push(0,0);return;}
@@ -19,19 +18,12 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
     const u=i/(n-1),v=j/(n-1),x=(2*u-1)*extent,z=(2*v-1)*extent,wet=waterDistance(x,z);
     const cell=j*n+i,bridge=classes[cell]&4;
-    let y=floorHeight(x,z);
-    if(Math.abs(x)<8&&Math.abs(z)<8){
-      const local=measure(bridgeRoad,x,z);
-      // The coarse riverbed must remain below the separately meshed walkable flagstones.
-      const width=Math.max(0,Math.min(1,(3.15-local.distance)/.89));
-      const length=Math.max(0,Math.min(1,(6.25-Math.abs(local.at-bridgeCentre))/.95));
-      y-=.16*width*length;
-    }
-    p.push(x,y,z);uv.push(u,1-v);kind.push(bridge?9:wet);
+    const y=riverbedHeight(x,z);
+    p.push(x,y,z);uv.push(u,1-v);kind.push(wet);
     // End the paving at the bank, including under the separately modelled bridge.
     road[cell]=Math.round(road[cell]*Math.min(1,Math.max(0,(wet-2.66)/.72)));
     streamCoords(x,z,wet);
-    flat.push(...fallbacks[classes[cell]&3]);
+    flat.push(...fallbacks[bridge&&wet<2.65?2:classes[cell]&3]);
     if(i<n-1&&j<n-1){const a=j*n+i;ix.push(a,a+n,a+1,a+1,a+n,a+n+1);}
   }
   // Continue the banks beyond the playable square so the base camera looks onto land.
@@ -110,7 +102,10 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     in mediump float laneCover;
     in mediump vec3 flowInk;in lowp vec3 castLight;in mediump vec3 shoreInk;
     void main(){
-      vec3 colour=ready>.5?texture(field,coord).rgb:base;
+      // Projected stone shadow shares the ordinary ground fetch. Alpha is
+      // transmittance for the red channel; unshadowed terrain is exactly opaque.
+      vec4 bed=ready>.5?texture(field,coord):vec4(base,1.);
+      vec3 colour=bed.rgb;
       // Nine repeats across 72 world units. Derivatives outside the branch keep
       // the same mip level across road edges, also when the whole map is visible.
       highp vec2 slabUV=vec2(coord.x,1.-coord.y)*9.;
@@ -138,6 +133,8 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
         float pool=1.-smoothstep(2.65,3.08,flowInk.z);
         daylight+=pool*((vec3(.075,.111,.103)+castLight*.18)*glimmer+vec3(.105,.107,.080)*wetLip);
       }
+      float shelter=1.-bed.a;
+      daylight*=vec3(bed.a,1.-.73*shelter,1.-.49*shelter);
       daylight+=castLight*(.11+.30*colour);
       vec3 shade=daylight*vec3(.56,.62,.72)+vec3(.024,.029,.034);
       paint=vec4(mix(shade,daylight,smoothstep(0.,1.,sight)),1.);
@@ -191,7 +188,7 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
         }).catch(()=>{});
       }
       loading=Promise.all([
-        load(new URL("./assets/canyon-verge-ground.webp",import.meta.url).href,image=>{
+        load(new URL("./assets/canyon-arch-ground.webp",import.meta.url).href,image=>{
           texture=image;uniforms.field.value=image;uniforms.ready.value=1;
         }),
         load(new URL("./assets/canyon-sunlit-flags.webp",import.meta.url).href,image=>{
@@ -278,7 +275,7 @@ export function estuaryStonework(T){
   const mesh=new T.Mesh(g,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   mesh.userData.cull=fieldVisibility(T,g);return mesh;
 }
-export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-tower-lamplight2";
+export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-archway3";
 export function fieldMini(ctx,width,height){
   const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height,unit=width/(2*extent);
   const land=ctx.createRadialGradient(width*.45,height*.52,0,width*.5,height*.5,width*.71);

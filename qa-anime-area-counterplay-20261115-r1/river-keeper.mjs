@@ -1,5 +1,5 @@
-import {groundSeen,visibleTo} from "./river-reeds.mjs?v=canyon-tower-lock1";
-import {huntingGrounds,keepOutsideBanks,nearestLane} from "./estuary-map.mjs?v=canyon-stonepath3";
+import {groundSeen,visibleTo} from "./river-reeds.mjs?v=canyon-archway3";
+import {huntingGrounds,keepOutsideBanks,nearestLane} from "./estuary-map.mjs?v=canyon-archway3";
 
 // The upstream ford is reachable on foot from mid, outside either outer tower's range.
 export const keeperFord = {x:-9, z:-8};

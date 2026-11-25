@@ -19,6 +19,18 @@ function outerHull(points) {
   return low.concat(high);
 }
 
+export function stoneFootprint(hull){
+  const edges=[];
+  let xl=Infinity,xh=-Infinity,zl=Infinity,zh=-Infinity;
+  for(let i=0;i<hull.length;i++){
+    const p=hull[i],q=hull[(i+1)%hull.length],dx=q.x-p.x,dz=q.z-p.z;
+    const length=Math.hypot(dx,dz);
+    edges.push({x:p.x,z:p.z,dx,dz,invLength2:1/(length*length),nx:dz/length,nz:-dx/length});
+    xl=Math.min(xl,p.x);xh=Math.max(xh,p.x);zl=Math.min(zl,p.z);zh=Math.max(zh,p.z);
+  }
+  return {x:(xl+xh)*.5,z:(zl+zh)*.5,rx:(xh-xl)*.5,rz:(zh-zl)*.5,hull,edges};
+}
+
 export function stoneSites(garden) {
   return garden.map((site,index)=>{
     if(site.kind!==2)return null;
@@ -52,16 +64,7 @@ export function stoneSites(garden) {
       rock(.22,-.026,.10,.255,.16,.19,0xa6ada0);
       rock(.06,-.018,.26,.14,.10,.10,0x7d8b81);
     }
-    const hull=outerHull(corners),edges=[];
-    let xl=Infinity,xh=-Infinity,zl=Infinity,zh=-Infinity;
-    for(let i=0;i<hull.length;i++) {
-      const p=hull[i],q=hull[(i+1)%hull.length],dx=q.x-p.x,dz=q.z-p.z;
-      const length=Math.hypot(dx,dz);
-      edges.push({x:p.x,z:p.z,dx,dz,invLength2:1/(length*length),nx:dz/length,nz:-dx/length});
-      xl=Math.min(xl,p.x);xh=Math.max(xh,p.x);zl=Math.min(zl,p.z);zh=Math.max(zh,p.z);
-    }
-    return {id:-1000-index,hp:1,kind:"stone",x:(xl+xh)*.5,z:(zl+zh)*.5,
-      rx:(xh-xl)*.5,rz:(zh-zl)*.5,pieces,hull,edges};
+    return {id:-1000-index,hp:1,kind:"stone",pieces,...stoneFootprint(outerHull(corners))};
   });
 }
 

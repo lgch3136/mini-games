@@ -1,7 +1,7 @@
 // A standing tower is solid at its stone plinth. The match owns the live structure objects.
-import {keeperFord} from "./river-keeper.mjs?v=canyon-tower-lock1";
-import {stoneLandmarks} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {stopAtStone} from "./garden-stones.mjs?v=canyon-stonepath3";
+import {keeperFord} from "./river-keeper.mjs?v=canyon-archway3";
+import {stoneLandmarks,bridgeRails,bridgeX,bridgeZ} from "./estuary-map.mjs?v=canyon-archway3";
+import {stopAtStone} from "./garden-stones.mjs?v=canyon-archway1";
 const grids=new WeakMap(),empty=[],cellSize=6;
 const key=(x,z)=>Math.floor((x+48)/cellSize)*32+Math.floor((z+48)/cellSize);
 function near(match,x,z){
@@ -22,12 +22,96 @@ function near(match,x,z){
       register(u,u===ford?.91:u.kind==="core"?1.94:[1.10,1.31,1.54][u.tier]??1.22);
     }
     for(const rock of stoneLandmarks)if(rock)register(rock,Math.hypot(rock.rx,rock.rz),rock);
+    for(const rail of bridgeRails)register(rail,Math.hypot(rail.rx,rail.rz),rail);
     grids.set(match,grid);
   }
   return grid.get(key(x,z))??empty;
 }
 const standing=u=>!u.dead&&u.hp>0;
 const footRadius=u=>Math.max(.13,Math.min(.38,(u.radius??.5)*.56));
+const crossingGraphs=new Map(),crossingOrders=new WeakMap();
+const bridgePoint=(x,z)=>({s:.8*x-.6*z,t:.6*x+.8*z});
+const span=(a,b)=>Math.hypot(b.s-a.s,b.t-a.t);
+function cutsRail(a,b,rails){
+  for(const box of rails){
+    let enter=0,leave=1;
+    for(const [from,to,low,high] of [[a.s,b.s,box.s0,box.s1],[a.t,b.t,box.t0,box.t1]]){
+      const d=to-from;
+      if(Math.abs(d)<.00001){
+        if(from<=low||from>=high){leave=-1;break;}
+      }else{
+        const first=(low-from)/d,last=(high-from)/d;
+        enter=Math.max(enter,Math.min(first,last));
+        leave=Math.min(leave,Math.max(first,last));
+      }
+    }
+    if(enter+.00001<leave)return true;
+  }
+  return false;
+}
+function railGraph(feet){
+  if(crossingGraphs.has(feet))return crossingGraphs.get(feet);
+  const rails=bridgeRails.map(p=>({s0:p.s0-.15-feet,s1:p.s1+.15+feet,
+    t0:p.t-p.width-feet,t1:p.t+p.width+feet}));
+  const corners=[];
+  for(const box of rails)for(const s of [box.s0-.07,box.s1+.07])
+    for(const t of [box.t0-.07,box.t1+.07])corners.push({s,t});
+  const edges=corners.map((a,i)=>corners.flatMap((b,j)=>
+    i!==j&&!cutsRail(a,b,rails)?[{node:j,cost:span(a,b)}]:[]));
+  const graph={rails,corners,edges};crossingGraphs.set(feet,graph);return graph;
+}
+function outsideRail(point,rails){
+  for(const b of rails){
+    if(point.s<=b.s0||point.s>=b.s1||point.t<=b.t0||point.t>=b.t1)continue;
+    const gaps=[point.s-b.s0,b.s1-point.s,point.t-b.t0,b.t1-point.t];
+    switch(gaps.indexOf(Math.min(...gaps))){
+      case 0:return {s:b.s0-.052,t:point.t};
+      case 1:return {s:b.s1+.052,t:point.t};
+      case 2:return {s:point.s,t:b.t0-.052};
+      default:return {s:point.s,t:b.t1+.052};
+    }
+  }
+  return point;
+}
+// A pointer order has an actual destination. A turn around one of the sixteen
+// padded corners is solved once per click; AI and thumbstick movement keep their
+// normal steering. This prevents an oblique order choosing a new flank every step.
+function traceRailPath(from,to,graph){
+  const {rails,corners,edges}=graph;
+  if(!cutsRail(from,to,rails))return [to];
+  const n=corners.length,dist=new Float64Array(n),previous=new Int16Array(n).fill(-1);
+  const done=new Uint8Array(n);
+  for(let i=0;i<n;i++)dist[i]=cutsRail(from,corners[i],rails)?Infinity:span(from,corners[i]);
+  let best=Infinity,last=-1;
+  for(let count=0;count<n;count++){
+    let cur=-1,least=best;
+    for(let i=0;i<n;i++)if(!done[i]&&dist[i]<least){cur=i;least=dist[i];}
+    if(cur<0)break;
+    done[cur]=1;
+    const total=least+span(corners[cur],to);
+    if(total<best&&!cutsRail(corners[cur],to,rails)){best=total;last=cur;}
+    for(const {node,cost} of edges[cur]){
+      if(least+cost<dist[node]){dist[node]=least+cost;previous[node]=cur;}
+    }
+  }
+  const path=[to];
+  for(let i=last;i>=0;i=previous[i])path.push(corners[i]);
+  return path.reverse();
+}
+function pointAlongCrossing(order,actor){
+  const from=bridgePoint(actor.x,actor.z);
+  const graph=railGraph(footRadius(actor));
+  let route=crossingOrders.get(order);
+  if(!route){
+    const goal=outsideRail(bridgePoint(order.x,order.z),graph.rails);
+    order.x=bridgeX(goal.s,goal.t);order.z=bridgeZ(goal.s,goal.t);
+    const start=outsideRail(from,graph.rails),points=traceRailPath(start,goal,graph);
+    if(start!==from)points.unshift(start);
+    route={points,next:0};crossingOrders.set(order,route);
+  }
+  while(route.next<route.points.length-1&&span(from,route.points[route.next])<.075)route.next++;
+  return route.points[route.next];
+}
 const formations=new WeakMap();
 const formationCell=2.2;
 const laneCell=n=>Math.floor((n+48)/formationCell);
@@ -95,6 +179,13 @@ export function settleFooting(match,actor,fromX,fromZ){
 }
 export function walkField(match,actor,dx,dz,dt,move,seek=false){
   if(!dt||(!dx&&!dz))return;
+  const ordered=seek&&actor.id===match.playerId&&match.groundOrder&&match.groundOrder.id==null
+    && Math.abs(actor.x)<8&&Math.abs(actor.z)<8;
+  if(ordered){
+    const next=pointAlongCrossing(match.groundOrder,actor);
+    dx=bridgeX(next.s,next.t)-actor.x;dz=bridgeZ(next.s,next.t)-actor.z;
+    if(Math.abs(dx)+Math.abs(dz)<.00001)return;
+  }
   const fromX=actor.x,fromZ=actor.z,distance=Math.hypot(dx,dz);
   let ux=dx/distance,uz=dz/distance;
   if(seek){
@@ -108,9 +199,16 @@ export function walkField(match,actor,dx,dz,dt,move,seek=false){
     let obstacle=null,closest=Infinity,pass=0;
     for(const base of near(match,actor.x,actor.z)){
       const u=base.unit;if(!standing(u))continue;
+      if(ordered&&u.kind==="parapet")continue;
       const rx=u.x-actor.x,rz=u.z-actor.z,feet=footRadius(actor)+.16;
-      const r=(base.rock?Math.abs(uz)*u.rx+Math.abs(ux)*u.rz:base.radius)+feet;
-      const reach=base.rock?Math.abs(ux)*u.rx+Math.abs(uz)*u.rz+feet:r;
+      let r=base.radius+feet,reach=r;
+      if(u.kind==="parapet"){
+        const along=Math.abs(.8*ux-.6*uz),across=Math.abs(.6*ux+.8*uz);
+        r=across*u.length+along*u.width+feet;reach=along*u.length+across*u.width+feet;
+      }else if(base.rock){
+        r=Math.abs(uz)*u.rx+Math.abs(ux)*u.rz+feet;
+        reach=Math.abs(ux)*u.rx+Math.abs(uz)*u.rz+feet;
+      }
       const forward=rx*ux+rz*uz,cross=rz*ux-rx*uz;
       if(forward<=0||forward>reach+1.95||Math.abs(cross)>=r||forward>=closest)continue;
       // Keep the chosen flank stable around one plinth, including perfectly centred lane orders.

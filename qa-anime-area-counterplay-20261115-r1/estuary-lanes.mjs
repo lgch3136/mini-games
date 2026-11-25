@@ -1,7 +1,7 @@
-import {basicDamage} from "./river-supplies.mjs?v=canyon-tower-lock1";
-import {commissionRam} from "./river-keeper.mjs?v=canyon-tower-lock1";
-import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {visibleTo,groundSeen} from "./river-reeds.mjs?v=canyon-tower-lock1";
+import {basicDamage} from "./river-supplies.mjs?v=canyon-archway3";
+import {commissionRam} from "./river-keeper.mjs?v=canyon-archway3";
+import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=canyon-archway3";
+import {visibleTo,groundSeen} from "./river-reeds.mjs?v=canyon-archway3";
 const alive=u=>u&&!u.dead&&u.hp>0;
 const far=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const labels=["上路","中路","下路"],names=["外塔","二塔","高地塔"],lanes=[-1,1,0,0,1];
