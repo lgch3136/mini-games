@@ -234,12 +234,12 @@ export default {
     }
   },
   "shan": {
-    "file": "iron-clinch-and-reactions-r2.webp",
+    "file": "iron-clinch-and-reactions-r3.webp",
     "width": 872,
     "height": 666,
     "cells": {
       "iron-impact": [
-        6,
+        325,
         4,
         163,
         214,
@@ -249,7 +249,7 @@ export default {
         296.43
       ],
       "iron-catch": [
-        177,
+        6,
         4,
         143,
         213,
@@ -259,8 +259,8 @@ export default {
         294.585
       ],
       "iron-fall": [
-        328,
-        36,
+        6,
+        258,
         232,
         150,
         -76.875,
@@ -269,7 +269,7 @@ export default {
         207.255
       ],
       "iron-floor": [
-        6,
+        246,
         272,
         222,
         121,
@@ -279,7 +279,7 @@ export default {
         167.895
       ],
       "iron-rise": [
-        236,
+        476,
         250,
         189,
         166,
@@ -289,8 +289,8 @@ export default {
         228.78
       ],
       "iron-set": [
-        433,
-        228,
+        157,
+        6,
         160,
         210,
         -60.885,
@@ -299,7 +299,7 @@ export default {
         290.895
       ],
       "clinch-set": [
-        16,
+        6,
         461,
         185,
         187,
@@ -309,7 +309,7 @@ export default {
         278.5
       ],
       "clinch-reach": [
-        223,
+        199,
         467,
         207,
         175,
@@ -319,8 +319,8 @@ export default {
         261.0
       ],
       "clinch-lift": [
-        456,
-        451,
+        673,
+        229,
         178,
         208,
         -55.75,
@@ -329,7 +329,7 @@ export default {
         311.0
       ],
       "clinch-miss": [
-        660,
+        414,
         464,
         205,
         181,
@@ -339,7 +339,7 @@ export default {
         269.5
       ],
       "clinch-load": [
-        568,
+        674,
         19,
         174,
         184,
@@ -349,13 +349,23 @@ export default {
         273.0
       ],
       "clinch-open": [
-        601,
-        243,
+        627,
+        465,
         194,
         180,
         -57.904,
         -132.99,
         288.056,
+        267.15
+      ],
+      "clinch-gather": [
+        496,
+        21,
+        170,
+        180,
+        -58.95,
+        -132.99,
+        252.542,
         267.15
       ]
     }

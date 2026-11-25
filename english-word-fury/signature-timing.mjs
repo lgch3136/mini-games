@@ -34,7 +34,11 @@ export function signaturePose(fighter, matchFrame) {
     const a = fighter.action;
     if (fighter.state === "attack" && a && (a.name === "grab" || a.name === "throw")) {
       const offset = a.frame - a.spec.startup;
-      if (offset < -3) return a.name === "grab" ? "clinch-open" : "clinch-set";
+      if (a.name === "grab" && offset < 0) {
+        // Stay folded through the tell. The intermediate hand opens once the actual move begins.
+        return offset < -3 ? "clinch-gather" : "clinch-open";
+      }
+      if (offset < -3) return "clinch-set";
       if (offset < a.spec.active) return "clinch-reach";
       if (offset < a.spec.active + 16) return a.connected ? "clinch-lift" : "clinch-miss";
       return offset < a.spec.active + 24 && a.connected ? "clinch-miss" : "clinch-set";
@@ -44,7 +48,7 @@ export function signaturePose(fighter, matchFrame) {
     if (!Number.isFinite(matchFrame)) return "clinch-set";
     const span = Math.max(1, plan.at - plan.start);
     const progress = (matchFrame - plan.start) / span;
-    return progress < .48 ? "clinch-load" : "clinch-open";
+    return progress < .48 ? "clinch-load" : "clinch-gather";
   }
   const airborne = airborneReaction(fighter);
   if (airborne) return airborne;

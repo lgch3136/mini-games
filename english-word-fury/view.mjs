@@ -4,9 +4,9 @@ import {bases as harborBases, hands as stanceAtlas, reactions as reactionAtlas} 
 import { ironStrideCells,ironStrideRoles } from "./iron-stride.mjs?v=20261124-iron-stride1";
 import rosterPoses from "./harbor-roster-guard.mjs?v=20261124-harbor-guard3";
 import {loadMatchSheet, stanceRoles} from "./match-sheet.mjs?v=20261124-compact-baked1";
-import signatures from "./signature-frames.mjs?v=iron-grab-tell2";
-import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=iron-grab-tell2";
-import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=20261125-swallow-read3";
+import signatures from "./signature-frames.mjs?v=clinch-fold3";
+import { airborneReaction, signaturePose } from "./signature-timing.mjs?v=clinch-fold3";
+import { ROSTER, lerp, clamp, hurtbox, attackBox } from "./combat.mjs?v=clinch-fold3";
 import stockAtlases from "./sprite-atlas.mjs?v=arcade-cels-r3";
 const atlases={...stockAtlases,...harborBases};
 

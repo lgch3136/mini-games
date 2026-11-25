@@ -6,8 +6,8 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=20261125-swallow-read3";
-import { ArenaView } from "./view.mjs?v=iron-grab-tell2";
+} from "./combat.mjs?v=clinch-fold3";
+import { ArenaView } from "./view.mjs?v=clinch-fold3";
 import {sampleLandings} from "./neutral-landing-r2.mjs?v=harbor-guard3";
 import { FuryAudio } from "./sound.mjs?v=20261125-sound-park1";
 const $ = (id) => document.getElementById(id);
@@ -176,7 +176,7 @@ function event(e) {
         { transform: "scale(1.16)", opacity: 0.55 },
         { transform: "scale(1)", opacity: 1 },
       ], { duration: 160, easing: "cubic-bezier(.2,.9,.3,1)" });
-    }
+    } else setText("combo", "");
     if (e.counter) {
       setText("callout", "COUNTER · 破招");
       calloutUntil = game.frame + 60;

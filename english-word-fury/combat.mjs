@@ -1,5 +1,5 @@
 import { beginOpening, chooseOpening, holdOpening } from "./rival-openings.mjs?v=20261124-tumble1";
-import { swallowPhase } from "./signature-timing.mjs?v=20261125-swallow-read3";
+import { swallowPhase } from "./signature-timing.mjs?v=clinch-fold3";
 import { DojoCourse } from "./dojo.mjs?v=20260930-quality-r1&mobile=20260930-quality-r2";
 // Original 60 Hz combat data. Frame numbers are authored for this game, not ROM data.
 export const VERSION = "20260918-play-r1";
@@ -472,7 +472,7 @@ export class Fight {
     }
   }
   queue(f, key) {
-    f.buffer.push({ key, frame: this.frame, held: new Set(f.held) });
+    f.buffer.push({ key, frame: this.frame, held: new Set(f.held), motion: this.buttonMotion(f, key) });
     if (f.buffer.length > 5) f.buffer.shift();
     f.inputLog.push(key);
     if (f.inputLog.length > 9) f.inputLog.shift();
@@ -489,16 +489,46 @@ export class Fight {
     }
   }
   motion(f, pattern) {
-    const h = f.history.filter((v) => this.frame - v.frame < 28 && v.dir !== 5);
-    let i = h.length - 1;
-    for (let p = pattern.length - 1; p >= 0; p--) {
-      while (i >= 0 && h[i].dir !== pattern[p]) i--;
-      if (i < 0) return false;
+    let i = f.history.length - 1;
+    const neutral = f.history[i];
+    const endDir = pattern.at(-1);
+    if (neutral?.dir === 5) {
       i--;
+      // Releasing both keys of a held diagonal produces a transient cardinal on a keyboard.
+      const diagonal = f.history[i - 1];
+      if (f.history[i]?.frame === neutral.frame && diagonal?.frame < neutral.frame &&
+          diagonal.dir === endDir && [1, 3, 7, 9].includes(endDir)) i--;
     }
-    return h.length && this.frame - h[h.length - 1].frame < 11;
+    const last = f.history[i];
+    if (!last || this.frame - last.frame >= 11 || last.dir !== endDir) return false;
+    // The direction on the button distinguishes forward-ending waves from diagonal-ending uppers.
+    let p = pattern.length - 2;
+    for (i--; i >= 0 && p >= 0; i--) {
+      const change = f.history[i];
+      if (this.frame - change.frame >= 28) break;
+      if (change.dir === pattern[p]) p--;
+    }
+    return p < 0;
   }
-  resolve(f, key, held = f.held) {
+  // Remember what the directions meant when the attack button went down.
+  // A buffered attempt can be retried after contact or hitstop without rereading later directions.
+  buttonMotion(f, key) {
+    const hand = key === "A" || key === "C";
+    if (!hand && key !== "B" && key !== "D") return null;
+    // History records direction changes only, so at most one neutral follows the last direction.
+    const tail = f.history.at(-1);
+    const last = tail?.dir === 5 ? f.history.at(-2) : tail;
+    if (!last || this.frame - last.frame >= 11) return null;
+    const powered = hand && this.motion(f, [2, 3, 6, 2, 3, 6]);
+    let name = null;
+    if (hand) {
+      if (this.motion(f, [4, 1, 2, 3, 6])) name = "grab";
+      else if (this.motion(f, [6, 2, 3])) name = "upper";
+      else if (this.motion(f, [2, 3, 6])) name = "wave";
+    } else if (this.motion(f, [2, 1, 4])) name = "rush";
+    return name || powered ? { name, powered, last } : null;
+  }
+  resolve(f, key, held = f.held, motion = this.buttonMotion(f, key)) {
     const o = this.f[1 - f.side],
       air = f.y > 0.03,
       near = Math.abs(f.x - o.x) < (f.id === 2 ? 1.14 : 1.0),
@@ -506,29 +536,9 @@ export class Fight {
       crouch = held.has("down") && !air;
     if (["A", "B", "C", "D"].includes(key)) {
       if (!air) {
-        if (
-          ["A", "C"].includes(key) &&
-          this.motion(f, [2, 3, 6, 2, 3, 6]) &&
-          f.meter >= 100
-        ) {
-          f.history = [];
-          return "super";
-        }
-        if (["A", "C"].includes(key) && this.motion(f, [4, 1, 2, 3, 6])) {
-          f.history = [];
-          return "grab";
-        }
-        if (["A", "C"].includes(key) && this.motion(f, [6, 2, 3])) {
-          f.history = [];
-          return "upper";
-        }
-        if (["A", "C"].includes(key) && this.motion(f, [2, 3, 6])) {
-          f.history = [];
-          return "wave";
-        }
-        if (["B", "D"].includes(key) && this.motion(f, [2, 1, 4])) {
-          f.history = [];
-          return "rush";
+        if (motion && f.history.includes(motion.last)) {
+          if (motion.powered && f.meter >= 100) return "super";
+          if (motion.name) return motion.name;
         }
         if (front && near && ["C", "D"].includes(key)) return "throw";
       }
@@ -576,7 +586,7 @@ export class Fight {
     this.emit("attack", { side: f.side, name });
     return true;
   }
-  attempt(f, key, held = f.held) {
+  attempt(f, key, held = f.held, motion = this.buttonMotion(f, key)) {
     if (key === "recover" || (key === "roll" && f.down)) {
       // A deliberate fall recovery rewards timing; a held evade never repeats.
       if (f.hp > 0 && f.down && f.y > 0 && f.y < 1.2 && f.vy < 0) {
@@ -648,7 +658,7 @@ export class Fight {
       this.emit("roll", { side: f.side });
       return true;
     }
-    const name = this.resolve(f, key, held),
+    const name = this.resolve(f, key, held, motion),
       m = MOVES[name];
     if (!m) return false;
     if (f.action) {
@@ -671,7 +681,13 @@ export class Fight {
       if (superCancel && f.meter >= 100)
         this.emit("superCancel", { side: f.side, x: f.x, y: f.y + 1.5 });
     }
-    return this.start(f, name);
+    const started = this.start(f, name);
+    if (started && motion && m.special && name !== key) {
+      // Only the command that actually started spends these directions. Preserve later stick input.
+      const last = f.history.indexOf(motion.last);
+      if (last >= 0) f.history.splice(0, last + 1);
+    }
+    return started;
   }
   ai() {
     const e = this.f[1],
@@ -864,6 +880,12 @@ export class Fight {
     f.stateFrame++;
     f.inv = Math.max(0, f.inv - 1);
     const o = this.f[1 - f.side];
+    // On the first live tick where this defender can guard or act, the prior hit string has ended.
+    // Evaluate before processing this fighter's inputs, independent of which side updates first.
+    if (o.combo && !f.stun && !f.down) {
+      o.combo = 0;
+      o.comboDamage = 0;
+    }
     if (!f.action && !f.rivalOpening && !f.down && !f.stun && f.y === 0 && f.state !== "roll") {
       const face = o.x >= f.x ? 1 : -1;
       if (face !== f.facing) {
@@ -878,7 +900,8 @@ export class Fight {
     }
     {
       for (let i = f.buffer.length - 1; i >= 0; i--) {
-        if (this.attempt(f, f.buffer[i].key, f.buffer[i].held)) {
+        const button = f.buffer[i];
+        if (this.attempt(f, button.key, button.held, button.motion)) {
           f.buffer.splice(0, i + 1);
           break;
         }
@@ -1001,10 +1024,6 @@ export class Fight {
     f.x = clamp(f.x, -6.45, 6.45);
     if (!f.stun && !f.down && !f.action)
       f.guard = Math.min(100, f.guard + 0.16);
-    if (!o.stun && !o.down && this.frame - f.lastHit > 25) {
-      f.combo = 0;
-      f.comboDamage = 0;
-    }
   }
   receive(target, attacker, spec, name, projectile = false) {
     const isThrow = spec.level === "throw";
