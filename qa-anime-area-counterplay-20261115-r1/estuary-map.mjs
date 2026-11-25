@@ -163,6 +163,12 @@ for(const plant of garden){
   }
   plant.art=best;placed[best].push(plant);
 }
+// Frame the two bridge landings after the rest of the garden has been spaced.
+// These decorative stems grow on the dry bank outside the ramps and stone hulls.
+for(const p of garden){
+  if(p.kind===0 && p.x===2.2 && p.z===5.2)Object.assign(p,{x:3.75,z:6.50,riverTree:"willow",lean:.44});
+  if(p.kind===1 && p.x===-2.2 && p.z===-5.2)Object.assign(p,{x:-1.60,z:-6.87,riverTree:"pine",lean:3.83});
+}
 export const stoneLandmarks=stoneSites(garden);
 export const banks=garden.filter(p=>p.kind===2&&(p.art===2||p.art===4)&&!overlapsRoad(p.x,p.z,2.46)).map(p=>({x:p.x,z:p.z,rx:p.size*.33,rz:p.size*.24}));
 const bankCells=new Map(),cellSize=5;

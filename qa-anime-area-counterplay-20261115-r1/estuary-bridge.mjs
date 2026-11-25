@@ -1,4 +1,4 @@
-import {bridgePlan,bridgeCrown,bridgeX,bridgeZ,bridgeRails,rampHeight,shoulderHeight} from "./estuary-map.mjs?v=canyon-archway3";
+import {bridgePlan,bridgeCrown,bridgeX,bridgeZ,bridgeRails,rampHeight,shoulderHeight} from "./estuary-map.mjs?v=canyon-bank-grove2";
 import {addUv,stone,flagFace,plain,slate,indexStoneFaces} from "./field-architecture.mjs?v=canyon-tower-lamplight2";
 import {bindLitSurface} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
 

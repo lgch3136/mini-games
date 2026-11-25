@@ -26,9 +26,6 @@ ASSETS.mkdir(exist_ok=True)
 flagstones(ASSETS / "canyon-sunlit-flags.webp")
 N = 1280
 S = (N-1)/72
-Y, X = np.mgrid[:N,:N].astype(np.float32)
-X = X/S-36
-Y = Y/S-36
 
 def pix(x,z):
     return (int(round((x+36)*S)),int(round((z+36)*S)))
@@ -49,7 +46,13 @@ def smooth(a,b,x):
     return t*t*(3-2*t)
 
 def mix(a,b,t):
-    return a+(b-a)*t[...,None]
+    shape=t.shape+(3,)
+    a,b=np.broadcast_to(a,shape),np.broadcast_to(b,shape)
+    result=np.empty(shape,dtype=np.float32)
+    for y in range(0,shape[0],96):
+        rows=slice(y,y+96)
+        result[rows]=a[rows]+(b[rows]-a[rows])*t[rows,:,None]
+    return result
 
 def rgb(t):
     return np.array(t,dtype=np.float32)
@@ -61,19 +64,24 @@ grass+=(3.7*grain+2.2*tufts)[...,None]
 grass=mix(grass,rgb([93,130,105]),(1-smooth(2.6,8.7,river))*.47)
 earth=rgb([152,144,113])+(16*broad+8*tufts+5*grain)[...,None]
 ground=mix(grass,earth,1-smooth(.44,1.37,wood+.30*tufts))
+del grass,earth
 stone=rgb([160,159,137])+(12*broad+4*grain)[...,None]
 # A narrow shoulder of compacted grit meets the grass. The render-time flag
 # material breaks on individual stones along its inner edge.
 shoulder=lane+.10*tufts+.038*grain
 grit=rgb([151,137,108])+(15*broad+9*tufts+11*grain)[...,None]
 ground=mix(ground,grit,1-smooth(1.92,2.18,shoulder))
+del grit
 ground=mix(ground,stone,1-smooth(1.50,1.81,shoulder))
+del stone
 bank=rgb([170,170,130])+(14*tufts+8*broad)[...,None]
 ground=mix(ground,bank,1-smooth(2.54,3.33,river+.15*tufts))
+del bank
 depth=1-smooth(.2,2.87,river)
 water=mix(rgb([104,165,149]),rgb([44,111,120]),depth)
 water+=(8*broad+4*tufts+1.8*grain)[...,None]
 ground=mix(ground,water,1-smooth(2.39,2.73,river+.16*tufts))
+del water,depth
 
 # Fractured slate lies under the shallow water, with more uninterrupted open
 # colour in the deep channel. Rounded-off Voronoi corners avoid a second paved road.
@@ -107,6 +115,7 @@ relief=np.asarray(under).astype(np.float32)-128
 visibility=(1-smooth(2.5,2.96,river))*(.30+.52*smooth(.32,2.1,river)+.27*(1-smooth(2.5,5.6,lane)))
 ground+=(relief*visibility)[...,None]*rgb([.72,1.03,.92])
 canvas=Image.fromarray(np.uint8(np.clip(ground,0,255)));draw=ImageDraw.Draw(canvas)
+del ground,visibility,relief
 
 # The established verge and masonry use the map's original PCG sequence.
 # Give those drawings a fixed starting point independent of the paving layout.
@@ -132,21 +141,23 @@ for u,v in chips.integers(2,N-3,(6800,2)):
     colour=np.array(canvas.getpixel((u,v)),dtype=int)
     colour=np.uint8(np.clip(colour*chips.uniform(.89,1.07)+[6,5,1],0,255))
     draw.line([(u,v),(u+int(chips.integers(1,3)),v-1)],fill=tuple(colour))
-# Smooth projected canopy shade and a dense contact patch follow the locations of the real meshes.
+# Solid rocks keep their broad grounding. The separate geometry bake projects
+# individual tree and bamboo branches, with light passing through their leaves.
 mask=np.zeros((N,N),np.uint8)
 for tree in world["garden"]:
     x,z,sz,k=tree["x"],tree["z"],tree["size"],tree["kind"]
-    dense=94 if k<2 else 72
-    cv2.ellipse(mask,pix(x+.30*sz,z-.22*sz),(int(S*sz*(.59 if k<2 else .43)),int(S*sz*(.34 if k<2 else .27))),-22,0,360,dense,-1)
+    if k!=2:continue
+    cv2.ellipse(mask,pix(x+.30*sz,z-.22*sz),(int(S*sz*.43),int(S*sz*.27)),-22,0,360,72,-1)
 shade=cv2.GaussianBlur(mask,(0,0),S*.19).astype(np.float32)/255
 mask.fill(0)
 for t in world["garden"]:
-    cv2.ellipse(mask,pix(t["x"],t["z"]),(max(2,int(t["size"]*S*.26)),max(2,int(t["size"]*S*.17))),0,0,360,95,-1)
+    tree=t["kind"]<2
+    cv2.ellipse(mask,pix(t["x"],t["z"]),(max(2,int(t["size"]*S*(.15 if tree else .26))),max(2,int(t["size"]*S*(.11 if tree else .17)))),0,0,360,80 if tree else 95,-1)
 shade+=cv2.GaussianBlur(mask,(0,0),1.9).astype(np.float32)/255
 raw=np.asarray(canvas).astype(np.float32)*(1-shade[...,None]*rgb([.40,.32,.23]))
 raw+=(2.8*grain+2.2*tufts)[...,None]
 ASSETS.mkdir(exist_ok=True)
-Image.fromarray(np.uint8(np.clip(raw,0,255))).save(ASSETS/"canyon-verge-ground.webp",quality=88,method=5)
+Image.fromarray(np.uint8(np.clip(raw,0,255))).save(ASSETS/"canyon-willow-ground.webp",quality=88,method=5)
 
 # Stone, glazed roof tile, timber, deck joint, neutral lime, terracotta, shale and the bridge flagstone face.
 tile=192

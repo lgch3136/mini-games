@@ -1,6 +1,6 @@
 // A standing tower is solid at its stone plinth. The match owns the live structure objects.
-import {keeperFord} from "./river-keeper.mjs?v=canyon-archway3";
-import {stoneLandmarks,bridgeRails,bridgeX,bridgeZ} from "./estuary-map.mjs?v=canyon-archway3";
+import {keeperFord} from "./river-keeper.mjs?v=canyon-bank-grove2";
+import {stoneLandmarks,bridgeRails,bridgeX,bridgeZ} from "./estuary-map.mjs?v=canyon-bank-grove2";
 import {stopAtStone} from "./garden-stones.mjs?v=canyon-archway1";
 const grids=new WeakMap(),empty=[],cellSize=6;
 const key=(x,z)=>Math.floor((x+48)/cellSize)*32+Math.floor((z+48)/cellSize);

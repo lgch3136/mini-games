@@ -1,4 +1,4 @@
-import {basicDamage} from "./river-supplies.mjs?v=canyon-archway3";
+import {basicDamage} from "./river-supplies.mjs?v=canyon-bank-grove2";
 const skillSlots = { q: 0, e: 1, r: 2 };
 export const attackKeys = { KeyJ: "attack", KeyK: "farm", KeyL: "siege" };
 export const isAttack = key => key === "attack" || key === "farm" || key === "siege";

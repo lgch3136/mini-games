@@ -1,5 +1,5 @@
-import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,stoneLandmarks,huntingGrounds,floorHeight,riverbedHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=canyon-archway3";
-import {addReeds} from "./river-reeds.mjs?v=canyon-archway3";
+import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,stoneLandmarks,huntingGrounds,floorHeight,riverbedHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=canyon-bank-grove2";
+import {addReeds} from "./river-reeds.mjs?v=canyon-bank-grove2";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
@@ -188,7 +188,7 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
         }).catch(()=>{});
       }
       loading=Promise.all([
-        load(new URL("./assets/canyon-arch-ground.webp",import.meta.url).href,image=>{
+        load(new URL("./assets/canyon-willow-ground.webp",import.meta.url).href,image=>{
           texture=image;uniforms.field.value=image;uniforms.ready.value=1;
         }),
         load(new URL("./assets/canyon-sunlit-flags.webp",import.meta.url).href,image=>{
@@ -275,7 +275,7 @@ export function estuaryStonework(T){
   const mesh=new T.Mesh(g,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   mesh.userData.cull=fieldVisibility(T,g);return mesh;
 }
-export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-archway3";
+export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-bank-grove2";
 export function fieldMini(ctx,width,height){
   const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height,unit=width/(2*extent);
   const land=ctx.createRadialGradient(width*.45,height*.52,0,width*.5,height*.5,width*.71);
