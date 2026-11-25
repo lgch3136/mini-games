@@ -1,4 +1,4 @@
-import {keepRelief} from "./keep-light.mjs?v=canyon-pavilion1";
+import {keepRelief} from "./keep-light.mjs?v=canyon-eave-batch1";
 // One sheet supplies sunlit limestone, jade tile, lacquer, paving and the red team's tile dye.
 export const stone=0,jadeTile=1,timber=2,paving=3,plain=4,clayTile=5,slate=6,flagFace=7;
 export function addUv(array,cell,u,v){

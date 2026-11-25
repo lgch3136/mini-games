@@ -1,7 +1,8 @@
-import {bindKeepFinish} from "./keep-light.mjs?v=canyon-pavilion1";
+import {joinStandingKeep} from "./standing-keep.mjs?v=canyon-eave-batch1";
+import {bindKeepFinish} from "./keep-light.mjs?v=canyon-eave-batch1";
 import {pavilionRoof} from "./pavilion-roof.mjs?v=canyon-pavilion1";
-import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-pavilion1";
-import {towerSight} from "./tower-sight.mjs?v=canyon-keep-lit2";
+import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-eave-batch1";
+import {towerSight} from "./tower-sight.mjs?v=canyon-eave-batch1";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
 // Infantry, heroes and the tower share the same world coordinates as movement and hits.
@@ -24,7 +25,7 @@ export function betweenCameraAndFighter(unit,actor,camera,foot,ground,width,low,
   return Math.max(first,Math.min(a,b))<=Math.min(last,Math.max(a,b));
 }
 
-export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
+export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=false) {
   const part=()=>({pos:[],rgb:[],uv:[],finish:[],smooth:[]});
   const masonry=part(),tiles=part(),ruin=part();let surface=masonry;
   const palette=new Map();
@@ -197,7 +198,8 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
   }
   const frame=mesh(masonry),roofMesh=mesh(tiles,true),debris=mesh(ruin);debris.visible=false;
   frame.material.forceSinglePass=roofMesh.material.forceSinglePass=true;
-  const wallWindow=art?towerSight(T,frame.material):null,roofWindow=art?towerSight(T,roofMesh.material):null;
+  const joined=art?joinStandingKeep(T,parent,frame,roofMesh,art):null;
+  const sight=joined?towerSight(T,joined.mesh,hasStencil):null;
   let lastTime=-1;
   function fade(node,target,dt){
     const mat=node.material;
@@ -207,39 +209,52 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
     if(mat.transparent!==transparent){mat.transparent=transparent;mat.depthWrite=!transparent;mat.needsUpdate=true;}
     mat.opacity=value;
   }
-  return {update(unit,hero,time,camera,subjects,floor,view=null,canvas=null){
+  return {dispose(){ sight?.dispose();joined?.disposeViews(); },
+    update(unit,hero,time,camera,subjects,floor,view=null,canvas=null){
     const fallen=unit.dead,phase=fallen?Math.min(1,Math.max(0,(time-(unit.fallenAt??time))/.72)):0;
     const dt=lastTime<0||time<lastTime?1:time-lastTime;lastTime=time;
-    frame.visible=roofMesh.visible=phase<1;debris.visible=fallen&&phase>.16;
-    wallWindow?.clear();roofWindow?.clear();
+    const whole=!!(joined&&!fallen&&camera&&subjects&&floor&&view&&canvas);
+    if(joined)joined.mesh.visible=whole;
+    frame.visible=roofMesh.visible=!whole&&phase<1;
+    debris.visible=fallen&&phase>.16;
+    sight?.clear();
     if(fallen){
+      sight?.set(false);
       fade(frame,1,dt);fade(roofMesh,1,dt);
       frame.scale.y=Math.max(.08,1-phase*.91);roofMesh.rotation.z=phase*.30*(team?-1:1);
       roofMesh.position.y=-phase*phase*2.2;return;
     }
     if(!camera||!subjects||!floor){
+      sight?.set(false);
       const hidesHero=hero&&!hero.dead&&unit.z-hero.z>-.16&&unit.z-hero.z<3.55&&Math.abs(unit.x-hero.x)<span*1.25;
       fade(roofMesh,hidesHero?.21:1,dt);return;
     }
     let roofBlocks=false,frameBlocks=false;
     const scale=parent.scale.x,ground=floor(unit.x,unit.z);
-    const cut=!!(view&&canvas&&wallWindow&&roofWindow);
     for(const actor of subjects){
-      if(Math.abs(unit.x-actor.x)>4.8||Math.abs(unit.z-actor.z)>7.5)continue;
+      if(actor.dead||actor.hp<=0||actor.kind==="tower"||actor.kind==="core")continue;
+      const heroBody=actor.kind==="hero";
+      const stretch=heroBody&&actor.hero===4&&actor.action?.kind==="skill"?5.8:0;
+      if(Math.abs(unit.x-actor.x)>4.8+stretch||Math.abs(unit.z-actor.z)>7.5+stretch)continue;
       const foot=floor(actor.x,actor.z);
-      const margin=cut?(actor.kind==="minion"?.25:.60):undefined;
+      if(whole&&hasStencil){
+        sight.add(actor,foot,view,canvas);
+        continue;
+      }
+      const margin=whole?(heroBody?.83+stretch:actor.kind==="minion"?.44:.76):undefined;
       const covers=(w,lo,hi)=>betweenCameraAndFighter(unit,actor,camera,foot,ground,w*scale,lo*scale,hi*scale,undefined,margin)||
-        betweenCameraAndFighter(unit,actor,camera,foot,ground,w*scale,lo*scale,hi*scale,.18,margin)||
-        betweenCameraAndFighter(unit,actor,camera,foot,ground,w*scale,lo*scale,hi*scale,actor.kind==="minion"?1.35:2.15,margin);
-      if(covers(span,core?2.08:1.76,core?4.08:tier===0?2.77:3.35)){
-        roofBlocks=true;if(cut)roofWindow.add(actor,foot,view,canvas);
-      }
-      if(covers(span*.82,.17,core?2.20:1.88)){
-        frameBlocks=true;if(cut)wallWindow.add(actor,foot,view,canvas);
-      }
-      if(!cut&&frameBlocks&&roofBlocks)break;
+        betweenCameraAndFighter(unit,actor,camera,foot,ground,w*scale,lo*scale,hi*scale,.15,margin)||
+        betweenCameraAndFighter(unit,actor,camera,foot,ground,w*scale,lo*scale,hi*scale,heroBody?2.72:1.62,margin);
+      const hidesRoof=covers(core?1.90:span*(tier===2?1.16:1.04),core?2.08:1.76,core?4.40:tier===0?2.95:tier===2?4.05:3.40);
+      const hidesFrame=covers(core?span*.98:tier===2?1.63:span*1.10,.025,core?3.42:1.91);
+      roofBlocks ||= hidesRoof;
+      frameBlocks ||= hidesFrame;
+      if(whole&&(hidesFrame||hidesRoof))sight.add(actor,foot,view,canvas);
+      if(!whole&&frameBlocks&&roofBlocks)break;
     }
-    fade(roofMesh,!cut&&roofBlocks?.18:1,dt);fade(frame,!cut&&frameBlocks?.30:1,dt);
+    sight?.set(whole&&(hasStencil||roofBlocks||frameBlocks),unit,ground,scale);
+    fade(roofMesh,!whole&&roofBlocks?.18:1,dt);
+    fade(frame,!whole&&frameBlocks?.30:1,dt);
   }};
 }
 

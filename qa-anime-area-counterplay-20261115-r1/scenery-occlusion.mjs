@@ -1,6 +1,6 @@
 // Clip a world-space box to a conservative screen rectangle. Clip w is the
 // positive view depth for the battle's perspective camera, in world units.
-function projectBox(m, abs, x, y, z, rx, ry, rz, out) {
+export function projectBox(m, abs, x, y, z, rx, ry, rz, out) {
   const w = m[3]*x + m[7]*y + m[11]*z + m[15];
   const dw = abs[3]*rx + abs[7]*ry + abs[11]*rz;
   if (w + dw <= .1) return false;
@@ -18,7 +18,7 @@ function projectBox(m, abs, x, y, z, rx, ry, rz, out) {
   return out.left <= 1 && out.right >= -1 && out.bottom <= 1 && out.top >= -1;
 }
 
-function overlaps(stand, actor) {
+export function overlaps(stand, actor) {
   return stand.near <= actor.far && stand.right >= actor.left && stand.left <= actor.right &&
     stand.top >= actor.bottom && stand.bottom <= actor.top;
 }

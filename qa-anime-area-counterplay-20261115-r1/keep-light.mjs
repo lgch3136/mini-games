@@ -85,8 +85,8 @@ export function bindKeepFinish(T,material,relief,slot){
   material.onBeforeCompile=s=>{
     Object.assign(s.uniforms,uniforms);
     s.vertexShader='attribute float keepMaterial;'+vary+s.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-      keepKind=keepMaterial>=10.?1.:keepMaterial;keepLocal=position;keepFace=normal;keepUv=uv;
-      float panel=keepMaterial-10.;
+      float finish=mod(keepMaterial,16.);keepKind=finish>=10.?1.:finish;keepLocal=position;keepFace=normal;keepUv=uv;
+      float panel=finish-10.;
       vec3 transverse=panel<.5?vec3(1.,0.,0.):panel<1.5?vec3(0.,0.,1.):panel<2.5?vec3(-1.,0.,0.):vec3(0.,0.,-1.);
       keepAcross=mat3(modelViewMatrix)*transverse;`);
     s.fragmentShader='uniform sampler2D keepDepth,keepTileFinish;uniform float keepSlot;'+vary+mapping+'\n'+s.fragmentShader;
@@ -129,9 +129,18 @@ export function bindKeepFinish(T,material,relief,slot){
       float shelter=smoothstep(.095,.26,blocker-keepLocal.y);`);
     s.fragmentShader=s.fragmentShader.replace('#include <lights_fragment_begin>',lights);
     s.fragmentShader=s.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
-      reflectedLight.indirectDiffuse*=mix(vec3(1.),vec3(.63,.70,.79),shelter);`);
+      vec3 ambientShade=vec3(.63,.70,.79);
+      if(wood){
+        // Limestone below the open sides returns warm skylight onto the
+        // underside of the projecting beams. Recessed joints stay cooler.
+        float edge=max(abs(keepLocal.x),abs(keepLocal.z));
+        float openSide=smoothstep(.26,.84,edge)*(1.-.65*smoothstep(2.22,3.25,keepLocal.y));
+        float underside=clamp(.72-.34*keepFace.y,0.,1.);
+        ambientShade+=vec3(.53,.37,.20)*openSide*underside;
+      }
+      reflectedLight.indirectDiffuse*=mix(vec3(1.),ambientShade,shelter);`);
   };
-  material.customProgramCacheKey=()=>'keep-curved-tile-v1';
+  material.customProgramCacheKey=()=>'keep-standing-eave-v3';
 }
 
 // The ground uses the same footprint as the surface shadow test. Static vertices follow
