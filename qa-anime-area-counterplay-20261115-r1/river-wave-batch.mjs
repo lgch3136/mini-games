@@ -246,7 +246,7 @@ export function unitBars(T,scene){
     for(let i=-1;i<units.length;i++){
       const u=i<0?player:units[i];
       if(!u||i>=0&&u.id===playerId)continue;
-      if(u.kind==='minion'||u.dead||u.hp<=0)continue;
+      if(u.kind==='minion'||u.sceneryOnly||u.dead||u.hp<=0)continue;
       const model=models.get(u.id),root=model?.g;if(!root?.visible)continue;
       let s=pool.get(u.id);
       if(!s){s={last:u.hp,trail:u.hp,struck:-10,time:now,stamp,box:{},pair:{},name:{}};pool.set(u.id,s);}

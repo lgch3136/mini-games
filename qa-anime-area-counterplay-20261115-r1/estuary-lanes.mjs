@@ -1,6 +1,6 @@
-import {commissionRam} from "./river-keeper.mjs?v=tide-shell1";
+import {commissionRam} from "./river-keeper.mjs?v=team-vision1";
 import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=river-marching6";
-import {visibleTo} from "./river-reeds.mjs?v=river-keep-contact1";
+import {visibleTo,groundSeen} from "./river-reeds.mjs?v=team-vision1";
 const alive=u=>u&&!u.dead&&u.hp>0;
 const far=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const labels=["上路","中路","下路"],names=["外塔","二塔","高地塔"],lanes=[-1,1,0,0,1];
@@ -226,7 +226,7 @@ function heroLaneEnemy(match, actor, windup) {
   let lastHit = null, urgency = Infinity, wait = null, waitTime = Infinity, farm = null, farmRank = Infinity;
   let contest = false;
   for (const unit of match.units) {
-    if (!alive(unit) || unit.team === team || unit.kind !== "minion" || unit.lane !== lane) continue;
+    if (!alive(unit) || unit.team === team || unit.kind !== "minion" || unit.lane !== lane || !visibleTo(match,team,unit)) continue;
     const d = far(actor, unit);
     if (d > Math.max(6.1, actor.range + 1.15) || !safeToApproach(unit)) continue;
     contest = true;
@@ -275,7 +275,7 @@ export function laneEnemy(match, actor, windup) {
 }
 export function steerLane(actor,target,dt,move){
   const route=routes[(actor.lane??0)+1];
-  if(!["rally","core","tower"].includes(target.kind)||far(actor,target)<3.25){
+  if(target.riverScout||!["rally","core","tower"].includes(target.kind)||far(actor,target)<3.25){
     const x=target.x-actor.x,z=target.z-actor.z;
     const flank=actor.formation==="melee"?actor.pathOffset/Math.max(2.0,Math.hypot(x,z)):0;
     move(actor,x-z*flank,z+x*flank,dt);return;
@@ -291,7 +291,8 @@ export function crossingCall(match,me,objective){
   if(tower.guardTargetId===me.id)
     return labels[lane+1]+" · "+names[tower.tier]+"已转火你";
   const nearby=far(me,tower)<7.8,escort=nearby&&hasEscort(match,tower);
-  return labels[lane+1]+" · "+names[tower.tier]+" "+Math.ceil(tower.hp)+"/"+tower.maxHp+(nearby?(escort?" · 兵线进塔":" · 等兵入塔"):" · 下波兵 "+Math.ceil(Math.max(0,match.waveTimer))+" 秒");
+  const health=groundSeen(match,me.team,tower.x,tower.z)?" "+Math.ceil(tower.hp)+"/"+tower.maxHp:"";
+  return labels[lane+1]+" · "+names[tower.tier]+health+(nearby?(escort?" · 兵线进塔":" · 等兵入塔"):" · 下波兵 "+Math.ceil(Math.max(0,match.waveTimer))+" 秒");
 }
 export function startRecall(match){
   const p=match.units.find(u=>u.id===match.playerId);

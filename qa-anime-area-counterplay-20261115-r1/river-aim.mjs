@@ -96,43 +96,142 @@ export function skillAiming({world, cancelZone, actor, shapeFor, bounds, project
   return {startPointer,movePointer,finishPointer,startKey,releaseKey,clear,refresh};
 }
 
-// One reusable ribbon mesh gives the ring and the aiming line a readable width on touch displays.
-export function aimOverlay(T,scene,land) {
-  const positions=new Float32Array(44*6*3),geometry=new T.BufferGeometry();
-  const attr=new T.BufferAttribute(positions,3).setUsage(T.DynamicDrawUsage);
-  geometry.setAttribute("position",attr);
-  const material=new T.MeshBasicMaterial({color:0x92ffe9,transparent:true,opacity:.83,
-    depthWrite:false,side:T.DoubleSide,toneMapped:false});
-  const mesh=new T.Mesh(geometry,material);mesh.visible=false;mesh.frustumCulled=false;mesh.renderOrder=6;
-  scene.add(mesh);
-  let i=0;
-  function vertex(x,z){positions[i++]=x;positions[i++]=land(x,z)+.11;positions[i++]=z;}
-  function segment(x1,z1,x2,z2,thickness){
-    const dx=x2-x1,dz=z2-z1,length=Math.hypot(dx,dz);
-    if(length<.0001)return;
-    const nx=-dz/length*thickness,nz=dx/length*thickness;
-    vertex(x1+nx,z1+nz);vertex(x1-nx,z1-nz);vertex(x2+nx,z2+nz);
-    vertex(x2+nx,z2+nz);vertex(x1-nx,z1-nz);vertex(x2-nx,z2-nz);
+// The long strip and landing disc share one draw. Their positions follow the same
+// walkable bridge faces and terrain triangles as the selection ring.
+export function aimOverlay(T,scene,surface) {
+  const strip={across:4,along:18},landing={across:12,along:12};
+  const count=g=>(g.across+1)*(g.along+1);
+  const vertices=count(strip)+count(landing),positions=new Float32Array(vertices*3);
+  const local=new Float32Array(vertices*2),parts=new Uint8Array(vertices),indices=[];
+  function triangulate(grid,offset,part){
+    const stride=grid.across+1;
+    for(let j=0;j<=grid.along;j++)for(let i=0;i<=grid.across;i++){
+      const k=offset+j*stride+i;parts[k]=part;
+      if(i<grid.across&&j<grid.along)indices.push(k,k+stride,k+1,k+1,k+stride,k+stride+1);
+    }
   }
+  triangulate(strip,0,0);const stripIndices=indices.length;
+  triangulate(landing,count(strip),1);
+  const geometry=new T.BufferGeometry();
+  const place=new T.BufferAttribute(positions,3).setUsage(T.DynamicDrawUsage);
+  const mark=new T.BufferAttribute(local,2).setUsage(T.DynamicDrawUsage);
+  geometry.setAttribute("position",place);geometry.setAttribute("localMark",mark);
+  geometry.setAttribute("part",new T.Uint8BufferAttribute(parts,1));geometry.setIndex(indices);
+  const uniforms={reach:{value:0},width:{value:0},heading:{value:new T.Vector2(0,1)},isArea:{value:false},isDoor:{value:false}};
+  const material=new T.RawShaderMaterial({
+    glslVersion:T.GLSL3,uniforms,transparent:true,depthTest:true,depthWrite:false,
+    side:T.DoubleSide,forceSinglePass:true,toneMapped:false,
+    vertexShader:`precision highp float;
+      in vec3 position;in vec2 localMark;in float part;
+      uniform mat4 modelViewMatrix,projectionMatrix;
+      out mediump vec2 p;flat out lowp int disc;
+      void main(){
+        p=localMark;disc=int(part);
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);
+      }`,
+    fragmentShader:`precision highp float;
+      uniform float reach,width;uniform vec2 heading;uniform bool isArea,isDoor;
+      in mediump vec2 p;flat in lowp int disc;out vec4 paint;
+      float stroke(float d,float halfWidth){
+        float aa=clamp(fwidth(d)*.72,.009,.09);
+        return 1.-smoothstep(halfWidth-aa,halfWidth+aa,abs(d));
+      }
+      float field(float d){float aa=clamp(fwidth(d),.012,.1);return 1.-smoothstep(-aa,aa,d);}
+      float segment(vec2 pt,vec2 a,vec2 b){
+        vec2 ab=b-a;return length(pt-a-ab*clamp(dot(pt-a,ab)/max(.0001,dot(ab,ab)),0.,1.));
+      }
+      void main(){
+        vec3 base=isDoor?vec3(.43,.28,.44):vec3(.14,.42,.67);
+        vec3 rim=isDoor?vec3(1.,.75,.74):vec3(.53,.84,1.);
+        vec3 peak=isDoor?vec3(1.,.89,.69):vec3(.84,.95,1.);
+        float fill=0.,edge=0.,light=0.,shadow=0.;
+        float shoe=smoothstep(1.22,1.78,length(p));
+        if(!isArea){
+          // Both sides and the far cap coincide with the actual attack footprint.
+          float boundary=max(abs(p.x)-width,max(-p.y,p.y-reach));
+          float progress=clamp(p.y/max(.01,reach),0.,1.);
+          fill=field(boundary)*(.10+.17*progress);
+          shadow=stroke(boundary,.093)*.70;
+          edge=stroke(boundary,.044)*(.72+.18*progress);
+          vec2 mirrored=vec2(abs(p.x),p.y);
+          float inset=min(.86,width*.71);
+          float tip=reach-.24;
+          float arrow=segment(mirrored,vec2(0.,tip),vec2(inset,tip-inset*.96));
+          float guide=segment(mirrored,vec2(0.,reach*.48),vec2(inset*.73,reach*.48-inset*.74));
+          light=max(stroke(arrow,.068)*.95,stroke(guide,.044)*.58)*field(boundary);
+        }else if(disc==0){
+          float end=max(0.,reach-width-.10);
+          float taper=smoothstep(0.,.7,end-p.y);
+          edge=stroke(p.x,.041)*taper*.55;
+          shadow=stroke(p.x,.082)*taper*.38;
+        }else{
+          vec2 q=p-vec2(0.,reach);
+          float radius=length(q),boundary=radius-width;
+          fill=field(boundary)*(.09+.10*smoothstep(width*.56,width,radius));
+          shadow=stroke(boundary,.085)*.72;edge=stroke(boundary,.042)*.84;
+          vec2 n=abs(q)/max(.001,radius);
+          float bracket=smoothstep(.84,.98,max(n.x,n.y));
+          light=stroke(boundary+.13,.036)*bracket*.84;
+          if(isDoor){
+            // Camera-upright jamb, dark opening and a partly swung rose panel.
+            // The same pictogram reads when the player aims back toward the camera.
+            vec2 icon=vec2(heading.y*q.x+heading.x*q.y,heading.x*q.x-heading.y*q.y);
+            vec2 a=vec2(-.36,-.40),b=vec2(-.36,.42),c=vec2(.35,.42),d=vec2(.35,-.40);
+            float frame=min(min(segment(icon,a,b),segment(icon,b,c)),segment(icon,c,d));
+            float opening=field(max(abs(icon.x)-.34,abs(icon.y-.015)-.396));
+            float swing=clamp((icon.x+.32)/.40,0.,1.);
+            float leaf=max(abs(icon.y+.16*swing)-.355,max(-.32-icon.x,icon.x-.08));
+            float panel=field(leaf),pixel=max(fwidth(icon.x),fwidth(icon.y));
+            float weight=clamp(pixel*.78,.055,.102);
+            float knob=field(length(icon-vec2(-.005,-.11))-.080);
+            base=mix(base,vec3(.92,.53,.57),panel);
+            fill=max(fill,max(opening*.50,panel*.69));
+            shadow=max(shadow,opening*(1.-panel)*.60);
+            light=max(light,max(stroke(frame,weight),max(stroke(leaf,weight*.62)*.54,knob))*.98);
+          }else{
+            float notch=min(abs(q.x),abs(q.y));
+            light=max(light,stroke(notch,.035)*smoothstep(.07,.16,radius)*(1.-smoothstep(.23,.34,radius))*.78);
+          }
+          shoe=smoothstep(.43,.78,length(p));
+        }
+        float alpha=max(max(fill,shadow),max(edge,light))*shoe;
+        if(alpha<.012)discard;
+        vec3 color=mix(base,vec3(.11,.23,.32),shadow);
+        color=mix(color,rim,edge);color=mix(color,peak,light);
+        paint=vec4(color,alpha);
+      }`
+  });
+  const mesh=new T.Mesh(geometry,material);mesh.frustumCulled=false;mesh.renderOrder=-5;mesh.visible=false;
+  scene.add(mesh);
+  let lastX,lastZ,lastTX,lastTZ,lastWidth,lastArea,lastDoor;
   function show(view){
     mesh.visible=!!view;
     if(!view)return;
-    i=0;
-    const {player:p,target:t,shape:s}=view,dx=t.x-p.x,dz=t.z-p.z,length=Math.hypot(dx,dz)||1;
-    const ux=dx/length,uz=dz/length;
-    if(s.kind==="area"){
-      for(let j=0;j<32;j++){
-        const a=j*Math.PI/16,b=(j+1)*Math.PI/16;
-        segment(t.x+Math.cos(a)*s.radius,t.z+Math.sin(a)*s.radius,t.x+Math.cos(b)*s.radius,t.z+Math.sin(b)*s.radius,.07);
+    const {player,target,shape}=view,area=shape.kind==="area",door=area&&player.hero===1&&view.key==="r";
+    const width=area?shape.radius:shape.width,dx=target.x-player.x,dz=target.z-player.z;
+    if(lastX===player.x&&lastZ===player.z&&lastTX===target.x&&lastTZ===target.z&&
+        lastWidth===width&&lastArea===area&&lastDoor===door)return;
+    lastX=player.x;lastZ=player.z;lastTX=target.x;lastTZ=target.z;lastWidth=width;lastArea=area;lastDoor=door;
+    const distance=Math.hypot(dx,dz),reach=area?distance:shape.range;
+    const ux=distance>.001?dx/distance:Math.sin(player.face),uz=distance>.001?dz/distance:Math.cos(player.face);
+    uniforms.reach.value=reach;uniforms.width.value=width;uniforms.isArea.value=area;uniforms.isDoor.value=door;
+    uniforms.heading.value.set(ux,uz);
+    const pad=.16;
+    function conform(grid,offset,halfWidth,from,to){
+      for(let j=0;j<=grid.along;j++)for(let i=0;i<=grid.across;i++){
+        const k=offset+j*(grid.across+1)+i,side=(2*i/grid.across-1)*halfWidth;
+        const ahead=from+(to-from)*j/grid.along,x=player.x+ux*ahead+uz*side,z=player.z+uz*ahead-ux*side;
+        positions[k*3]=x;positions[k*3+1]=surface(x,z)+.034;positions[k*3+2]=z;
+        local[k*2]=side;local[k*2+1]=ahead;
       }
-      segment(t.x-.28,t.z,t.x+.28,t.z,.045);segment(t.x,t.z-.28,t.x,t.z+.28,.045);
-    }else{
-      const nx=-uz*s.width,nz=ux*s.width,ex=p.x+ux*s.range,ez=p.z+uz*s.range;
-      segment(p.x+nx,p.z+nz,ex+nx,ez+nz,.065);segment(p.x-nx,p.z-nz,ex-nx,ez-nz,.065);
-      segment(ex+nx,ez+nz,ex-nx,ez-nz,.065);
     }
-    segment(p.x,p.z,t.x,t.z,.038);
-    attr.needsUpdate=true;geometry.setDrawRange(0,i/3);
+    conform(strip,0,area?.16:width+pad,0,area?Math.max(0,reach-width-.07):reach+pad);
+    if(area)conform(landing,count(strip),width+pad,reach-width-pad,reach+width+pad);
+    const active=area?vertices:count(strip);
+    place.clearUpdateRanges();place.addUpdateRange(0,active*3);place.needsUpdate=true;
+    mark.clearUpdateRanges();mark.addUpdateRange(0,active*2);mark.needsUpdate=true;
+    geometry.setDrawRange(0,area?indices.length:stripIndices);
   }
   return {show,dispose(){scene.remove(mesh);geometry.dispose();material.dispose();}};
 }
+

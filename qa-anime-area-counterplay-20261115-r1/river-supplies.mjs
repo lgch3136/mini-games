@@ -1,3 +1,4 @@
+import {visibleTo} from "./river-reeds.mjs?v=team-vision1";
 const gear={
   boots:{name:"渡风履",price:20},coat:{name:"守楼甲",price:20},
   blade:{name:"听潮刃",price:55},focus:{name:"流光佩",price:58},standard:{name:"先登旗",price:76}
@@ -68,7 +69,7 @@ export function markLaneUnit(match,point){
   if(!alive(me)||!point)return null;
   let mark=null,radius=1.04;
   for(const unit of match.units){
-    if(unit.kind!=="minion"||unit.team===me.team||!alive(unit)||distance(me,unit)>14)continue;
+    if(unit.kind!=="minion"||unit.team===me.team||!alive(unit)||distance(me,unit)>14||!visibleTo(match,me.team,unit))continue;
     const r=distance(point,unit);if(r<=radius){mark=unit;radius=r;}
   }
   if(mark)match.laneMark={id:mark.id,until:match.time+3};
@@ -77,7 +78,9 @@ export function markLaneUnit(match,point){
 export function markedLaneUnit(match,me){
   const mark=match.laneMark;
   if(!mark||mark.until<match.time||!alive(me))return null;
-  return match.units.find(u=>u.id===mark.id&&alive(u)&&distance(me,u)<=14)||null;
+  const unit=match.units.find(u=>u.id===mark.id&&alive(u)&&distance(me,u)<=14&&visibleTo(match,me.team,u));
+  if(!unit)match.laneMark=null;
+  return unit||null;
 }
 
 export function fieldOutfitter(getMatch,playing,dirty){

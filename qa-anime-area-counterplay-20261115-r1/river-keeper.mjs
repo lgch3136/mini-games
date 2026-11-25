@@ -1,7 +1,8 @@
-import {visibleTo} from "./river-reeds.mjs?v=river-keep-contact1";
+import {visibleTo} from "./river-reeds.mjs?v=team-vision1";
 
 // The upstream ford is reachable on foot from mid, outside either outer tower's range.
 export const keeperFord = {x:-9, z:-8};
+const scoutFord={kind:"rally",riverScout:true,...keeperFord};
 export const surgeRadius = 4.1;
 const alive = unit => unit && !unit.dead && unit.hp>0;
 const distance = (a,b) => Math.hypot(a.x-b.x,a.z-b.z);
@@ -33,6 +34,7 @@ function gather(match,state) {
 export function riverAssignment(match,hero) {
   const state=match.river,crab=state?.keeper;
   if(!alive(crab)||state.scouts[hero.team]!==hero.id||hero.retreating||hero.hp<hero.maxHp*.38)return null;
+  if(!visibleTo(match,hero.team,crab)){hero.laneIntent="river-scout";return scoutFord;}
   if(crab.hp>crab.maxHp*.24) {
     const rival=match.units.find(u=>u.kind==='hero'&&u.team!==hero.team&&alive(u)&&
       visibleTo(match,hero.team,u) && distance(u,crab)<7.5 && distance(u,hero)<hero.range+u.radius);
@@ -106,7 +108,7 @@ export function riverCaption(match,me) {
   const now=match.time,crab=state.keeper;
   const side=team=>team===me.team?'我方':'敌方';
   const ram=state.lastRam,cart=ram&&now-ram.time<65?match.units.find(u=>u.id===ram.id):null;
-  if(cart&&!cart.dead){
+  if(cart&&!cart.dead&&visibleTo(match,me.team,cart)){
     const dx=cart.x-me.x,dz=cart.z-me.z;
     const bearing=Math.hypot(dx,dz)<4?'就在身边':
       ['正上','右上','正右','右下','正下','左下','正左','左上'][(Math.round(Math.atan2(dx,-dz)/(Math.PI/4))+8)%8]+'方';
@@ -114,7 +116,7 @@ export function riverCaption(match,me) {
     if(now-ram.time<7)return side(cart.team)+'潮车出营 · '+bearing;
   }
   if(state.lastClaim&&now-state.lastClaim.time<4.5)return side(state.lastClaim.team)+'拿下河蟹 · 下波中路增援潮车';
-  if(alive(crab)&&distance(me,crab)<8.5)return crab.surgeAt!=null?'河蟹抬钳 · 离开水圈':'上游潮甲河蟹 '+Math.ceil(crab.hp)+'/'+crab.maxHp+' · 争下波潮车';
+  if(alive(crab)&&distance(me,crab)<8.5&&visibleTo(match,me.team,crab))return crab.surgeAt!=null?'河蟹抬钳 · 离开水圈':'上游潮甲河蟹 '+Math.ceil(crab.hp)+'/'+crab.maxHp+' · 争下波潮车';
   if(alive(crab)&&now-state.appeared<6)return '上游潮甲河蟹出现 · 胜方下波中路出潮车';
   return '';
 }

@@ -1,5 +1,5 @@
 import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=river-marching6";
-import {addReeds} from "./river-reeds.mjs?v=river-keep-contact1";
+import {addReeds} from "./river-reeds.mjs?v=team-vision1";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
@@ -49,15 +49,18 @@ export function estuaryFloor(T,scene){
   }
   const g=new T.BufferGeometry();g.setIndex(ix);g.setAttribute("position",new T.Float32BufferAttribute(p,3));g.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
   g.setAttribute("river",new T.Float32BufferAttribute(kind,1));g.setAttribute("fallback",new T.Float32BufferAttribute(flat,3));
+  const exposure=new T.Uint8BufferAttribute(new Uint8Array(p.length/3).fill(255),1,true).setUsage(T.DynamicDrawUsage);
+  g.setAttribute("exposure",exposure);let lastField=null,fieldRevision=-1;
   const blank=new T.DataTexture(new Uint8Array([205,206,169,255]),1,1);blank.needsUpdate=true;
   const uniforms={field:{value:blank},ready:{value:0},time:{value:0},motion:{value:0}};
   const mat=new T.RawShaderMaterial({uniforms,glslVersion:T.GLSL3,toneMapped:false,
     vertexShader:`precision highp float;
     in vec3 position,fallback;in vec2 uv;in float river;
+    in float exposure;out lowp float sight;
     uniform mat4 modelViewMatrix,projectionMatrix;uniform float time,motion;
     out mediump vec2 coord;out lowp vec3 base;out lowp vec3 reflection;
     void main(){
-      coord=uv;base=fallback;reflection=vec3(0.);
+      coord=uv;base=fallback;reflection=vec3(0.);sight=exposure;
       if(river<3.05&&motion>.5){
         vec2 p=position.xz;
         float glint=smoothstep(.14,.99,sin(p.x*.96+p.y*1.41-time*1.53))*smoothstep(.12,.98,sin(p.x*1.25-p.y*.71+time*.39));
@@ -68,10 +71,12 @@ export function estuaryFloor(T,scene){
     }`,
     fragmentShader:`precision mediump float;
     uniform sampler2D field;uniform float ready;
-    in mediump vec2 coord;in lowp vec3 base,reflection;out vec4 paint;
+    in mediump vec2 coord;in lowp vec3 base,reflection;in lowp float sight;out vec4 paint;
     void main(){
       vec3 colour=ready>.5?texture(field,coord).rgb:base;
-      paint=vec4(colour+reflection,1.);
+      vec3 daylight=colour+reflection;
+      vec3 shade=daylight*vec3(.56,.62,.72)+vec3(.024,.029,.034);
+      paint=vec4(mix(shade,daylight,smoothstep(0.,1.,sight)),1.);
       // field-shadow
     }`
   });
@@ -85,7 +90,13 @@ export function estuaryFloor(T,scene){
     if(dx+dz<=1)return p[a]+dx*(p[a+3]-p[a])+dz*(p[a+row]-p[a]);
     const far=p[a+row+3];return far+(1-dx)*(p[a+row]-far)+(1-dz)*(p[a+3]-far);
   }
-  return {groundY,cull:fieldVisibility(T,g),start(){
+  return {groundY,cull:fieldVisibility(T,g),see(field){
+    if(lastField===field&&fieldRevision===field.version)return;
+    lastField=field;fieldRevision=field.version;
+    exposure.array.set(field.values);
+    for(let i=n*n;i<exposure.count;i++)exposure.array[i]=field.values[border[(i-n*n)%border.length]];
+    exposure.needsUpdate=true;
+  },start(){
     if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/estuary-shallows.webp",import.meta.url).href).then(image=>{
       if(closed){image.dispose();return;}
       texture=image;image.colorSpace=T.NoColorSpace;image.anisotropy=1;uniforms.field.value=image;uniforms.ready.value=1;

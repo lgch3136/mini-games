@@ -1,6 +1,6 @@
 const choices = document.getElementById("choices");
 const start = document.getElementById("start");
-const runtime = new URL("./game.min.js?v=canyon-paired1",import.meta.url);
+const runtime = new URL("./game.min.js?v=river-landing1",import.meta.url);
 let warming = false, opening = false, selected = 0;
 
 // Download on a deliberate hero choice. No WebGL context is needed to browse these cards.

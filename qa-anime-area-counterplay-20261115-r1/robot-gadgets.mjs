@@ -53,7 +53,8 @@ export function castGadget(match,actor,slot,action,context){
   }else{
     const fromX=actor.x,fromZ=actor.z;
     let dx=action.targetX-fromX,dz=action.targetZ-fromZ;
-    if(!Number.isFinite(dx)||!Number.isFinite(dz)||Math.hypot(dx,dz)<.14){
+    // An explicit landing stays at the chosen point, even at the caster's feet.
+    if(!Number.isFinite(dx)||!Number.isFinite(dz)||!action.manualAim&&Math.hypot(dx,dz)<.14){
       dx=Math.sin(actor.face)*doorReach;dz=Math.cos(actor.face)*doorReach;
     }
     const mul=Math.min(1,doorReach/(Math.hypot(dx,dz)||1));
@@ -178,7 +179,8 @@ export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
       }else if(e.type==="airPush"){
         remember("contact",e,time);
       }else if(e.type==="anywhereDoor"){
-        for(const [x,z] of [[e.fromX,e.fromZ],[e.targetX,e.targetZ]]){
+        const endpoints=e.singleDoor?[[e.targetX,e.targetZ]]:[[e.fromX,e.fromZ],[e.targetX,e.targetZ]];
+        for(const [x,z] of endpoints){
           const slot=doorCursor++%4,d=doors[slot]??=makeDoor();d.start=time;
           d.group.position.set(x,land(x,z)+.02,z);
           d.group.rotation.y=.35;d.group.visible=true;
