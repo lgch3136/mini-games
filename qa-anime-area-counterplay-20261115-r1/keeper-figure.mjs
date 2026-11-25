@@ -1,4 +1,4 @@
-import {bindImpact} from "./surface-impact.mjs?v=canyon-palm1";
+import {bindImpact} from "./surface-impact.mjs?v=canyon-keep-lit2";
 import {footTrack} from "./river-roles.mjs?v=canyon-march1";
 
 function animalSculptor(T,material){

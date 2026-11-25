@@ -1,3 +1,4 @@
+import {keepRelief} from "./keep-light.mjs?v=canyon-keep-lit2";
 // One sheet supplies sunlit limestone, jade tile, lacquer, paving and the red team's tile dye.
 export const stone=0,jadeTile=1,timber=2,paving=3,plain=4,clayTile=5,slate=6,flagFace=7;
 export function addUv(array,cell,u,v){
@@ -38,20 +39,20 @@ export function indexStoneFaces(T,geometry){
 export function architectureArt(T){
   const blank=new T.DataTexture(new Uint8Array([228,228,216,255]),1,1);
   blank.colorSpace=T.SRGBColorSpace;blank.needsUpdate=true;
-  const pending=new Set();
-  let loading=null,closed=false,sheet=null;
+  const pending=new Set(),shade=keepRelief(T);
+  let loading=null,closed=false,sheet=null,filterLevel=1;
   function bind(material){
     material.map=sheet||blank;
     if(!sheet&&!closed)pending.add(material);
     return material;
   }
-  return {bind,start(){
+  return {bind,keepRelief:shade,filter(level){filterLevel=level;if(sheet&&sheet.anisotropy!==level){sheet.anisotropy=level;sheet.needsUpdate=true;}},start(){
     if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/canyon-cut-stone.webp",import.meta.url).href).then(atlas=>{
       if(closed){atlas.dispose();return;}
-      atlas.colorSpace=T.SRGBColorSpace;atlas.anisotropy=1;sheet=atlas;
+      atlas.colorSpace=T.SRGBColorSpace;atlas.anisotropy=filterLevel;sheet=atlas;
       for(const material of pending)material.map=atlas;
       pending.clear();blank.dispose();
     }).catch(()=>{});
     return loading;
-  },dispose(){closed=true;pending.clear();if(sheet)sheet.dispose();else blank.dispose();}};
+  },dispose(){closed=true;shade.dispose();pending.clear();if(sheet)sheet.dispose();else blank.dispose();}};
 }

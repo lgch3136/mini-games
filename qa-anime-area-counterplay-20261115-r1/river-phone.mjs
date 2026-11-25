@@ -18,23 +18,35 @@ export function edgeTags(T) {
   };
 }
 
-export function ecoFrameBudget(levels=[.75,.62,.52]) {
-  let level=0,last=0,count=0,slow=0,fast=0,hold=0;
-  function reset(){level=0;last=count=slow=fast=hold=0;}
-  function sample(now,playing){
-    if(!playing){last=count=slow=fast=0;return 0;}
-    const dt=last?now-last:0;last=now;
-    if(dt<5||dt>600||now<hold)return 0;
-    count++;if(dt>44)slow++;
-    fast=dt<37?fast+1:0;
-    if(count<18)return 0;
-    const old=level;
-    if(slow>=6)level=Math.min(2,level+1);
-    else if(fast>=180)level=Math.max(0,level-1);
-    count=slow=0;
-    if(old===level)return 0;
-    fast=0;hold=now+(level>old?2300:6500);
-    return levels[level];
-  }
-  return {reset,sample};
+// Pixel density and scene detail are independent. The framebuffer also has an
+// area limit so a large Retina monitor cannot silently allocate a 5K MSAA surface.
+const densityCaps=[2,1.5,1];
+const pixelBudgets=[3200000,2100000,1100000];
+export function fieldDensity(tier,width,height,device,scale=1) {
+  const native=Number.isFinite(device)&&device>0?device:1;
+  const area=Math.max(1,width)*Math.max(1,height);
+  return Math.min(native,densityCaps[tier],Math.sqrt(pixelBudgets[tier]/area))*scale;
+}
+
+export function fieldFrameBudget(){
+  const scales=[1,.85,.72,.62];
+  let level=0,previous=null,elapsed=0,frames=0,slow=0,fast=0;
+  function forget(){previous=null;elapsed=frames=slow=fast=0;}
+  return {get scale(){return scales[level];},reset(){level=0;forget();},
+    sample(now,playing,tier){
+      if(!playing){forget();return false;}
+      const dt=previous===null?0:now-previous;previous=now;
+      if(dt<=0||dt>=750){elapsed=frames=slow=fast=0;return false;}
+      elapsed+=dt;frames++;
+      if(elapsed<1500)return false;
+      const mean=elapsed/frames;elapsed=frames=0;
+      slow=mean>1000/26?slow+1:0;
+      fast=mean<(tier===2?35.5:23)?fast+1:0;
+      const old=level;
+      if(slow>=3)level=Math.min(tier===2?3:2,level+1);
+      if(fast>=5)level=Math.max(0,level-1);
+      if(level===old)return false;
+      slow=fast=0;return true;
+    }
+  };
 }

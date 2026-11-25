@@ -1,5 +1,6 @@
-import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-slate4";
-import {towerSight} from "./tower-sight.mjs?v=river-readable-hit1";
+import {bindKeepFinish} from "./keep-light.mjs?v=canyon-keep-lit2";
+import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-keep-lit2";
+import {towerSight} from "./tower-sight.mjs?v=canyon-keep-lit2";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
 // Infantry, heroes and the tower share the same world coordinates as movement and hits.
@@ -23,7 +24,7 @@ export function betweenCameraAndFighter(unit,actor,camera,foot,ground,width,low,
 }
 
 export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
-  const part=()=>({pos:[],rgb:[],uv:[]});
+  const part=()=>({pos:[],rgb:[],uv:[],finish:[]});
   const masonry=part(),tiles=part(),ruin=part();let surface=masonry;
   const palette=new Map();
   const colors=team
@@ -31,6 +32,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
     : {roof:"#284959",edge:"#67a1a2",cloth:"#44b8b0",light:"#d2ffe6"};
   const wooden=new Set(["#69493a","#856848","#784f39","#a77e48"]);
   const carved=new Set(["#4c6265","#a1aba0","#667a76","#8a8977","#c2b793","#8e9483","#b8ac8b","#a59e89","#827e69","#a29b83"]);
+  const brass=new Set(["#d4ac77","#d4b77b","#e0bd79","#c4a777","#ead398"]);
   function tri(a,b,c,color,faceUv=null) {
     if(!palette.has(color))palette.set(color,new T.Color(color));
     const tint=palette.get(color);
@@ -38,16 +40,14 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
     const isRoof=surface===tiles&&color===colors.roof;
     const cell=isRoof?(team?clayTile:jadeTile):wooden.has(color)?timber:carved.has(color)?stone:plain;
     const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
-    const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,length=Math.hypot(nx,ny,nz)||1;
-    const lit=Math.max(0,(-.46*nx+.79*ny+.40*nz)/length);
-    const sky=Math.max(0,ny/length),shade=.48+.40*lit+.16*sky;
+    const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+    const finish=isRoof||surface===tiles&&color===colors.edge?1:wooden.has(color)?2:brass.has(color)?3:color===colors.cloth?4:cell===stone?5:0;
     for(const [i,p] of [a,b,c].entries()){
-      if(!art)surface.rgb.push(tint.r,tint.g,tint.b);
-      else if(cell===plain)surface.rgb.push(tint.r*(shade+.09),tint.g*(shade+.06),tint.b*(shade+.08));
-      else{
-        const shelter=!isRoof&&p[1]>1.45&&p[1]<2.12?.80:1;
-        surface.rgb.push((.89*shade+.075*lit)*shelter,(.91*shade+.04)*shelter,(shade+.075*(1-lit))*shelter);
-      }
+      surface.finish.push(finish);
+      if(!art||cell===plain)surface.rgb.push(tint.r,tint.g,tint.b);
+      else if(cell===timber){const warm=color==="#69493a"?.68:1;surface.rgb.push(warm,.93*warm,.84*warm);}
+      else if(cell===stone){const tone=.72+.29*tint.g;surface.rgb.push(tone,.99*tone,.95*tone);}
+      else surface.rgb.push(.93,.97,.96);
       if(faceUv){addUv(surface.uv,cell,...faceUv[i]);continue;}
       if(cell===plain){addUv(surface.uv,plain,.5,.5);continue;}
       const horizontal=Math.abs(ny)>Math.max(Math.abs(nx),Math.abs(nz));
@@ -67,11 +67,23 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
   }
   function cap(row,col){for(let i=1;i<row.length-1;i++)tri(row[0],row[i+1],row[i],col);}
   function cylinder(x,z,y1,y2,r1,r2,color,n=8) {
-    const a=ring(x,y1,z,r1,r1,n),b=ring(x,y2,z,r2,r2,n);connect(a,b,color);cap(b,color);
+    const a=ring(x,y1,z,r1,r1,n);
+    if(y2-y1>.16&&carved.has(color)){
+      const bevel=.042,b=ring(x,y2-bevel,z,r2,r2,n),lip=ring(x,y2,z,r2-bevel,r2-bevel,n);
+      connect(a,b,color);connect(b,lip,color);cap(lip,color);return;
+    }
+    const b=ring(x,y2,z,r2,r2,n);connect(a,b,color);cap(b,color);
   }
   function beam(x,y,z,w,h,d,color){
-    const r=[[x-w/2,y,z-d/2],[x+w/2,y,z-d/2],[x+w/2,y,z+d/2],[x-w/2,y,z+d/2]];
-    const top=r.map(([xx,yy,zz])=>[xx,yy+h,zz]);connect(r,top,color);cap(top,color);
+    const bevel=carved.has(color)?Math.min(.054,w*.12,h*.19,d*.12):wooden.has(color)?Math.min(.019,w*.08,d*.08):0;
+    const outline=(yy,inset)=>{
+      const a=w/2-inset,b=d/2-inset,cut=Math.max(0,bevel-inset*.5);
+      return [[-a+cut,-b],[a-cut,-b],[a,-b+cut],[a,b-cut],[a-cut,b],[-a+cut,b],[-a,b-cut],[-a,-b+cut]]
+        .filter((_,i)=>cut>0||i%2===0).map(([dx,dz])=>[x+dx,yy,z+dz]);
+    };
+    const bottom=outline(y,0),rim=outline(y+h-bevel,0);
+    connect(bottom,rim,color);
+    if(bevel){const top=outline(y+h,bevel*.62);connect(rim,top,color);cap(top,color);}else cap(rim,color);
   }
   function roof(y,rise,span){
     surface=tiles;
@@ -81,7 +93,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
     });
     const lip=loop(span,0,.19),trim=loop(span,.085,.19),mid=loop(span*.67,rise*.24,.04),crown=loop(span*.17,rise,0);
     const underside=loop(span*.88,-.07,.145);
-    connect(underside,lip,"#735a45");connect(lip,trim,colors.edge);
+    cap(underside,"#69493a");connect(underside,lip,"#735a45");connect(lip,trim,colors.edge);
     const skin=(lower,upper,v0,v1,lowerWidth,upperWidth)=>{
       for(let i=0;i<8;i++){
         const j=(i+1)%8,u0=(i%2)*.5,u1=u0+.5;
@@ -178,17 +190,20 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
     const a=i*2.399,x=Math.cos(a)*span*.73,z=Math.sin(a)*span*.68,w=.26+(i%3)*.08;
     beam(x,.13,z,w,.12+(i%3)*.08,w*.76,i%3?colors.roof:"#a29b83");
   }
+  const slot=core?3:tier;
+  art?.keepRelief?.bake(slot,[masonry.pos,tiles.pos]);art?.keepRelief?.bake(slot+4,[ruin.pos]);
   function mesh(part,roof=false){
     const g=new T.BufferGeometry();g.setAttribute("position",new T.Float32BufferAttribute(part.pos,3));
     g.setAttribute("color",new T.Float32BufferAttribute(part.rgb,3));g.computeVertexNormals();g.computeBoundingSphere();
-    if(art)g.setAttribute("uv",new T.Float32BufferAttribute(part.uv,2));
+    if(art){g.setAttribute("uv",new T.Float32BufferAttribute(part.uv,2));g.setAttribute("keepMaterial",new T.Float32BufferAttribute(part.finish,1));}
     if(roof&&!art){const c=g.attributes.color,n=g.attributes.normal;for(let i=0;i<c.count;i++){
       const shade=.73+.26*Math.max(0,n.getY(i))+.095*Math.abs(n.getX(i)-n.getZ(i));
       c.setXYZ(i,c.getX(i)*shade,c.getY(i)*shade,c.getZ(i)*shade);
     }}
     indexStoneFaces(T,g);
-    const mat=art?art.bind(new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide})):roof?new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide}):
+    const mat=art?art.bind(new T.MeshStandardMaterial({vertexColors:true,roughness:.78,metalness:.01,side:T.DoubleSide})):roof?new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide}):
       new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.035,side:T.DoubleSide});
+    if(art?.keepRelief)bindKeepFinish(T,mat,art.keepRelief,part===ruin?slot+4:slot);
     const mesh=new T.Mesh(g,mat);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
   const frame=mesh(masonry),roofMesh=mesh(tiles,true),debris=mesh(ruin);debris.visible=false;

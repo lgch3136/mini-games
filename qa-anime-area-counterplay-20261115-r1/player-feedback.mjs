@@ -74,10 +74,17 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
         if(coin){coin.toX=player.x;coin.toZ=player.z;}
         caption(player.x,player.z,t,"补刀 +"+e.coins,"coin",1.74);continue;
       }
+      if(e.type==="dash"&&e.hero===4&&!e.unknownOrigin){
+        const dx=e.targetX-e.fromX,dz=e.targetZ-e.fromZ;
+        push("rocket",e.fromX,e.fromZ,Math.atan2(dx,dz),t,.22,"#eddfb3",Math.hypot(dx,dz));
+      }
       if(!own&&e.target!==player.id)continue;
       if(e.type==="hit"&&e.damage>0){
         const shade=own?hue:"#ff8a7d";
-        push("impact",e.targetX,e.targetZ,e.face||0,t,.19,shade,e.targetKind==="tower"?1.35:1);
+        const contact=Number.isInteger(e.punchIndex)&&!e.unknownOrigin;
+        const burst=push("impact",contact?e.contactX:e.targetX,contact?e.contactZ:e.targetZ,
+          e.face||0,t,.19,shade,e.targetKind==="tower"?1.35:1);
+        if(contact&&burst)burst.lift=e.contactHeight;
         const heroName=own&&e.targetKind==="hero"?(roster[e.targetHero]?.name||"敌将"):"";
         const kind=heroName?"hero-hit":!own?"taken":e.targetKind==="minion"?"minion-hit":"dealt";
         const lift=heroName?2.16:e.targetKind==="tower"?2.8:kind==="minion-hit"?1.04:1.56;
@@ -87,7 +94,7 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
         const dx=e.targetX-e.fromX,dz=e.targetZ-e.fromZ,length=Math.hypot(dx,dz)||1;
         const near=Math.min(3.3,length)/length;
         caption(e.fromX+dx*near,e.fromZ+dz*near,t,"落空","missed",1.12);
-      }else if(own&&e.type==="miss"&&e.shotKind==="ki"){
+      }else if(own&&e.type==="miss"&&(e.shotKind==="ki"||e.shotKind==="fist")){
         caption(e.x,e.z,t,"落空","missed",1.24);
       }else if(own&&e.type==="windup"&&e.actionKind==="attack"){
         push("ready",e.x,e.z,e.face||0,t,e.windup,hue,player.radius);
@@ -147,10 +154,14 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
         line(loc(front-.42,spread*.62,.80),loc(front,spread,1.03+.07*u),.071*fade+.014,f.hue,fade);
         line(loc(front,spread,1.03+.07*u),loc(front+.17,spread*1.67,1.10+.17*u),.050*fade+.010,f.hue,fade*.82);
       }
+    }else if(f.kind==="rocket"){
+      const end=f.reach*(.7+.28*u),tail=f.reach*(.18+.71*u);
+      for(const side of [-1,1])line(loc(tail,side*(.25+.24*u),.84),loc(end,side*.20,.97),
+        .048*fade+.009,f.hue,.61*fade);
     }else if(f.kind==="impact"){
       for(let j=0;j<6;j++){
         const a=j*1.047+.20,l=(.25+.54*u)*(j%2?.82:1.18)*f.reach;
-        const h=.89+(j%3)*.11;
+        const h=(f.lift??.89)+(j%3)*.11;
         line(loc(Math.cos(a)*l*.35,Math.sin(a)*l*.35,h),loc(Math.cos(a)*l,Math.sin(a)*l,h+.16+u*.13),.067*fade+.012,j%2?f.hue:"#fff4ce",fade);
       }
     }else{

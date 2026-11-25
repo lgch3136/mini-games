@@ -114,7 +114,9 @@ export function battleLight(T,height){
             slot===2?4.4:3.2,ink,slot===2?1.03:.84,time,slot===2?.42:.23);
         }
       }else if(e.type==="hit"&&slot>=0&&e.damage>0){
-        pulse(e.targetX,e.targetZ,.91,e.hero===4?1.46:slot===2?3.1:2.28,ink,e.hero===4?.26:.69,time,e.hero===4?.14:.25);
+        const fist=Number.isInteger(e.punchIndex);
+        pulse(fist?e.contactX:e.targetX,fist?e.contactZ:e.targetZ,fist?e.contactHeight:.91,
+          e.hero===4?1.46:slot===2?3.1:2.28,ink,e.hero===4?.26:.69,time,e.hero===4?.14:.25);
       }
     }
     winners[0].score=winners[1].score=0;

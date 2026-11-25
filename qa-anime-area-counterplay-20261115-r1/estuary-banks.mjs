@@ -1,5 +1,5 @@
 import {streams,routes,along,measure,floorHeight} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {addUv,slate} from "./field-architecture.mjs?v=canyon-slate4";
+import {addUv,slate} from "./field-architecture.mjs?v=canyon-keep-lit2";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 
 const wave=(a,b)=>.5+.5*Math.sin(a*8.346+b*13.36);

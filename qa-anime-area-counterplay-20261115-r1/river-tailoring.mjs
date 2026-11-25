@@ -118,7 +118,7 @@ export function paintedUniform(T,hero,hip,attach) {
 // A closed hand has one heel and one knuckle plane. The thumb folds across
 // the index finger, and its root and the palm both turn with the wrist.
 export function handForm(T,arm,attach,skin,side,hero,y) {
-  const pos=[],idx=[],shade=[],scale=hero===3?1.12:hero===4?1.02:.97;
+  const pos=[],idx=[],shade=[],scale=hero===3?1.12:hero===4?1.29:.97;
   const casting=hero===3&&side===1, joints=[];
   const power=(v,e)=>Math.sign(v)*Math.abs(v)**e;
   function vertex(x,h,z,gain){

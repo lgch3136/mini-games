@@ -1,4 +1,4 @@
-import {spellTint} from "./surface-impact.mjs?v=canyon-palm1";
+import {spellTint} from "./surface-impact.mjs?v=canyon-keep-lit2";
 // Directional bolts, cart shells and hero shots follow the same live simulation positions.
 // Each shape occupies at most one instanced draw regardless of the size of the wave.
 function laneShotGeometry(T,kind){

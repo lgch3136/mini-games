@@ -29,7 +29,8 @@ function drawPositions(list,memory,out,alpha){
     const action=current.action;
     if(action&&action===old.action){
       if(old.actionOwner!==action){old.actionOwner=action;old.drawAction=Object.create(action);}
-      const elapsed=old.elapsed+(action.elapsed-old.elapsed)*alpha;
+      let elapsed=old.elapsed+(action.elapsed-old.elapsed)*alpha;
+      if(action.punchLastContact>old.elapsed)elapsed=Math.max(elapsed,action.punchLastContact);
       old.drawAction.elapsed=action.resolved?Math.max(action.windup,elapsed):elapsed;
       view.action=old.drawAction;
     }else view.action=action;

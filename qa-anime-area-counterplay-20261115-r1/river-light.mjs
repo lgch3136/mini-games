@@ -1,4 +1,4 @@
-import {bindImpact} from "./surface-impact.mjs?v=canyon-palm1";
+import {bindImpact} from "./surface-impact.mjs?v=canyon-keep-lit2";
 // Low-power opaque geometry shares vertex lighting. The ordinary texture, fog and colour pipeline stays intact.
 export function riverLight(T) {
   const saved=new WeakMap();
@@ -60,5 +60,8 @@ export function riverLight(T) {
 }
 export function firstRiverTier(store,nav,coarse) {
   try{const raw=store?.getItem("river-court-picture-v1");if(raw==="0"||raw==="1"||raw==="2")return Number(raw);}catch{}
-  return coarse||Number(nav?.deviceMemory)>0&&nav.deviceMemory<=4?2:1;
+  const memory=Number(nav?.deviceMemory)||0,cores=Number(nav?.hardwareConcurrency)||0;
+  const constrained=memory>0&&memory<=2||cores>0&&cores<=2||
+    coarse&&memory>0&&memory<=4&&cores>0&&cores<=4;
+  return constrained||nav?.connection?.saveData?2:1;
 }

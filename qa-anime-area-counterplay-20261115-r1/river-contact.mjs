@@ -144,8 +144,9 @@ export function contactShadows(T, scene, floor, modelFor) {
           }
         }
         if(!enabled)continue;
+        if(unit.kind==="tower"||unit.kind==="core")continue;
         let r=unit.radius;
-        if(unit.kind==="hero")r*=1.26;else if(unit.kind==="tower"||unit.kind==="core")r*=1.08;else r*=1.14;
+        if(unit.kind==="hero")r*=1.26;else r*=1.14;
         placement.makeScale(r*1.28,1,r*.78);
         placement.setPosition(unit.x+r*.18,floor(unit.x,unit.z)+.046,unit.z-r*.12);
         weight.setX(count,rig?.legs?.length===2?.55:1);mesh.setMatrixAt(count++,placement);

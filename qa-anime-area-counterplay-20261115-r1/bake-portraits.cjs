@@ -7,7 +7,7 @@ const {createCanvas,Path2D}=require("@napi-rs/canvas");
 global.Path2D=Path2D;
 global.document={createElement:()=>createCanvas(1,1)};
 const here=__dirname,dir=pathToFileURL(here+"/");
-const W=320,H=400,texels=new WeakMap();
+const W=480,H=600,texels=new WeakMap();
 function tex(map){
   if(!map)return null;
   if(!texels.has(map)){const c=map.image;texels.set(map,c.getContext("2d").getImageData(0,0,c.width,c.height));}
@@ -118,7 +118,7 @@ function photograph(T,model,hero,full=false){
       }
     }
   });
-  const gather=[[-4,-7],[-1,-10],[4,-6],[-8,0],[4,2],[-2,5]];
+  const gather=[[-4,-7],[-1,-10],[4,-6],[-8,0],[4,2],[-2,5]].map(pair=>pair.map(offset=>Math.round(offset*W/320)));
   for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
     const i=y*W+x,z=depth[i];if(!Number.isFinite(z))continue;
     let contact=0;
@@ -175,12 +175,13 @@ function drawAbility(ctx,i,cell){
     const lib=await import(new URL(m[2],dir));for(const n of m[1].split(",").map(k=>k.trim()))deps[n]=lib[n];
   }
   const sheet=await deps.readFaceSheet(T),build=new Function("sharedFaceSheet",...Object.keys(deps),s.slice(s.indexOf("function Fe("),s.indexOf("function rt("))+";return Fe;")(sheet,...Object.values(deps));
-  const strip=createCanvas(5*224,560),paint=strip.getContext("2d");paint.imageSmoothingEnabled=true;paint.imageSmoothingQuality="high";
+  const cellW=352,cellH=440;
+  const strip=createCanvas(5*cellW,2*cellH),paint=strip.getContext("2d");paint.imageSmoothingEnabled=true;paint.imageSmoothingQuality="high";
   for(let i=0;i<5;i++){
-    const rig=build(T,i,0);paint.drawImage(photograph(T,rig,i),224*i,0,224,280);
-    paint.drawImage(photograph(T,rig,i,true),224*i,280,224,280);rig.disposeSkin?.();
+    const rig=build(T,i,0);paint.drawImage(photograph(T,rig,i),cellW*i,0,cellW,cellH);
+    paint.drawImage(photograph(T,rig,i,true),cellW*i,cellH,cellW,cellH);rig.disposeSkin?.();
   }
-  writeFileSync(join(here,"assets/canyon-palm-portraits.webp"),strip.encodeSync("webp",94));
+  writeFileSync(join(here,"assets/canyon-strawhat-portraits.webp"),strip.encodeSync("webp",94));
   const icons=createCanvas(512,512),ctx=icons.getContext("2d");
   for(let i=0;i<16;i++){ctx.save();ctx.translate(i%4*128,Math.floor(i/4)*128);drawAbility(ctx,i,128);ctx.restore();}
   writeFileSync(join(here,"assets/canyon-glyphs.webp"),icons.encodeSync("webp",94));

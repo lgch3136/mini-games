@@ -3,8 +3,9 @@ import {addReeds} from "./river-reeds.mjs?v=canyon-palm1";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
-import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-palm1";
+import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-keep-lit2";
 export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
+  let filterLevel=1;
   const p=[],uv=[],kind=[],flat=[],ix=[],flow=[],n=73;
   const bridgeRoad=routes[1],bridgeCentre=measure(bridgeRoad,0,0).at;
   const middleOfRiver=measure(streams,0,0).at;
@@ -157,10 +158,10 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
   },start(){
     if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/canyon-seeded-ground.webp",import.meta.url).href).then(image=>{
       if(closed){image.dispose();return;}
-      texture=image;image.colorSpace=T.NoColorSpace;image.anisotropy=1;uniforms.field.value=image;uniforms.ready.value=1;
+      texture=image;image.colorSpace=T.NoColorSpace;image.anisotropy=filterLevel;uniforms.field.value=image;uniforms.ready.value=1;
     }).catch(()=>{});
     return loading;
-  },setTier:tier=>sun.tier(tier),tick(time,tier){uniforms.time.value=time%2048;uniforms.motion.value=tier<2?1:0;},
+  },filter(level){filterLevel=level;if(texture&&texture.anisotropy!==level){texture.anisotropy=level;texture.needsUpdate=true;}},setTier:tier=>sun.tier(tier),tick(time,tier){uniforms.time.value=time%2048;uniforms.motion.value=tier<2?1:0;},
   dispose(){closed=true;mesh.removeFromParent();g.dispose();texture?.dispose();blank.dispose();sun.dispose();mat.dispose();}};
 }
 export function estuaryStonework(T){
@@ -230,7 +231,7 @@ export function estuaryStonework(T){
   const mesh=new T.Mesh(g,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   mesh.userData.cull=fieldVisibility(T,g);return mesh;
 }
-export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-palm1";
+export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-keep-lit2";
 export function fieldMini(ctx,width,height){
   const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height,unit=width/(2*extent);
   const land=ctx.createRadialGradient(width*.45,height*.52,0,width*.5,height*.5,width*.71);

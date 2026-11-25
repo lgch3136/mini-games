@@ -1,7 +1,8 @@
 import {actorStrides,footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
-import {bindImpact} from "./surface-impact.mjs?v=canyon-palm1";
-import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-kipalm2";
+import {bindImpact} from "./surface-impact.mjs?v=canyon-keep-lit2";
+import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-keep-lit2";
 import {skullBand} from "./character-plates.mjs?v=canyon-clavicle1";
+import {elasticHands} from "./elastic-arm.mjs?v=canyon-keep-lit2";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };
 
@@ -171,6 +172,7 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
     wrist.add(fingers,thumb);fingers.add(tips);bones.push(fingers,tips,thumb);
     palm=new T.Object3D();palm.name="气弹掌心";palm.position.set(-.008,-.098,.084);wrist.add(palm);
   }
+  const elastic=hero===4?elasticHands(T,root,body,arms,legs,joints,wrists,bones,shoulders):null;
   root.updateWorldMatrix(true,true);
   const skeleton=new T.Skeleton(bones);
   // Finger signs stay switchable, with their root attached to the moving forearm.
@@ -208,12 +210,18 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
         const pivot=limb<2?elbowY:kneeY;
         w=ease((pivot+.064-local.y)/.128);
         second=7+limb;
-        if(ribcage && limb<2 && geom.userData.handJoint){
+        if(elastic&&limb>=2&&mesh.userData.sandal){
+          second=elastic.sandals[limb-2];w=1;
+        }else if(ribcage && limb<2 && geom.userData.handJoint){
           const finger=attr.castFinger?.getX(j)||0;
           second=finger?fingerIndex+finger-1:wristIndex+limb;w=1;
         }
         else if(ribcage && limb<2 && attr.chestWeight && local.y<handY+.12){
           first=7+limb;second=wristIndex+limb;w=ease((handY+.12-local.y)/.085);
+        }
+        else if(elastic&&limb<2&&attr.chestWeight&&local.y<elbowY-.055){
+          const span=elbowY-.055-(handY+.12),along=bound((elbowY-.055-local.y)/span);
+          first=7+limb;second=elastic.bends[limb];w=Math.sin(Math.PI*along)**2;
         }
       }else if(ribcage && bind===1){
         local.copy(point).applyMatrix4(hipRest);
@@ -251,7 +259,7 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
   material.onBeforeCompile=shader=>bindImpact(shader,material);material.customProgramCacheKey=()=>"field-sculpted-finish-v1";
   const skin=new T.SkinnedMesh(g,material);skin.name="骨架角色";skin.castShadow=true;skin.receiveShadow=true;
   root.add(skin);skin.bind(skeleton);
-  skin.boundingSphere=g.boundingSphere.clone();skin.boundingSphere.radius+=2.2;
+  skin.boundingSphere=g.boundingSphere.clone();skin.boundingSphere.radius+=elastic?elastic.reach+.4:2.2;
   const ready=[[-.62,-.80],[-.68,-.87],[-.40,-1.02],[-.95,-.93],[-.60,-.69]][hero];
   const travelFeet=[{},{}];
   const sockets=arms.map(arm=>arm.position.clone()),axis=new T.Vector3(),pivot=new T.Vector3(0,.23,0);
@@ -319,6 +327,7 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
     }
     joints[0].rotation.set(ready[0]+beat*w*.17-coil*left*.72+release*left*.56,0,-.08);
     joints[1].rotation.set(ready[1]-beat*w*.17-coil*right*.78+release*right*.73,0,.08);
+    elastic?.reset(action?.kind==="skill"&&(action.skillIndex===0||action.skillIndex===2));
     if(ribcage)upperMotion(beat,w,action,coil,release);
     for(let side=0;side<2;side++){
       const hinge=joints[side+2], leg=legs[side];
@@ -333,5 +342,5 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
       hinge.rotation.x+=(track.knee-restKnee)*mix;
     }
   }
-  return {pose,joints,skin,palm,facePalm,dispose(){skeleton.dispose();}};
+  return {pose,joints,skin,palm,facePalm,brace:elastic?.brace,strike:elastic?.strike,knuckles:elastic?.knuckles,dispose(){skeleton.dispose();}};
 }

@@ -3,7 +3,9 @@ export function towerSight(T,material){
   const maximum=3,projected=new T.Vector3(),behind=new Float32Array(maximum);
   const ovals=Array.from({length:maximum},()=>new T.Vector4());
   const count={value:0};
-  material.onBeforeCompile=shader=>{
+  const before=material.onBeforeCompile,program=material.customProgramCacheKey();
+  material.onBeforeCompile=(shader,renderer)=>{
+    before.call(material,shader,renderer);
     shader.uniforms.keepCount=count;
     shader.uniforms.keepOvals={value:ovals};
     shader.uniforms.keepFighterDepth={value:behind};
@@ -28,7 +30,7 @@ if(keepCount>0){
   }
 }`);
   };
-  material.customProgramCacheKey=()=>"river-tower-fighter-cut-2";
+  material.customProgramCacheKey=()=>program+"-tower-fighter-cut-2";
   return {count,clear(){count.value=0;},add(actor,ground,camera,canvas){
     if(count.value>=maximum||!canvas.width||!canvas.height)return;
     const height=actor.kind==="minion"?1.70:actor.hero===1?2.40:2.80;
