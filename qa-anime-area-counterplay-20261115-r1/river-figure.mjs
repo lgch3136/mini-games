@@ -1,5 +1,5 @@
 import {actorStrides,footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
-import {bindImpact} from "./surface-impact.mjs?v=river-sun-poses1";
+import {bindImpact} from "./surface-impact.mjs?v=canyon-riverlight2";
 import {paintedCheeks} from "./river-tailoring.mjs?v=field-sculpt1";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };

@@ -66,19 +66,38 @@ export function castGadget(match,actor,slot,action,context){
 
 export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
   const tip=new T.Vector3();
-  const ringGeometry=new T.TorusGeometry(1,.075,5,28);
+  const ringGeometry=new T.RingGeometry(.54,1,48,3);
+  const rim=ringGeometry.attributes.position;
+  for(let i=0;i<rim.count;i++){
+    const radius=Math.hypot(rim.getX(i),rim.getY(i));
+    rim.setZ(i,.45*Math.sqrt(Math.max(0,1-radius*radius)));
+  }
   function ring(){
-    const material=new T.MeshBasicMaterial({color:0xb8f7ff,transparent:true,opacity:0,depthWrite:false});
-    const mesh=new T.Mesh(ringGeometry,material);mesh.visible=false;scene.add(mesh);return mesh;
+    const material=new T.RawShaderMaterial({glslVersion:T.GLSL3,side:T.DoubleSide,transparent:true,depthWrite:false,
+      uniforms:{age:{value:0},force:{value:0}},vertexShader:`precision highp float;
+      in vec3 position;uniform mat4 modelViewMatrix,projectionMatrix;out vec2 disk;
+      void main(){disk=position.xy;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+      fragmentShader:`precision mediump float;in vec2 disk;out vec4 ink;uniform float age,force;
+      void main(){
+        float r=length(disk),aa=max(.014,fwidth(r)),edge=1.-smoothstep(.025,.071+aa,abs(r-.88));
+        float inner=1.-smoothstep(.019,.068+aa,abs(r-.65));
+        vec2 n=disk/max(.01,r);float crescent=smoothstep(-.48,.82,dot(n,vec2(-.66,.75)));
+        float side=smoothstep(-.20,.79,dot(n,vec2(.83,-.56)));
+        float film=(1.-smoothstep(.12,.25,abs(r-.78)))*.16;
+        float light=edge*(.20+.79*crescent)+inner*.48*side;
+        vec3 col=mix(vec3(.07,.42,.55),vec3(.88,1.,1.),light);
+        ink=vec4(col,(film+light)*(.49+.45*force)*(1.-age)*(1.-.25*age));}`});
+    const mesh=new T.Mesh(ringGeometry,material);mesh.visible=false;mesh.name="空气炮弧形波前";scene.add(mesh);return mesh;
   }
   let doorShapes=null;
   function doorGeometry(){
-    const frame={p:[],c:[]},door={p:[],c:[]};
+    const frame={p:[],c:[],glass:[]},door={p:[],c:[],glass:[]};
     const trim=0xe7689e,edge=0xffb3cc,pink=0xef91b8,inset=0xcf578a,sky=0x9be5ed,key=0xf5ce62;
     function box(part,x,y,z,w,h,d,tint){
       const geo=new T.BoxGeometry(w,h,d),pos=geo.attributes.position,normal=geo.attributes.normal,col=new T.Color(tint);
       for(const i of geo.index.array){
         part.p.push(x+pos.getX(i),y+pos.getY(i),z+pos.getZ(i));
+        part.glass.push(tint===sky&&normal.getZ(i)>.5?1:0);
         const shade=.87+.10*normal.getY(i)+.12*normal.getZ(i)-.06*normal.getX(i);
         part.c.push(col.r*shade,col.g*shade,col.b*shade);
       }
@@ -90,15 +109,37 @@ export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
     box(door,.42,.71,0,.84,1.40,.082,pink);
     for(const h of [.42,1.09])box(door,.43,h,.044,.63,h>.7?.46:.50,.015,inset);
     box(door,.72,.74,.088,.093,.077,.065,key);
+    box(door,.665,.744,.124,.154,.038,.042,0xffdf86);
+    for(const h of [.24,1.19])box(door,.019,h,.018,.045,.15,.085,0xc29f69);
     return [frame,door].map(part=>{const g=new T.BufferGeometry();g.setAttribute("position",new T.Float32BufferAttribute(part.p,3));
+      g.setAttribute("gateGlass",new T.Float32BufferAttribute(part.glass,1));
       g.setAttribute("color",new T.Float32BufferAttribute(part.c,3));g.computeBoundingSphere();return g;});
   }
   function makeDoor(){
     doorShapes??=doorGeometry();
     const group=new T.Group(),material=new T.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false});
+    const phase={value:0};
+    material.onBeforeCompile=shader=>{
+      shader.uniforms.gatePhase=phase;
+      shader.vertexShader="attribute float gateGlass;varying vec3 glassCoord;\n"+shader.vertexShader.replace(
+        "#include <begin_vertex>","#include <begin_vertex>\nglassCoord=vec3(position.xy,gateGlass);");
+      shader.fragmentShader="varying vec3 glassCoord;uniform float gatePhase;\n"+shader.fragmentShader.replace(
+        "#include <color_fragment>",`#include <color_fragment>
+        if(glassCoord.z>.5){
+          vec2 q=vec2(glassCoord.x/.425,(glassCoord.y-.82)/.705);
+          float frame=max(abs(q.x),abs(q.y));
+          float lip=smoothstep(.82,1.,frame);
+          float vault=length((q-vec2(-.24,.19))*vec2(1.15,.72));
+          float arch=1.-smoothstep(.026,.092,abs(vault-.65-.075*sin(gatePhase*4.)));
+          float passage=smoothstep(-.76,.78,q.y-.24*q.x);
+          diffuseColor.rgb=mix(vec3(.019,.049,.110),vec3(.115,.31,.37),passage)
+            +arch*vec3(.066,.14,.13)+lip*vec3(.24,.42,.36);
+        }`);
+    };
+    material.customProgramCacheKey=()=>"gadget-door-lit-v1";
     const frame=new T.Mesh(doorShapes[0],material),hinge=new T.Mesh(doorShapes[1],material);
     group.add(frame,hinge);hinge.position.set(-.42,.07,.025);group.visible=false;scene.add(group);
-    return {group,hinge,material,start:-100};
+    return {group,hinge,material,phase,start:-100};
   }
   const winds=[],doors=[];
   const pressureSlots=Array(12);
@@ -173,8 +214,9 @@ export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
           if(socket)socket.userData.airReleaseAt=time;
         }
         const slot=windCursor++%9,r=winds[slot]??={mesh:ring(),start:-100};
-        Object.assign(r,{start:time,life:strong?.19:.17,angle,x,z,lift:from?from.y-land(x,z):.86,atTip:!!from,
-          range:strong?2.15:1.4,width:strong?.43:.245});
+        Object.assign(r,{start:time,life:strong?.245:.16,angle,x,z,lift:from?from.y-land(x,z):.86,atTip:!!from,
+          range:strong?3.75:1.25,width:strong?.55:.25});
+        r.mesh.material.uniforms.force.value=strong?1:0;
         r.mesh.rotation.set(0,angle,0);
       }else if(e.type==="airPush"){
         remember("contact",e,time);
@@ -192,13 +234,14 @@ export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
       const t=(time-r.start)/r.life;r.mesh.visible=t>=0&&t<1;
       if(!r.mesh.visible)continue;
       const distance=(r.atTip?0:.43)+r.range*t,x=r.x+Math.sin(r.angle)*distance,z=r.z+Math.cos(r.angle)*distance;
-      r.mesh.position.set(x,land(x,z)+r.lift,z);r.mesh.scale.setScalar(r.width*(.62+t));
-      r.mesh.material.opacity=.64*(1-t);
+      r.mesh.position.set(x,land(x,z)+r.lift,z);r.mesh.scale.setScalar(r.width*(.66+1.05*t));
+      r.mesh.material.uniforms.age.value=t;
     }
     for(const d of doors){
       const t=(time-d.start)/.91;d.group.visible=t>=0&&t<1;
       if(!d.group.visible)continue;
       d.group.scale.setScalar(Math.min(1,.32+t*7));d.hinge.rotation.y=-1.53*Math.min(1,t*5);
+      d.phase.value=t;
       d.material.opacity=Math.min(1,(1-t)*4);
     }
   }

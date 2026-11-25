@@ -3,9 +3,16 @@ import {addReeds} from "./river-reeds.mjs?v=team-vision1";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
-export function estuaryFloor(T,scene){
-  const p=[],uv=[],kind=[],flat=[],ix=[],n=73;
+import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-riverlight2";
+export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
+  const p=[],uv=[],kind=[],flat=[],ix=[],flow=[],n=73;
   const bridgeRoad=routes[1],bridgeCentre=measure(bridgeRoad,0,0).at;
+  const middleOfRiver=measure(streams,0,0).at;
+  function streamCoords(x,z,wet){
+    if(wet>5.5){flow.push(0,0);return;}
+    const at=measure(streams,x,z).at,axis=along(streams,at),bank=along(streams,at,1);
+    flow.push(at-middleOfRiver,(x-axis.x)*(bank.x-axis.x)+(z-axis.z)*(bank.z-axis.z));
+  }
   const classes=terrainPaint()[3];
   const fallbacks=[[.42,.54,.31],[.73,.69,.56],[.28,.58,.56]];
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
@@ -20,6 +27,7 @@ export function estuaryFloor(T,scene){
       y-=.16*width*length;
     }
     p.push(x,y,z);uv.push(u,1-v);kind.push(bridge?9:wet);
+    streamCoords(x,z,wet);
     flat.push(...fallbacks[classes[cell]&3]);
     if(i<n-1&&j<n-1){const a=j*n+i;ix.push(a,a+n,a+1,a+1,a+n,a+n+1);}
   }
@@ -39,6 +47,7 @@ export function estuaryFloor(T,scene){
       const hill=reach*(.036+.027*Math.sin(x*.28+z*.16))+.18*Math.sin(wx*.40-wz*.36);
       outside.push(p.length/3);p.push(wx,p[edge*3+1]+land*hill,wz);
       uv.push((sx/extent+1)/2,(1-sz/extent)/2);kind.push(wet);
+      streamCoords(sx,sz,wet);
       flat.push(...fallbacks[land>.3?0:2]);
     }
     for(let i=0;i<inside.length;i++){
@@ -49,32 +58,58 @@ export function estuaryFloor(T,scene){
   }
   const g=new T.BufferGeometry();g.setIndex(ix);g.setAttribute("position",new T.Float32BufferAttribute(p,3));g.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
   g.setAttribute("river",new T.Float32BufferAttribute(kind,1));g.setAttribute("fallback",new T.Float32BufferAttribute(flat,3));
+  g.setAttribute("flowCoord",new T.Float32BufferAttribute(flow,2));
   const exposure=new T.Uint8BufferAttribute(new Uint8Array(p.length/3).fill(255),1,true).setUsage(T.DynamicDrawUsage);
   g.setAttribute("exposure",exposure);let lastField=null,fieldRevision=-1;
   const blank=new T.DataTexture(new Uint8Array([205,206,169,255]),1,1);blank.needsUpdate=true;
-  const uniforms={field:{value:blank},ready:{value:0},time:{value:0},motion:{value:0}};
+  const uniforms={field:{value:blank},ready:{value:0},time:{value:0},motion:{value:0},...lighting.uniforms};
   const mat=new T.RawShaderMaterial({uniforms,glslVersion:T.GLSL3,toneMapped:false,
     vertexShader:`precision highp float;
     in vec3 position,fallback;in vec2 uv;in float river;
+    in vec2 flowCoord;
     in float exposure;out lowp float sight;
-    uniform mat4 modelViewMatrix,projectionMatrix;uniform float time,motion;
+    uniform mat4 modelViewMatrix,projectionMatrix;uniform highp float time,motion;
+    ${spellVertex}
     out mediump vec2 coord;out lowp vec3 base;out lowp vec3 reflection;
+    out mediump vec3 current;out lowp vec3 castLight;out mediump vec2 crest;
     void main(){
       coord=uv;base=fallback;reflection=vec3(0.);sight=exposure;
-      if(river<3.05&&motion>.5){
-        vec2 p=position.xz;
-        float glint=smoothstep(.14,.99,sin(p.x*.96+p.y*1.41-time*1.53))*smoothstep(.12,.98,sin(p.x*1.25-p.y*.71+time*.39));
-        float shore=1.-smoothstep(.06,.49,abs(river-2.47-.14*sin(p.x+time*.83)));
-        reflection=vec3(.017,.037,.028)*glint+vec3(.048,.048,.032)*shore;
+      current=vec3(flowCoord,river);
+      castLight=spellAt(position,vec3(0.,1.,0.));
+      crest=vec2(0.);
+      if(river<4.6){
+        float travel=time*motion;
+        crest=sin(vec2(current.x*.88+current.y*.42-travel*.62,current.x*2.03+current.y*.85-travel*.63));
+        float leafShade=.5+.5*sin(current.x*.46+current.y*.24);
+        float depth=1.-smoothstep(.95,3.02,river);
+        reflection=mix(vec3(-.040,-.036,-.012),vec3(-.049,-.009,.013),leafShade)*depth;
       }
       gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);
     }`,
     fragmentShader:`precision mediump float;
-    uniform sampler2D field;uniform float ready;
+    uniform sampler2D field;uniform float ready;uniform highp float time,motion;
     in mediump vec2 coord;in lowp vec3 base,reflection;in lowp float sight;out vec4 paint;
+    in mediump vec3 current;in lowp vec3 castLight;in mediump vec2 crest;
     void main(){
       vec3 colour=ready>.5?texture(field,coord).rgb:base;
       vec3 daylight=colour+reflection;
+      if(current.z<3.10){
+        float along=current.x,across=current.y,depth=1.-smoothstep(.65,2.95,current.z);
+        float travel=motion*time;
+        float bends=crest.x;
+        float ribbons=across*2.12+along*.41+bends*.26-travel*.44;
+        float folded=abs(fract(ribbons)-.5);
+        float edge=max(.035,fwidth(ribbons)*.8);
+        float groups=1.-2.*abs(fract(along*.346+bends*.22+travel*.042)-.5);
+        float glimmer=(1.-smoothstep(.025,.025+edge,folded))*smoothstep(.57,.88,groups);
+        float ripple=crest.y;
+        float wetLip=(1.-smoothstep(.035,.20,abs(current.z-2.28-.075*ripple)))*
+          smoothstep(-.46,.68,bends+.26*ripple);
+        float pool=1.-smoothstep(2.65,3.08,current.z);
+        daylight+=pool*(vec3(.075,.111,.103)*glimmer*(.35+.65*depth)
+          +vec3(.105,.107,.080)*wetLip+castLight*glimmer*(.075+.14*depth));
+      }
+      daylight+=castLight*(.11+.30*colour);
       vec3 shade=daylight*vec3(.56,.62,.72)+vec3(.024,.029,.034);
       paint=vec4(mix(shade,daylight,smoothstep(0.,1.,sight)),1.);
       // field-shadow

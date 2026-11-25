@@ -1,11 +1,12 @@
 import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=river-marching6";
 import {addUv,stone,flagFace,plain} from "./field-architecture.mjs?v=jade-ground2";
+import {bindLitSurface} from "./surface-impact.mjs?v=canyon-riverlight2";
 
 // Coordinates are metres along the actual mid-lane and metres across it.
 // Each flagstone has a recessed joint, a broken corner and its own bevel.
-export function riverBridge(T,art){
+export function riverBridge(T,art,lighting){
   const road=routes[1],centre=measure(road,0,0).at,end=5.16,bank=1.91;
-  const points=[],colour=[],uv=[];
+  const points=[],colour=[],uv=[],normals=[];
   const cache=new Map(),v1=new T.Vector3(),v2=new T.Vector3();
   function world(s,t,h=0){
     const p=along(road,centre+s,t);
@@ -19,7 +20,12 @@ export function riverBridge(T,art){
     const sun=Math.max(0,-.46*v1.x+.79*v1.y+.40*v1.z);
     const lit=.56+.39*sun+.13*Math.max(0,v1.y);
     for(const [i,p] of [a,b,c].entries()){
-      points.push(...p);colour.push(col.r*lit,col.g*(lit+.012),col.b*(lit+.033));
+      // Sun dries the crown. Cooler, damp stone gathers against the outer parapets.
+      const lateral=Math.abs(p[0]*.60+p[2]*.80),wet=Math.max(0,Math.min(1,(lateral-.94)/.96));
+      const top=Math.max(0,v1.y),crown=(1-wet)*top;
+      const damp=1-wet*.16*top;
+      points.push(...p);normals.push(v1.x,v1.y,v1.z);
+      colour.push(col.r*(lit+.062*crown)*damp,col.g*(lit+.022+.018*crown)*damp,col.b*(lit+.030+.046*wet*top)*damp);
       addUv(uv,cell,map[i][0],map[i][1]);
     }
   }
@@ -118,7 +124,10 @@ export function riverBridge(T,art){
   }
   const geo=new T.BufferGeometry();
   geo.setAttribute("position",new T.Float32BufferAttribute(points,3));geo.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
+  geo.setAttribute("normal",new T.Float32BufferAttribute(normals,3));
   geo.setAttribute("color",new T.Float32BufferAttribute(colour,3));geo.computeBoundingSphere();
   const mat=art.bind(new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
+  if(lighting)mat.onBeforeCompile=shader=>bindLitSurface(shader,lighting);
+  mat.customProgramCacheKey=()=>"river-damp-stone-spell-v1";
   const mesh=new T.Mesh(geo,mat);mesh.name="中路溪桥";mesh.userData.deckY=deckY;return mesh;
 }

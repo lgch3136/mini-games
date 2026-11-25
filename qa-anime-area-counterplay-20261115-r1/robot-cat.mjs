@@ -1,5 +1,5 @@
 import {actorStrides,footTrack} from "./river-roles.mjs?v=canyon-march1";
-import {articulate} from "./river-figure.mjs?v=canyon-march1";
+import {articulate} from "./river-figure.mjs?v=canyon-riverlight2";
 
 const blue=0x078dd0,white=0xfff9ed,ink=0x2e2833,red=0xe4373c,gold=0xf7bc2e;
 const limit=(n)=>Math.max(0,Math.min(1,n));
@@ -225,6 +225,25 @@ export function robotCat(T,team){
   barrel.userData.fieldGloss=.84;barrel.userData.pocketProp=true;
   const muzzle=new T.Object3D();muzzle.position.z=profile[14][1];gadget.add(muzzle);
   const rig=articulate(T,{root:g,body,hip,head,arms,legs},1,new Set([rotor]),[tail,cannonElbow,wrist,gadget],robotFace(T),null);
+  const boreMaterial=new T.MeshBasicMaterial({color:0xa3f4f4,transparent:true,opacity:0,depthWrite:false,side:T.DoubleSide});
+  const bore=new T.Mesh(new T.RingGeometry(.062,.123,24),boreMaterial);
+  bore.name="炮膛蓄压亮边";bore.position.z=-.022;bore.visible=false;muzzle.add(bore);
+  const wakeGeometry=new T.BufferGeometry(),wakePositions=[],wakeColours=[],wakeIndex=[];
+  for(const offset of [0,Math.PI]){
+    const first=wakePositions.length/3;
+    for(let i=0;i<=10;i++){
+      const f=i/10,angle=offset-.07-f*1.49;
+      for(const radius of [.285+.105*f,.494-.025*f]){
+        wakePositions.push(radius*Math.cos(angle),.016,radius*Math.sin(angle));
+        wakeColours.push(1,.80,.37,(1-f)*(1-f)*.43);
+      }
+      if(i){const j=first+i*2;wakeIndex.push(j-2,j-1,j,j,j-1,j+1);}
+    }
+  }
+  wakeGeometry.setAttribute("position",new T.Float32BufferAttribute(wakePositions,3));
+  wakeGeometry.setAttribute("color",new T.Float32BufferAttribute(wakeColours,4));wakeGeometry.setIndex(wakeIndex);
+  const wakeMaterial=new T.MeshBasicMaterial({vertexColors:true,transparent:true,side:T.DoubleSide,depthWrite:false,toneMapped:false});
+  const wake=new T.Mesh(wakeGeometry,wakeMaterial);wake.name="竹蜻蜓叶片拖影";blades.add(wake);
   for(const m of colours.values())m.dispose();barrelMaterial.dispose();
   rotor.visible=false;gadget.visible=false;
   rig.skin.geometry.userData.setPocketProp(false);
@@ -366,6 +385,10 @@ export function robotCat(T,team){
       if(show)slideFromPocket(exposure);
       // The ring has already left the muzzle. Pivot the tube around the cuff in the palm.
       const sinceBlast=clock-(muzzle.userData.airReleaseAt??-1000);
+      const boreCharge=cannon&&after<0?charge*charge:0;
+      const exhaust=sinceBlast>=0&&sinceBlast<.14?1-sinceBlast/.14:0;
+      bore.visible=show&&boreCharge+exhaust>.025;
+      if(bore.visible){boreMaterial.opacity=Math.min(.88,.75*boreCharge+.88*exhaust);bore.scale.setScalar(.74+.26*Math.max(boreCharge,exhaust));}
       if(show&&sinceBlast>0&&sinceBlast<.29){
         const kick=smooth(limit(sinceBlast/.077))*(1-smooth(limit((sinceBlast-.077)/.213)))*exposure;
         gripBefore.copy(rearSocket).applyQuaternion(gadget.quaternion);
@@ -375,6 +398,6 @@ export function robotCat(T,team){
       }
       tail.rotation.set(.14*swing-.22*recoil,0,.14*Math.sin(phase-.8)*movingWeight-.14*load);
       rotor.visible=hover||action?.kind==="skill"&&action.skillIndex===1;
-      if(rotor.visible)blades.rotation.y=time*35;
+      if(rotor.visible){blades.rotation.y=time*35;wake.visible=lift>.06;wakeMaterial.opacity=lift;}
     },poseSignature(){return [head.rotation.x,arms[1].rotation.x,hip.position.y,Number(rotor.visible),Number(gadget.visible)];}};
 }

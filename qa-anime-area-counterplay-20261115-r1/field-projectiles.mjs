@@ -1,3 +1,4 @@
+import {spellTint} from "./surface-impact.mjs?v=canyon-riverlight2";
 // Directional bolts, cart shells and hero shots follow the same live simulation positions.
 // Each shape occupies at most one instanced draw regardless of the size of the wave.
 function laneShotGeometry(T,kind){
@@ -90,4 +91,79 @@ export function fieldProjectiles(T,scene,floor,applyLight){
   },reset,dispose(){for(const b of batches.values()){
     b.mesh.removeFromParent();b.mesh.dispose();b.geometry.dispose();b.material.dispose();
   }batches.clear();}};
+}
+
+// A hit begins at the near side of its victim, with all streaks sharing a single bounded draw.
+// Input is the observing team's event stream, so a hidden attack never points back into fog.
+export function contactSparks(T,scene,floor){
+  const cap=96,quad=new T.InstancedBufferGeometry();
+  quad.setAttribute("position",new T.Float32BufferAttribute([-1,-1,0,1,-1,0,1,1,0,-1,1,0],3));
+  quad.setIndex([0,1,2,0,2,3]);quad.instanceCount=0;
+  const attribute=name=>{
+    const a=new T.InstancedBufferAttribute(new Float32Array(cap*4),4).setUsage(T.DynamicDrawUsage);
+    quad.setAttribute(name,a);return a;
+  };
+  const anchor=attribute("anchor"),flight=attribute("flight"),pigment=attribute("pigment");
+  const clock={value:0};
+  const mat=new T.RawShaderMaterial({glslVersion:T.GLSL3,uniforms:{clock},depthWrite:false,transparent:true,
+    side:T.DoubleSide,toneMapped:false,vertexShader:`precision highp float;
+    in vec3 position;in vec4 anchor,flight,pigment;uniform float clock;
+    uniform mat4 modelViewMatrix,projectionMatrix;out vec2 brush;flat out vec4 dye;
+    void main(){
+      float age=clock-anchor.w,t=age/pigment.w;
+      if(t<0.||t>=1.){gl_Position=vec4(2.,2.,2.,1.);brush=vec2(0.);dye=vec4(0.);return;}
+      vec3 path=anchor.xyz+flight.xyz*(age*(1.-.32*t));
+      path.y-=1.55*age*age;
+      vec4 p=modelViewMatrix*vec4(path,1.);
+      vec2 axis=(mat3(modelViewMatrix)*(flight.xyz*(1.-.64*t)-vec3(0.,3.10*age,0.))).xy;
+      axis=length(axis)>.001?normalize(axis):vec2(.707,.707);
+      float stroke=flight.w*(.57+.43*sin(3.14159*t)),width=flight.w*(.13+.10*(1.-t));
+      p.xy+=axis*position.y*stroke+vec2(-axis.y,axis.x)*position.x*width;
+      gl_Position=projectionMatrix*p;brush=position.xy;
+      dye=vec4(pigment.rgb,(1.-t)*(1.-.40*t));
+    }`,fragmentShader:`precision mediump float;in vec2 brush;flat in vec4 dye;out vec4 ink;
+    void main(){
+      float across=abs(brush.x)/max(.08,1.-abs(brush.y)*.89);
+      float alpha=1.-smoothstep(.62,1.,across);
+      float core=(1.-smoothstep(.03,.54,across))*(1.-abs(brush.y)*.58);
+      ink=vec4(mix(dye.rgb,vec3(1.,.97,.87),core*.83),alpha*dye.a);
+    }`});
+  const mesh=new T.Mesh(quad,mat);mesh.name="技能受击的方向碎光";mesh.frustumCulled=false;mesh.visible=false;
+  mesh.renderOrder=4;scene.add(mesh);
+  const plain=[.86,.69,.45],shield=[.43,.79,.91],gold=[.98,.73,.35];
+  let last=0,index=0,end=-1,extent=0;
+  function reset(){last=index=extent=0;end=-1;quad.instanceCount=0;mesh.visible=false;}
+  function draw(view){
+    const now=view.time;if(now<clock.value)reset();clock.value=now;
+    if(now>=end)index=extent=0;
+    let changed=false;
+    for(const e of view.events){
+      if(e.id<=last)continue;last=e.id;
+      if(e.type!=="hit"&&e.type!=="death")continue;
+      const death=e.type==="death",skill=e.sourceKind==="hero"&&(e.skillIndex??e.skill)>=0;
+      const blocked=!death&&e.damage===0;
+      if(!death&&!skill&&!blocked&&e.targetKind==="minion"&&(e.id%3))continue;
+      const x=e.targetX??e.x,z=e.targetZ??e.z;if(!Number.isFinite(x+z))continue;
+      const ox=(e.fromX??x)-x,oz=(e.fromZ??z)-z,n=Math.hypot(ox,oz);
+      const dx=!e.unknownOrigin&&n>.02?ox/n:0,dz=!e.unknownOrigin&&n>.02?oz/n:0;
+      const side=e.targetKind==="hero"?.36:e.targetKind==="tower"?.64:.21;
+      const y=floor(x,z)+(e.targetKind==="minion"?.73:e.targetKind==="tower"?1.35:1.03);
+      const count=death?7:skill?5:blocked?3:2;
+      const ink=death?gold:blocked?shield:skill?spellTint(e.hero,e.skillIndex??e.skill)||plain:plain;
+      for(let i=0;i<count;i++){
+        const slot=index++%cap,angle=i*2.39996+e.id*.47;
+        const radius=.66+.31*((e.id+i)%4),speed=(death?1.58:skill?1.40:1.02);
+        const life=(death?.41:skill?.29:.21)*(1-.08*(i%3));
+        anchor.setXYZW(slot,x+dx*side,y,z+dz*side,now);
+        flight.setXYZW(slot,(dx*.72+Math.cos(angle)*radius)*speed,
+          (.38+.66*((i+e.id)%3))*speed,(dz*.72+Math.sin(angle)*radius)*speed,(skill||death ? .168 : .112)*(1+.19*(i%3)));
+        pigment.setXYZW(slot,ink[0],ink[1],ink[2],life);
+        extent=Math.max(extent,slot+1);end=Math.max(end,now+life);
+      }
+      changed=true;
+    }
+    quad.instanceCount=extent;mesh.visible=extent>0&&now<end;
+    if(changed)for(const a of [anchor,flight,pigment])a.needsUpdate=true;
+  }
+  return {draw,reset,dispose(){mesh.removeFromParent();quad.dispose();mat.dispose();}};
 }

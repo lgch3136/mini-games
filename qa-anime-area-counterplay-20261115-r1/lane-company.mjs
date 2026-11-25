@@ -1,4 +1,5 @@
 import {footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
+import {spellVertex} from "./surface-impact.mjs?v=canyon-riverlight2";
 const barVertex=`precision highp float;
 in vec3 position;in vec4 anchor;in vec2 life;uniform vec4 playerRect;
 uniform mat4 modelViewMatrix,projectionMatrix;out vec2 uv;flat out vec2 status;
@@ -163,6 +164,7 @@ function marchingModel(T,role) {
 }
 
 const soldierVertex=`precision highp float;
+  ${spellVertex}
   in vec3 position,normal;in vec4 dye,anchor,bearing,feetA,feetB;in vec2 binding;
   uniform mat4 modelViewMatrix,projectionMatrix;
   out vec3 cloth;out float finish;
@@ -202,6 +204,7 @@ const soldierVertex=`precision highp float;
     vec3 base=mix(dye.rgb,enemy,dye.a*mod(anchor.w,2.));
     if(anchor.w>=2.)base=mix(base,vec3(value*1.25+.10,value*.93+.04,value*.5),.38*(1.-dye.a));
     cloth=base*(.52+.22*sky+.38*lit)+vec3(.18,.14,.094)*pow(max(dot(normalW,halfVec),0.),16.)*binding.y;
+    cloth+=spellAt(world,normalW)*(.10+.43*base)*(1.+.24*binding.y);
     cloth=mix(cloth,vec3(1.,.86,.67),bearing.w*.33);finish=binding.y;
     gl_Position=projectionMatrix*modelViewMatrix*vec4(world,1.);
   }`;
@@ -232,7 +235,8 @@ export function laneCompany(T,scene,floor){
     mesh.name=name;mesh.frustumCulled=false;mesh.visible=false;scene.add(mesh);
     return {mesh,attrs,used:0};
   }
-  const armour=new T.RawShaderMaterial({vertexShader:soldierVertex,fragmentShader:soldierFragment,glslVersion:T.GLSL3,side:T.DoubleSide});
+  const armour=new T.RawShaderMaterial({vertexShader:soldierVertex,fragmentShader:soldierFragment,
+    uniforms:scene.userData.battleLight?.uniforms??{},glslVersion:T.GLSL3,side:T.DoubleSide});
   const ranks=["河卫 · 盾枪","河卫 · 弩手","河卫 · 炮车"].map((name,role)=>batch(name,marchingModel(T,role),armour,
     {anchor:attribute(4),bearing:attribute(4),feetA:attribute(4),feetB:attribute(4)}));
   const common={anchor:attribute(4),life:attribute(2)};
