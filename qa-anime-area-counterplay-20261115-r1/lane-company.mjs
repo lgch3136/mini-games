@@ -11,11 +11,12 @@ void main(){
   float shoulder=smoothstep(.38,.73,y),lean=role<.5?.095:role<1.5?.046:-.053;
   float cart=step(.5,role-1.);
   vec2 local=vec2(x*(role>1.5?2.27:role>.5?1.59:1.76),y*(role>1.5?1.38:role>.5?1.49:1.55));
+  if(anchor.w>=2.)local=vec2(x*1.99,y*1.57);
   local.x+=stride*leg*walk*.055*(1.-cart)+shoulder*swing*direction.z*lean;
   local.y+=walk*(abs(stride)*.035+leg*stride*.031)*(1.-cart);
   local.y+=swing*(role>1.5?-.043:-.025)*shoulder;
   vec4 eye=modelViewMatrix*vec4(anchor.xyz,1.);
-  eye.xy+=local;
+  eye.xy+=local*(anchor.w>=2.?1.18:1.);
   gl_Position=projectionMatrix*eye;
   float u=(direction.z<0.?1.-(x+.5):x+.5);
   vec2 cell=vec2(direction.x,role+3.*direction.w);
@@ -23,14 +24,20 @@ void main(){
   dyeHit=vec2(anchor.w,pose.w);
 }`;
 const bodyFragment=`precision mediump float;
-uniform sampler2D sheet; in vec2 tex; flat in vec2 dyeHit; out vec4 ink;
+uniform sampler2D sheet,tideSheet;uniform float tideReady; in vec2 tex; flat in vec2 dyeHit; out vec4 ink;
 void main(){
-  vec4 c=texture(sheet,tex);if(c.a<.41)discard;
+  bool awarded=dyeHit.x>=2. && tideReady>.5;
+  vec4 c;
+  if(awarded)c=texture(tideSheet,vec2(tex.x,1.-fract((1.-tex.y)*6.)));
+  else c=texture(sheet,tex);
+  if(c.a<.41)discard;
   // Tint the cyan cloth alone. The same authored metal, leather, wood and faces keep their values.
   float cloth=smoothstep(.015,.11,min(c.g,c.b)-c.r)*smoothstep(.10,.31,c.g);
   float light=dot(c.rgb,vec3(.23,.61,.16));
   vec3 red=vec3(min(1.,light*1.24+.12),light*.57+.016,light*.62+.046);
-  c.rgb=mix(c.rgb,red,cloth*dyeHit.x);
+  c.rgb=mix(c.rgb,red,cloth*mod(dyeHit.x,2.));
+  float bronze=(awarded?0.:step(1.5,dyeHit.x))*(1.-cloth)*smoothstep(.25,.66,light);
+  c.rgb=mix(c.rgb,vec3(min(1.,light*1.32+.11),light*.94,light*.54),bronze*.82);
   c.rgb=mix(c.rgb,vec3(1.,.91,.73),.54*dyeHit.y);
   ink=vec4(c.rgb,1.);
 }`;
@@ -38,10 +45,11 @@ const barVertex=`precision highp float;
 in vec3 position;in vec4 anchor;in vec2 life;
 uniform mat4 modelViewMatrix,projectionMatrix;out vec2 uv;flat out vec2 status;
 void main(){
+  if(life.x>=.9999){gl_Position=vec4(2.,2.,2.,1.);uv=vec2(0.);status=vec2(0.);return;}
   vec4 p=modelViewMatrix*vec4(anchor.xyz,1.);
   p.xy+=vec2(position.x*.94,life.y+.038+position.y*.094);
   gl_Position=projectionMatrix*p;
-  uv=vec2(position.x+.5,position.y);status=vec2(anchor.w,life.x);
+  uv=vec2(position.x+.5,position.y);status=vec2(mod(anchor.w,2.),life.x);
 }`;
 const barFragment=`precision mediump float;
 in vec2 uv;flat in vec2 status;out vec4 ink;
@@ -68,7 +76,7 @@ export function laneCompany(T,scene,floor){
   const bodies=grid(4,4),bars=grid(1,1),anchor=floats(4),direction=floats(4),pose=floats(4),life=floats(2);
   bodies.setAttribute("anchor",anchor);bodies.setAttribute("direction",direction);bodies.setAttribute("pose",pose);
   bars.setAttribute("anchor",anchor);bars.setAttribute("life",life);
-  const uniforms={sheet:{value:null}};
+  const uniforms={sheet:{value:null},tideSheet:{value:null},tideReady:{value:0}};
   function make(geometry,vertexShader,fragmentShader,extra={}){
     const material=new T.RawShaderMaterial({glslVersion:T.GLSL3,vertexShader,fragmentShader,toneMapped:false,...extra});
     const mesh=new T.Mesh(geometry,material);mesh.frustumCulled=false;mesh.visible=false;scene.add(mesh);return mesh;
@@ -83,11 +91,22 @@ export function laneCompany(T,scene,floor){
     }).catch(()=>{});
     return loading;
   }
+  let tideLoading=false,nextTideAttempt=0;
+  function loadTide(now){
+    if(closed||tideLoading||uniforms.tideReady.value||now<nextTideAttempt)return;
+    tideLoading=true;
+    new T.TextureLoader().loadAsync(new URL("./assets/river-tide-cart.webp",import.meta.url).href).then(sheet=>{
+      if(closed){sheet.dispose();return;}
+      sheet.colorSpace=T.NoColorSpace;sheet.anisotropy=1;
+      uniforms.tideSheet.value=sheet;uniforms.tideReady.value=1;
+    }).catch(()=>{nextTideAttempt=performance.now()+25_000;}).finally(()=>{tideLoading=false;});
+  }
   function draw(match,dt,visible){
     serial++;let count=0;
     for(const u of match.units){
       if(u.kind!=="minion"||u.dead||u.hp<=0||visible&&!visible(u.x,u.z))continue;
       if(count===capacity)return false;
+      if(u.tideRam&&!uniforms.tideReady.value&&!tideLoading)loadTide(performance.now());
       const role=u.formation==="siege"?2:u.formation==="ranged"?1:0;
       let t=history.get(u.id);
       if(!t){t={x:u.x,z:u.z,phase:u.id*.8,amount:0,yaw:u.face||0,front:true};history.set(u.id,t);}
@@ -104,10 +123,10 @@ export function laneCompany(T,scene,floor){
       const recoil=u.attackT>0?Math.sin(Math.PI*Math.min(1,(elapsed+.02)/.31)):0;
       const hitTime=match.time-(u.lastImpactTime??-2);
       const flash=hitTime>=0&&hitTime<.145?1-hitTime/.145:0;
-      anchor.setXYZW(count,u.x,floor(u.x,u.z)+.018,u.z,u.team);
+      anchor.setXYZW(count,u.x,floor(u.x,u.z)+.018,u.z,u.team+(u.tideRam?2:0));
       direction.setXYZW(count,col,role,sin<0?-1:1,attacking?1:0);
       pose.setXYZW(count,Math.sin(t.phase),t.amount,recoil,flash);
-      life.setXY(count,Math.max(0,Math.min(1,u.hp/u.maxHp)),role===2?1.39:role===1?1.50:1.56);
+      life.setXY(count,Math.max(0,Math.min(1,u.hp/u.maxHp)),u.tideRam?1.85:role===2?1.39:role===1?1.50:1.56);
       count++;
     }
     for(const [id,t] of history)if(t.seen!==serial)history.delete(id);
@@ -120,6 +139,6 @@ export function laneCompany(T,scene,floor){
   function reset(){history.clear();bodies.instanceCount=bars.instanceCount=0;health.visible=figures.visible=false;}
   return {start,get ready(){return ready;},draw,reset,dispose(){
     closed=true;ready=false;reset();figures.removeFromParent();health.removeFromParent();
-    bodies.dispose();bars.dispose();figures.material.dispose();health.material.dispose();uniforms.sheet.value?.dispose();
+    bodies.dispose();bars.dispose();figures.material.dispose();health.material.dispose();uniforms.sheet.value?.dispose();uniforms.tideSheet.value?.dispose();
   }};
 }

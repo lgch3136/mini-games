@@ -45,7 +45,7 @@ export function skillAiming({world, cancelZone, actor, shapeFor, bounds, project
       dz = (g.y - g.startY) * g.shape.range / 61;
     }
     const target = aimPoint(player, g.shape, dx, dz, bounds);
-    show(g.over || !target ? null : {player, target, shape: g.shape});
+    show(g.over || !target ? null : {player, target, shape: g.shape, key:g.key});
     return target;
   }
   function startPointer(event, key) {

@@ -1,5 +1,5 @@
-import {bindImpact} from "./surface-impact.mjs?v=river-duel4";
-import {paintedCheeks} from "./river-tailoring.mjs?v=river-duel4";
+import {bindImpact} from "./surface-impact.mjs?v=river-sun-poses1";
+import {paintedCheeks} from "./river-tailoring.mjs?v=field-sculpt1";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };
 
@@ -137,7 +137,7 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
     if(!node?.isGroup || !arms.includes(node.parent))continue;
     const arm=arms.indexOf(node.parent);joints[arm].attach(node);
   }
-  const out={p:[],n:[],c:[],idx:[],uv:[],weight:[],bone:[]},retired=[];
+  const out={p:[],n:[],c:[],idx:[],uv:[],gloss:[],weight:[],bone:[]},retired=[],heldIndices=[];
   const point=new T.Vector3(),local=new T.Vector3(),normal=new T.Vector3(),normals=new T.Matrix3();
   root.traverse(mesh=>{
     if(!mesh.isMesh||!mesh.material?.isMeshStandardMaterial||mesh.material.transparent)return;
@@ -150,11 +150,14 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
       point.fromBufferAttribute(attr.position,j).applyMatrix4(mesh.matrixWorld);out.p.push(point.x,point.y,point.z);
       normal.fromBufferAttribute(attr.normal,j).applyNormalMatrix(normals);out.n.push(normal.x,normal.y,normal.z);
       if(sheet){
-        if(geom.userData.uniformUV)out.uv.push(attr.uv.getX(j),attr.uv.getY(j));
+        if(geom.userData.robotFaceUV)out.uv.push(attr.uv.getX(j),.0625+.9375*attr.uv.getY(j));
+        else if(hero===1)out.uv.push(.5,.018);
+        else if(geom.userData.uniformUV)out.uv.push(attr.uv.getX(j),attr.uv.getY(j));
         else if(geom.userData.faceUV)out.uv.push(attr.uv.getX(j),.5+.5*attr.uv.getY(j));
         else out.uv.push(5/6,.625);
       }
       const col=attr.color;
+      out.gloss.push(geom.userData.fieldGloss ?? (geom.userData.faceUV ? .25 : geom.userData.uniformUV ? .11 : hero===1 ? .56 : .15));
       out.c.push(mat.color.r*(col?col.getX(j):1),mat.color.g*(col?col.getY(j):1),mat.color.b*(col?col.getZ(j):1));
       const limb=bind-3;
       let second=bind,w=0;
@@ -168,18 +171,26 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
       else{out.bone.push(bind,second,0,0);out.weight.push(1-w,w,0,0);}
     }
     const ix=geom.index;
-    for(let j=0;j<(ix?ix.count:attr.position.count);j++)out.idx.push(base+(ix?ix.getX(j):j));
+    const indices=geom.userData.pocketProp?heldIndices:out.idx;
+    for(let j=0;j<(ix?ix.count:attr.position.count);j++)indices.push(base+(ix?ix.getX(j):j));
     retired.push(mesh);
   });
   for(const mesh of retired){mesh.removeFromParent();mesh.geometry.dispose();}
   const g=new T.BufferGeometry();
   g.setAttribute("position",new T.Float32BufferAttribute(out.p,3));g.setAttribute("normal",new T.Float32BufferAttribute(out.n,3));
-  g.setAttribute("color",new T.Float32BufferAttribute(out.c,3));g.setAttribute("skinIndex",new T.Uint16BufferAttribute(out.bone,4));
-  g.setAttribute("skinWeight",new T.Float32BufferAttribute(out.weight,4));g.setIndex(out.idx);g.computeBoundingSphere();
+  g.setAttribute("color",new T.Float32BufferAttribute(out.c,3));
+  g.setAttribute("fieldGloss",new T.Float32BufferAttribute(out.gloss,1));g.setAttribute("skinIndex",new T.Uint16BufferAttribute(out.bone,4));
+  g.setAttribute("skinWeight",new T.Float32BufferAttribute(out.weight,4));const bodyIndices=out.idx.length;
+  if(heldIndices.length){
+    out.idx.push(...heldIndices);
+    const allIndices=out.idx.length;
+    g.userData.setPocketProp=shown=>g.setDrawRange(0,shown?allIndices:bodyIndices);
+  }
+  g.setIndex(out.idx);g.computeBoundingSphere();
   const material=new T.MeshStandardMaterial({vertexColors:true,roughness:.76,metalness:.025,side:T.FrontSide});
   if(sheet){g.setAttribute("uv",new T.Float32BufferAttribute(out.uv,2));material.map=sheet;}
-  material.userData.riverFigure=true;material.userData.impactUniform={value:0};material.userData.fieldContact={value:new T.Vector3(0,.5,1)};
-  material.onBeforeCompile=shader=>bindImpact(shader,material);material.customProgramCacheKey=()=>"field-skinned-impact-v1";
+  material.userData.robotFaceSheet=hero===1&&Boolean(sheet);material.userData.riverFigure=true;material.userData.impactUniform={value:0};material.userData.fieldContact={value:new T.Vector3(0,.5,1)};
+  material.onBeforeCompile=shader=>bindImpact(shader,material);material.customProgramCacheKey=()=>"field-sculpted-finish-v1";
   const skin=new T.SkinnedMesh(g,material);skin.name="骨架角色";skin.castShadow=true;skin.receiveShadow=true;
   root.add(skin);skin.bind(skeleton);
   skin.boundingSphere=g.boundingSphere.clone();skin.boundingSphere.radius+=2.2;

@@ -22,14 +22,29 @@ export function castGadget(match,actor,slot,action,context){
   if(slot===0){
     const first=match.events.length;
     hitLine(match,actor,cannon.length,cannon.width,cannon.damage,cannon.stun,{...visual,gadget:"air"});
-    for(const event of match.events.slice(first)){
-      if(event.type!=="hit"||event.source!==actor.id||!(event.damage>0))continue;
+    const contacts=match.events.slice(first).filter(e=>e.type==="hit"&&e.source===actor.id);
+    if(!contacts.length){
+      emit(match,"miss",actor,{...visual,gadget:"air",fromX:actor.x,fromZ:actor.z,
+        targetX:actor.x+Math.sin(actor.face)*cannon.length,targetZ:actor.z+Math.cos(actor.face)*cannon.length,ttl:.42});
+    }
+    // The combat log has one line. Pick its subject for the whole cast while all
+    // impacts still belong to their individual units in the battlefield.
+    let headline=null,best=-1;
+    for(const event of contacts){
+      const kind=event.targetKind;
+      const rank=(kind==="hero"?8:kind==="tower"||kind==="core"?4:0)
+        +(event.target===action.target?2:0)+(event.damage>0?1:0);
+      if(rank>best){headline=event;best=rank;}
+    }
+    for(const event of contacts){
+      event.cannonHeadline=event===headline;
+      if(!(event.damage>0))continue;
       const victim=match.units.find(u=>u.id===event.target);
       if(!victim||victim.dead||!["hero","minion"].includes(victim.kind))continue;
       const fromX=victim.x,fromZ=victim.z,dx=fromX-actor.x,dz=fromZ-actor.z,d=Math.hypot(dx,dz)||1;
       const push=victim.kind==="minion"?1.18:.82;
       victim.x=clamp(fromX+dx/d*push,bounds.minX,bounds.maxX);
-      victim.z=clamp(fromZ+dz/d*push,bounds.minZ,bounds.maxZ);adjustLanding(victim);
+      victim.z=clamp(fromZ+dz/d*push,bounds.minZ,bounds.maxZ);adjustLanding(victim,fromX,fromZ);
       emit(match,"airPush",actor,{...visual,target:victim.id,fromX,fromZ,targetX:victim.x,targetZ:victim.z,ttl:.30});
     }
   }else if(slot===1){
@@ -43,12 +58,13 @@ export function castGadget(match,actor,slot,action,context){
     }
     const mul=Math.min(1,doorReach/(Math.hypot(dx,dz)||1));
     actor.x=clamp(fromX+dx*mul,bounds.minX,bounds.maxX);
-    actor.z=clamp(fromZ+dz*mul,bounds.minZ,bounds.maxZ);adjustLanding(actor);
+    actor.z=clamp(fromZ+dz*mul,bounds.minZ,bounds.maxZ);adjustLanding(actor,fromX,fromZ);
     emit(match,"anywhereDoor",actor,{...visual,fromX,fromZ,targetX:actor.x,targetZ:actor.z,ttl:1.05});
   }
 }
 
-export function gadgetEffects(T,scene,land){
+export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
+  const tip=new T.Vector3();
   const ringGeometry=new T.TorusGeometry(1,.075,5,28);
   function ring(){
     const material=new T.MeshBasicMaterial({color:0xb8f7ff,transparent:true,opacity:0,depthWrite:false});
@@ -86,10 +102,10 @@ export function gadgetEffects(T,scene,land){
   const winds=[],doors=[];
   const pressureSlots=Array(12);
   let windCursor=0,doorCursor=0,pressureCursor=0,pressureMesh=null,last=0;
-  function remember(kind,event,time){
-    const x=event.fromX??event.x,z=event.fromZ??event.z,dx=event.targetX-x,dz=event.targetZ-z,length=Math.hypot(dx,dz);
+  function remember(kind,event,time,origin=null){
+    const x=origin?.x??event.fromX??event.x,z=origin?.z??event.fromZ??event.z,dx=event.targetX-x,dz=event.targetZ-z,length=Math.hypot(dx,dz);
     if(!Number.isFinite(length)||length<.015)return;
-    pressureSlots[pressureCursor++%pressureSlots.length]={kind,x,z,dx:dx/length,dz:dz/length,length,start:time};
+    pressureSlots[pressureCursor++%pressureSlots.length]={kind,x,z,dx:dx/length,dz:dz/length,length,start:time,lift:origin?origin.y-land(x,z):.89};
   }
   function pressure(time){
     if(!pressureCursor)return;
@@ -102,35 +118,36 @@ export function gadgetEffects(T,scene,land){
     }
     const geom=pressureMesh.geometry,pos=geom.attributes.position,rgba=geom.attributes.color;
     let count=0,active=false;
-    function quad(a,b,c,d,opacity,warm){
+    function quad(a,b,c,d,opacity,tone){
+      const rgb=tone==="edge"?[.025,.31,.37]:tone==="contact"?[1,.91,.57]:[.78,.98,1];
       for(const v of [a,b,c,a,c,d]){
         pos.setXYZ(count,v[0],v[1],v[2]);
-        rgba.setXYZW(count,warm?1:.58,warm?.91:.91,warm?.57:1,opacity*v[3]);count++;
+        rgba.setXYZW(count,...rgb,opacity*v[3]);count++;
       }
     }
     for(const item of pressureSlots){
       if(!item)continue;
-      const trail=item.kind==="trail",age=(time-item.start)/(trail?.165:.20);
+      const trail=item.kind==="trail",age=(time-item.start)/(trail?.22:.20);
       if(age<0||age>=1)continue;
       active=true;
       const loc=(along,side,up,fade)=>{
         const x=item.x+item.dx*along+item.dz*side,z=item.z+item.dz*along-item.dx*side;
-        return [x,land(x,z)+up,z,fade];
+        return [x,land(x,z)+up+(trail?(item.lift-.89)*(1-clamp(along/item.length,0,1)):0),z,fade];
       };
       if(trail){
-        const length=item.length,start=.55+age*.58,mid=length*.5,end=length*(.91+.09*age);
+        const length=item.length,start=.02+age*.58,mid=length*.5,end=length*(.91+.09*age);
         for(const side of [-1,1]){
-          const offset=side*(.065+.20*age),lift=.89+side*.075;
-          const a=loc(start,offset*.30,lift,.13),b=loc(mid,offset,lift+.023,.88),c=loc(end,offset*1.7,lift+.012,0);
-          quad(a,b,loc(mid,offset+side*.060,lift+.042,.84),a,.72*(1-age),false);
-          quad(b,c,c,loc(mid,offset+side*.060,lift+.042,.84),.72*(1-age),false);
+          const offset=side*(.08+.28*age),lift=.89+side*.10;
+          const a=loc(start,offset*.30,lift,.58),b=loc(mid,offset,lift+.023,1),c=loc(end,offset*1.7,lift+.012,.06);
+          const edge=loc(mid,offset+side*.13,lift+.045,.93),core=loc(mid,offset+side*.086,lift+.052,1);
+          quad(a,edge,c,b,.83*(1-age),"edge");quad(a,core,c,b,.94*(1-age),"core");
         }
       }else{
         const centre=item.length*age,r=.28+.24*age,opacity=.76*(1-age);
         for(let k=0;k<6;k++){
           const a=-1.05+k*.35,b=a+.35;
           const tip=(v,w)=>loc(centre+Math.cos(v)*r,Math.sin(v)*(r+w),.70+Math.cos(v)*(.12+w),1-Math.abs(v)*.58);
-          quad(tip(a,0),tip(b,0),tip(b,.082),tip(a,.082),opacity,true);
+          quad(tip(a,0),tip(b,0),tip(b,.082),tip(a,.082),opacity,"contact");
         }
       }
     }
@@ -144,11 +161,18 @@ export function gadgetEffects(T,scene,land){
     for(const e of match.events){
       if(e.id<=last)continue;last=e.id;
       if(e.hero!==1)continue;
-      if(e.type==="gadgetPuff"||e.type==="miss"||e.type==="burst"&&e.gadget==="air"){
-        const strong=e.gadget==="air",angle=e.face||0;
-        if(strong)remember("trail",e,time);
+      if(e.type==="gadgetPuff"||e.type==="miss"&&e.gadget!=="air"||e.type==="burst"&&e.gadget==="air"){
+        const strong=e.gadget==="air",socket=muzzleOf(e.source);
+        const from=socket?socket.getWorldPosition(tip):null;
+        const x=from?.x??e.fromX??e.x,z=from?.z??e.fromZ??e.z;
+        const dx=e.targetX-x,dz=e.targetZ-z;
+        const angle=from&&Math.hypot(dx,dz)>.10?Math.atan2(dx,dz):(e.face||0);
+        if(strong){
+          remember("trail",e,time,from);
+          if(socket)socket.userData.airReleaseAt=time;
+        }
         const slot=windCursor++%9,r=winds[slot]??={mesh:ring(),start:-100};
-        Object.assign(r,{start:time,life:strong?.19:.17,angle,x:e.fromX??e.x,z:e.fromZ??e.z,
+        Object.assign(r,{start:time,life:strong?.19:.17,angle,x,z,lift:from?from.y-land(x,z):.86,atTip:!!from,
           range:strong?2.15:1.4,width:strong?.43:.245});
         r.mesh.rotation.set(0,angle,0);
       }else if(e.type==="airPush"){
@@ -165,8 +189,8 @@ export function gadgetEffects(T,scene,land){
     for(const r of winds){
       const t=(time-r.start)/r.life;r.mesh.visible=t>=0&&t<1;
       if(!r.mesh.visible)continue;
-      const distance=.43+r.range*t,x=r.x+Math.sin(r.angle)*distance,z=r.z+Math.cos(r.angle)*distance;
-      r.mesh.position.set(x,land(x,z)+.86,z);r.mesh.scale.setScalar(r.width*(.62+t));
+      const distance=(r.atTip?0:.43)+r.range*t,x=r.x+Math.sin(r.angle)*distance,z=r.z+Math.cos(r.angle)*distance;
+      r.mesh.position.set(x,land(x,z)+r.lift,z);r.mesh.scale.setScalar(r.width*(.62+t));
       r.mesh.material.opacity=.64*(1-t);
     }
     for(const d of doors){

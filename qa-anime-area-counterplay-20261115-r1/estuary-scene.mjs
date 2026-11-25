@@ -1,7 +1,8 @@
-import {extent,routes,streams,jungles,homes,keeps,rushes,garden,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=river-duel4";
-import {addReeds} from "./river-reeds.mjs?v=river-duel4";
-import {fieldVisibility} from "./field-visibility.mjs?v=river-duel4";
-import {terrainPaint} from "./field-mask.mjs?v=river-duel4";
+import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=river-marching6";
+import {addReeds} from "./river-reeds.mjs?v=river-keep-contact1";
+import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
+import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
+import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
 export function estuaryFloor(T,scene){
   const p=[],uv=[],kind=[],flat=[],ix=[],n=73;
   const bridgeRoad=routes[1],bridgeCentre=measure(bridgeRoad,0,0).at;
@@ -68,18 +69,30 @@ export function estuaryFloor(T,scene){
     fragmentShader:`precision mediump float;
     uniform sampler2D field;uniform float ready;
     in mediump vec2 coord;in lowp vec3 base,reflection;out vec4 paint;
-    void main(){paint=vec4((ready>.5?texture(field,coord).rgb:base)+reflection,1.);}`
+    void main(){
+      vec3 colour=ready>.5?texture(field,coord).rgb:base;
+      paint=vec4(colour+reflection,1.);
+      // field-shadow
+    }`
   });
-  const mesh=new T.Mesh(g,mat);mesh.renderOrder=-30;scene.add(mesh);
+  const mesh=new T.Mesh(g,mat);const sun=paintedSun(T,mesh,mat,uniforms);mesh.renderOrder=2;scene.add(mesh);
   let loading=null,closed=false,texture=null;
-  return {cull:fieldVisibility(T,g),start(){
-    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/river-ground-settled.webp",import.meta.url).href).then(image=>{
+  // Match the very triangles seen by the GPU, including the lowered bed under the bridge.
+  function groundY(x,z){
+    const u=Math.max(0,Math.min(n-1.00001,(x+extent)*(n-1)/(2*extent)));
+    const v=Math.max(0,Math.min(n-1.00001,(z+extent)*(n-1)/(2*extent)));
+    const i=Math.floor(u),j=Math.floor(v),a=(j*n+i)*3+1,dx=u-i,dz=v-j,row=n*3;
+    if(dx+dz<=1)return p[a]+dx*(p[a+3]-p[a])+dz*(p[a+row]-p[a]);
+    const far=p[a+row+3];return far+(1-dx)*(p[a+row]-far)+(1-dz)*(p[a+3]-far);
+  }
+  return {groundY,cull:fieldVisibility(T,g),start(){
+    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/estuary-ground-relief.webp",import.meta.url).href).then(image=>{
       if(closed){image.dispose();return;}
       texture=image;image.colorSpace=T.NoColorSpace;image.anisotropy=1;uniforms.field.value=image;uniforms.ready.value=1;
     }).catch(()=>{});
     return loading;
-  },tick(time,tier){uniforms.time.value=time%2048;uniforms.motion.value=tier<2?1:0;},
-  dispose(){closed=true;mesh.removeFromParent();g.dispose();texture?.dispose();blank.dispose();mat.dispose();}};
+  },setTier:tier=>sun.tier(tier),tick(time,tier){uniforms.time.value=time%2048;uniforms.motion.value=tier<2?1:0;},
+  dispose(){closed=true;mesh.removeFromParent();g.dispose();texture?.dispose();blank.dispose();sun.dispose();mat.dispose();}};
 }
 export function estuaryStonework(T){
   const p=[],c=[],palette=new Map();
@@ -99,9 +112,10 @@ export function estuaryStonework(T){
     for(let d=4.15,k=0;d<r.length-4.15;d+=1.34,k++){
       const shift=side*(width+.035*Math.sin(k*.93));const a=along(r,d+.03,shift),b=along(r,d+1.30,shift),rd=waterDistance(a.x,a.z);
       const bridge=l===1&&rd<4.1&&Math.abs(a.x)<6&&Math.abs(a.z)<6;
-      if(bridge||rd<3.1||k%13===3||(k%8===4&&Math.sin(k*.51+l)>.2))continue;
-      block(a,b,bridge?.14:.11,bridge?.26:.11+(k%4)*.018,k+l,bridge);
-      if(bridge&&k%2===0){const b2=along(r,d+.31,shift);block(a,b2,.19,.58,k,true);}
+      // Short curb groups mark a tower approach; the remainder of the path meets the turf directly.
+      const nearFort=keeps.some(f=>(a.x-f.x)**2+(a.z-f.z)**2<15.5);
+      if(bridge||rd<3.1||!nearFort&&k%9>2||k%8===4)continue;
+      block(a,b,.085,.074+(k%3)*.012,k+l,false);
     }
   }
   addReeds((a,b,d,col)=>{const ox=(a[0]+b[0]+d[0])/3,oz=(a[2]+b[2]+d[2])/3,dy=floorHeight(ox,oz)-.055;
@@ -162,12 +176,28 @@ export function estuaryGarden(T){
   }).catch(()=>{});return loading;};mesh.userData.close=()=>{ended=true;m.map?.dispose();};return mesh;
 }
 export function fieldMini(ctx,width,height){
-  const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height;
-  ctx.fillStyle="#3c5946";ctx.fillRect(0,0,width,height);ctx.lineCap="round";ctx.lineJoin="round";
-  function trace(line,color,w){ctx.strokeStyle=color;ctx.lineWidth=w*width/(2*extent);ctx.beginPath();line.points.forEach((p,i)=>i?ctx.lineTo(x(p.x),z(p.z)):ctx.moveTo(x(p.x),z(p.z)));ctx.stroke();}
-  jungles.forEach(r=>trace(r,"#617451",1.25));routes.forEach(r=>trace(r,"#c8b992",3.1));trace(streams,"#4c9997",4.15);
-  const middle=routes[1];const a=along(middle,middle.length*.46),b=along(middle,middle.length*.54);trace({points:[a,b]},"#d4c59f",3.2);
-  ctx.fillStyle="#9cab6a";for(const r of rushes){ctx.beginPath();ctx.ellipse(x(r.x),z(r.z),r.rx*width/72,r.rz*height/72,0,0,2*Math.PI);ctx.fill();}
+  const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height,unit=width/(2*extent);
+  const land=ctx.createRadialGradient(width*.45,height*.52,0,width*.5,height*.5,width*.71);
+  land.addColorStop(0,'#3a6252');land.addColorStop(1,'#1a3834');
+  ctx.fillStyle=land;ctx.fillRect(0,0,width,height);ctx.lineCap='round';ctx.lineJoin='round';
+  function trace(line,tint,w){
+    ctx.strokeStyle=tint;ctx.lineWidth=w*unit;ctx.beginPath();
+    line.points.forEach((p,i)=>i?ctx.lineTo(x(p.x),z(p.z)):ctx.moveTo(x(p.x),z(p.z)));ctx.stroke();
+  }
+  function patch(px,pz,rx,rz,colour){
+    ctx.fillStyle=colour;ctx.beginPath();ctx.ellipse(x(px),z(pz),rx*unit,rz*unit,0,0,2*Math.PI);ctx.fill();
+  }
+  for(const t of garden)if(t.kind<2)patch(t.x,t.z,t.size*.54,t.size*.43,'#305343');
+  for(const b of banks){patch(b.x,b.z,b.rx+.34,b.rz+.34,'#212f35');patch(b.x-.1,b.z-.13,b.rx,b.rz,'#6a776b');}
+  for(const r of jungles)trace(r,'#72816b',1.05);
+  trace(streams,'#1a474c',6.7);trace(streams,'#447e84',5.6);trace(streams,'#68a2a0',2.5);
+  for(const r of routes){trace(r,'#35473f',3.75);trace(r,'#a09a7a',2.82);trace(r,'#c5b99a',1.28);}
+  const mid=routes[1],a=along(mid,mid.length*.457),b=along(mid,mid.length*.543);
+  trace({points:[a,b]},'#5c6056',3.55);trace({points:[a,b]},'#d4bd91',2.55);
+  for(const r of rushes)patch(r.x,r.z,r.rx,r.rz,'#9bac70');
+  for(const [i,h] of homes.entries()){
+    patch(h.x,h.z,4.35,4.1,i?'#784951':'#37656c');patch(h.x,h.z,2.55,2.38,i?'#b47672':'#6fa9ac');
+  }
 }
 export function fieldCamera(actor,aspect,wide,opponent=null){
   if(wide)return {x:0,z:1.8,height:72,back:37};

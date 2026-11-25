@@ -1,9 +1,9 @@
-import {bindImpact} from "./surface-impact.mjs?v=river-duel4";
+import {bindImpact} from "./surface-impact.mjs?v=river-sun-poses1";
 // Low-power opaque geometry shares vertex lighting. The ordinary texture, fog and colour pipeline stays intact.
 export function riverLight(T) {
   const saved=new WeakMap();
   const vertex=T.ShaderLib.basic.vertexShader.replace("#include <common>","#include <common>\nvarying vec3 vRiverLight;")
-    .replace("#include <begin_vertex>",`#include <begin_vertex>
+    .replace("#include <skinning_vertex>",`#include <skinning_vertex>
       vec3 riverNormal=normal;
       #ifdef USE_SKINNING
         riverNormal=objectNormal;
@@ -15,12 +15,12 @@ export function riverLight(T) {
       mat3 riverModel=mat3(modelMatrix);
       riverNormal=normalize(riverModel*(riverNormal/max(vec3(.0001),vec3(dot(riverModel[0],riverModel[0]),dot(riverModel[1],riverModel[1]),dot(riverModel[2],riverModel[2])))));
       float riverSky=riverNormal.y*.5+.5;
-      float riverSun=smoothstep(-.29,.65,dot(riverNormal,vec3(-.403,.863,.304)));
+      float riverSun=smoothstep(-.29,.65,dot(riverNormal,normalize(vec3(-13.,30.,10.))));
       
       float lightBand=mix(riverSun,smoothstep(.34,.62,riverSun),.36);
       vRiverLight=mix(vec3(.43,.51,.65),vec3(1.28,1.15,1.03),.24*riverSky+.76*lightBand);
       #ifdef USE_SKINNING
-        vec3 localEye=normalize(cameraPosition-(modelMatrix*vec4(position,1.)).xyz);
+        vec3 localEye=normalize(cameraPosition-(modelMatrix*vec4(transformed,1.)).xyz);
         float facing=clamp(dot(riverNormal,localEye),0.,1.);
         float rim=(1.-facing)*(1.-facing);
         vRiverLight*=.71+.29*smoothstep(.04,.34,facing);
@@ -46,8 +46,8 @@ export function riverLight(T) {
     const original=saved.get(mat);
     if(active&&!original){
       saved.set(mat,{compile:mat.onBeforeCompile,key:mat.customProgramCacheKey});
-      mat.onBeforeCompile=shader=>{shader.vertexShader=mat.userData.riverFigure?skinVertex:vertex;shader.fragmentShader=mat.userData.riverFigure?skinFragment:fragment;bindImpact(shader,mat)};
-      mat.customProgramCacheKey=()=>mat.userData.riverFigure?"river-painted-2-joints-v1":"river-vertex-lit-v1";mat.needsUpdate=true;
+      mat.onBeforeCompile=shader=>{shader.vertexShader=mat.userData.riverFigure?skinVertex:vertex;shader.fragmentShader=mat.userData.riverFigure&&!mat.userData.robotFaceSheet?skinFragment:fragment;bindImpact(shader,mat)};
+      mat.customProgramCacheKey=()=>mat.userData.robotFaceSheet?"river-glazed-face-v1":mat.userData.riverFigure?"river-painted-model-v3":"river-vertex-lit-v1";mat.needsUpdate=true;
     }else if(!active&&original){
       mat.onBeforeCompile=original.compile;mat.customProgramCacheKey=original.key;saved.delete(mat);mat.needsUpdate=true;
     }

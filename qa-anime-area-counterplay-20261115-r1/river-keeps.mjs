@@ -1,13 +1,14 @@
-import {addUv,stone,jadeTile,timber,plain,clayTile} from "./field-architecture.mjs?v=river-duel4";
+import {addUv,stone,jadeTile,timber,plain,clayTile} from "./field-architecture.mjs?v=jade-ground2";
+import {towerSight} from "./tower-sight.mjs?v=river-readable-hit1";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
 // Infantry, heroes and the tower share the same world coordinates as movement and hits.
-export function betweenCameraAndFighter(unit,actor,camera,foot,ground,width,low,high){
-  const body=foot+(actor.kind==="minion"?.55:1.22),height=camera.y-body;
+export function betweenCameraAndFighter(unit,actor,camera,foot,ground,width,low,high,bodyOffset=actor.kind==="minion"?.55:1.22,edgeMargin=actor.kind==="minion"?.15:.26){
+  const body=foot+bodyOffset,height=camera.y-body;
   if(height<=.001)return false;
   let first=Math.max(0,(ground+low-body)/height),last=Math.min(1,(ground+high-body)/height);
   if(first>last)return false;
-  const half=width+(actor.kind==="minion"?.15:.26);
+  const half=width+edgeMargin;
   const dx=camera.x-actor.x,dz=camera.z-actor.z;
   if(Math.abs(dx)<.0001){
     if(Math.abs(actor.x-unit.x)>half)return false;
@@ -174,6 +175,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
   }
   const frame=mesh(masonry),roofMesh=mesh(tiles,true),debris=mesh(ruin);debris.visible=false;
   frame.material.forceSinglePass=roofMesh.material.forceSinglePass=true;
+  const wallWindow=art?towerSight(T,frame.material):null,roofWindow=art?towerSight(T,roofMesh.material):null;
   let lastTime=-1;
   function fade(node,target,dt){
     const mat=node.material;
@@ -183,10 +185,11 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
     if(mat.transparent!==transparent){mat.transparent=transparent;mat.depthWrite=!transparent;mat.needsUpdate=true;}
     mat.opacity=value;
   }
-  return {update(unit,hero,time,camera,subjects,floor){
+  return {update(unit,hero,time,camera,subjects,floor,view=null,canvas=null){
     const fallen=unit.dead,phase=fallen?Math.min(1,Math.max(0,(time-(unit.fallenAt??time))/.72)):0;
     const dt=lastTime<0||time<lastTime?1:time-lastTime;lastTime=time;
     frame.visible=roofMesh.visible=phase<1;debris.visible=fallen&&phase>.16;
+    wallWindow?.clear();roofWindow?.clear();
     if(fallen){
       fade(frame,1,dt);fade(roofMesh,1,dt);
       frame.scale.y=Math.max(.08,1-phase*.91);roofMesh.rotation.z=phase*.30*(team?-1:1);
@@ -198,16 +201,23 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
     }
     let roofBlocks=false,frameBlocks=false;
     const scale=parent.scale.x,ground=floor(unit.x,unit.z);
+    const cut=!!(view&&canvas&&wallWindow&&roofWindow);
     for(const actor of subjects){
       if(Math.abs(unit.x-actor.x)>4.8||Math.abs(unit.z-actor.z)>7.5)continue;
       const foot=floor(actor.x,actor.z);
-      roofBlocks ||= betweenCameraAndFighter(unit,actor,camera,foot,ground,span*scale,
-        (core?2.08:1.76)*scale,(core?4.08:tier===0?2.77:3.35)*scale);
-      frameBlocks ||= betweenCameraAndFighter(unit,actor,camera,foot,ground,span*.82*scale,
-        .17*scale,(core?2.20:1.88)*scale);
-      if(frameBlocks&&roofBlocks)break;
+      const margin=cut?(actor.kind==="minion"?.25:.60):undefined;
+      const covers=(w,lo,hi)=>betweenCameraAndFighter(unit,actor,camera,foot,ground,w*scale,lo*scale,hi*scale,undefined,margin)||
+        betweenCameraAndFighter(unit,actor,camera,foot,ground,w*scale,lo*scale,hi*scale,.18,margin)||
+        betweenCameraAndFighter(unit,actor,camera,foot,ground,w*scale,lo*scale,hi*scale,actor.kind==="minion"?1.35:2.15,margin);
+      if(covers(span,core?2.08:1.76,core?4.08:tier===0?2.77:3.35)){
+        roofBlocks=true;if(cut)roofWindow.add(actor,foot,view,canvas);
+      }
+      if(covers(span*.82,.17,core?2.20:1.88)){
+        frameBlocks=true;if(cut)wallWindow.add(actor,foot,view,canvas);
+      }
+      if(!cut&&frameBlocks&&roofBlocks)break;
     }
-    fade(roofMesh,roofBlocks?.18:1,dt);fade(frame,frameBlocks?.30:1,dt);
+    fade(roofMesh,!cut&&roofBlocks?.18:1,dt);fade(frame,!cut&&frameBlocks?.30:1,dt);
   }};
 }
 

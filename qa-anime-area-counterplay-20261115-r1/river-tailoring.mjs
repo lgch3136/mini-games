@@ -127,7 +127,56 @@ export function cutCoat(T,hip,arms,attach,group,panels,green,black) {
 }
 
 // Swept locks grow from the crown in overlapping layers, with a separate front fringe.
+// Broad overlapping locks follow the crown. The dark underside and the ridge remain visible at normal battle scale.
+function shapedCrown(T,hero,head,attach) {
+  const white=hero===2;
+  const tiers=white?[
+    [-.12,.33,.09,-.18,.47,.09,-.26,.56,.065,.11],
+    [-.18,.34,0,-.22,.50,-.02,-.29,.60,-.10,.10],
+    [-.10,.39,-.13,-.13,.53,-.19,-.20,.62,-.27,.11],
+    [.04,.41,-.17,.08,.53,-.22,.14,.59,-.29,.105],
+    [.16,.37,-.08,.23,.49,-.12,.32,.52,-.16,.105],
+    [.17,.37,.04,.25,.50,.02,.32,.56,-.035,.10],
+    [-.06,.40,.10,-.015,.55,.08,.08,.70,.016,.115],
+    [.07,.39,.10,.15,.53,.06,.23,.63,-.017,.115],
+    [-.13,.34,.12,-.13,.34,.21,-.085,.287,.233,.07],
+    [.08,.37,.13,.085,.33,.22,.042,.276,.243,.071]
+  ]:[
+    [-.10,.34,.04,-.27,.45,.05,-.47,.46,.03,.14],
+    [-.12,.36,-.06,-.29,.53,-.09,-.49,.63,-.14,.145],
+    [-.05,.39,-.14,-.17,.58,-.22,-.28,.75,-.25,.14],
+    [.075,.38,-.13,.14,.56,-.20,.23,.70,-.25,.14],
+    [.16,.32,-.08,.29,.40,-.17,.44,.45,-.25,.13],
+    [.15,.29,.025,.28,.34,.015,.43,.35,-.035,.105],
+    [-.035,.405,.045,-.05,.57,.02,-.08,.76,-.01,.135],
+    [.10,.37,.07,.16,.49,.09,.23,.59,.085,.115],
+    [-.10,.36,.15,-.12,.32,.23,-.074,.238,.239,.08],
+    [.06,.38,.15,.10,.33,.23,.155,.270,.226,.087]
+  ];
+  const p=[],shade=[],idx=[],sides=6,steps=4;
+  const vec=(x,y,z)=>new T.Vector3(x,y,z);
+  for(const [x,y,z,cx,cy,cz,ex,ey,ez,r] of tiers){
+    const a=vec(x,y,z),b=vec(cx,cy,cz),c=vec(ex,ey,ez),base=p.length/3;
+    const outward=vec(x,0,z);if(outward.lengthSq()<.0001)outward.set(0,0,1);outward.normalize();
+    for(let j=0;j<=steps;j++){
+      const t=j/steps,u=1-t,mid=vec(0,0,0).addScaledVector(a,u*u).addScaledVector(b,2*t*u).addScaledVector(c,t*t);
+      const axis=vec(0,0,0).copy(b).sub(a).multiplyScalar(u).addScaledVector(vec(0,0,0).copy(c).sub(b),t).normalize();
+      const cross=vec(0,0,0).crossVectors(axis,outward).normalize(),front=vec(0,0,0).crossVectors(cross,axis).normalize();
+      const rad=r*(j===steps?.016:(1-t)*(.88+.48*Math.sin(Math.PI*t)));
+      for(let i=0;i<sides;i++){
+        const angle=i*Math.PI*2/sides,cs=Math.cos(angle),sn=Math.sin(angle);
+        const v=mid.clone().addScaledVector(cross,rad*sn).addScaledVector(front,rad*.62*cs);p.push(v.x,v.y,v.z);
+        const vLight=(white?.55:.52)+.33*(cs*.5+.5)+.14*t;shade.push(vLight*.96,vLight,Math.min(1.02,vLight*1.08));
+        if(j){const k=base+(j-1)*sides+i,n=base+(j-1)*sides+(i+1)%sides;idx.push(k,n,k+sides,n,n+sides,k+sides);}
+      }
+    }
+  }
+  const g=new T.BufferGeometry();g.setIndex(idx);
+  g.setAttribute("position",new T.Float32BufferAttribute(p,3));g.setAttribute("color",new T.Float32BufferAttribute(shade,3));
+  g.computeVertexNormals();g.userData.fieldGloss=white?.43:.50;attach(head,g,white?0xe3e8ef:0x293047);
+}
 export function sweptLocks(T,hero,head,attach) {
+  if(hero===2||hero===3){shapedCrown(T,hero,head,attach);return;}
   const colours=[[0xd99d30,0xffca4e,0xe9a939],[0x412b39,0x713746,0x502b3a],
     [0xb8cbdc,0xf1f0ea,0xe2e6ec],[0x171b27,0x34303a,0x262733]];
   const palette=colours[hero],groups=palette.map(colour=>({p:[],ix:[],colour}));

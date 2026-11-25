@@ -1,5 +1,5 @@
-import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=river-duel4";
-import {addUv,stone,paving,plain} from "./field-architecture.mjs?v=river-duel4";
+import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=river-marching6";
+import {addUv,stone,flagFace,plain} from "./field-architecture.mjs?v=jade-ground2";
 
 // Coordinates are metres along the actual mid-lane and metres across it.
 // Each flagstone has a recessed joint, a broken corner and its own bevel.
@@ -28,7 +28,32 @@ export function riverBridge(T,art){
     tri(a,b,c,cell,[[u0,v0],[u1,v0],[u1,v1]],tint);
     tri(a,c,d,cell,[[u0,v0],[u1,v1],[u0,v1]],tint);
   }
-  const patterns=[[.08,.034,.49,.115],[.39,.21,.78,.30],[.11,.38,.52,.49],[.22,.61,.51,.70],[.29,.77,.67,.84],[.15,.91,.61,.97]];
+  const patterns=[[.03,.04,.92,.90],[.88,.05,.06,.89],[.08,.89,.95,.09],[.92,.85,.08,.04],[.16,.16,.85,.95],[.89,.95,.13,.18]];
+  // Only walkable faces enter the surface lookup. The curbs and posts occlude ground marks.
+  const decks=new Map();
+  function remember(a,b,c) {
+    const ux=b[0]-a[0],uz=b[2]-a[2],vx=c[0]-a[0],vz=c[2]-a[2],det=ux*vz-uz*vx;
+    if(Math.abs(det)<1e-8)return;
+    const tri={a,ux,uz,vx,vz,det,du:b[1]-a[1],dv:c[1]-a[1]};
+    for(let i=Math.floor(Math.min(a[0],b[0],c[0]));i<=Math.floor(Math.max(a[0],b[0],c[0]));i++){
+      for(let j=Math.floor(Math.min(a[2],b[2],c[2]));j<=Math.floor(Math.max(a[2],b[2],c[2]));j++){
+        const key=(i+16)*32+j+16;
+        if(!decks.has(key))decks.set(key,[]);
+        decks.get(key).push(tri);
+      }
+    }
+  }
+  function deckY(x,z,ground) {
+    if(Math.abs(x)>6||Math.abs(z)>6)return ground;
+    const triangles=decks.get((Math.floor(x)+16)*32+Math.floor(z)+16);
+    if(!triangles)return ground;
+    for(const t of triangles){
+      const dx=x-t.a[0],dz=z-t.a[2];
+      const u=(dx*t.vz-dz*t.vx)/t.det,v=(t.ux*dz-t.uz*dx)/t.det;
+      if(u>=-.00001&&v>=-.00001&&u+v<=1.00001)return Math.max(ground,t.a[1]+u*t.du+v*t.dv);
+    }
+    return ground;
+  }
   function lid(poly,h,cell,tint,span,variant){
     const [x0,y0,x1,y1]=patterns[variant%patterns.length];
     const coordinates=poly.map(([x,y])=>[x0+(x1-x0)*(x-span[0])/(span[1]-span[0]),y0+(y1-y0)*(y-span[2])/(span[3]-span[2])]);
@@ -41,9 +66,9 @@ export function riverBridge(T,art){
     const chip=Math.min(w*.2,d*.19,.046+(variant%4)*.011);
     const outline=[[s0+chip,t0],[s1-chip*.5,t0],[s1,t0+chip*.5],[s1,t1-chip],[s1-chip,t1],[s0+chip*.7,t1],[s0,t1-chip*.6],[s0,t0+chip]];
     const mx=(s0+s1)/2,mz=(t0+t1)/2;
-    const bevel=outline.map(([s,t])=>[s+(mx-s)*.060,t+(mz-t)*.068]);
+    const bevel=outline.map(([s,t])=>[s+(mx-s)*.038,t+(mz-t)*.045]);
     const down=outline.map(p=>world(...p,bottom)),lip=outline.map(p=>world(...p,top-.032));
-    const up=lid(bevel,top,paving,tone,[s0,s1,t0,t1],variant);
+    const up=lid(bevel,top,flagFace,tone,[s0,s1,t0,t1],variant);
     for(let i=0;i<outline.length;i++){
       const j=(i+1)%outline.length;
       quad(down[i],down[j],lip[j],lip[i],stone,base,0,.26,1,.8);
@@ -62,7 +87,10 @@ export function riverBridge(T,art){
     for(let col=0;t<bank-.08;col++){
       const w=(col===0&&row%2?.51:.93)+.10*Math.sin(row*5+col*4);
       const next=Math.min(bank,t+w),v=(row*5+col*11)%flags.length;
-      block(s0+.016,s1-.016,t+.014,next-.014,.042+.005*Math.sin(row*.8+col),.003,flags[v],row+col);t=next;
+      const top=.042+.005*Math.sin(row*.8+col);
+      const a=world(s0,t,top),b=world(s0,next,top),c=world(s1,next,top),d=world(s1,t,top);
+      remember(a,b,c);remember(a,c,d);
+      block(s0+.011,s1-.011,t+.010,next-.010,top,.003,flags[v],row+col);t=next;
     }
   }
   for(const side of [-1,1]){
@@ -92,5 +120,5 @@ export function riverBridge(T,art){
   geo.setAttribute("position",new T.Float32BufferAttribute(points,3));geo.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
   geo.setAttribute("color",new T.Float32BufferAttribute(colour,3));geo.computeBoundingSphere();
   const mat=art.bind(new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
-  const mesh=new T.Mesh(geo,mat);mesh.name="中路溪桥";return mesh;
+  const mesh=new T.Mesh(geo,mat);mesh.name="中路溪桥";mesh.userData.deckY=deckY;return mesh;
 }
