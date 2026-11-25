@@ -1,7 +1,7 @@
 import {joinStandingKeep} from "./standing-keep.mjs?v=canyon-eave-batch1";
-import {bindKeepFinish} from "./keep-light.mjs?v=canyon-keep-recess3";
-import {pavilionRoof} from "./pavilion-roof.mjs?v=canyon-pavilion1";
-import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-keep-recess3";
+import {bindKeepFinish} from "./keep-light.mjs?v=canyon-eave-glaze2";
+import {pavilionRoof} from "./pavilion-roof.mjs?v=canyon-eave-glaze2";
+import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-eave-glaze2";
 import {towerSight} from "./tower-sight.mjs?v=canyon-eave-batch1";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
@@ -30,14 +30,15 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
   const masonry=part(),tiles=part(),ruin=part();let surface=masonry;
   const palette=new Map();
   const colors=team
-    ? {roof:"#603d59",edge:"#925659",cap:"#c78a69",cloth:"#b44c61",light:"#efd2a0"}
-    : {roof:"#284959",edge:"#426970",cap:"#82a3a0",cloth:"#2b8b89",light:"#ddd4a4"};
+    ? {roof:"#603d59",edge:"#925659",cap:"#c78a69",soffit:"#483541",cloth:"#b44c61",light:"#efd2a0"}
+    : {roof:"#284959",edge:"#426970",cap:"#91aba3",soffit:"#203941",cloth:"#2b8b89",light:"#ddd4a4"};
   const wooden=new Set(["#69493a","#735a45","#856848","#784f39","#a77e48"]);
   const carved=new Set(["#4c6265","#a1aba0","#667a76","#8a8977","#c2b793","#8e9483","#b8ac8b","#a59e89","#827e69","#a29b83"]);
   const brass=new Set(["#d4ac77","#d4b77b","#e0bd79","#c4a777","#ead398"]);
   // The atlas carries grain. Recover the authored linear-light pigment for
   // each course from its ratio to the neutral limestone or timber swatch.
   const limestone=new T.Color("#c2b696"),oak=new T.Color("#8b5c3c");
+  const glaze=team?[1,.85,.90]:[.64,.80,.87];
   function tri(a,b,c,color,faceUv=null,normals=null) {
     if(!palette.has(color))palette.set(color,new T.Color(color));
     const tint=palette.get(color);
@@ -52,7 +53,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
       const x=a[0]+b[0]+c[0],z=a[2]+b[2]+c[2];
       const side=Math.abs(x)>Math.abs(z)?(x>0?1:3):(z>0?2:0);
       finish=10+side;
-    }else if(surface===tiles&&(color===colors.edge||color===colors.cap))finish=6;
+    }else if(surface===tiles&&(color===colors.edge||color===colors.cap||color===colors.soffit))finish=6;
     for(const [i,p] of [a,b,c].entries()){
       surface.finish.push(finish);
       if(!art||cell===plain)surface.rgb.push(tint.r,tint.g,tint.b);
@@ -60,7 +61,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
         const base=cell===timber?oak:limestone;
         surface.rgb.push(.20+.80*tint.r/base.r,.20+.80*tint.g/base.g,.20+.80*tint.b/base.b);
       }
-      else surface.rgb.push(.93,.97,.96);
+      else surface.rgb.push(...glaze);
       if(faceUv){addUv(surface.uv,cell,...faceUv[i]);continue;}
       if(cell===plain){addUv(surface.uv,plain,.5,.5);continue;}
       const horizontal=Math.abs(ny)>Math.max(Math.abs(nx),Math.abs(nz));
@@ -120,12 +121,44 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
     for(let i=1;i<a.length-1;i++){tri(a[0],a[i],a[i+1],"#856848");tri(b[0],b[i+1],b[i],"#856848");}
     for(let i=0;i<a.length;i++){const j=(i+1)%a.length;quad(a[i],b[i],b[j],a[j],"#784f39");}
   }
+  function pillar(x,z){
+    const foot=core?.21:.175,top=lintel-.09,turn=Math.PI/8;
+    const footRim=ring(x,.81,z,foot*1.13,foot*1.13,8,turn);
+    const shoulder=ring(x,.90,z,foot*1.11,foot*1.11,8,turn);
+    const neck=ring(x,.935,z,foot*.90,foot*.90,8,turn);
+    connect(ring(x,.765,z,foot*1.24,foot*1.24),footRim,"#667a76");
+    connect(footRim,shoulder,"#a1aba0");connect(shoulder,neck,"#c2b793");
+    const lower=ring(x,.935,z,foot*.90,foot*.90),upper=ring(x,top,z,foot*.79,foot*.79);
+    const slope=foot*.11/(top-.935),length=Math.hypot(1,slope);
+    const normal=lower.map(([px,,pz])=>[(px-x)/(foot*.90*length),slope/length,(pz-z)/(foot*.90*length)]);
+    const grain=(u,h)=>[.13+.72*u,.85-.72*h];
+    for(let i=0;i<8;i++){
+      const j=(i+1)%8,u=i/8,v=(i+1)/8;
+      tri(lower[j],lower[i],upper[i],"#784f39",[grain(v,0),grain(u,0),grain(u,1)],[normal[j],normal[i],normal[i]]);
+      tri(lower[j],upper[i],upper[j],"#784f39",[grain(v,0),grain(u,1),grain(v,1)],[normal[j],normal[i],normal[j]]);
+    }
+    connect(upper,ring(x,lintel+.004,z,foot,foot),"#856848");
+  }
   for(const x of [-postSpan,postSpan])for(const z of [-postSpan,postSpan]){
-    beam(x,.59,z,.20,core?1.65:1.31,.20,"#69493a");
-    beam(x,.61,z,.26,.21,.26,"#d4ac77");
+    pillar(x,z);
     corbel(x,z,true,Math.sign(x));corbel(x,z,false,Math.sign(z));
   }
-  beam(0,.64,0,span*1.6,.14,span*1.58,"#856848");
+  // Four boards meet in shallow V joints. Their bevels catch the same sun as the columns.
+  const halfDeck=span*.80,decks=span*.79,plank=halfDeck/2;
+  for(let i=0;i<4;i++){
+    const lo=-halfDeck+i*plank,hi=lo+plank,cut=.018;
+    const profile=[[lo,.750],[lo+cut,.783],[hi-cut,.783],[hi,.750]];
+    const near=profile.map(([x,h])=>[x,h,decks]),far=profile.map(([x,h])=>[x,h,-decks]);
+    const wood=i%3===1?"#735a45":"#856848";
+    for(let j=0;j<3;j++)quad(near[j],near[j+1],far[j+1],far[j],wood);
+    for(const z of [-decks,decks]){
+      const face=profile.map(([x,h])=>[x,h,z]);
+      quad([lo,.64,z],[hi,.64,z],face[3],face[0],"#69493a");
+      quad(face[0],face[3],face[2],face[1],wood);
+    }
+  }
+  for(const x of [-halfDeck,halfDeck])quad([x,.64,-decks],[x,.64,decks],[x,.750,decks],[x,.750,-decks],"#69493a");
+  quad([-halfDeck,.64,-decks],[halfDeck,.64,-decks],[halfDeck,.64,decks],[-halfDeck,.64,decks],"#69493a");
   if(core){
     cylinder(0,0,.80,1.36,.40,.57,colors.cloth,6);
     cylinder(0,0,1.36,2.13,.57,.08,colors.light,6);
@@ -166,7 +199,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
   }
   const front=postSpan+.129,y=lintel-.058,half=core?.195:.157;
   for(const sign of [-1,1]){
-    const x=sign*(postSpan-.09),length=core?.67:.54;
+    const x=sign*postSpan*.53,length=core?.52:.40;
     const edge=(u,v)=>[x+u*half+.016*v,y-v*length,front+.014+(.016+.026*v)*(1-Math.abs(u))+.013*u*v];
     const left=edge(-1,.79),peak=edge(0,1),right=edge(1,.76),middle=edge(0,.77);
     quad(edge(-1,0),edge(0,0),middle,left,colors.cloth);

@@ -1,4 +1,4 @@
-import {basicDamage} from "./river-supplies.mjs?v=canyon-palm1";
+import {basicDamage} from "./river-supplies.mjs?v=canyon-skill-choice1";
 import {commissionRam} from "./river-keeper.mjs?v=canyon-palm1";
 import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=canyon-stonepath3";
 import {visibleTo,groundSeen} from "./river-reeds.mjs?v=canyon-palm1";

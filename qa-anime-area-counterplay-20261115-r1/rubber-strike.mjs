@@ -1,4 +1,4 @@
-import {canTarget} from "./estuary-lanes.mjs?v=canyon-palm1";
+import {canTarget} from "./estuary-lanes.mjs?v=canyon-skill-choice1";
 
 // Distances are in battlefield units and times are seconds after the wind-up.
 // Side is the offset at full range. Each jab has its own hand and contact.

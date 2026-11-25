@@ -1,6 +1,6 @@
 const choices = document.getElementById("choices");
 const start = document.getElementById("start");
-const runtime = new URL("./game.min.js?v=canyon-keep-recess3",import.meta.url);
+const runtime = new URL("./game.min.js?v=canyon-eave-glaze2",import.meta.url);
 let warming = false, opening = false, selected = 0;
 
 // Download on a deliberate hero choice. No WebGL context is needed to browse these cards.
@@ -83,7 +83,7 @@ function openingLabels(button){
   if(!button)return;
   const id=Number(button.dataset.hero),kit=button.lastElementChild.textContent;
   const labels=kit.split(" · ");
-  if(labels?.length>=2)for(let slot=0;slot<2;slot++)openingSkill.options[slot].textContent=labels[slot].trim();
+  if(labels?.length>=2)for(let slot=0;slot<2;slot++)openingSkill.querySelector('option[value="'+slot+'"]').textContent=labels[slot].trim();
   document.getElementById("draft-name").textContent=button.querySelector("b").textContent;
   document.getElementById("draft-role").textContent=button.querySelector("em").textContent;
   document.getElementById("draft-kit").textContent=kit;

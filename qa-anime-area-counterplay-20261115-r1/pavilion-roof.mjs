@@ -26,25 +26,35 @@ export function pavilionRoof(y,rise,span,colors,tri,quad){
       skin(grid[row][i+1],grid[row][i],grid[row+1][i]);
       skin(grid[row][i+1],grid[row+1][i],grid[row+1][i+1]);
     }
-    const edge=grid[0].map(v=>v.p),bottom=edge.map(p=>offset(p,-.012*ox,-.073,-.012*oz));
+    const edge=grid[0].map(v=>v.p);
+    const lip=edge.map(p=>offset(p,.022*ox,-.039,.022*oz));
+    const bottom=edge.map(p=>offset(p,-.016*ox,-.125,-.016*oz));
     const inner=across.map(u=>[(ox+tx*u)*span*.78,y-.074,(oz+tz*u)*span*.78]);
     for(let i=0;i<across.length-1;i++){
-      quad(bottom[i+1],bottom[i],edge[i],edge[i+1],colors.edge);
+      quad(lip[i+1],lip[i],edge[i],edge[i+1],colors.edge);
+      quad(bottom[i+1],bottom[i],lip[i],lip[i+1],colors.soffit);
       quad(inner[i],bottom[i],bottom[i+1],inner[i+1],"#735a45");
     }
     tri([0,y-.074,0],inner[0],inner.at(-1),"#69493a");
     const upper=grid.at(-1);
     tri([0,upper[0].p[1],0],upper.at(-1).p,upper[0].p,colors.edge);
 
-    // Five fired-clay end caps along the eave interrupt the fascia at playing distance.
-    // They end on its outer face, with no strips laid over the slope.
-    for(let j=0;j<5;j++){
-      const u=(j-2)*.36,p=tile(side,u,0).p,r=Math.min(.056,.051*span);
-      const centre=offset(p,.018*ox,-.050,.018*oz),rim=[];
-      for(let k=0;k<=4;k++){
-        const a=Math.PI*k/4;rim.push(offset(centre,tx*r*Math.cos(a),r*Math.sin(a),tz*r*Math.cos(a)));
+    // The relief map has ten barrel tiles with their crowns at phase .24.
+    // Carry each crown around the edge into a protruding ceramic lip and a recessed mouth.
+    for(let j=0;j<10;j++){
+      const u=2*(j+.24)/10-1,p=tile(side,u,0).p;
+      const radius=span*Math.min(.078,.85*(1-Math.abs(u)));
+      const depth=Math.min(.047,.041*span),height=Math.min(.071,radius);
+      // The top of each cap starts under the continuous drip edge, including on the far silhouette.
+      const end=(v,h,out)=>offset(p,tx*v*radius+ox*out,-.030+height*(h-.84),tz*v*radius+oz*out);
+      const profile=[[-1,0],[-.56,.84],[.56,.84],[1,0]];
+      const front=profile.map(([v,h])=>end(v,h,depth));
+      const heel=end(0,.83,-.008),cup=end(0,.24,depth-.026);
+      for(let k=0;k<3;k++){
+        tri(heel,front[k+1],front[k],colors.edge);
+        tri(front[k],front[k+1],cup,k===1?colors.cap:colors.soffit);
       }
-      for(let k=0;k<4;k++)tri(centre,rim[k],rim[k+1],colors.cap);
+      tri(front[3],front[0],cup,colors.soffit);
     }
 
     const sx=ox-tx,sz=oz-tz,px=-sz/Math.SQRT2,pz=sx/Math.SQRT2;

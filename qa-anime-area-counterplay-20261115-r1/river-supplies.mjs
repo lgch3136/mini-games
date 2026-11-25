@@ -16,17 +16,46 @@ const cachedRosters = new WeakMap();
 const slots = ["Q","E","R"];
 const teamActor = u => u && (u.team === 0 || u.team === 1);
 
-function train(hero) {
+export function skillPoints(hero) {
+  const ranks=hero?.skillRanks;
+  return ranks?Math.max(0,hero.level-ranks[0]-ranks[1]-ranks[2]):0;
+}
+
+function rankLimit(level,slot) {
+  return slot===2?Math.min(3,Math.floor(level/4)):Math.min(6,Math.ceil(level/2));
+}
+
+export function canLearnSkill(hero,slot) {
+  return Number.isInteger(slot)&&slot>=0&&slot<3&&skillPoints(hero)>0&&hero.skillRanks[slot]<rankLimit(hero.level,slot);
+}
+
+export function learnPlayerSkill(match,slot) {
+  if(!match||match.result)return false;
+  prepareBuild(match);
+  const hero=player(match);
+  if(!canLearnSkill(hero,slot))return false;
+  hero.skillRanks[slot]++;
+  return true;
+}
+
+function train(hero,lead=hero.skillPriority===1?1:0) {
   const ranks = hero.skillRanks;
   for (let point = ranks[0]+ranks[1]+ranks[2]+1; point <= hero.level; point++) {
-    const ultimate = Math.min(3, Math.floor(point/4));
-    const basic = Math.min(6, Math.ceil(point/2));
-    const lead = hero.skillPriority === 1 ? 1 : 0;
+    const ultimate = rankLimit(point,2);
+    const basic = rankLimit(point,lead);
     if (ranks[2] < ultimate) ranks[2]++;
     else if (point === 2) ranks[ranks[0]===0?0:1]++;
     else if (ranks[lead] < basic) ranks[lead]++;
     else ranks[1-lead]++;
   }
+}
+
+export function setPlayerTraining(match,mode) {
+  if(!match||match.result||![-1,0,1].includes(mode))return false;
+  prepareBuild(match);
+  match.autoSkillSlot=mode;
+  if(mode>=0)train(player(match),mode);
+  return true;
 }
 
 function syncLocal(match,hero) {
@@ -40,6 +69,7 @@ export function prepareBuild(match) {
   let teams = cachedRosters.get(match);
   if (teams) return teams;
   teams = [[],[]];
+  match.autoSkillSlot ??= -1;
   if (match.autoBuild == null) {
     match.autoBuild = true;
     try { match.autoBuild = globalThis.localStorage?.getItem("estuary-auto-shop-v1") !== "off"; } catch {}
@@ -54,8 +84,15 @@ export function prepareBuild(match) {
     hero.xp ??= old.xp || 0; hero.level ??= old.level || 1;
     hero.kills ??= old.soloKills || 0; hero.deaths ??= old.deaths || 0;
     hero.assists ??= 0; hero.lastHits ??= old.lastHits || 0;
-    hero.skillPriority ??= hero.id===match.playerId && match.openingSkill===1?1:0; hero.skillRanks ??= [0,0,0];
-    train(hero);
+    const local=hero.id===match.playerId;
+    hero.skillPriority ??= local && match.openingSkill===1?1:0;
+    if(!hero.skillRanks){
+      hero.skillRanks=[0,0,0];
+      if(local&&hero.level>1&&match.openingSkill!==-1)train(hero);
+      else if(local&&match.openingSkill!==-1)hero.skillRanks[hero.skillPriority===1?1:0]=1;
+    }
+    if(!local)train(hero);
+    else if(match.autoSkillSlot>=0)train(hero,match.autoSkillSlot);
     teams[hero.team].push(hero);
     syncLocal(match,hero);
   }
@@ -68,6 +105,79 @@ export function prepareBuild(match) {
 export function skillRank(hero,slot) { return hero?.skillRanks?.[slot] || 0; }
 export function skillCooldown(hero,slot,base) {
   return base*(1-(hero.haste||0))*(1-.035*Math.max(0,skillRank(hero,slot)-1));
+}
+
+export function skillStudyControls(getMatch,available,definitions,announce) {
+  const buttons=slots.map(key=>document.querySelector('.skills [data-key="'+key.toLowerCase()+'"]'));
+  const study=slots.map((_,slot)=>document.querySelector('.skills [data-study="'+slot+'"]'));
+  const level=document.getElementById("level");
+  const reduced=matchMedia("(prefers-reduced-motion: reduce)");
+  let previousHero,previousLevel,previousPoints,previousHaste;
+  function paint(hero) {
+    const points=skillPoints(hero);
+    if(hero===previousHero&&hero.level===previousLevel&&points===previousPoints&&hero.haste===previousHaste)return;
+    previousHero=hero;previousLevel=hero.level;previousPoints=points;previousHaste=hero.haste;
+    setText(level,"Lv."+hero.level+(points?" · "+points+"点":""));
+    for(let slot=0;slot<3;slot++){
+      const button=buttons[slot],plus=study[slot],rank=skillRank(hero,slot);
+      const name=definitions[hero.hero].skills[slot],eligible=canLearnSkill(hero,slot);
+      const lock=slot===2&&hero.level<4?"4级":eligible?"可学":hero.level===1?"2级":"未学";
+      button.disabled=rank===0;
+      button.dataset.lockHint=lock;
+      button.classList.toggle("unlearned",!rank);
+      button.classList.toggle("can-study",eligible&&!rank);
+      button.style.setProperty("--trained-ranks",String(rank));
+      button.setAttribute("aria-label",name+(rank?"，招式 "+rank+" 级":"，"+lock));
+      if(!rank)setText(document.getElementById(slots[slot].toLowerCase()+"c"),lock);
+      plus.hidden=!eligible;
+      if(eligible){
+        const verb=rank?"升级":"学习";
+        const next=rank+1;
+        plus.setAttribute("aria-label",verb+name+"至 "+next+" 级，快捷键 "+(slot+1));
+        const cooldown=definitions[hero.hero].cds[slot]*(1-(hero.haste||0))*(1-.035*rank);
+        plus.title=verb+name+" · "+next+"级 · 冷却 "+Number(cooldown.toFixed(1))+" 秒（"+(slot+1)+"）";
+      }
+    }
+  }
+  function spend(slot) {
+    if(!available())return false;
+    const match=getMatch();
+    if(!learnPlayerSkill(match,slot))return false;
+    const hero=player(match),rank=skillRank(hero,slot),button=buttons[slot];
+    paint(hero);
+    if(!reduced.matches)button.animate?.([
+      {boxShadow:"0 0 0 2px #fff4a8,0 0 12px #e7bd68"},
+      {boxShadow:"0 0 0 5px transparent,0 0 0 transparent"}
+    ],{duration:440,easing:"ease-out"});
+    announce(definitions[hero.hero].skills[slot],rank);
+    return true;
+  }
+  study.forEach((plus,slot)=>{
+    let press=null;
+    const onButton=(event)=>{
+      const rect=plus.getBoundingClientRect();
+      return event.clientX>=rect.left&&event.clientX<rect.right&&event.clientY>=rect.top&&event.clientY<rect.bottom;
+    };
+    plus.addEventListener("pointerdown",event=>{
+      if(event.button!==0||press)return;
+      press={id:event.pointerId,x:event.clientX,y:event.clientY,cancelled:false};
+      plus.setPointerCapture(event.pointerId);
+    });
+    plus.addEventListener("pointermove",event=>{
+      if(press?.id===event.pointerId&&(!onButton(event)||Math.hypot(event.clientX-press.x,event.clientY-press.y)>12))press.cancelled=true;
+    });
+    plus.addEventListener("pointerup",event=>{
+      if(press?.id!==event.pointerId)return;
+      const tapped=!press.cancelled&&onButton(event);
+      press=null;
+      if(tapped)spend(slot);
+    });
+    plus.addEventListener("lostpointercapture",event=>{if(press?.id===event.pointerId)press=null;});
+    plus.addEventListener("pointercancel",event=>{if(press?.id===event.pointerId)press=null;});
+    // Keyboard and assistive technology activate a button with a zero-detail click.
+    plus.addEventListener("click",event=>{if(event.detail===0)spend(slot);});
+  });
+  return {paint,spend};
 }
 export function basicDamage(hero) {
   return hero.damage * (1+.055*((hero.level||1)-1));
@@ -128,7 +238,8 @@ function award(match,hero,coins,xp,reason) {
     const rise=hero.level-before;
     hero.maxHp+=40*rise;
     if (alive(hero)) hero.hp=Math.min(hero.maxHp,hero.hp+65*rise);
-    train(hero);
+    if(hero.id!==match.playerId)train(hero);
+    else if(match.autoSkillSlot>=0)train(hero,match.autoSkillSlot);
     if (alive(hero)) match.events.push({type:"level",id:++match.eventSeq,source:hero.id,sourceKind:"hero",sourceTeam:hero.team,
       team:hero.team,x:hero.x,z:hero.z,level:hero.level,ttl:.65});
   }
@@ -329,16 +440,17 @@ export function fieldOutfitter(getMatch,playing,dirty,definitions){
       setText(b.querySelector("span"),item.detail[tier?1:0]);
       setText(b.querySelector("em"),tier===2?"已进阶":(tier?"进阶 ":"")+item.price[tier]+" 铜钱");
     }
-    const lead=hero.skillPriority;
-    setText(priorityKey,"主升"+definitions[hero.hero].skills[lead]);
-    setText(training,slots.map((s,i)=>s+" "+hero.skillRanks[i]).join("　"));
+    if(priorityKey.value!==String(m.autoSkillSlot))priorityKey.value=String(m.autoSkillSlot);
+    setText(priorityKey.options[1],"自动主升 "+definitions[hero.hero].skills[0]);
+    setText(priorityKey.options[2],"自动主升 "+definitions[hero.hero].skills[1]);
+    setText(training,slots.map((s,i)=>s+" "+hero.skillRanks[i]).join("　")+" · "+skillPoints(hero)+" 点可用");
   }
   function toggle(){if(!playing())return;if(panel.hidden){panel.hidden=false;open.setAttribute("aria-expanded","true");paint(true);}else close();}
   open.addEventListener("click",toggle);
   panel.querySelector("[data-close]").addEventListener("click",close);
-  priorityKey.addEventListener("click",()=>{
+  priorityKey.addEventListener("change",()=>{
     if(!playing())return;
-    const hero=player(getMatch()); hero.skillPriority=1-hero.skillPriority;
+    setPlayerTraining(getMatch(),Number(priorityKey.value));
     paint(true);dirty();
   });
   auto.addEventListener("click",()=>{

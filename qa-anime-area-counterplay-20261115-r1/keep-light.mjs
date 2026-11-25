@@ -33,16 +33,19 @@ function rasterHeight(parts,project,record){
 function tileRelief(T){
   const size=64,bytes=new Uint8Array(size*size*4);
   const crown=u=>(.5+.5*Math.cos(2*Math.PI*(u-.24)))**3;
-  const seam=v=>1-Math.cos(2*Math.PI*(v-.065));
-  const lip=v=>Math.exp(-seam(v)*14);
-  const height=(u,v)=>.064*crown(u)+.017*lip(v)*(.78+.22*crown(u));
+  const lap=v=>{
+    const phase=v-Math.floor(v),edge=clamp((phase-.86)/.14,0,1);
+    return phase*(.54+.46*phase)*(1-edge*edge*(3-2*edge));
+  };
+  const height=(u,v)=>.049*crown(u)+.028*lap(v)*(.77+.23*crown(u));
   const h=.5/size,channel=v=>Math.round(255*clamp(v,0,1));
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
     const u=(x+.5)/size,v=(y+.5)/size,offset=4*(y*size+x);
     bytes[offset]=channel(.5-.5*(height(u+h,v)-height(u-h,v))/(2*h));
     bytes[offset+1]=channel(.5-.5*(height(u,v+h)-height(u,v-h))/(2*h));
     bytes[offset+2]=channel(.35+.50*crown(u)+.12*Math.cos(2*Math.PI*v));
-    bytes[offset+3]=channel(1-.62*Math.exp(-seam(v+.065)*30));
+    const joint=1-Math.cos(2*Math.PI*(v-.025));
+    bytes[offset+3]=channel(1-.82*Math.exp(-joint*18));
   }
   const map=new T.DataTexture(bytes,size,size,T.RGBAFormat);
   map.wrapS=map.wrapT=T.RepeatWrapping;map.magFilter=T.LinearFilter;
@@ -144,7 +147,7 @@ export function bindKeepFinish(T,material,relief,slot){
         vec2 cell=fract(keepUv*vec2(2.,4.));cell.y=1.-cell.y;
         vec2 courses=(cell-.009)/.982*vec2(10.,6.);
         tileSample=texture2D(keepTileFinish,courses);
-        diffuseColor.rgb*=mix(.86,1.,tileSample.a);
+        diffuseColor.rgb*=mix(.71,1.,tileSample.a);
       }
       if(abs(keepKind-5.)<.25 && abs(keepFace.y)<.8){
         float course=keepLocal.y/.35+.15;
@@ -186,7 +189,7 @@ export function bindKeepFinish(T,material,relief,slot){
       }
       reflectedLight.indirectDiffuse*=mix(vec3(1.),ambientShade,shelter);`);
   };
-  material.customProgramCacheKey=()=>'keep-standing-eave-v3';
+  material.customProgramCacheKey=()=>'keep-standing-eave-v4';
 }
 
 // The ground uses the same footprint as the surface shadow test. Static vertices follow
