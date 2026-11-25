@@ -1,12 +1,12 @@
 import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=canyon-stonepath3";
 import {addUv,stone,flagFace,plain,indexStoneFaces} from "./field-architecture.mjs?v=canyon-slate4";
-import {bindLitSurface} from "./surface-impact.mjs?v=canyon-thicket2";
+import {bindLitSurface} from "./surface-impact.mjs?v=canyon-palm1";
 
 // Coordinates are metres along the actual mid-lane and metres across it.
 // Each flagstone has a recessed joint, a broken corner and its own bevel.
 export function riverBridge(T,art,lighting){
   const road=routes[1],centre=measure(road,0,0).at,end=5.16,bank=1.91;
-  const points=[],colour=[],uv=[],normals=[];
+  const points=[],colour=[],uv=[],normals=[],walkFaces=[];
   const cache=new Map(),v1=new T.Vector3(),v2=new T.Vector3();
   function world(s,t,h=0){
     const p=along(road,centre+s,t);
@@ -60,30 +60,35 @@ export function riverBridge(T,art,lighting){
     }
     return ground;
   }
-  function lid(poly,h,cell,tint,span,variant){
+  function lid(poly,h,cell,tint,span,variant,walkable){
     const [x0,y0,x1,y1]=patterns[variant%patterns.length];
     const coordinates=poly.map(([x,y])=>[x0+(x1-x0)*(x-span[0])/(span[1]-span[0]),y0+(y1-y0)*(y-span[2])/(span[3]-span[2])]);
     const p=poly.map(([s,t])=>world(s,t,h));
-    for(let k=1;k+1<p.length;k++)tri(p[0],p[k+1],p[k],cell,[coordinates[0],coordinates[k+1],coordinates[k]],tint);
+    for(let k=1;k+1<p.length;k++){
+      if(walkable)walkFaces.push(points.length/3);
+      tri(p[0],p[k+1],p[k],cell,[coordinates[0],coordinates[k+1],coordinates[k]],tint);
+    }
     return p;
   }
-  function block(s0,s1,t0,t1,top,bottom,tone,variant=0){
+  function block(s0,s1,t0,t1,top,bottom,tone,variant=0,walkable=false){
     const w=s1-s0,d=t1-t0;
     const chip=Math.min(w*.2,d*.19,.046+(variant%4)*.011);
     const outline=[[s0+chip,t0],[s1-chip*.5,t0],[s1,t0+chip*.5],[s1,t1-chip],[s1-chip,t1],[s0+chip*.7,t1],[s0,t1-chip*.6],[s0,t0+chip]];
     const mx=(s0+s1)/2,mz=(t0+t1)/2;
     const bevel=outline.map(([s,t])=>[s+(mx-s)*.038,t+(mz-t)*.045]);
     const down=outline.map(p=>world(...p,bottom)),lip=outline.map(p=>world(...p,top-.032));
-    const up=lid(bevel,top,flagFace,tone,[s0,s1,t0,t1],variant);
+    const up=lid(bevel,top,flagFace,tone,[s0,s1,t0,t1],variant,walkable);
     for(let i=0;i<outline.length;i++){
       const j=(i+1)%outline.length;
       quad(down[i],down[j],lip[j],lip[i],stone,base,0,.26,1,.8);
+      if(walkable)walkFaces.push(points.length/3,points.length/3+3);
       quad(lip[i],lip[j],up[j],up[i],plain,(i+variant)%4===0?"#9d9d92":"#c9c9b9");
     }
   }
   // The dark mortar is visible through the real gaps between flags.
   for(let s=-end;s<end;s+=1){
     const next=Math.min(end,s+1);
+    walkFaces.push(points.length/3,points.length/3+3);
     quad(world(s,-bank,.001),world(s,bank,.001),world(next,bank,.001),world(next,-bank,.001),plain,joint);
   }
   const flags=["#f8f2e5","#fff9ea","#e9e6db","#f1efe3","#f8e8d3","#e7e5dc"];
@@ -96,7 +101,7 @@ export function riverBridge(T,art,lighting){
       const top=.042+.005*Math.sin(row*.8+col);
       const a=world(s0,t,top),b=world(s0,next,top),c=world(s1,next,top),d=world(s1,t,top);
       remember(a,b,c);remember(a,c,d);
-      block(s0+.011,s1-.011,t+.010,next-.010,top,.003,flags[v],row+col);t=next;
+      block(s0+.011,s1-.011,t+.010,next-.010,top,.003,flags[v],row+col,true);t=next;
     }
   }
   for(const side of [-1,1]){
@@ -129,5 +134,31 @@ export function riverBridge(T,art,lighting){
   const mat=art.bind(new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   if(lighting)mat.onBeforeCompile=shader=>bindLitSurface(shader,lighting);
   mat.customProgramCacheKey=()=>"river-damp-stone-spell-v1";
-  const mesh=new T.Mesh(geo,mat);mesh.name="中路溪桥";mesh.userData.deckY=deckY;return mesh;
+  const mesh=new T.Mesh(geo,mat);mesh.name="中路溪桥";mesh.userData.deckY=deckY;
+  // Only pavement, its bevels and exposed mortar receive targeting ink. The parapets
+  // and tall posts still test depth against it like any other scene object.
+  const indexed=geo.index.array,xyz=geo.attributes.position.array,tiles=new Map();
+  const seen=new Uint32Array(walkFaces.length);let stamp=0;
+  for(let f=0;f<walkFaces.length;f++){
+    const row=walkFaces[f],a=indexed[row]*3,b=indexed[row+1]*3,c=indexed[row+2]*3;
+    const lx=Math.floor(Math.min(xyz[a],xyz[b],xyz[c])),hx=Math.floor(Math.max(xyz[a],xyz[b],xyz[c]));
+    const lz=Math.floor(Math.min(xyz[a+2],xyz[b+2],xyz[c+2])),hz=Math.floor(Math.max(xyz[a+2],xyz[b+2],xyz[c+2]));
+    for(let x=lx;x<=hx;x++)for(let z=lz;z<=hz;z++){
+      const key=(x+16)*32+z+16;if(!tiles.has(key))tiles.set(key,[]);tiles.get(key).push(f);
+    }
+  }
+  mesh.userData.visitDeck=(x0,z0,x1,z1,visit)=>{
+    if(x1<-6||z1<-6||x0>6||z0>6)return;
+    stamp=(stamp+1)>>>0;if(stamp===0){seen.fill(0);stamp=1;}
+    const right=Math.min(6,Math.floor(x1)),bottom=Math.min(6,Math.floor(z1));
+    for(let x=Math.max(-6,Math.floor(x0));x<=right;x++)for(let z=Math.max(-6,Math.floor(z0));z<=bottom;z++){
+      const list=tiles.get((x+16)*32+z+16);if(!list)continue;
+      for(const f of list){
+        if(seen[f]===stamp)continue;seen[f]=stamp;
+        const n=walkFaces[f],a=3*indexed[n],b=3*indexed[n+1],c=3*indexed[n+2];
+        visit(xyz[a],xyz[a+1],xyz[a+2],xyz[b],xyz[b+1],xyz[b+2],xyz[c],xyz[c+1],xyz[c+2]);
+      }
+    }
+  };
+  return mesh;
 }

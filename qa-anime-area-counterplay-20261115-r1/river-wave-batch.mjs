@@ -1,4 +1,4 @@
-import {laneCompany} from "./lane-company.mjs?v=canyon-silhouette1";
+import {laneCompany} from "./lane-company.mjs?v=canyon-palm1";
 export function makeWaveBatches(T,scene,heightAt,markFighter) {
   const company=laneCompany(T,scene,heightAt,markFighter);
   return {start:company.start,draw:company.draw,reset:company.reset,dispose:company.dispose,

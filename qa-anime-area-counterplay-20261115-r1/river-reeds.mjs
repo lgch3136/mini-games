@@ -110,7 +110,7 @@ function observeEvent(match,team,event){
   if(event.type==="dash"&&!allied&&
       (!witnessed(match,team,source,fx,fz)||!witnessed(match,team,source,tx,tz)))return null;
   const impact=event.type==="hit"||event.type==="death"||event.type==="warning"||
-    event.type==="airPush"||event.type==="intercept";
+    event.type==="airPush"||event.type==="intercept"||event.type==="miss"&&event.shotKind==="ki";
   const from=source?source.team===team||groundSeen(match,team,source.x,source.z)&&visibleTo(match,team,source):
     allied||witnessed(match,team,null,fx,fz);
   const to=witnessed(match,team,target,tx,tz);

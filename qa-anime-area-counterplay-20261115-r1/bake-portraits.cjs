@@ -18,21 +18,21 @@ function photograph(T,model,hero,full=false){
   model.teamRing.visible=false;
   model.animate(.64,false,0,0,null,0,0);
   if(full){
-    const skill=[0,0,1,2,0][hero],action={kind:"skill",skillIndex:skill,face:0,windup:.5,recover:.38,duration:.88,elapsed:0};
-    const hold=[.29,.41,.26,.30,.23][hero];
+    const skill=[0,0,1,0,0][hero],action={kind:"skill",skillIndex:skill,face:0,windup:.5,recover:.38,duration:.88,elapsed:0};
+    const hold=[.29,.41,.26,.50,.23][hero];
     for(let tick=0;tick<=Math.round(hold*60);tick++){
       action.elapsed=tick/60;model.animate(1+action.elapsed,false,0,0,action,0,0);
     }
   }
   if(hero!==1){
     model.head.rotation.y+=[-.07,0,.09,-.19,-.09][hero];
-    model.arms[hero===4?0:1].rotation.x-=hero===2?.12:.22;
+    if(hero!==3||!full)model.arms[hero===4?0:1].rotation.x-=hero===2?.12:.22;
     model.arms[0].rotation.z+=.05;model.arms[1].rotation.z-=.07;
   }
   model.g.updateMatrixWorld(true);
   const cam=new T.OrthographicCamera(-1,1,1,-1,.1,30);
   const look=new T.Vector3(0,hero===1?1.42:1.74,.02);
-  const span=full?3.2:[1.37,1.79,1.40,1.54,1.42][hero],yaw=(full?[.37,-.37,-.39,.52,-.52]:[.22,-.18,-.18,.35,-.24])[hero];
+  const span=full?3.2:[1.37,1.79,1.40,1.54,1.42][hero],yaw=(full?[.37,-.37,-.39,-.47,-.52]:[.22,-.18,-.18,.35,-.24])[hero];
   cam.left=-span*W/H/2;cam.right=-cam.left;cam.top=span/2;cam.bottom=-cam.top;
   cam.position.set(look.x+Math.sin(yaw)*7,look.y+.50,look.z+Math.cos(yaw)*7);cam.lookAt(look);
   cam.updateProjectionMatrix();cam.updateMatrixWorld();
@@ -180,7 +180,7 @@ function drawAbility(ctx,i,cell){
     const rig=build(T,i,0);paint.drawImage(photograph(T,rig,i),224*i,0,224,280);
     paint.drawImage(photograph(T,rig,i,true),224*i,280,224,280);rig.disposeSkin?.();
   }
-  writeFileSync(join(here,"assets/canyon-fighter-portraits.webp"),strip.encodeSync("webp",94));
+  writeFileSync(join(here,"assets/canyon-palm-portraits.webp"),strip.encodeSync("webp",94));
   const icons=createCanvas(512,512),ctx=icons.getContext("2d");
   for(let i=0;i<16;i++){ctx.save();ctx.translate(i%4*128,Math.floor(i/4)*128);drawAbility(ctx,i,128);ctx.restore();}
   writeFileSync(join(here,"assets/canyon-glyphs.webp"),icons.encodeSync("webp",94));

@@ -1,9 +1,9 @@
 import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,stoneLandmarks,huntingGrounds,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {addReeds} from "./river-reeds.mjs?v=canyon-stonepath3";
+import {addReeds} from "./river-reeds.mjs?v=canyon-palm1";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
-import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-thicket2";
+import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-palm1";
 export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
   const p=[],uv=[],kind=[],flat=[],ix=[],flow=[],n=73;
   const bridgeRoad=routes[1],bridgeCentre=measure(bridgeRoad,0,0).at;
@@ -57,6 +57,8 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     inside=outside;
   }
   const g=new T.BufferGeometry();g.setIndex(ix);g.setAttribute("position",new T.Float32BufferAttribute(p,3));g.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
+  // Culling reorders the draw indices. Keep only the original outer-bank faces for ground marks.
+  const bankFaces=g.index.array.slice((n-1)*(n-1)*6);
   g.setAttribute("river",new T.Float32BufferAttribute(kind,1));g.setAttribute("fallback",new T.Float32BufferAttribute(flat,3));
   g.setAttribute("flowCoord",new T.Float32BufferAttribute(flow,2));
   const exposure=new T.Uint8BufferAttribute(new Uint8Array(p.length/3).fill(255),1,true).setUsage(T.DynamicDrawUsage);
@@ -125,7 +127,28 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     if(dx+dz<=1)return p[a]+dx*(p[a+3]-p[a])+dz*(p[a+row]-p[a]);
     const far=p[a+row+3];return far+(1-dx)*(p[a+row]-far)+(1-dz)*(p[a+3]-far);
   }
-  return {groundY,cull:fieldVisibility(T,g),see(field){
+  // Marks reuse the actual triangles, including the lowered riverbed and the outer banks.
+  function visitTops(x0,z0,x1,z1,visit){
+    const spacing=2*extent/(n-1);
+    const first=(v)=>Math.max(0,Math.floor((v+extent)/spacing));
+    const last=(v)=>Math.min(n-2,Math.floor((v+extent)/spacing));
+    function face(a,b,c){
+      a*=3;b*=3;c*=3;
+      visit(p[a],p[a+1],p[a+2],p[b],p[b+1],p[b+2],p[c],p[c+1],p[c+2]);
+    }
+    const right=last(x1),bottom=last(z1);
+    for(let j=first(z0);j<=bottom;j++)for(let i=first(x0);i<=right;i++){
+      const a=j*n+i;face(a,a+n,a+1);face(a+1,a+n,a+n+1);
+    }
+    if(x0>=-extent&&z0>=-extent&&x1<=extent&&z1<=extent)return;
+    for(let t=0;t<bankFaces.length;t+=3){
+      const a=3*bankFaces[t],b=3*bankFaces[t+1],c=3*bankFaces[t+2];
+      if(Math.min(p[a],p[b],p[c])>x1||Math.max(p[a],p[b],p[c])<x0||
+         Math.min(p[a+2],p[b+2],p[c+2])>z1||Math.max(p[a+2],p[b+2],p[c+2])<z0)continue;
+      face(bankFaces[t],bankFaces[t+1],bankFaces[t+2]);
+    }
+  }
+  return {groundY,visitTops,cull:fieldVisibility(T,g),see(field){
     if(lastField===field&&fieldRevision===field.version)return;
     lastField=field;fieldRevision=field.version;
     exposure.array.set(field.values);
@@ -207,7 +230,7 @@ export function estuaryStonework(T){
   const mesh=new T.Mesh(g,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   mesh.userData.cull=fieldVisibility(T,g);return mesh;
 }
-export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-rockdepth1";
+export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-palm1";
 export function fieldMini(ctx,width,height){
   const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height,unit=width/(2*extent);
   const land=ctx.createRadialGradient(width*.45,height*.52,0,width*.5,height*.5,width*.71);

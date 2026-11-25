@@ -1,5 +1,5 @@
 import {footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
-import {spellVertex} from "./surface-impact.mjs?v=canyon-thicket2";
+import {spellVertex} from "./surface-impact.mjs?v=canyon-palm1";
 const barVertex=`precision highp float;
 in vec3 position;in vec4 anchor;in vec2 life;uniform vec4 playerRect;
 uniform mat4 modelViewMatrix,projectionMatrix;out vec2 uv;flat out vec2 status;

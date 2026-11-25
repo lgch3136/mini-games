@@ -87,6 +87,8 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
         const dx=e.targetX-e.fromX,dz=e.targetZ-e.fromZ,length=Math.hypot(dx,dz)||1;
         const near=Math.min(3.3,length)/length;
         caption(e.fromX+dx*near,e.fromZ+dz*near,t,"落空","missed",1.12);
+      }else if(own&&e.type==="miss"&&e.shotKind==="ki"){
+        caption(e.x,e.z,t,"落空","missed",1.24);
       }else if(own&&e.type==="windup"&&e.actionKind==="attack"){
         push("ready",e.x,e.z,e.face||0,t,e.windup,hue,player.radius);
       }else if(own&&player.hero!==1&&(e.type==="attack"||e.type==="miss")){

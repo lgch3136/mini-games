@@ -1,6 +1,6 @@
 import {actorStrides,footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
-import {bindImpact} from "./surface-impact.mjs?v=canyon-thicket2";
-import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-sleeveline1";
+import {bindImpact} from "./surface-impact.mjs?v=canyon-palm1";
+import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-kipalm2";
 import {skullBand} from "./character-plates.mjs?v=canyon-clavicle1";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };
@@ -159,6 +159,18 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
     const cap=new T.Bone();cap.name=j?"右肩峰":"左肩峰";cap.position.copy(arms[j].position);
     ribcage.add(cap);shoulders.push(cap);bones.push(cap);
   }
+  let palm=null,fingers=null,tips=null,thumb=null;
+  const fingerIndex=bones.length;
+  if(hero===3){
+    const wrist=wrists[1];
+    // Locations are in the right hand's bind frame. Four fingers share two
+    // bend axes and remain part of the same opaque skin and draw call.
+    fingers=new T.Bone();fingers.name="右掌指节";fingers.position.set(-.008,-.124,.014);
+    tips=new T.Bone();tips.name="右手指端";tips.position.set(0,-.061,.010);
+    thumb=new T.Bone();thumb.name="右手拇指";thumb.position.set(-.055,-.030,.016);
+    wrist.add(fingers,thumb);fingers.add(tips);bones.push(fingers,tips,thumb);
+    palm=new T.Object3D();palm.name="气弹掌心";palm.position.set(-.008,-.098,.084);wrist.add(palm);
+  }
   root.updateWorldMatrix(true,true);
   const skeleton=new T.Skeleton(bones);
   // Finger signs stay switchable, with their root attached to the moving forearm.
@@ -196,7 +208,10 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
         const pivot=limb<2?elbowY:kneeY;
         w=ease((pivot+.064-local.y)/.128);
         second=7+limb;
-        if(ribcage && limb<2 && geom.userData.handJoint){second=wristIndex+limb;w=1;}
+        if(ribcage && limb<2 && geom.userData.handJoint){
+          const finger=attr.castFinger?.getX(j)||0;
+          second=finger?fingerIndex+finger-1:wristIndex+limb;w=1;
+        }
         else if(ribcage && limb<2 && attr.chestWeight && local.y<handY+.12){
           first=7+limb;second=wristIndex+limb;w=ease((handY+.12-local.y)/.085);
         }
@@ -241,8 +256,34 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
   const travelFeet=[{},{}];
   const sockets=arms.map(arm=>arm.position.clone()),axis=new T.Vector3(),pivot=new T.Vector3(0,.23,0);
   const neutral=new T.Quaternion();
+  const palmFrame=new T.Quaternion(),desiredPalm=new T.Quaternion(),basis=new T.Matrix4();
+  const palmNormal=new T.Vector3(),fingerAxis=new T.Vector3(),acrossHand=new T.Vector3();
+  function facePalm(action){
+    if(!palm||action?.kind!=="skill"||action.skillIndex!==0)return;
+    const t=action.elapsed/action.windup;
+    const strength=ease((t-.46)/.52)*(1-ease((action.elapsed-action.windup-.04)/.19));
+    if(!strength)return;
+    const wrist=wrists[1],forearm=joints[1];
+    // The palm shows its heel to the target and the fingers rise over it.
+    // Share the turn with the forearm so the cuff follows the hand.
+    forearm.rotateY(-.88*strength);
+    body.getWorldQuaternion(palmFrame);
+    palmNormal.set(0,.095,1).normalize().applyQuaternion(palmFrame);
+    fingerAxis.set(-.34,.94,0).applyQuaternion(palmFrame);
+    fingerAxis.addScaledVector(palmNormal,-fingerAxis.dot(palmNormal)).normalize().negate();
+    acrossHand.crossVectors(fingerAxis,palmNormal).normalize();
+    basis.makeBasis(acrossHand,fingerAxis,palmNormal);desiredPalm.setFromRotationMatrix(basis);
+    desiredPalm.premultiply(forearm.getWorldQuaternion(palmFrame).invert());
+    wrist.quaternion.slerp(desiredPalm,strength);
+  }
   function upperMotion(beat,step,action,coil,release){
     const twoHands=action?.kind==="skill"&&action.skillIndex===2;
+    const opening=palm&&action?.kind==="skill"&&action.skillIndex===0?
+      ease(action.elapsed/Math.max(.01,action.windup*.78))*(1-ease((action.elapsed-action.windup-.04)/.21)):0;
+    if(palm){
+      fingers.rotation.x=-1.24*(1-opening);tips.rotation.x=-1.32*(1-opening);
+      thumb.rotation.set(0,-.36*opening,-.95*opening);
+    }
     const turn=(hero===3?.36:hero===4?.28:hero===0?.23:.19)*(twoHands?.42:1);
     ribcage.rotation.set(.017*step-.033*coil+.046*release,
       -.11*beat*step+turn*(.63*coil-release),.021*beat*step+.024*release);
@@ -259,7 +300,7 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
       cap.quaternion.slerpQuaternions(neutral,arm.quaternion,.5);
       cap.scale.y=1+(arm.scale.y-1)*.3;
       const active=j||twoHands?1:.30;
-      wrists[j].rotation.set(-.065*coil*active,side*(.19+.12*coil*active-.61*release*active),
+      wrists[j].rotation.set(-.065*coil*active+(j ? .96*opening : 0),side*(.19+.12*coil*active-.61*release*active),
         side*(.034+.049*coil*active-.035*release));
     }
   }
@@ -292,5 +333,5 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
       hinge.rotation.x+=(track.knee-restKnee)*mix;
     }
   }
-  return {pose,joints,skin,dispose(){skeleton.dispose();}};
+  return {pose,joints,skin,palm,facePalm,dispose(){skeleton.dispose();}};
 }

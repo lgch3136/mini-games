@@ -83,7 +83,7 @@ export function battleLight(T,height){
     return p;
   }
   function reset(){cursor=last=0;lastTime=-1;for(const p of pulses)p.end=-1;for(const p of points)p.w=0;}
-  function update(view,centre,muzzleOf){
+  function update(view,centre,muzzleOf,kiPoint){
     const time=view.time;if(time<lastTime)reset();lastTime=time;
     for(const e of view.events){
       if(e.id<=last)continue;last=e.id;
@@ -139,16 +139,20 @@ export function battleLight(T,height){
       if(u.hero!==4&&a?.kind==="skill"&&!a.resolved&&a.windup>0&&a.elapsed<=a.windup){
         const amt=Math.max(0,a.elapsed/a.windup),f=a.face??u.face??0;
         const ink=spellTint(u.hero,a.skillIndex);if(!ink)continue;
-        const socket=u.hero===1&&a.skillIndex===0?muzzleOf?.(u.id):null;
+        const handCast=(u.hero===1||u.hero===3)&&a.skillIndex===0;
+        const socket=handCast?muzzleOf?.(u.id):null;
         if(socket){socket.getWorldPosition(muzzle);consider(muzzle.x,muzzle.y,muzzle.z,2.47,ink,.48*amt*amt);continue;}
+        if(u.hero===3&&handCast)continue;
         const x=u.x+Math.sin(f)*.62,z=u.z+Math.cos(f)*.62;
         consider(x,height(x,z)+1.17,z,2.47,ink,.48*amt*amt);
       }
     }
     for(const shot of view.projectiles??[]){
       // The regular gold orb and its reflection move together only when the team can see it.
-      if(shot.visual?.hero===3&&shot.visual.skillIndex===0)
-        consider(shot.x,height(shot.x,shot.z)+.90,shot.z,2.25,ki,.53);
+      if(shot.kind==="ki"){
+        const orb=kiPoint?.(shot.id);
+        if(orb)consider(orb.x,orb.y,orb.z,2.25,ki,.53);
+      }
     }
     for(let i=0;i<2;i++){
       const win=winners[i];if(win.score<.012){points[i].w=0;continue;}

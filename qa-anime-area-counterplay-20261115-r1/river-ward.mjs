@@ -6,6 +6,17 @@ export function isGuarding(actor, time) {
     actor.shield > 0 && actor.shieldT > 0 && actor.wardUntil > time;
 }
 
+// Signed entry along a shot's direction, before it reaches the escorted ally.
+export function wardEntry(guard,shot,ally,ux,uz){
+  if(guard.team!==ally.team||guard.team===shot.team||guard.id===ally.id||guard.dead||guard.shield<=0)return Infinity;
+  const ax=guard.x-ally.x,az=guard.z-ally.z;
+  if(ax*ax+az*az>escortRange*escortRange||ax*ux+az*uz>=-.25)return Infinity;
+  const gx=guard.x-shot.x,gz=guard.z-shot.z,along=gx*ux+gz*uz,side=gx*uz-gz*ux;
+  if(Math.abs(side)>=guardRadius)return Infinity;
+  const half=Math.sqrt(guardRadius*guardRadius-side*side);
+  return along+half<0?Infinity:Math.max(0,along-half);
+}
+
 // Find the first barrier the projectile crosses before touching its intended ally.
 export function wardForShot(guards, shot, target, travel) {
   if (!guards?.length || (target.kind !== "hero" && target.kind !== "minion")) return null;
@@ -16,16 +27,8 @@ export function wardForShot(guards, shot, target, travel) {
   const limit = Math.min(travel, distance - target.radius);
   let first = null, firstContact = Infinity;
   for (const guard of guards) {
-    if (guard.team !== target.team || guard.team === shot.team || guard.id === target.id ||
-        guard.dead || guard.shield <= 0) continue;
-    const ax = guard.x - target.x, az = guard.z - target.z;
-    if (ax * ax + az * az > escortRange * escortRange || ax * ux + az * uz >= -.25) continue;
-    const gx = guard.x - shot.x, gz = guard.z - shot.z;
-    const along = gx * ux + gz * uz, sideways = gx * uz - gz * ux;
-    if (Math.abs(sideways) >= guardRadius) continue;
-    const halfChord = Math.sqrt(guardRadius * guardRadius - sideways * sideways);
-    const enter = Math.max(0, along - halfChord);
-    if (along + halfChord >= 0 && enter <= limit && enter < firstContact) {
+    const enter=wardEntry(guard,shot,target,ux,uz);
+    if (enter <= limit && enter < firstContact) {
       firstContact = enter;
       first = guard;
     }

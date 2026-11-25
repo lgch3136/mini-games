@@ -1,3 +1,4 @@
+import {projectedStrips} from "./field-warning.mjs?v=canyon-kiink1";
 const slots = {q: 0, e: 1, r: 2};
 const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
 
@@ -98,7 +99,7 @@ export function skillAiming({world, cancelZone, actor, shapeFor, bounds, project
 
 // The long strip and landing disc share one draw. Their positions follow the same
 // walkable bridge faces and terrain triangles as the selection ring.
-export function aimOverlay(T,scene,surface) {
+export function aimOverlay(T,scene,surface,visit) {
   const strip={across:4,along:18},landing={across:12,along:12};
   const count=g=>(g.across+1)*(g.along+1);
   const vertices=count(strip)+count(landing),positions=new Float32Array(vertices*3);
@@ -147,6 +148,7 @@ export function aimOverlay(T,scene,surface) {
         float fill=0.,edge=0.,light=0.,shadow=0.;
         float shoe=smoothstep(1.22,1.78,length(p));
         if(!isArea){
+          if(abs(p.x)>width+.15||p.y<0.||p.y>reach+.15)discard;
           // Both sides and the far cap coincide with the actual attack footprint.
           float boundary=max(abs(p.x)-width,max(-p.y,p.y-reach));
           float progress=clamp(p.y/max(.01,reach),0.,1.);
@@ -203,11 +205,12 @@ export function aimOverlay(T,scene,surface) {
   });
   const mesh=new T.Mesh(geometry,material);mesh.frustumCulled=false;mesh.renderOrder=-5;mesh.visible=false;
   scene.add(mesh);
+  const ink=visit?projectedStrips(T,scene,material,visit,"玩家直线瞄准",-5):null,line=[{}];
   let lastX,lastZ,lastTX,lastTZ,lastWidth,lastArea,lastDoor;
   function show(view){
-    mesh.visible=!!view;
-    if(!view)return;
+    if(!view){mesh.visible=false;ink?.reset();lastArea=undefined;return;}
     const {player,target,shape}=view,area=shape.kind==="area",door=area&&player.hero===1&&view.key==="r";
+    mesh.visible=area||!ink;
     const width=area?shape.radius:shape.width,dx=target.x-player.x,dz=target.z-player.z;
     if(lastX===player.x&&lastZ===player.z&&lastTX===target.x&&lastTZ===target.z&&
         lastWidth===width&&lastArea===area&&lastDoor===door)return;
@@ -216,6 +219,11 @@ export function aimOverlay(T,scene,surface) {
     const ux=distance>.001?dx/distance:Math.sin(player.face),uz=distance>.001?dz/distance:Math.cos(player.face);
     uniforms.reach.value=reach;uniforms.width.value=width;uniforms.isArea.value=area;uniforms.isDoor.value=door;
     uniforms.heading.value.set(ux,uz);
+    if(ink&&!area){
+      Object.assign(line[0],{x:player.x,z:player.z,face:Math.atan2(ux,uz),length:reach,width});
+      ink.show(line,1);return;
+    }
+    ink?.reset();
     const pad=.16;
     function conform(grid,offset,halfWidth,from,to){
       for(let j=0;j<=grid.along;j++)for(let i=0;i<=grid.across;i++){
@@ -232,6 +240,6 @@ export function aimOverlay(T,scene,surface) {
     mark.clearUpdateRanges();mark.addUpdateRange(0,active*2);mark.needsUpdate=true;
     geometry.setDrawRange(0,area?indices.length:stripIndices);
   }
-  return {show,dispose(){scene.remove(mesh);geometry.dispose();material.dispose();}};
+  return {show,dispose(){ink?.dispose();scene.remove(mesh);geometry.dispose();material.dispose();}};
 }
 

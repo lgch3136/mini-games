@@ -38,3 +38,114 @@ export function areaSignal(T, scene, resolve, floor) {
     group.removeFromParent();for(const mesh of [edge,clock]){mesh.geometry.dispose();mesh.material.dispose();}
   }};
 }
+
+// Borrow only the triangles under a narrow strip. The existing land and bridge
+// depth then hide it behind curbs, feet and rocks. Local coordinates go to the
+// material for its own outline, tip or fill.
+export function projectedStrips(T,scene,material,visit,name,order){
+  let capacity=0,buffer,geometry=new T.BufferGeometry(),active=-1;
+  const mesh=new T.Mesh(geometry,material),cache=[];
+  mesh.name=name;mesh.frustumCulled=false;mesh.renderOrder=order;mesh.visible=false;scene.add(mesh);
+  function grow(n){
+    if(n<=capacity)return;
+    capacity=128;while(capacity<n)capacity*=2;
+    geometry.dispose();geometry=new T.BufferGeometry();mesh.geometry=geometry;
+    buffer=new T.InterleavedBuffer(new Float32Array(capacity*6),6).setUsage(T.DynamicDrawUsage);
+    geometry.setAttribute("position",new T.InterleavedBufferAttribute(buffer,3,0));
+    geometry.setAttribute("localMark",new T.InterleavedBufferAttribute(buffer,2,3));
+    const slot=new T.InterleavedBufferAttribute(buffer,1,5);
+    geometry.setAttribute("slot",slot);geometry.setAttribute("part",slot);
+  }
+  function collect(s,out){
+    const dx=Math.sin(s.face),dz=Math.cos(s.face),w=s.width+.15,len=s.length+.15;
+    const x1=s.x+dx*len,z1=s.z+dz*len,mx=Math.abs(dz*w),mz=Math.abs(dx*w);
+    out.length=0;
+    visit(Math.min(s.x,x1)-mx,Math.min(s.z,z1)-mz,Math.max(s.x,x1)+mx,Math.max(s.z,z1)+mz,
+      (ax,ay,az,bx,by,bz,cx,cy,cz)=>{
+        const a=(ax-s.x)*dz-(az-s.z)*dx,b=(bx-s.x)*dz-(bz-s.z)*dx,c=(cx-s.x)*dz-(cz-s.z)*dx;
+        if(Math.min(a,b,c)>w||Math.max(a,b,c)<-w)return;
+        const u=(ax-s.x)*dx+(az-s.z)*dz,v=(bx-s.x)*dx+(bz-s.z)*dz,y=(cx-s.x)*dx+(cz-s.z)*dz;
+        if(Math.min(u,v,y)>len||Math.max(u,v,y)<0)return;
+        out.push(ax,ay+.012,az,a,u,bx,by+.012,bz,b,v,cx,cy+.012,cz,c,y);
+      });
+  }
+  function show(shapes,count){
+    mesh.visible=count>0;
+    if(!count){active=0;geometry.setDrawRange(0,0);return;}
+    let changed=count!==active,total=0;
+    for(let i=0;i<count;i++){
+      const s=shapes[i],c=cache[i]||(cache[i]={values:[]});
+      if(c.x!==s.x||c.z!==s.z||c.face!==s.face||c.width!==s.width||c.length!==s.length){
+        c.x=s.x;c.z=s.z;c.face=s.face;c.width=s.width;c.length=s.length;collect(s,c.values);changed=true;
+      }
+      total+=c.values.length/5;
+    }
+    active=count;if(!changed)return;
+    grow(total);geometry.setDrawRange(0,total);
+    if(!total)return;
+    let n=0;
+    for(let k=0;k<count;k++){
+      const a=cache[k].values;
+      for(let j=0;j<a.length;j+=5){
+        buffer.array[n++]=a[j];buffer.array[n++]=a[j+1];buffer.array[n++]=a[j+2];
+        buffer.array[n++]=a[j+3];buffer.array[n++]=a[j+4];buffer.array[n++]=k;
+      }
+    }
+    buffer.clearUpdateRanges();buffer.addUpdateRange(0,n);buffer.needsUpdate=true;
+  }
+  return {show,reset(){show([],0);},dispose(){mesh.removeFromParent();geometry.dispose();cache.length=0;}};
+}
+
+// All visible straight casts share this ground pass. Geometry changes when a
+// lane moves. Its little advance and the arrow at its tip use the cast clock.
+export function directionalSignals(T,scene,resolve,visit){
+  const max=10,state=Array.from({length:max},()=>new T.Vector4()),shapes=[];
+  const material=new T.RawShaderMaterial({glslVersion:T.GLSL3,uniforms:{casts:{value:state}},
+    transparent:true,depthTest:true,depthWrite:false,side:T.DoubleSide,forceSinglePass:true,toneMapped:false,
+    vertexShader:`precision highp float;in vec3 position;in vec2 localMark;in float slot;
+      uniform mat4 modelViewMatrix,projectionMatrix;uniform vec4 casts[10];
+      out vec2 field;flat out vec4 params;
+      void main(){params=casts[int(slot)];field=localMark;
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`precision highp float;in vec2 field;flat in vec4 params;out vec4 ink;
+      float edge(float d,float thick,float aa){return 1.-smoothstep(thick-aa,thick+aa,d);}
+      void main(){
+        float side=abs(field.x),z=field.y,w=params.w,len=params.z,t=params.x;
+        if(side>w+.14||z<0.||z>len+.14)discard;
+        float aa=clamp(fwidth(field.x)*.65,.012,.095);
+        float end=len-z,head=clamp(w*1.85,.47,1.14);
+        float body=smoothstep(.24,.73,z)*smoothstep(.02,head*.72,end);
+        float rim=edge(abs(side-w),.034,aa)*body;
+        float penumbra=edge(abs(side-w),.092,aa)*body;
+        float arrow=edge(abs(side-w*.91*clamp(end/head,0.,1.)),.056,aa)*
+          smoothstep(-.09,.03,end)*(1.-smoothstep(head*.80,head,end));
+        float gap=clamp(len*.27,1.28,2.70),across=min(.32,w*.66);
+        float stroke=abs(mod(z-gap*t*.43+side*.83+gap*.5,gap)-gap*.5);
+        float ticks=edge(stroke,.041,aa)*(1.-smoothstep(across*.67,across,side))*body;
+        float advance=1.-smoothstep(.0,.45,abs(z-t*len));
+        float fill=(1.-smoothstep(w-aa,w+aa,side))*body;
+        float lit=max(max(arrow,rim*(.76+.24*advance)),ticks*.69);
+        float alpha=(.16*penumbra+.68*lit+fill*(.032+.046*advance))*(.71+.26*t);
+        if(alpha<.018)discard;
+        vec3 edgeColor=mix(vec3(.31,.78,.80),vec3(.99,.38,.30),params.y);
+        vec3 pointColor=mix(vec3(.83,.99,.90),vec3(1.,.85,.57),params.y);
+        vec3 col=mix(vec3(.11,.22,.25),edgeColor,smoothstep(.05,.71,lit));
+        ink=vec4(mix(col,pointColor,clamp(arrow*.88+advance*rim*.56,0.,1.)),alpha);
+      }`});
+  const ink=projectedStrips(T,scene,material,visit,"技能方向预警",2);
+  const bound=new T.Sphere(new T.Vector3());
+  function draw(units,frustum){
+    let count=0;
+    for(const unit of units){
+      if(unit.kind!=="hero"||unit.sceneryOnly)continue;
+      const s=resolve(unit);if(!s)continue;
+      const dx=Math.sin(s.face),dz=Math.cos(s.face),half=s.length*.5;
+      bound.center.set(s.x+dx*half,1,s.z+dz*half);bound.radius=half+s.width+2;
+      if(frustum&&!frustum.intersectsSphere(bound))continue;
+      const k=count++;state[k].set(s.progress,s.hostile?1:0,s.length,s.width);shapes[k]=s;
+      if(count===max)break;
+    }
+    ink.show(shapes,count);
+  }
+  return {draw,reset:ink.reset,dispose(){ink.dispose();material.dispose();}};
+}

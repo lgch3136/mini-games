@@ -1,6 +1,6 @@
 const choices = document.getElementById("choices");
 const start = document.getElementById("start");
-const runtime = new URL("./game.min.js?v=canyon-sleeveline1",import.meta.url);
+const runtime = new URL("./game.min.js?v=canyon-kipalm2",import.meta.url);
 let warming = false, opening = false, selected = 0;
 
 // Download on a deliberate hero choice. No WebGL context is needed to browse these cards.
@@ -76,7 +76,7 @@ const tactics=[
   "近身用螺旋丸换血，把影分身留给追击或脱身。",
   "用空气炮压住兵线，留竹蜻蜓拉开距离，四级后用任意门支援。",
   "用术式消耗，遇到敌方弹道时开无下限掩护兵线。",
-  "先找安全位置蓄劲，再用龟派气功沿敌人走位方向出手。",
+  "轻点气弹自动瞄准，拖动可预判走位。敌兵会挡弹，从侧面出手。",
   "从兵线侧面用橡胶手枪消耗，贴近后接连续拳。"
 ];
 function openingLabels(button){

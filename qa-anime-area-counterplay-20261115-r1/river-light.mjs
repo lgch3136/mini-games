@@ -1,4 +1,4 @@
-import {bindImpact} from "./surface-impact.mjs?v=canyon-thicket2";
+import {bindImpact} from "./surface-impact.mjs?v=canyon-palm1";
 // Low-power opaque geometry shares vertex lighting. The ordinary texture, fog and colour pipeline stays intact.
 export function riverLight(T) {
   const saved=new WeakMap();

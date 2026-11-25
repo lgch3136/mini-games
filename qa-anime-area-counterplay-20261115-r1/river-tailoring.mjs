@@ -119,6 +119,7 @@ export function paintedUniform(T,hero,hip,attach) {
 // the index finger, and its root and the palm both turn with the wrist.
 export function handForm(T,arm,attach,skin,side,hero,y) {
   const pos=[],idx=[],shade=[],scale=hero===3?1.12:hero===4?1.02:.97;
+  const casting=hero===3&&side===1, joints=[];
   const power=(v,e)=>Math.sign(v)*Math.abs(v)**e;
   function vertex(x,h,z,gain){
     pos.push(side*x*scale,y+h*scale,.026+z*scale);
@@ -148,14 +149,17 @@ export function handForm(T,arm,attach,skin,side,hero,y) {
   // but leave three short creases across the leading face of the fist.
   for(let finger=0;finger<4;finger++){
     const x=(finger-1.5)*.033,width=.0195-finger*.0008,short=finger===3?.014:finger===2?.004:0;
-    const path=[[.008,-.050,.83],[.029,-.087,1.04],[.052,-.081,1],[.062,-.056,.78]],
+    const path=casting?[[.018,-.052,.86],[.022,-.101,1],[.032,-.147,.90],[.039,-.182,.59]]:
+      [[.008,-.050,.83],[.029,-.087,1.04],[.052,-.081,1],[.062,-.056,.78]],
       base=pos.length/3,around=6;
     for(let k=0;k<path.length;k++){
       const [z,h,r]=path[k],prev=path[Math.max(0,k-1)],next=path[Math.min(k+1,path.length-1)];
       const dy=next[1]-prev[1],dz=next[0]-prev[0],inv=1/Math.hypot(dy,dz);
       for(let j=0;j<around;j++){
         const a=j*2*Math.PI/around,u=Math.cos(a)*width*r,v=Math.sin(a)*.018*r;
-        vertex(x+u,h+short+dz*inv*v,z-dy*inv*v,.90+.08*Math.max(0,-Math.sin(a)));
+        const spread=casting?(finger-1.5)*.006*k:0;
+        if(casting)joints[pos.length/3]=k===0?0:k===1?1:2;
+        vertex(x+u+spread,h+short+dz*inv*v,z-dy*inv*v,.90+.08*Math.max(0,-Math.sin(a)));
       }
     }
     strip(base,around,path.length);
@@ -169,11 +173,14 @@ export function handForm(T,arm,attach,skin,side,hero,y) {
     across.crossVectors(fore,axis).normalize();other.crossVectors(axis,across).normalize();
     for(let j=0;j<6;j++){
       const a=2*Math.PI*j/6,u=r*Math.cos(a),v=r*.83*Math.sin(a);
+      if(casting&&i>0)joints[pos.length/3]=3;
       vertex(x+across.x*u+other.x*v,h+across.y*u+other.y*v,z+across.z*u+other.z*v,.94+.042*Math.cos(a));
     }
   }
   strip(start,6,thumb.length);
   const g=geometry(T,pos,idx);g.setAttribute("color",new T.Float32BufferAttribute(shade,3));
+  if(casting)g.setAttribute("castFinger",new T.Uint8BufferAttribute(
+    Uint8Array.from({length:pos.length/3},(_,i)=>joints[i]||0),1));
   g.userData.handJoint=true;g.userData.fieldGloss=.21;attach(arm,g,skin);
 }
 

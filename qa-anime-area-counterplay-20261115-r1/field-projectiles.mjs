@@ -1,4 +1,4 @@
-import {spellTint} from "./surface-impact.mjs?v=canyon-thicket2";
+import {spellTint} from "./surface-impact.mjs?v=canyon-palm1";
 // Directional bolts, cart shells and hero shots follow the same live simulation positions.
 // Each shape occupies at most one instanced draw regardless of the size of the wave.
 function laneShotGeometry(T,kind){
@@ -65,6 +65,7 @@ export function fieldProjectiles(T,scene,floor,applyLight){
   return {draw(shots=[],frustum){
     for(const b of batches.values())b.used=0;
     for(const shot of shots){
+      if(shot.kind==="ki")continue;
       const visual=shot.visual,form=visual?.formation;
       const kind=form==="ranged"?"bolt":form==="siege"?"shell":"orb";
       let y=floor(shot.x,shot.z)+.90;
@@ -91,6 +92,108 @@ export function fieldProjectiles(T,scene,floor,applyLight){
   },reset,dispose(){for(const b of batches.values()){
     b.mesh.removeFromParent();b.mesh.dispose();b.geometry.dispose();b.material.dispose();
   }batches.clear();}};
+}
+
+// The same small batch draws the light gathering in the palm, the moving shell
+// and the last ember. It holds no per-cast materials and never writes depth.
+export function kiFlight(T,scene,land,palmOf){
+  const capacity=24,geometry=new T.InstancedBufferGeometry();
+  geometry.setAttribute("position",new T.Float32BufferAttribute([-1,-1,0,1,-1,0,1,1,0,-1,1,0],3));
+  geometry.setIndex([0,1,2,0,2,3]);geometry.instanceCount=0;
+  function data(name,size){
+    const attr=new T.InstancedBufferAttribute(new Float32Array(capacity*size),size).setUsage(T.DynamicDrawUsage);
+    geometry.setAttribute(name,attr);return attr;
+  }
+  const centre=data("sourcePoint",4),trail=data("motion",3),glow=data("heat",2);
+  const material=new T.RawShaderMaterial({glslVersion:T.GLSL3,depthWrite:false,depthTest:true,
+    transparent:true,side:T.DoubleSide,forceSinglePass:true,toneMapped:false,
+    vertexShader:`precision highp float;in vec3 position;in vec4 sourcePoint;in vec3 motion;in vec2 heat;
+      uniform mat4 modelViewMatrix,projectionMatrix;out vec2 brush;flat out vec3 shape;
+      void main(){
+        vec4 view=modelViewMatrix*vec4(sourcePoint.xyz,1.);
+        vec2 projected=(mat3(modelViewMatrix)*vec3(motion.x,0.,motion.y)).xy;
+        float extent=length(projected),r=sourcePoint.w;
+        vec2 dir=extent>.001?projected/extent:vec2(1.,0.);
+        float tail=motion.z*extent/r;
+        brush=vec2(mix(-1.6-tail,1.6,position.x*.5+.5),position.y*1.6);
+        view.xy+=r*(dir*brush.x+vec2(-dir.y,dir.x)*brush.y);
+        shape=vec3(tail,heat.x,heat.y);gl_Position=projectionMatrix*view;
+      }`,
+    fragmentShader:`precision highp float;in vec2 brush;flat in vec3 shape;out vec4 ink;
+      void main(){
+        float r=length(brush),aa=clamp(fwidth(r)*.60,.024,.22);
+        float core=1.-smoothstep(.43-aa,.49+aa,r);
+        float shell=1.-smoothstep(.71-aa,.92+aa,r);
+        float halo=(1.-smoothstep(.71,1.43,r))*.32;
+        float turn=atan(brush.y,brush.x)+shape.y;
+        float arc=(1.-smoothstep(.034,.09+aa,abs(r-1.01)))*smoothstep(-.06,.77,cos(turn*2.));
+        float tail=shape.x,t=clamp(-brush.x/max(.001,tail),0.,1.);
+        float axis=brush.y-.07*sin(5.*t+shape.y)*(1.-t);
+        float wake=(1.-smoothstep(.17*(1.-t),.43*(1.-t)+aa,abs(axis)))*
+          (1.-t)*step(brush.x,0.)*smoothstep(.12,1.,tail);
+        float light=max(max(halo,shell*.92),max(arc*.76,wake*.86));
+        float alpha=clamp(light*shape.z,0.,1.);
+        if(alpha<.014)discard;
+        vec3 amber=vec3(.98,.44,.105),gold=vec3(1.,.78,.32),ivory=vec3(1.,.987,.835);
+        vec3 color=mix(amber,gold,clamp(shell*.78+arc*.93+wake*.46,0.,1.));
+        color=mix(color,ivory,max(core,.29*wake));ink=vec4(color,alpha);
+      }`});
+  const mesh=new T.Mesh(geometry,material);mesh.name="掌心气弹";mesh.frustumCulled=false;
+  mesh.renderOrder=3;mesh.visible=false;scene.add(mesh);
+  const flights=new Map(),hand=new T.Vector3(),point=new T.Vector3();
+  let frame=0,used=0,lastTime=-1;
+  function add(x,y,z,r,dx,dz,tail,angle,strength){
+    if(used>=capacity)return;
+    centre.setXYZW(used,x,y,z,r);trail.setXYZ(used,dx,dz,tail);
+    glow.setXY(used++,angle,strength);
+  }
+  function reset(){
+    flights.clear();geometry.instanceCount=0;mesh.visible=false;lastTime=-1;used=0;
+  }
+  function draw(view){
+    if(view.time<lastTime)reset();
+    const time=view.poseTime??view.time;lastTime=view.time;frame++;used=0;
+    for(const unit of view.units){
+      const a=unit.action;
+      if(unit.hero!==3||unit.kind!=="hero"||unit.dead||a?.kind!=="skill"||a.skillIndex!==0||a.resolved)continue;
+      const palm=palmOf(unit.id);if(!palm)continue;
+      palm.getWorldPosition(hand);
+      const t=Math.min(1,Math.max(0,a.elapsed/a.windup));
+      add(hand.x,hand.y,hand.z,.045+.143*t,Math.sin(a.face),Math.cos(a.face),0,a.elapsed*18,.36+.63*t);
+    }
+    for(const shot of view.projectiles){
+      if(shot.kind!=="ki")continue;
+      const sx=shot.visual.fromX,sz=shot.visual.fromZ,travel=Math.hypot(shot.x-sx,shot.z-sz);
+      let entry=flights.get(shot.id);
+      if(!entry){
+        const baseY=land(sx,sz)+.95;
+        const palm=travel<2.25?palmOf(shot.source):null;
+        if(palm)palm.getWorldPosition(hand);else hand.set(sx,baseY,sz);
+        entry={ox:hand.x-sx,oy:hand.y-baseY,oz:hand.z-sz,point:new T.Vector3()};
+        flights.set(shot.id,entry);
+      }
+      entry.frame=frame;
+      const t=Math.min(1,travel/2.25),weight=1-t*t*(3-2*t);
+      point.set(shot.x+entry.ox*weight,land(shot.x,shot.z)+.95+entry.oy*weight,shot.z+entry.oz*weight);
+      entry.point.copy(point);
+      add(point.x,point.y,point.z,.19+.013*Math.sin(travel*1.8),shot.dx,shot.dz,
+        Math.min(.90,travel*.64),time*14,.99);
+    }
+    for(const [id,entry] of flights)if(entry.frame!==frame)flights.delete(id);
+    for(const e of view.events){
+      if(e.type!=="miss"||e.shotKind!=="ki"||e.unknownOrigin)continue;
+      const age=.30-e.ttl;if(age<0||age>.13)continue;
+      const t=age/.13;
+      add(e.x,land(e.x,e.z)+.95,e.z,.19*(1-.72*t),Math.sin(e.face),Math.cos(e.face),
+        .47*(1-t),time*14,1-t);
+    }
+    geometry.instanceCount=used;mesh.visible=used>0;
+    if(used)for(const a of [centre,trail,glow]){
+      a.clearUpdateRanges();a.addUpdateRange(0,used*a.itemSize);a.needsUpdate=true;
+    }
+  }
+  return {draw,pointOf:id=>flights.get(id)?.point,reset,
+    dispose(){reset();mesh.removeFromParent();geometry.dispose();material.dispose();}};
 }
 
 // A hit begins at the near side of its victim, with all streaks sharing a single bounded draw.
