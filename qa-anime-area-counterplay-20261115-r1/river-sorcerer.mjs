@@ -67,23 +67,11 @@ export function sorcererTorso(T,hip,attach,group,seam,panels,team) {
   seam(hip,team?0xb47b88:0x7994ad,[[.146,.825,.116],[.15,.70,.160],[.10,.54,.203],
     [.045,.38,.192],[-.018,.22,.187],[-.046,.114,.193]],.009);
   for(const side of [-1,1]){
-    seam(hip,team?0x976c7c:0x5e728c,[[side*.20,.735,.094],[side*.277,.694,.101],
-      [side*.312,.632,.08],[side*.30,.57,.085]],.008);
     seam(hip,team?0x9e7887:0x687c94,[[side*.215,.243,.104],[side*.193,.185,.136],
       [side*.169,.148,.157]],.009);
   }
   const tab=team?0xe1848d:0x85cbc9;
   seam(hip,tab,[[-.12,.62,.186],[-.088,.62,.198],[-.068,.623,.201]],.012);
-}
-export function sorcererSleeve(T,arm,attach,team,side){
-  const dye=team?0x44394f:0x30445e;
-  attach(arm,tube(T,[
-    [-.56,.090,.089,.024,.021],[-.51,.103,.101,.021,.055],[-.397,.111,.110,.015,.055],
-    [-.34,.118,.106,.016,.115],[-.292,.108,.102,.010,.075],[-.22,.125,.129,0,.057],
-    [-.115,.134,.143,0,.044],[-.034,.146,.148,-.006,.025],[.022,.106,.110,-.004,.018]
-  ],14,.10,side*.8),dye);
-  attach(arm,tube(T,[[-.586,.090,.092,.026,.01],[-.567,.095,.096,.025,.01],[-.535,.093,.093,.023,.01]],14,.025),
-    team?0x392f40:0x1e293f);
 }
 export function sorcererLeg(T,leg,attach,team,side) {
   const dye=team?0x433344:0x24324a;
@@ -130,23 +118,6 @@ function garment(T, rows, count, side, folds, surface) {
   });
   geometry.userData.fieldGloss=surface;
   return geometry;
-}
-export function martialArm(T,arm,attach,skin,side) {
-  // The peak of the deltoid lies outboard, the biceps forward, the triceps behind and the ulna towards the little finger.
-  const flesh=garment(T,[
-    [-.585,.008,.040,.071,.079,0],[-.502,.018,.027,.085,.088,0],
-    [-.424,.027,.014,.108,.105,.025],[-.356,.021,-.009,.093,.098,.012],
-    [-.303,.003,-.018,.111,.125,.018],[-.237,.007,.008,.128,.144,.025],
-    [-.151,.016,.009,.144,.155,.028],[-.076,.031,-.002,.157,.149,.016],
-    [.005,.008,-.011,.142,.131,.01],[.063,-.034,-.014,.096,.110,0],
-    [.081,-.045,-.017,.019,.031,0]
-  ],14,side,3,.27);
-  attach(arm,flesh,skin);
-  const knit=garment(T,[[-.592,.007,.040,.078,.087,.012],[-.569,.009,.039,.084,.092,.025],
-    [-.523,.014,.032,.091,.094,.019],[-.473,.020,.024,.101,.104,.018]],14,side,5,.12);
-  attach(arm,knit,0x253c65);
-  const piping=garment(T,[[-.573,.009,.039,.085,.093,0],[-.560,.010,.039,.086,.094,0]],14,side,4,.15);
-  attach(arm,piping,0x44628a);
 }
 export function martialLeg(T,leg,attach,side) {
   const trousers=garment(T,[

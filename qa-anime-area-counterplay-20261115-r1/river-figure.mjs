@@ -1,7 +1,7 @@
 import {actorStrides,footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
 import {bindImpact} from "./surface-impact.mjs?v=canyon-thicket2";
-import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-carving2";
-import {skullBand} from "./character-plates.mjs?v=canyon-carving2";
+import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-sleeveline1";
+import {skullBand} from "./character-plates.mjs?v=canyon-clavicle1";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };
 
@@ -120,10 +120,16 @@ export function runnerTraces(T) {
   };
 }
 
-// Merge opaque geometry into a skin. The elbow and knee smoothly share vertices across each joint.
+// Merge opaque geometry into one skin. The chest can turn over a planted
+// pelvis while the sleeve remains attached to both the chest and the arm.
 export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount) {
   const {root,body,hip,head,arms,legs}=model;
+  const ribcage=hero===1?null:new T.Group();
+  if(ribcage){
+    ribcage.name="胸廓";hip.add(ribcage);ribcage.add(head,...arms);
+  }
   root.updateWorldMatrix(true,true);
+  const hipRest=new T.Matrix4().copy(hip.matrixWorld).invert();
   const roots=[body,hip,head,...arms,...legs];
   const bones=roots.map(group=>{const b=new T.Bone();group.add(b);return b;});
   const joints=[], anchor=new Map(roots.map((group,i)=>[group,i]));
@@ -141,12 +147,24 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
   for(const panel of panels){
     const bone=new T.Bone();panel.add(bone);anchor.set(panel,bones.length);bones.push(bone);
   }
+  const chestIndex=bones.length;
+  if(ribcage){const bone=new T.Bone();bone.name="胸骨";ribcage.add(bone);bones.push(bone);}
+  const wrists=[],wristIndex=bones.length,handY=hero===3?-.627:hero===4?-.65:-.61;
+  if(ribcage)for(let j=0;j<2;j++){
+    const wrist=new T.Bone();wrist.position.set((j?1:-1)*.008,handY+.065-elbowY,.033);
+    wrist.name=j?"右手腕":"左手腕";joints[j].add(wrist);wrists.push(wrist);bones.push(wrist);
+  }
+  const shoulders=[],shoulderIndex=bones.length;
+  if(ribcage)for(let j=0;j<2;j++){
+    const cap=new T.Bone();cap.name=j?"右肩峰":"左肩峰";cap.position.copy(arms[j].position);
+    ribcage.add(cap);shoulders.push(cap);bones.push(cap);
+  }
   root.updateWorldMatrix(true,true);
   const skeleton=new T.Skeleton(bones);
   // Finger signs stay switchable, with their root attached to the moving forearm.
   for(const node of exclusions){
     if(!node?.isGroup || !arms.includes(node.parent))continue;
-    const arm=arms.indexOf(node.parent);joints[arm].attach(node);
+    const arm=arms.indexOf(node.parent);(wrists[arm]||joints[arm]).attach(node);
   }
   const out={p:[],n:[],c:[],idx:[],uv:[],gloss:[],weight:[],bone:[]},retired=[],heldIndices=[];
   const point=new T.Vector3(),local=new T.Vector3(),normal=new T.Vector3(),normals=new T.Matrix3();
@@ -168,18 +186,32 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
         else out.uv.push(5/6,.625);
       }
       const col=attr.color;
-      out.gloss.push(geom.userData.fieldGloss ?? (geom.userData.faceUV ? .25 : geom.userData.uniformUV ? .11 : hero===1 ? .56 : .15));
+      out.gloss.push(attr.fieldGloss?.getX(j) ?? geom.userData.fieldGloss ?? (geom.userData.faceUV ? .25 : geom.userData.uniformUV ? .11 : hero===1 ? .56 : .15));
       out.c.push(mat.color.r*(col?col.getX(j):1),mat.color.g*(col?col.getY(j):1),mat.color.b*(col?col.getZ(j):1));
       const limb=bind-3;
-      let second=bind,w=0;
+      let first=bind,second=bind,w=0;
+      const coat=attr.chestWeight?.getX(j) || 0;
       if(limb>=0 && limb<4){
         local.copy(point).applyMatrix4(inverseLimb[limb]);
         const pivot=limb<2?elbowY:kneeY;
         w=ease((pivot+.064-local.y)/.128);
         second=7+limb;
+        if(ribcage && limb<2 && geom.userData.handJoint){second=wristIndex+limb;w=1;}
+        else if(ribcage && limb<2 && attr.chestWeight && local.y<handY+.12){
+          first=7+limb;second=wristIndex+limb;w=ease((handY+.12-local.y)/.085);
+        }
+      }else if(ribcage && bind===1){
+        local.copy(point).applyMatrix4(hipRest);
+        w=ease((local.y-.12)/.49);second=chestIndex;
+      }
+      if(coat>0){
+        // Interpolate two short rotations across the cap. Blending the full
+        // overhead arm rotation directly with the chest pinches the armpit.
+        if(coat>=.5){first=chestIndex;second=shoulderIndex+limb;w=2*(1-coat);}
+        else{first=shoulderIndex+limb;second=bind;w=1-2*coat;}
       }
       if(w>=.99999){out.bone.push(second,second,0,0);out.weight.push(1,0,0,0);}
-      else{out.bone.push(bind,second,0,0);out.weight.push(1-w,w,0,0);}
+      else{out.bone.push(first,second,0,0);out.weight.push(1-w,w,0,0);}
     }
     const ix=geom.index;
     const indices=geom.userData.pocketProp?heldIndices:out.idx;
@@ -207,6 +239,30 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
   skin.boundingSphere=g.boundingSphere.clone();skin.boundingSphere.radius+=2.2;
   const ready=[[-.62,-.80],[-.68,-.87],[-.40,-1.02],[-.95,-.93],[-.60,-.69]][hero];
   const travelFeet=[{},{}];
+  const sockets=arms.map(arm=>arm.position.clone()),axis=new T.Vector3(),pivot=new T.Vector3(0,.23,0);
+  const neutral=new T.Quaternion();
+  function upperMotion(beat,step,action,coil,release){
+    const twoHands=action?.kind==="skill"&&action.skillIndex===2;
+    const turn=(hero===3?.36:hero===4?.28:hero===0?.23:.19)*(twoHands?.42:1);
+    ribcage.rotation.set(.017*step-.033*coil+.046*release,
+      -.11*beat*step+turn*(.63*coil-release),.021*beat*step+.024*release);
+    // Rotate the ribcage about the lower ribs. Hip-local bind coordinates of
+    // the head and arms stay valid for every pre-existing pose.
+    ribcage.position.copy(pivot).applyQuaternion(ribcage.quaternion).multiplyScalar(-1).add(pivot);
+    for(let j=0;j<arms.length;j++){
+      const arm=arms[j],side=j?1:-1,home=sockets[j];
+      axis.set(0,-1,0).applyQuaternion(arm.quaternion);
+      const lift=1+axis.y,forward=axis.z,across=Math.max(0,-side*axis.x);
+      arm.position.set(home.x+side*(.011*lift-.042*across),home.y+.049*lift,
+        home.z+.061*forward+.021*across);
+      const cap=shoulders[j];cap.position.copy(home).lerp(arm.position,.5);
+      cap.quaternion.slerpQuaternions(neutral,arm.quaternion,.5);
+      cap.scale.y=1+(arm.scale.y-1)*.3;
+      const active=j||twoHands?1:.30;
+      wrists[j].rotation.set(-.065*coil*active,side*(.19+.12*coil*active-.61*release*active),
+        side*(.034+.049*coil*active-.035*release));
+    }
+  }
   function pose(phase,weight,action){
     const beat=Math.sin(phase),w=bound(weight||0);
     let coil=0,release=0,left=0,right=0,stance=0;
@@ -222,6 +278,7 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
     }
     joints[0].rotation.set(ready[0]+beat*w*.17-coil*left*.72+release*left*.56,0,-.08);
     joints[1].rotation.set(ready[1]-beat*w*.17-coil*right*.78+release*right*.73,0,.08);
+    if(ribcage)upperMotion(beat,w,action,coil,release);
     for(let side=0;side<2;side++){
       const hinge=joints[side+2], leg=legs[side];
       const restKnee=.09+(side?.17:.13)*stance;

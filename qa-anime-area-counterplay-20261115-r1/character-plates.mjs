@@ -66,20 +66,39 @@ export function paintCharacterSheet(canvas) {
     pen.save();pen.translate(x,y);pen.beginPath();pen.rect(0,0,192,192);pen.clip();
     const wash=pen.createLinearGradient(0,12,192,166);wash.addColorStop(0,c[0]);wash.addColorStop(.43,c[1]);wash.addColorStop(1,c[0]);
     pen.fillStyle=wash;pen.fillRect(0,0,192,192);
-    for(let i=0;i<6;i++){
+    if(cell!==2&&cell!==0)for(let i=0;i<6;i++){
       const sx=12+i*31;path("M"+sx+" 28 Q"+(sx+12)+" 97 "+(sx-4)+" 175 L"+(sx+1)+" 183 Q"+(sx+19)+" 83 "+sx+" 28Z","#332c3125");
+    }
+    if(cell===0||cell===2){
+      // Cloth bunches at its belt and pulls diagonally towards an armhole.
+      const umber=cell===2?"#71402b54":"#70402d43",lit="#ffe2a34b";
+      path("M0 47 Q21 58 48 83 Q21 69 4 66Z M192 50 Q169 63 146 92 Q173 72 192 68Z",umber);
+      path("M9 162 Q40 142 69 132 Q42 145 28 165Z M176 155 Q138 149 117 157 Q145 154 161 163Z",umber);
+      path("M34 183 Q63 160 94 155 Q70 166 59 182Z M115 188 Q139 169 168 166 Q144 174 136 186Z",umber);
+      path("M9 157 Q38 141 62 134 M39 178 Q66 160 85 158 M134 178 Q147 171 161 169",null,lit,1.8);
+      if(!back){
+        path("M13 91 Q31 97 52 102 Q28 101 15 97Z M176 95 Q156 110 130 113 Q154 107 170 95Z","#51314126");
+        path("M78 174 Q96 155 115 149 Q101 157 93 170Z","#72482b36");
+      }
     }
     if(!back){
       if(cell===0){path("M63 0 Q82 35 91 41 L91 192 L98 192 L98 38 Q78 18 77 0Z",c[2]);path("M92 39 L93 187",null,"#d6b57c",1.5);}
       if(cell===1)path("M52 0 Q91 46 140 7 L141 17 L92 58 L51 15Z",c[2]);
       if(cell===2){
-        path("M31 0 L159 0 L99 87Z",c[2]);
-        path("M63 0 L132 0 Q119 28 97 55 Q71 25 63 0Z","#e0a479");
-        path("M69 8 Q84 12 95 22 Q102 15 126 8",null,"#a77659",2);
-        path("M90 88 Q110 78 125 55",null,"#f1bf855e",2);
+        path("M22 -3 L169 -3 Q153 27 126 62 Q112 83 92 98 Q75 78 63 55 Q36 26 22 -3Z","#263c58");
+        path("M36 0 L153 0 Q135 29 109 68 L93 86 Q72 60 57 35Z","#3e5874");
+        path("M55 -2 L139 -2 Q124 22 111 37 L94 54 Q72 33 55 -2Z","#e3ad83");
+        path("M64 5 Q80 9 92 18 Q108 12 131 4 M80 29 Q90 38 95 41",null,"#a4775b",2);
+        path("M22 3 Q62 60 93 98 Q116 77 138 46",null,"#f4bd78",3);
+        path("M91 102 Q114 88 128 68",null,"#9153328c",2.4);
       }
-      if(cell===3){path("M62 0 L131 0 L116 192 L83 192Z","#edba8b");path("M60 0 L83 191 M130 0 L116 191",null,"#83493f",3);
-        for(let i=0;i<3;i++){oval(136,71+i*36,4,4,"#b88444");oval(135,70+i*36,2.6,2.4,"#f1cc78");}}
+      if(cell===3){
+        path("M37 -3 L159 -3 L139 194 L58 194Z","#edba8b");
+        path("M63 45 Q78 50 90 47 M100 47 Q118 51 133 40",null,"#c18e686e",2.5);
+        path("M68 66 Q77 72 89 88 L98 95 L110 112 L122 126 L104 112 L96 101 L84 91Z","#b37d68");
+        path("M125 66 L115 83 L105 90 L98 100 L83 115 L73 122 L81 109 L91 98 L98 89 L110 82Z","#bd8971");
+        path("M71 67 L89 86 L98 94 M120 74 L108 87",null,"#f7c5a0",1.5);
+      }
     }else if(cell===0||cell===2){
       oval(96,77,21,23,cell===0?"#ae5541":"#dec697");path("M95 63 Q114 60 109 75 Q104 88 92 85 Q82 82 88 74 Q94 67 100 73 Q105 79 96 80",null,"#63554a",3.5);
     }

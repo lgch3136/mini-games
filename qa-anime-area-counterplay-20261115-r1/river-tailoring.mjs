@@ -1,4 +1,4 @@
-import {paintCharacterSheet,skullBand} from "./character-plates.mjs?v=canyon-carving2";
+import {paintCharacterSheet,skullBand} from "./character-plates.mjs?v=canyon-clavicle1";
 export async function readFaceSheet(T){
   const canvas=paintCharacterSheet(document.createElement("canvas"));
   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=1;
@@ -35,17 +35,30 @@ export function paintedUniform(T,hero,hip,attach) {
   if(cell==null||cell<0)return;
   const width=[1,0,.96,1.17,.91][hero],depth=[1,0,.90,1.07,.94][hero];
   const rings=[
-    [-.016,.257,.227],[.08,.284,.238],[.20,.290,.254],[.37,.335,.268],
-    [.54,.370,.281],[.64,.376,.268],[.72,.322,.223],[.781,.168,.156]
+    [-.016,.257,.221],[.045,.267,.229],[.095,.264,.219],[.165,.264,.221],
+    [.235,.284,.237],[.32,.309,.246],[.405,.339,.258],[.48,.359,.269],
+    [.55,.373,.268],[.615,.383,.258],[.664,.370,.244],[.713,.329,.221],
+    [.750,.254,.187],[.782,.166,.150]
   ];
-  const rows=rings.length,columns=10,pos=[],uv=[],idx=[];
+  function surface(y,angle){
+    let j=1;while(j+1<rings.length&&y>rings[j][0])j++;
+    const lo=rings[j-1],hi=rings[j],t=Math.max(0,Math.min(1,(y-lo[0])/(hi[0]-lo[0])));
+    const rx=lo[1]+(hi[1]-lo[1])*t,rz=lo[2]+(hi[2]-lo[2])*t;
+    const side=Math.sin(angle),front=Math.cos(angle),across=Math.abs(side),warrior=hero===3;
+    const rib=Math.exp(-(((y-.55)/.115)**2));
+    const sternum=Math.exp(-((side/.22)**2)),pec=Math.exp(-(((across-.45)/.30)**2));
+    const ventral=front>=0?((warrior?.048:.023)*pec-.016*sternum)*rib:.022*pec*rib;
+    const diagonal=y-.20-.25*across,fold=Math.exp(-((diagonal/.055)**2))*Math.sin(17*angle+9*y);
+    return [side*width*rx*(1+.014*fold),y,(rz*depth+ventral+.007*fold)*front];
+  }
+  const cuts=[0,2,3,5,6,8,9,11,12,13],rows=cuts.length,columns=12,pos=[],uv=[],idx=[];
   for(let side=0;side<2;side++){
     const start=pos.length/3,column=cell%2*2+side,row=Math.floor(cell/2);
     for(let j=0;j<rows;j++){
-      const [y,rx,rz]=rings[j],height=(y-rings[0][0])/(rings[rows-1][0]-rings[0][0]);
+      const y=rings[cuts[j]][0],height=(y-rings[0][0])/(rings[rings.length-1][0]-rings[0][0]);
       for(let i=0;i<=columns;i++){
         const u=i/columns,angle=(u-.5+side)*Math.PI;
-        pos.push(width*rx*Math.sin(angle),y,depth*rz*Math.cos(angle));
+        pos.push(...surface(y,angle));
         uv.push((column+.018+u*.964)/4,.5*(1-(row+.018+(1-height)*.964)/2));
         if(j&&i){
           const a=start+(j-1)*(columns+1)+i-1,b=a+1,c=a+columns+1;
@@ -56,35 +69,112 @@ export function paintedUniform(T,hero,hip,attach) {
   }
   const g=geometry(T,pos,idx,uv);g.userData.uniformUV=true;
   attach(hip,g,0xffffff);
+  if(hero===3){
+    // Raised hems hug the two sides of the gi opening from nape to sternum.
+    const lip=[],col=[],ix=[];
+    for(const side of [-1,1]){
+      const offset=lip.length/3;
+      for(let i=0;i<=10;i++){
+        const t=i/10,y=.778-.377*t+.012*(side+1)*Math.sin(Math.PI*t);
+        const centre=side*(1.18*(1-t)**.82+.043*t)-.042*t*t;
+        for(let j=0;j<4;j++){
+          const u=j/3,a=centre+side*(u-.5)*(.21+.08*(1-t)),v=surface(y,a);
+          const raised=.004+.010*Math.sin(u*Math.PI);
+          lip.push(v[0]+raised*Math.sin(a),y,v[2]+raised*Math.cos(a));
+          const light=[.70,.98,1,.80][j];col.push(light,light,light);
+          if(i&&j){const l=offset+4*(i-1)+j-1,n=l+1,b=l+4,d=b+1;
+            if(side>0)ix.push(l,b,n,n,b,d);else ix.push(l,n,b,n,d,b);}
+        }
+      }
+    }
+    const hems=geometry(T,lip,ix);hems.setAttribute("color",new T.Float32BufferAttribute(col,3));
+    hems.userData.fieldGloss=.13;attach(hip,hems,0xe79950);
+  }else if(hero===4){
+    const vest=[],col=[],ix=[];
+    const opening=[[-.036,.57],[.055,.48],[.17,.39],[.30,.34],[.44,.35],[.56,.39],
+      [.65,.47],[.70,.57],[.749,.73],[.777,.93]];
+    const panel=[0,.018,.046,.095,.21,.38,.56,.76,1],n=panel.length;
+    for(const side of [-1,1]){
+      const offset=vest.length/3;
+      for(let i=0;i<opening.length;i++)for(let j=0;j<n;j++){
+        const [y,edge]=opening[i],u=panel[j],a=side*(edge+(Math.PI-edge)*u);
+        const v=surface(y,a),lip=.009+(j===1?.012:0)+.005*Math.sin(u*Math.PI);
+        vest.push(v[0]+lip*Math.sin(a),y,v[2]+lip*Math.cos(a));
+        const grain=.87+.10*Math.cos(2*a+y*6)+(j===1?.28:j===0?-.10:0);
+        col.push(grain,grain*(j===1?1.12:1),grain*.96);
+        if(i&&j){const l=offset+(i-1)*n+j-1,r=l+1,b=l+n,d=r+n;
+          if(side>0)ix.push(l,r,b,r,d,b);else ix.push(l,b,r,r,b,d);}
+      }
+    }
+    const jacket=geometry(T,vest,ix);jacket.setAttribute("color",new T.Float32BufferAttribute(col,3));
+    jacket.userData.fieldGloss=.16;attach(hip,jacket,0xc53332);
+    for(const [y,a] of [[.22,.55],[.35,.52],[.48,.54]]){
+      const v=surface(y,a),button=attach(hip,new T.SphereGeometry(.017,8,5),0xe4b362);
+      button.position.set(v[0]+.016*Math.sin(a),y,v[2]+.016*Math.cos(a));button.scale.z=.63;
+    }
+  }
 }
 
-// Readable palms use a tapered heel, separate knuckles and an inward thumb.
+// A closed hand has one heel and one knuckle plane. The thumb folds across
+// the index finger, and its root and the palm both turn with the wrist.
 export function handForm(T,arm,attach,skin,side,hero,y) {
-  const pos=[],idx=[],scale=hero===3?1.19:hero===4?1.04:1;
-  function ring(a,b,ra,rb,count=6) {
-    const p=new T.Vector3(...a),q=new T.Vector3(...b),axis=q.clone().sub(p).normalize();
-    const ref=Math.abs(axis.y)>.85?new T.Vector3(1,0,0):new T.Vector3(0,1,0);
-    const u=ref.cross(axis).normalize(),v=axis.clone().cross(u),start=pos.length/3;
-    for(const [at,r] of [[p,ra],[q,rb]])for(let k=0;k<count;k++){
-      const phi=k*Math.PI*2/count;
-      const point=at.clone().addScaledVector(u,Math.cos(phi)*r[0]).addScaledVector(v,Math.sin(phi)*r[1]);
-      pos.push(point.x*scale,y+point.y*scale,.023+point.z*scale);
-    }
-    for(let k=0;k<count;k++){
-      const a=start+k,b=start+(k+1)%count;
-      idx.push(a,b,a+count,b,b+count,a+count);
-    }
-    for(let k=1;k+1<count;k++)idx.push(start,start+k+1,start+k,start+count,start+count+k,start+count+k+1);
+  const pos=[],idx=[],shade=[],scale=hero===3?1.12:hero===4?1.02:.97;
+  const power=(v,e)=>Math.sign(v)*Math.abs(v)**e;
+  function vertex(x,h,z,gain){
+    pos.push(side*x*scale,y+h*scale,.026+z*scale);
+    shade.push(gain,gain*.995,gain*.98);
   }
-  ring([0,.075,0],[side*.006,-.037,.026],[.046,.058],[.068,.075],8);
-  for(let k=0;k<4;k++){
-    const x=(k-1.5)*.033*side;
-    ring([x,-.021,.047],[x,-.071+(k===3?.017:0),.065],[.020,.025],[.016,.019],5);
-    ring([x,-.068+(k===3?.015:0),.061],[x-side*.007,-.070+(k===3?.014:0),.032],[.017,.020],[.012,.014],5);
+  function strip(base,n,rows){
+    for(let row=1;row<rows;row++)for(let i=0;i<n;i++){
+      const l=base+(row-1)*n+i,r=base+(row-1)*n+(i+1)%n,b=l+n,d=r+n;
+      if(side>0)idx.push(l,r,b,r,d,b);else idx.push(l,b,r,r,b,d);
+    }
+    const end=base+(rows-1)*n;
+    for(let i=1;i<n-1;i++){
+      if(side>0)idx.push(end,end+i,end+i+1);else idx.push(end,end+i+1,end+i);
+    }
   }
-  ring([-side*.042,.025,.005],[-side*.080,-.018,.039],[.030,.033],[.020,.024],6);
-  ring([-side*.080,-.018,.039],[-side*.059,-.041,.061],[.021,.024],[.015,.018],6);
-  attach(arm,geometry(T,pos,idx),skin);
+  const palm=[[.079,.050,.052,.005],[.029,.064,.053,.010],[-.011,.079,.063,.018],
+    [-.050,.078,.061,.026],[-.073,.068,.048,.030],[-.080,.051,.032,.028]];
+  const n=12;
+  for(let j=0;j<palm.length;j++)for(let i=0;i<n;i++){
+    const [h,rx,rz,forward]=palm[j],a=i*2*Math.PI/n,x=power(Math.cos(a),.70),z=power(Math.sin(a),.78);
+    const fingers=Math.max(0,Math.min(1,(j-2)*.34)),ridges=.5+.5*Math.cos((x+1)*Math.PI*3.55);
+    vertex(rx*x,h+fingers*(.010*x+.006*(1-ridges)),forward+rz*z+fingers*Math.max(0,z)*(.009*ridges-.004),
+      .94+.035*z+.030*ridges*fingers);
+  }
+  strip(0,n,palm.length);
+  // Curl each finger into the palm. Adjacent knuckles share the silhouette
+  // but leave three short creases across the leading face of the fist.
+  for(let finger=0;finger<4;finger++){
+    const x=(finger-1.5)*.033,width=.0195-finger*.0008,short=finger===3?.014:finger===2?.004:0;
+    const path=[[.008,-.050,.83],[.029,-.087,1.04],[.052,-.081,1],[.062,-.056,.78]],
+      base=pos.length/3,around=6;
+    for(let k=0;k<path.length;k++){
+      const [z,h,r]=path[k],prev=path[Math.max(0,k-1)],next=path[Math.min(k+1,path.length-1)];
+      const dy=next[1]-prev[1],dz=next[0]-prev[0],inv=1/Math.hypot(dy,dz);
+      for(let j=0;j<around;j++){
+        const a=j*2*Math.PI/around,u=Math.cos(a)*width*r,v=Math.sin(a)*.018*r;
+        vertex(x+u,h+short+dz*inv*v,z-dy*inv*v,.90+.08*Math.max(0,-Math.sin(a)));
+      }
+    }
+    strip(base,around,path.length);
+  }
+  const thumb=[[-.042,.032,.020,.027],[-.067,.010,.026,.031],[-.072,-.012,.043,.029],
+    [-.055,-.032,.062,.026],[-.031,-.041,.072,.021],[-.018,-.041,.070,.011]];
+  const start=pos.length/3,across=new T.Vector3(),other=new T.Vector3(),axis=new T.Vector3(),fore=new T.Vector3(0,0,1);
+  for(let i=0;i<thumb.length;i++){
+    const [x,h,z,r]=thumb[i],before=thumb[Math.max(0,i-1)],after=thumb[Math.min(thumb.length-1,i+1)];
+    axis.set(after[0]-before[0],after[1]-before[1],after[2]-before[2]).normalize();
+    across.crossVectors(fore,axis).normalize();other.crossVectors(axis,across).normalize();
+    for(let j=0;j<6;j++){
+      const a=2*Math.PI*j/6,u=r*Math.cos(a),v=r*.83*Math.sin(a);
+      vertex(x+across.x*u+other.x*v,h+across.y*u+other.y*v,z+across.z*u+other.z*v,.94+.042*Math.cos(a));
+    }
+  }
+  strip(start,6,thumb.length);
+  const g=geometry(T,pos,idx);g.setAttribute("color",new T.Float32BufferAttribute(shade,3));
+  g.userData.handJoint=true;g.userData.fieldGloss=.21;attach(arm,g,skin);
 }
 
 // A checked coat follows connected, curved surfaces. The hem has its own joint; cuffs follow each forearm.
@@ -254,34 +344,9 @@ export function sewnHeroDetails(T,hero,hip,head,add) {
       const pin=new T.SphereGeometry(.009,7,4);pin.userData.fieldGloss=.82;
       const rivet=add(head,pin,0x637479);rivet.position.set(x,.282,plateZ(x)+.002);
     }
-    for(const s of [-1,1]){
-      const cap=[[[s*.202,.732,.05],[s*.26,.745,.11],[s*.33,.705,.105]],
-        [[s*.259,.692,.204],[s*.329,.686,.205],[s*.408,.644,.153]],
-        [[s*.288,.59,.184],[s*.366,.58,.178],[s*.424,.57,.100]]];
-      if(s<0)cap.forEach(row=>row.reverse());
-      panel(hip,cap,0xbd713c);seam(hip,[[s*.24,.708,.159],[s*.315,.69,.215],[s*.385,.655,.184]],.009,0xe6a463);
-    }
     seam(head,[[-.097,.279,.257],[-.073,.283,.264],[-.029,.306,.268],[.014,.311,.269],[.034,.294,.27],[.018,.275,.269],[-.016,.279,.268],[-.021,.295,.268],[-.003,.300,.27]],.0064,0x3f4b4b);
     seam(head,[[-.095,.266,.257],[-.073,.283,.266],[-.050,.268,.266],[.052,.268,.263]],.006,0x445250);
-  }else if(hero===3){
-    for(const s of [-1,1]){
-      const apex=s===1?-.077:.068,rows=[
-        [[s*.105,.791,.158],[s*.166,.782,.184],[s*.229,.745,.168]],
-        [[s*.036,.651,.270],[s*.113,.657,.276],[s*.176,.666,.249]],
-        [[apex,.444,.261],[apex+s*.047,.487,.276],[apex+s*.102,.545,.268]]
-      ];
-      if(s<0)rows.forEach(row=>row.reverse());panel(hip,rows,0x2f4f63);
-      seam(hip,[[s*.195,.747,.190],[s*.135,.65,.267],[apex+s*.055,.495,.271]],.0065,0x6b8490);
-    }
-    seam(hip,[[-.29,.31,.171],[-.17,.33,.256],[.09,.416,.274]],.008,0xb7784b);
   }else if(hero===4){
-    // A red vest wraps around an actual, continuous chest and opens at the clavicles.
-    for(const s of [-1,1]){
-      const levels=[[.745,.19,.29,.17],[.652,.132,.344,.224],[.48,.11,.325,.234],[.27,.108,.30,.221],[.044,.15,.26,.196],[-.042,.173,.223,.160]];
-      const rows=levels.map(([y,edge,width,front])=>[[s*edge,y,front+.026],[s*((edge+width)*.52),y+.009,front+.015],[s*width,y-.005,.055],[s*width*.91,y-.004,-.123]]);
-      if(s>0)rows.forEach(row=>row.reverse());panel(hip,rows,0xba4140);
-      seam(hip,levels.map(([y,edge,,front])=>[s*edge,y,front+.028]),.009,0xe08b64);
-    }
     const hat=[];
     for(const [rad,base] of [[.256,.355],[.34,.345],[.407,.339],[.478,.349],[.485,.346],[.444,.331],[.30,.325]]){
       hat.push(Array.from({length:43},(_,j)=>{const a=j/42*Math.PI*2;

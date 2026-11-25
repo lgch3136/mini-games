@@ -46,14 +46,6 @@ const awayPalette=[
 export function costumeColour(hero,team,colour) {
   return team===1?(awayPalette[hero]?.get(colour)??colour):colour;
 }
-export function teamCloth(T,hero,team,hip,arms,attach,cylinder) {
-  const dye=team===1?0xda697b:0x48b7c0,edge=team===1?0xf4b38b:0xaddfd6;
-  // This band belongs to the sleeve bone so it stays on the cloth through a punch.
-  const arm=arms[team===1?0:1],rad=hero===3?.155:hero===4?.119:.142;
-  cylinder(arm,dye,0,-.205,0,rad,rad*.92,.11);
-  cylinder(arm,edge,0,-.27,0,rad*.93,rad*.91,.021);
-}
-
 const rests=[
   {l:[-.26,.15,-.18],r:[.38,-.12,.19],twist:.12,lean:.11,drop:.04},
   {l:[-.63,.32,-.18],r:[-.79,-.43,.25],twist:-.32,lean:.07,drop:.06},

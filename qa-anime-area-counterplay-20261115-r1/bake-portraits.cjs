@@ -180,7 +180,7 @@ function drawAbility(ctx,i,cell){
     const rig=build(T,i,0);paint.drawImage(photograph(T,rig,i),224*i,0,224,280);
     paint.drawImage(photograph(T,rig,i,true),224*i,280,224,280);rig.disposeSkin?.();
   }
-  writeFileSync(join(here,"assets/canyon-rig-portraits.webp"),strip.encodeSync("webp",94));
+  writeFileSync(join(here,"assets/canyon-fighter-portraits.webp"),strip.encodeSync("webp",94));
   const icons=createCanvas(512,512),ctx=icons.getContext("2d");
   for(let i=0;i<16;i++){ctx.save();ctx.translate(i%4*128,Math.floor(i/4)*128);drawAbility(ctx,i,128);ctx.restore();}
   writeFileSync(join(here,"assets/canyon-glyphs.webp"),icons.encodeSync("webp",94));
