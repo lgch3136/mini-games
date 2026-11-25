@@ -497,7 +497,7 @@ export class Fight {
       // Releasing both keys of a held diagonal produces a transient cardinal on a keyboard.
       const diagonal = f.history[i - 1];
       if (f.history[i]?.frame === neutral.frame && diagonal?.frame < neutral.frame &&
-          diagonal.dir === endDir && [1, 3, 7, 9].includes(endDir)) i--;
+          [1, 3, 7, 9].includes(diagonal.dir)) i--;
     }
     const last = f.history[i];
     if (!last || this.frame - last.frame >= 11 || last.dir !== endDir) return false;

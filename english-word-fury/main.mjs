@@ -6,7 +6,7 @@ import {
   MOVES,
   VERSION,
   clamp,
-} from "./combat.mjs?v=clinch-fold3";
+} from "./combat.mjs?v=clinch-fold3-release1";
 import { ArenaView } from "./view.mjs?v=clinch-fold3";
 import {sampleLandings} from "./neutral-landing-r2.mjs?v=harbor-guard3";
 import { FuryAudio } from "./sound.mjs?v=20261125-sound-park1";
