@@ -1,6 +1,6 @@
 import {bridgePlan,bridgeCrown,bridgeX,bridgeZ,bridgeRails,rampHeight,shoulderHeight} from "./estuary-map.mjs?v=canyon-bank-grove2";
 import {addUv,stone,flagFace,plain,slate,indexStoneFaces} from "./field-architecture.mjs?v=canyon-eaves-batch1";
-import {bindLitSurface} from "./surface-impact.mjs?v=canyon-eaves-batch1";
+import {bindLitSurface} from "./surface-impact.mjs?v=canyon-timber-bay1";
 
 // Rasterize along the field sun (-13,30,10) once. Stone vertices and the river
 // colour map share these depths. The high tier also receives moving fighters.

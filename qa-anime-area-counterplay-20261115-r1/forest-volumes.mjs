@@ -3,7 +3,7 @@
 import {garden,groundContact,riverbedHeight,stoneLandmarks} from "./estuary-map.mjs?v=canyon-bank-grove2";
 import {rockRings} from "./garden-stones.mjs?v=canyon-archway1";
 import {fieldVisibility} from "./field-visibility.mjs?v=canyon-eaves-batch1";
-import {spellVertex} from "./surface-impact.mjs?v=canyon-eaves-batch1";
+import {spellVertex} from "./surface-impact.mjs?v=canyon-timber-bay1";
 import {sceneryOcclusion} from "./scenery-occlusion.mjs?v=canyon-eave-batch1";
 
 // The two halves are a pine spray and a willow spray. Alpha cuts out the actual

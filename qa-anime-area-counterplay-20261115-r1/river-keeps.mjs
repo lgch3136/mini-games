@@ -56,7 +56,7 @@ function buildKeepModel(T,parent,team,core,tier,art,span,slot,lamp){
   const colors=team
     ? {roof:"#603d59",edge:"#925659",cap:"#c78a69",soffit:"#483541",cloth:"#b44c61",light:"#efd2a0"}
     : {roof:"#284959",edge:"#426970",cap:"#91aba3",soffit:"#203941",cloth:"#2b8b89",light:"#ddd4a4"};
-  const wooden=new Set(["#69493a","#735a45","#856848","#784f39","#a77e48"]);
+  const wooden=new Set(["#69493a","#735a45","#856848","#784f39","#a77e48","#945735","#805137","#ac7950"]);
   const carved=new Set(["#4c6265","#a1aba0","#667a76","#8a8977","#c2b793","#8e9483","#b8ac8b","#a59e89","#827e69","#a29b83"]);
   const brass=new Set(["#d4ac77","#d4b77b","#e0bd79","#c4a777","#ead398"]);
   const glass=team?["#a84551","#ec7c68","#b45669","#ffc08f"]:["#348884","#81ccbc","#448e9d","#b3e5ce"];
@@ -144,18 +144,36 @@ function buildKeepModel(T,parent,team,core,tier,art,span,slot,lamp){
     connect(course,next,colour);course=next;
   }
   cap(course,"#a1aba0");
-  const postSpan=span*.59;
+  const postSpan=span*.65;
   const lintel=core?2.09:1.77;
+  function extrudeTimber(a,b,colours,cut){
+    const normal=new T.Triangle(...a.slice(0,3).map(p=>new T.Vector3(...p))).getNormal(new T.Vector3());
+    const direction=new T.Vector3(...b[0]).sub(new T.Vector3(...a[0]));
+    if(normal.dot(direction)>0)[a,b]=[b,a];
+    for(let i=0;i<a.length;i++){
+      const j=(i+1)%a.length;quad(a[i],b[i],b[j],a[j],colours[i]);
+    }
+    for(let i=1;i<a.length-1;i++){tri(a[0],a[i],a[i+1],cut);tri(b[0],b[i+1],b[i],cut);}
+  }
+  // The tie beams project past the posts. The sloping lower edge catches the
+  // paving light and the exposed end grain is visible from a playing camera.
+  function tieBeam(alongX,side){
+    const reach=postSpan+.23,offset=side*(postSpan+.035),base=lintel-.245;
+    const profile=[[-.098,.040],[-.060,0],[.071,0],[.116,.050],[.116,.168],[.077,.215],[-.098,.215]];
+    const face=(end)=>profile.map(([d,h])=>alongX?[end,base+h,offset+side*d]:[offset+side*d,base+h,end]);
+    extrudeTimber(face(-reach),face(reach),["#805137","#805137","#805137","#945735","#ac7950","#805137","#805137"],"#ac7950");
+  }
   for(const sign of [-1,1]){
-    beam(0,lintel-.15,sign*postSpan,postSpan*2+.26,.15,.16,"#784f39");
-    beam(sign*postSpan,lintel-.15,0,.16,.15,postSpan*2+.26,"#784f39");
+    tieBeam(true,sign);tieBeam(false,sign);
   }
   function corbel(x,z,alongX,sign){
-    const outline=[[-.075,-.25],[.11,-.25],[.18,-.14],[.26,-.10],[.26,-.025],[-.075,-.025]];
+    // Rising brackets open towards the middle of each bay. Their underside
+    // slopes from a broad heel on the column to a shallow nose under the beam.
+    const arm=core?.57:.43;
+    const outline=[[-.09,-.37],[.065,-.37],[arm*.54,-.253],[arm,-.195],[arm,-.12],[-.09,-.12]];
+    sign=-sign;
     const cheek=(across)=>outline.map(([u,h])=>[x+(alongX?sign*u:across),lintel+h,z+(alongX?across:sign*u)]);
-    const a=cheek(-.073),b=cheek(.073);
-    for(let i=1;i<a.length-1;i++){tri(a[0],a[i],a[i+1],"#856848");tri(b[0],b[i+1],b[i],"#856848");}
-    for(let i=0;i<a.length;i++){const j=(i+1)%a.length;quad(a[i],b[i],b[j],a[j],"#784f39");}
+    extrudeTimber(cheek(-.092),cheek(.092),["#805137","#805137","#ac7950","#805137","#805137","#805137"],"#945735");
   }
   function pillar(x,z){
     const foot=core?.21:.175,top=lintel-.09,turn=Math.PI/8;
@@ -170,8 +188,8 @@ function buildKeepModel(T,parent,team,core,tier,art,span,slot,lamp){
     const grain=(u,h)=>[.13+.72*u,.85-.72*h];
     for(let i=0;i<8;i++){
       const j=(i+1)%8,u=i/8,v=(i+1)/8;
-      tri(lower[j],lower[i],upper[i],"#784f39",[grain(v,0),grain(u,0),grain(u,1)],[normal[j],normal[i],normal[i]]);
-      tri(lower[j],upper[i],upper[j],"#784f39",[grain(v,0),grain(u,1),grain(v,1)],[normal[j],normal[i],normal[j]]);
+      tri(lower[j],lower[i],upper[i],"#945735",[grain(v,0),grain(u,0),grain(u,1)],[normal[j],normal[i],normal[i]]);
+      tri(lower[j],upper[i],upper[j],"#945735",[grain(v,0),grain(u,1),grain(v,1)],[normal[j],normal[i],normal[j]]);
     }
     connect(upper,ring(x,lintel+.004,z,foot,foot),"#856848");
   }
@@ -235,7 +253,7 @@ function buildKeepModel(T,parent,team,core,tier,art,span,slot,lamp){
     }
     cap(gem[3],glass[3]);surface=masonry;
   }
-  const front=postSpan+.129,y=lintel-.058,half=core?.195:.157;
+  const front=postSpan+.168,y=lintel-.196,half=core?.195:.157;
   for(const sign of [-1,1]){
     const x=sign*postSpan*.53,length=core?.52:.40;
     const edge=(u,v)=>[x+u*half+.016*v,y-v*length,front+.014+(.016+.026*v)*(1-Math.abs(u))+.013*u*v];

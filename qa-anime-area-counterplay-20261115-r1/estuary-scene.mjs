@@ -3,7 +3,7 @@ import {addReeds} from "./river-reeds.mjs?v=canyon-bank-grove2";
 import {fieldVisibility} from "./field-visibility.mjs?v=canyon-eaves-batch1";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
-import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-eaves-batch1";
+import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-timber-bay1";
 export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
   let filterLevel=1;
   const p=[],uv=[],kind=[],flat=[],ix=[],flow=[],n=73;
@@ -275,7 +275,7 @@ export function estuaryStonework(T){
   const mesh=new T.Mesh(g,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   mesh.userData.cull=fieldVisibility(T,g);return mesh;
 }
-export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-eaves-batch1";
+export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-timber-bay1";
 export function fieldMini(ctx,width,height){
   const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height,unit=width/(2*extent);
   const land=ctx.createRadialGradient(width*.45,height*.52,0,width*.5,height*.5,width*.71);
