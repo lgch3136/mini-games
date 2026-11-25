@@ -147,8 +147,8 @@ export function contactShadows(T, scene, floor, modelFor) {
   };
 }
 
-// A recessed brass compass for the controlled hero. A chosen target gets four separate jaws.
-// Both use the ground's depth, so boots and bodies still cover the marks.
+// Only the floor receives selection light. Boots, the airborne pose and a raised cannon have
+// a little unlit floor around their projected silhouette, including during camera rescaling.
 export function fieldFootmark(T, scene, target) {
   const keepout=Array.from({length:8},()=>new T.Vector4(-10000,-10000,1,1));
   const uniforms = { keepout:{value:keepout},pixelRatio:{value:1}, heading: {value: new T.Vector2(0,1)}, time: {value: 0}, accent: {value: 0} };
@@ -171,6 +171,7 @@ export function fieldFootmark(T, scene, target) {
         vec2 p=fieldUV; float r=length(p),aa=max(.006,fwidth(r)*.65);
         float forward=dot(p,heading),side=dot(p,vec2(heading.y,-heading.x));
         float angle=atan(side,forward);
+        vec3 emitted=vec3(0.);
         #ifdef TARGET_BRACKETS
           float sector=abs(fract(atan(p.y,p.x)/1.5707963+.5)-.5);
           float arc=1.-smoothstep(.23,.29,sector);
@@ -186,8 +187,8 @@ export function fieldFootmark(T, scene, target) {
           float rim=ribbon(r,.767,.066,aa)*gap;
           float edge=ribbon(r,.797,.021,aa)*gap;
           float inner=ribbon(r,.725,.013,aa)*gap;
-          float fraction=fract(angle*2.546479+.5);
-          float index=smoothstep(.10,.15,fraction)*(1.-smoothstep(.69,.76,fraction));
+          float phase=cos(angle*12.-time*.55);
+          float index=smoothstep(-.24-fwidth(phase),-.24+max(.02,fwidth(phase)),phase);
           float scale=ribbon(r,.659,.022,aa)*index*smoothstep(.30,.43,bearing);
           float broad=(1.-smoothstep(.046,.185,abs(r-.773)))*gap;
           float haze=(1.-smoothstep(.056,.104,abs(r-.773)))*gap;
@@ -204,19 +205,22 @@ export function fieldFootmark(T, scene, target) {
           col=mix(col,mix(vec3(.80,.96,.34),vec3(1.,.99,.61),spine+.14*accent),tip);
           float opacity=max(max(rim*.95,edge),max(inner*.9,scale*.79));
           opacity=max(opacity,max(broad*.20+haze*.12,max(tip*.97,tipHalo*.23)));
-          // Leave a soft one-pixel rim of unlit floor around the posed silhouette, including its cannon.
           float clearance=10000.;
           for(int i=0;i<8;i++){
             vec4 oval=keepout[i];
             float dist=(length((gl_FragCoord.xy-oval.xy)/oval.zw)-1.)*min(oval.z,oval.w);
             clearance=min(clearance,dist);
           }
-          opacity*=smoothstep(.5*pixelRatio,2.5*pixelRatio,clearance);
+          float gapToActor=clearance/max(.35,pixelRatio);
+          float exposed=smoothstep(3.2,5.6,gapToActor);
+          float lit=exposed*mix(.67,1.,smoothstep(5.,12.,gapToActor));
+          opacity*=lit;
+          emitted=vec3(.105,.145,.036)*(broad*.44+edge*.40+tipHalo*.16)*lit;
         #endif
         if(opacity<.015)discard;
-        gl_FragColor=vec4(col,opacity);
+        gl_FragColor=vec4(col*opacity+emitted,opacity);
       }`,
-    transparent:true,depthWrite:false,depthTest:true,polygonOffset:true,
+    transparent:true,premultipliedAlpha:true,depthWrite:false,depthTest:true,polygonOffset:true,
     polygonOffsetFactor:-.25,polygonOffsetUnits:-1,toneMapped:false
   });
   const span=target?2.32:2.98;
@@ -237,6 +241,8 @@ export function fieldFootmark(T, scene, target) {
     vertices.needsUpdate=true;
   };
   const centre=new T.Vector3(),axis=new T.Vector3(),offset=new T.Vector3(),screen=new T.Vector3();
+  const screenBox={left:0,right:0,top:0,bottom:0};
+  const faceOval=new T.Vector4();
   function projectedOval(cell,node,x,y,z,rx,ry,rz,camera,width,height) {
     if(!node){cell.set(-10000,-10000,1,1);return;}
     centre.set(x,y,z).applyMatrix4(node.matrixWorld);
@@ -250,20 +256,52 @@ export function fieldFootmark(T, scene, target) {
     }
     cell.set(cx,cy,Math.max(1,Math.sqrt(xx)),Math.max(1,Math.sqrt(yy)));
   }
+  mesh.userData.actorBox=(rig,hero,camera,canvas,box)=>{
+    if(!rig?.head)return false;
+    const cat=hero===1,w=canvas.width,h=canvas.height;
+    const sx=canvas.clientWidth/w,sy=canvas.clientHeight/h;
+    box.left=box.top=Infinity;box.right=box.bottom=-Infinity;
+    function include(node,y,z,rx,ry,rz){
+      if(!node)return;
+      node.updateWorldMatrix(true,false);
+      projectedOval(faceOval,node,0,y,z,rx,ry,rz,camera,w,h);
+      const v=faceOval;
+      box.left=Math.min(box.left,(v.x-v.z)*sx-4);box.right=Math.max(box.right,(v.x+v.z)*sx+4);
+      box.top=Math.min(box.top,(h-v.y-v.w)*sy-4);box.bottom=Math.max(box.bottom,(h-v.y+v.w)*sy+4);
+    }
+    include(rig.head,cat?0:.12,0,cat?.69:.43,cat?.66:.49,cat?.63:.39);
+    include(rig.hip,cat?.68:.94,0,cat?.50:.36,cat?.52:.50,cat?.43:.32);
+    for(let i=0;i<2;i++){
+      include(rig.legs?.[i],-.11,.06,cat?.25:.18,.20,cat?.32:.23);
+      include(rig.arms?.[i],-.26,0,.22,.37,.25);
+    }
+    if(rig.gadget?.visible)include(rig.muzzle,0,-.06,.20,.20,.17);
+    return box.right>0&&box.left<canvas.clientWidth&&box.bottom>0&&box.top<canvas.clientHeight;
+  };
   mesh.userData.shieldPose=(rig,cat,camera,canvas)=>{
-    if(target||!rig)return;
+    if(target||!rig)return null;
     const w=canvas.width,h=canvas.height;uniforms.pixelRatio.value=w/Math.max(1,canvas.clientWidth);
     rig.g.updateWorldMatrix(true,true);
     function oval(i,node,x,y,z,rx,ry,rz){projectedOval(keepout[i],node,x,y,z,rx,ry,rz,camera,w,h);}
     oval(0,rig.head,0,cat?0:.12,0,cat?.685:.235,cat?.65:.29,cat?.63:.22);
     oval(1,rig.hip,0,cat?.68:.95,0,cat?.49:.30,cat?.51:.48,cat?.41:.27);
     for(let i=0;i<2;i++){
-      oval(2+i,rig.legs?.[i],0,-.09,.06,cat?.225:.17,cat?.13:.15,cat?.29:.21);
+      oval(2+i,rig.legs?.[i],0,-.09,.06,cat?.242:.17,cat?.15:.15,cat?.31:.21);
       oval(4+i,i===1&&cat?rig.wrist:rig.arms?.[i],i===0&&cat?-.139:0,i===1&&cat?0:-.25,i===0&&cat?.04:0,.15,.15,.15);
     }
     const gun=rig.gadget?.visible?rig.gadget:null;
     oval(6,gun,0,0,.068,.17,.17,.23);
     oval(7,gun?rig.muzzle:null,0,0,-.06,.19,.19,.11);
+    const sx=canvas.clientWidth/w,sy=canvas.clientHeight/h;
+    let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
+    for(const v of keepout){
+      if(v.x===-10000)continue;
+      left=Math.min(left,(v.x-v.z)*sx);right=Math.max(right,(v.x+v.z)*sx);
+      top=Math.min(top,(h-v.y-v.w)*sy);bottom=Math.max(bottom,(h-v.y+v.w)*sy);
+    }
+    if(!Number.isFinite(left)||right<0||left>canvas.clientWidth||bottom<0||top>canvas.clientHeight)return null;
+    screenBox.left=left-3;screenBox.right=right+3;screenBox.top=top-3;screenBox.bottom=bottom+3;
+    return screenBox;
   };
   scene.add(mesh);return mesh;
 }

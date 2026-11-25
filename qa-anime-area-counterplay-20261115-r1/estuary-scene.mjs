@@ -86,7 +86,7 @@ export function estuaryFloor(T,scene){
     const far=p[a+row+3];return far+(1-dx)*(p[a+row]-far)+(1-dz)*(p[a+3]-far);
   }
   return {groundY,cull:fieldVisibility(T,g),start(){
-    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/estuary-ground-relief.webp",import.meta.url).href).then(image=>{
+    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/estuary-shallows.webp",import.meta.url).href).then(image=>{
       if(closed){image.dispose();return;}
       texture=image;image.colorSpace=T.NoColorSpace;image.anisotropy=1;uniforms.field.value=image;uniforms.ready.value=1;
     }).catch(()=>{});

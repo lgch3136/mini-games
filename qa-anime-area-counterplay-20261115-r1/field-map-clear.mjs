@@ -1,7 +1,10 @@
-// Move the minimap only when it covers a combatant. The full map stays where the player opened it.
+// The default map stays under the player's left thumb. The earlier adaptive layout is available in Settings.
 export function mapSight(T,panel,floor){
   const point=new T.Vector3();
-  let width=0,height=0,top=0,inset=0,onLeft=false,heldUntil=-1;
+  const preference=document.getElementById("map-anchor");
+  let fixed=true;
+  try{fixed=localStorage.getItem("crossroads-map-anchor")!=="adaptive";}catch{}
+  let width=0,height=0,top=0,inset=0,onLeft=panel.classList.contains("field-left"),heldUntil=-1;
   function measure(){
     const box=panel.getBoundingClientRect();
     width=box.width;height=box.height;top=box.top;inset=onLeft?box.left:document.documentElement.clientWidth-box.right;
@@ -11,8 +14,19 @@ export function mapSight(T,panel,floor){
     if(left===onLeft)return;
     onLeft=left;panel.classList.toggle("field-left",left);
   }
+  function apply(){
+    place(fixed);
+    preference.textContent=fixed?"小地图 固定左上":"小地图 自动避让";
+    preference.setAttribute("aria-pressed",String(fixed));
+    measure();
+  }
+  function toggle(){
+    fixed=!fixed;heldUntil=-1;apply();
+    try{localStorage.setItem("crossroads-map-anchor",fixed?"left":"adaptive");}catch{}
+  }
+  apply();preference.addEventListener("click",toggle);
   return {draw(actors,camera,screenW,screenH,time,structure=null){
-    if(panel.classList.contains("map-expanded")||!width||!height||!screenW||!screenH)return;
+    if(fixed||panel.classList.contains("map-expanded")||!width||!height||!screenW||!screenH)return;
     let right=0,left=0;
     function weigh(actor){
       const building=actor.kind==="core"||actor.kind==="tower",ground=floor(actor.x,actor.z);
@@ -35,5 +49,5 @@ export function mapSight(T,panel,floor){
     if(structure)weigh(structure);
     if(right>left){heldUntil=time+1.6;place(true);}
     else if(left>right||time>heldUntil)place(false);
-  },reset(){heldUntil=-1;place(false);},dispose(){observer.disconnect();place(false);}};
+  },reset(){heldUntil=-1;place(fixed);},dispose(){observer.disconnect();preference.removeEventListener("click",toggle);}};
 }

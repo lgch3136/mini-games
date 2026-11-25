@@ -1,6 +1,6 @@
 export function edgeTags(T) {
   const world=new T.Vector3(),eye=new T.Vector3(),screen=new T.Vector3();
-  return function position(tag,body,camera,width,height) {
+  return function position(tag,body,camera,width,height,box) {
     if(!tag.group.visible||!(height>0&&width>0))return;
     const group=tag.group;
     const base=tag.base||(tag.base=group.position.clone());
@@ -9,18 +9,11 @@ export function edgeTags(T) {
     eye.copy(world).applyMatrix4(camera.matrixWorldInverse);
     if(eye.z>=-.1){group.visible=false;return;}
     const px=height*camera.projectionMatrix.elements[5]/(-2*eye.z);
-    const natural=2.28*body.scale.x*px,max=width<620?Math.min(79,width*.22):98;
-    const factor=Math.min(1,max/natural);
-    group.scale.setScalar(factor);
-    const half=natural*factor*.5;
+    group.scale.setScalar((box.right-box.left)/(2.28*body.scale.x*px));
     screen.copy(world).project(camera);
-    const x=(screen.x+1)*width/2,y=(1-screen.y)*height/2;
-    if(x<-.22*natural||x>width+.22*natural||y<0||y>height){group.visible=false;return;}
-    const bounded=Math.max(half+5,Math.min(width-half-5,x));
-    if(Math.abs(bounded-x)>.25){
-      screen.x=2*bounded/width-1;
-      world.copy(screen).unproject(camera);body.worldToLocal(world);group.position.copy(world);
-    }else group.position.copy(base);
+    screen.x=(box.left+box.right)/width-1;
+    screen.y=1-(box.top+box.bottom)/height;
+    world.copy(screen).unproject(camera);body.worldToLocal(world);group.position.copy(world);
     group.quaternion.copy(camera.quaternion);
   };
 }

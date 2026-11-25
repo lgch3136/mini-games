@@ -9,16 +9,19 @@ function nameAtlas(T,names) {
   for(let row=0;row<3;row++)for(let hero=0;hero<5;hero++){
     const x=hero*width,y=row*height,enemy=row===1,self=row===2;
     ctx.save();ctx.translate(x,y);ctx.lineJoin="round";ctx.textAlign="center";ctx.textBaseline="middle";
-    ctx.fillStyle=enemy?"rgba(51,20,34,.9)":"rgba(12,38,46,.9)";
-    ctx.beginPath();ctx.roundRect(8,4,176,44,9);ctx.fill();
-    ctx.fillStyle=enemy?"#ff8794":self?"#ffda81":"#86e0e0";ctx.beginPath();
-    if(enemy){ctx.moveTo(15,9);ctx.lineTo(50,9);ctx.lineTo(50,29);ctx.lineTo(32,43);ctx.lineTo(15,29);}
-    else if(self){ctx.moveTo(32,6);ctx.lineTo(51,25);ctx.lineTo(32,44);ctx.lineTo(13,25);}
-    else ctx.roundRect(15,9,35,34,10);
-    ctx.closePath();ctx.fill();ctx.fillStyle="#18222a";ctx.font='bold 21px "Noto Sans CJK SC","PingFang SC",sans-serif';
-    ctx.fillText(enemy?"敌":self?"我":"友",32,26);
-    ctx.fillStyle="#fff5e0";ctx.font='bold 30px "Noto Sans CJK SC","PingFang SC",sans-serif';
-    ctx.fillText(names[hero],113,27,127);ctx.restore();
+    const name=names[hero];
+    ctx.font='600 34px "Noto Sans CJK SC","PingFang SC",sans-serif';
+    const nameWidth=Math.min(147,ctx.measureText(name).width);
+    const markerX=(width-nameWidth-17)/2;
+    ctx.strokeStyle="rgba(25,34,36,.94)";ctx.lineWidth=5;
+    ctx.fillStyle=enemy?"#ffc0ac":self?"#ffde83":"#9fe9ef";ctx.beginPath();
+    if(self){ctx.moveTo(markerX+6,16);ctx.lineTo(markerX+13,25);ctx.lineTo(markerX+6,34);ctx.lineTo(markerX-1,25);}
+    else if(enemy){ctx.moveTo(markerX,18);ctx.lineTo(markerX+13,18);ctx.lineTo(markerX+6.5,32);}
+    else ctx.arc(markerX+6,25,5.6,0,Math.PI*2);
+    ctx.closePath();ctx.stroke();ctx.fill();
+    const nameX=markerX+18+nameWidth/2;
+    ctx.lineWidth=5.5;ctx.strokeText(name,nameX,27,nameWidth);
+    ctx.fillStyle=enemy?"#ffe6da":"#fff5d6";ctx.fillText(name,nameX,27,nameWidth);ctx.restore();
   }
   const map=new T.CanvasTexture(canvas);
   map.colorSpace=T.SRGBColorSpace;map.generateMipmaps=false;map.minFilter=T.LinearFilter;map.magFilter=T.LinearFilter;

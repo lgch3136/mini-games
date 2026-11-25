@@ -82,3 +82,80 @@ export function cameraFootprint(T, camera) {
     return points;
   };
 }
+
+// A field touch only picks or looks. The movement stick keeps its own pointer while this finger scouts.
+export function touchBattlefield(world,{actor,available,centre,ground,bounds,view,pick}) {
+  let finger=null;
+  function release(restore=true) {
+    const old=finger;
+    finger=null;
+    if(!old)return;
+    if(world.hasPointerCapture(old.id))world.releasePointerCapture(old.id);
+    if(old.dragging&&restore)view(null);
+  }
+  function move(event) {
+    const f=finger;
+    if(!f||event.pointerId!==f.id)return;
+    const dx=event.clientX-f.x,dy=event.clientY-f.y;
+    if(Math.hypot(dx,dy)<7&&!f.moved)return;
+    f.moved=true;
+    if(!f.canPan||!f.base||!actor()||!available())return;
+    f.dragging=true;
+    const wx=f.right.x*dx+f.down.x*dy,wz=f.right.z*dx+f.down.z*dy;
+    const scale=Math.min(1,15/Math.max(.001,Math.hypot(wx,wz)));
+    view({x:Math.max(bounds.minX,Math.min(bounds.maxX,f.base.x+wx*scale)),
+          z:Math.max(bounds.minZ,Math.min(bounds.maxZ,f.base.z+wz*scale))});
+  }
+  world.addEventListener("pointerdown",event=>{
+    if(event.pointerType!=="touch"||event.button!==0||finger||!actor()||!available())return;
+    const rect=world.getBoundingClientRect(),sx=rect.left+rect.width*.5,sy=rect.top+rect.height*.52;
+    const a=ground(sx,sy),b=ground(sx+16,sy),c=ground(sx,sy+16);
+    const canPan=event.clientX>=rect.left+.43*rect.width&&!!(a&&b&&c);
+    const origin=centre()||actor();
+    finger={id:event.pointerId,x:event.clientX,y:event.clientY,canPan,moved:false,dragging:false,
+      base:{x:origin.x,z:origin.z},right:canPan?{x:(b.x-a.x)/16,z:(b.z-a.z)/16}:null,
+      down:canPan?{x:(c.x-a.x)/16,z:(c.z-a.z)/16}:null};
+    world.setPointerCapture(event.pointerId);event.preventDefault();
+  });
+  world.addEventListener("pointermove",move);
+  world.addEventListener("pointerup",event=>{
+    if(!finger||event.pointerId!==finger.id)return;
+    move(event);
+    const tap=!finger.moved;
+    release();
+    if(tap&&actor()&&available())pick(event);
+  });
+  for(const name of ["pointercancel","lostpointercapture"])world.addEventListener(name,event=>{
+    if(finger?.id===event.pointerId)release();
+  });
+  return {release,active:()=>!!finger?.dragging};
+}
+
+// A secondary touch has no guaranteed compatibility click. Dispatch one activation on release,
+// and keep the native keyboard and mouse activation paths intact.
+export function thumbButton(button){
+  let id=null,last=-Infinity;
+  button.addEventListener("pointerdown",e=>{
+    if(e.pointerType!=="touch"||e.button!==0||id!==null||button.disabled)return;
+    id=e.pointerId;
+    button.setPointerCapture(id);
+    e.preventDefault();
+  });
+  button.addEventListener("pointerup",e=>{
+    if(id!==e.pointerId)return;
+    id=null;
+    const r=button.getBoundingClientRect();
+    if(button.hasPointerCapture(e.pointerId))button.releasePointerCapture(e.pointerId);
+    if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)return;
+    e.preventDefault();last=e.timeStamp;button.click();
+  });
+  for(const name of ["pointercancel","lostpointercapture"])button.addEventListener(name,e=>{
+    if(id===e.pointerId)id=null;
+  });
+  button.addEventListener("click",e=>{
+    if(e.isTrusted&&e.detail>0&&e.timeStamp-last>=0&&e.timeStamp-last<700&&
+       (e.pointerType==="touch"||e.sourceCapabilities?.firesTouchEvents||e.pointerType==null)){
+      e.preventDefault();e.stopImmediatePropagation();
+    }
+  },true);
+}

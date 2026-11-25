@@ -3,8 +3,22 @@ const accents=["#ffc779","#80dbff","#bb9cfa","#ffe49b","#ff9276"];
 const clamp=(v,lo=0,hi=1)=>Math.min(hi,Math.max(lo,v));
 const labelPriority={ "hero-hit":3, taken:2, coin:2, missed:1, dealt:1, "minion-hit":0 };
 const labelRows=[0,-1,1,-2,2,-3,3,-4,4];
+// Stop a screen-space leader at the near silhouette edge when its target is hidden behind the player.
+export function leaderFraction(x,y,dx,dy,body){
+  if(!body)return 1;
+  let enter=0,exit=1;
+  function clip(origin,direction,lo,hi){
+    if(Math.abs(direction)<1e-6)return origin>=lo&&origin<=hi;
+    let a=(lo-origin)/direction,b=(hi-origin)/direction;
+    if(a>b)[a,b]=[b,a];
+    enter=Math.max(enter,a);exit=Math.min(exit,b);return enter<=exit;
+  }
+  if(!clip(x,dx,body.left,body.right)||!clip(y,dy,body.top,body.bottom))return 1;
+  return Math.max(0,enter-3/Math.max(1,Math.hypot(dx,dy)));
+}
 export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
   const point=new T.Vector3(),cache=new Map(),effects=[],labels=[],onScreen=[];
+  const measurements=new Map();let measurementWidth=0;
   const maxVertices=1500,positions=new Float32Array(maxVertices*3),colors=new Float32Array(maxVertices*4);
   const geo=new T.BufferGeometry(),pos=new T.BufferAttribute(positions,3),rgb=new T.BufferAttribute(colors,4);
   pos.setUsage(T.DynamicDrawUsage);rgb.setUsage(T.DynamicDrawUsage);geo.setAttribute("position",pos);geo.setAttribute("color",rgb);
@@ -45,7 +59,7 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
     }
     const start=now+(kind==="coin" ? .29 : 0);
     const life=heroName ? .68 : kind==="coin" ? .92 : .53;
-    Object.assign(f,{x,z,start,until:start+life,y,kind,who,heroName,word,priority});
+    Object.assign(f,{x,z,start,until:start+life,y,kind,who,heroName,word,priority,measuredAt:0});
     f.node.className="field-float "+kind;f.node.textContent=word;f.node.dataset.hero=heroName;
     f.leader.className=heroName?"damage-leader hero-leader":"damage-leader";
     f.node.hidden=start>now;
@@ -142,8 +156,9 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
       for(let j=-1;j<=1;j++)line(loc(front-.55*fade,j*.065,.89+j*.13),loc(front,j*.10,1.02+j*.13),j===0?.059:.025,j===0?"#fff0cd":f.hue,fade);
     }
   }
-  function draw(match,camera,width,height){
+  function draw(match,camera,width,height,bars=[],playerBody=null,faces=[]){
     consume(match);const t=match.time;index=0;
+    if(measurementWidth!==width){measurements.clear();measurementWidth=width;}
     const hero=match.units.find(u=>u.id===match.playerId);
     // These marks reuse the combat stroke batch and stay on the tower side of the player's feet.
     if(hero && !hero.dead) {
@@ -183,10 +198,18 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
       if(f.node.hidden===inShot)f.node.hidden=!inShot;
       if(!inShot){if(!f.leader.hidden)f.leader.hidden=true;continue;}
       f.px=(point.x*.5+.5)*width;f.py=(.5-point.y*.5)*height;f.u=u;
-      const font=clamp(width*.0125,14,21),pop=1+.20*Math.sin(Math.PI*Math.min(1,u*3));
-      const textWidth=f.kind==="coin"?font*(f.word.length+.8):font*.78*f.word.length+5;
-      f.halfWidth=(f.heroName?f.heroName.length*11+f.word.length*14+22:textWidth)*pop*.5;
-      f.boxHeight=(f.heroName?26:font+3)*pop;f.pop=pop;
+      const pop=1+.20*Math.sin(Math.PI*Math.min(1,u*3));
+      if(f.measuredAt!==width){
+        const key=f.kind+"|"+f.heroName+"|"+f.word;
+        let extent=measurements.get(key);
+        if(!extent){
+          extent={width:f.node.offsetWidth+5,height:f.node.offsetHeight+4};
+          if(measurements.size>=128)measurements.clear();
+          measurements.set(key,extent);
+        }
+        f.measuredAt=width;f.textWidth=extent.width;f.textHeight=extent.height;
+      }
+      f.halfWidth=f.textWidth*pop*.5;f.boxHeight=f.textHeight*pop;f.pop=pop;
       point.set(f.x,floor+f.y*.65,f.z).project(camera);
       f.contactX=(point.x*.5+.5)*width;f.contactY=(.5-point.y*.5)*height;onScreen.push(f);
     }
@@ -194,49 +217,65 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
       f.hasBar=Boolean(f.heroName&&showNamedHit&&showNamedHit(f.who,camera,width,height,f));
     }
     onScreen.sort((a,b)=>b.priority-a.priority||a.start-b.start||(a.who??0)-(b.who??0));
-    const fixed=onScreen.length?hudBoxes(width,height):[];
+    const fixed=onScreen.length?hudBoxes(width,height).concat(bars):[];
     for(let j=0;j<onScreen.length;j++){
       const f=onScreen[j],margin=f.halfWidth+3;
-      f.drawX=clamp(f.px,margin,width-margin);
-      // Keep the highest-priority label over its target. Fit later labels against the
-      // eight pooled screen boxes without triggering DOM measurement during combat.
+      const homeX=clamp(f.px,margin,width-margin);
+      const home=f.hasBar?Math.min(f.py,f.barTop-6):f.py;
       let best=Infinity;
-      for(const row of labelRows){
-        const home=f.hasBar?Math.min(f.py,f.barTop-6):f.py;
+      const xs=[homeX];
+      if(playerBody&&homeX+margin>playerBody.left&&homeX-margin<playerBody.right){
+        xs.push(clamp(playerBody.left-margin-3,margin,width-margin),clamp(playerBody.right+margin+3,margin,width-margin));
+      }
+      for(const face of faces){
+        if(home>face.top&&home-f.boxHeight<face.bottom&&homeX+margin>face.left&&homeX-margin<face.right)
+          xs.push(clamp(face.left-margin-3,margin,width-margin),clamp(face.right+margin+3,margin,width-margin));
+      }
+      for(const x of xs)for(const row of labelRows){
         const y=clamp(home+row*(f.boxHeight+3),f.boxHeight+3,height-3);
         let overlap=0;
         for(const box of fixed){
-          const across=Math.min(f.drawX+f.halfWidth,box.right+3)-Math.max(f.drawX-f.halfWidth,box.left-3);
+          const across=Math.min(x+f.halfWidth,box.right+3)-Math.max(x-f.halfWidth,box.left-3);
           const down=Math.min(y,box.bottom+3)-Math.max(y-f.boxHeight,box.top-3);
           if(across>0&&down>0)overlap+=9*across*down;
         }
-        for(const owner of onScreen){
-          if(!owner.hasBar)continue;
-          const across=Math.min(f.drawX+f.halfWidth,owner.barRight+3)-Math.max(f.drawX-f.halfWidth,owner.barLeft-3);
-          const down=Math.min(y,owner.barBottom+3)-Math.max(y-f.boxHeight,owner.barTop-3);
-          if(across>0&&down>0)overlap+=4*across*down;
-        }
         for(let k=0;k<j;k++){
-          const other=onScreen[k];
-          const across=f.halfWidth+other.halfWidth+3-Math.abs(other.drawX-f.drawX);
+          const other=onScreen[k];if(other.node.hidden)continue;
+          const across=f.halfWidth+other.halfWidth+3-Math.abs(other.drawX-x);
           const down=Math.min(y,other.drawY)-Math.max(y-f.boxHeight,other.drawY-other.boxHeight)+3;
           if(across>0&&down>0)overlap+=across*down;
         }
-        if(overlap<best){f.drawY=y;best=overlap;}
-        if(overlap===0)break;
+        const score=overlap*30+Math.abs(y-home)+Math.abs(x-homeX)*1.18;
+        if(score<best){f.drawX=x;f.drawY=y;best=score;}
+        if(!overlap)break;
       }
       const opacity=Math.min(1,(1-f.u)*3);
       f.node.style.transform="translate("+f.drawX.toFixed(1)+"px,"+f.drawY.toFixed(1)+"px) translate(-50%,-100%) scale("+f.pop.toFixed(2)+")";f.node.style.opacity=String(opacity);
+      const ink=f.bounds||(f.bounds={});
+      ink.left=f.drawX-f.halfWidth;ink.right=f.drawX+f.halfWidth;
+      ink.top=f.drawY-f.boxHeight;ink.bottom=f.drawY;
+    }
+    for(const f of onScreen){
       const showLeader=Boolean(f.heroName)||Math.abs(f.drawY-f.py)>=2||Math.abs(f.drawX-f.px)>=2;
       if(f.leader.hidden===showLeader)f.leader.hidden=!showLeader;
       if(!showLeader)continue;
-      let sx=f.drawX,sy=f.drawY+2;
+      const centreY=f.drawY-f.boxHeight*.5,vx=f.contactX-f.drawX,vy=f.contactY-centreY;
+      const reach=Math.hypot(vx,vy);
+      const edge=Math.min(f.halfWidth/Math.max(.001,Math.abs(vx)),f.boxHeight*.5/Math.max(.001,Math.abs(vy)))+3/Math.max(1,reach);
+      if(edge>=1){f.leader.hidden=true;continue;}
+      let sx=f.drawX+vx*edge,sy=centreY+vy*edge;
       if(f.hasBar && sy<=f.barBottom+3 && f.contactY>f.barBottom+3){
         const cut=f.barBottom+3,dxAtBar=(f.contactX-sx)*(cut-sy)/(f.contactY-sy);
         if(sx+dxAtBar>=f.barLeft-3&&sx+dxAtBar<=f.barRight+3){sx+=dxAtBar;sy=cut;}
       }
       const dx=f.contactX-sx,dy=f.contactY-sy;
-      f.leader.style.width=Math.hypot(dx,dy).toFixed(1)+"px";f.leader.style.opacity=String(opacity*.87);
+      let fraction=1;
+      for(const obstacle of bars)fraction=Math.min(fraction,leaderFraction(sx,sy,dx,dy,obstacle));
+      for(const other of onScreen)if(other!==f)fraction=Math.min(fraction,leaderFraction(sx,sy,dx,dy,other.bounds));
+      const length=Math.hypot(dx,dy)*fraction;
+      if(length<3){f.leader.hidden=true;continue;}
+      const opacity=Math.min(1,(1-f.u)*3);
+      f.leader.style.width=length.toFixed(1)+"px";f.leader.style.opacity=String(opacity*.87);
       f.leader.style.transform="translate("+sx.toFixed(1)+"px,"+sy.toFixed(1)+"px) rotate("+Math.atan2(dy,dx)+"rad)";
     }
   }

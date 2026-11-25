@@ -42,13 +42,22 @@ void main(){
   ink=vec4(c.rgb,1.);
 }`;
 const barVertex=`precision highp float;
-in vec3 position;in vec4 anchor;in vec2 life;
+in vec3 position;in vec4 anchor;in vec2 life;uniform vec4 playerRect;
 uniform mat4 modelViewMatrix,projectionMatrix;out vec2 uv;flat out vec2 status;
 void main(){
   if(life.x>=.9999){gl_Position=vec4(2.,2.,2.,1.);uv=vec2(0.);status=vec2(0.);return;}
   vec4 p=modelViewMatrix*vec4(anchor.xyz,1.);
-  p.xy+=vec2(position.x*.94,life.y+.038+position.y*.094);
+  p.y+=life.y+.085;
+  vec4 origin=projectionMatrix*p;
+  vec2 centre=origin.xy/origin.w;
+  vec2 halfBar=vec2(projectionMatrix[0][0]*.47,projectionMatrix[1][1]*.047)/origin.w;
+  p.xy+=vec2(position.x*.94,(position.y-.5)*.094);
   gl_Position=projectionMatrix*p;
+  if(centre.x+halfBar.x>playerRect.x&&centre.x-halfBar.x<playerRect.z&&
+     centre.y+halfBar.y>playerRect.y&&centre.y-halfBar.y<playerRect.w){
+    float left=playerRect.x-halfBar.x-centre.x,right=playerRect.z+halfBar.x-centre.x;
+    gl_Position.x+=(abs(left)<abs(right)?left:right)*gl_Position.w;
+  }
   uv=vec2(position.x+.5,position.y);status=vec2(mod(anchor.w,2.),life.x);
 }`;
 const barFragment=`precision mediump float;
@@ -82,7 +91,8 @@ export function laneCompany(T,scene,floor){
     const mesh=new T.Mesh(geometry,material);mesh.frustumCulled=false;mesh.visible=false;scene.add(mesh);return mesh;
   }
   const figures=make(bodies,bodyVertex,bodyFragment,{uniforms});
-  const health=make(bars,barVertex,barFragment);figures.name="兵线衣甲";health.name="兵线生命";health.renderOrder=3;
+  const playerRect={value:new T.Vector4(-5,-5,-5,-5)};
+  const health=make(bars,barVertex,barFragment,{uniforms:{playerRect}});figures.name="兵线衣甲";health.name="兵线生命";health.renderOrder=3;
   const history=new Map();let ready=false,closed=false,loading=null,serial=0;
   function start(){
     if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/river-company.webp",import.meta.url).href).then(sheet=>{
@@ -137,7 +147,11 @@ export function laneCompany(T,scene,floor){
     return true;
   }
   function reset(){history.clear();bodies.instanceCount=bars.instanceCount=0;health.visible=figures.visible=false;}
-  return {start,get ready(){return ready;},draw,reset,dispose(){
+  function protect(box,w,h){
+    if(!box){playerRect.value.set(-5,-5,-5,-5);return;}
+    playerRect.value.set(2*(box.left-1)/w-1,1-2*(box.bottom+1)/h,2*(box.right+1)/w-1,1-2*(box.top-1)/h);
+  }
+  return {start,get ready(){return ready;},draw,reset,protect,dispose(){
     closed=true;ready=false;reset();figures.removeFromParent();health.removeFromParent();
     bodies.dispose();bars.dispose();figures.material.dispose();health.material.dispose();uniforms.sheet.value?.dispose();uniforms.tideSheet.value?.dispose();
   }};

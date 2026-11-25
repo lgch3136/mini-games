@@ -328,7 +328,65 @@ body:has(#menu:not(.hidden)) #field-recall,body:has(#end:not(.hidden)) #field-re
  #mapPanel.map-expanded .map-tools{justify-content:space-between}
  #mapPanel:not(.map-expanded) #map-home{margin-top:2px}
 }
-</style></head><body><canvas id="world"></canvas><div id="top"><div><small>ANIME CROSSROADS</small><h1>次元交锋</h1></div><div class="score"><b id="time">00:00</b><span id="stats">蓝方先锋</span></div><button id="focus" aria-pressed="false" title="普通攻击优先英雄和可补的小兵。F 切换为优先拆塔，点选单位可指定目标。">英雄／补刀</button><button id="pause">暂停</button><details id="battle-options"><summary>设置</summary><div><button id="quality">画质 高</button><button id="sound">音乐 开</button><button id="perfToggle">性能</button></div></details></div><div id="objective">沿同一路推掉三座塔，护送兵线击破核心</div><aside id="routeHint" hidden></aside><section id="menu" class="veil"><div class="panel"><small>独立同人试玩 · 5 对 5 AI 战场</small><h2>选择英雄</h2><p>从左下泉水出发。护送兵线，沿同一路攻破外塔、二塔和高地塔，再带兵攻入右上核心。</p><div id="choices"><button data-hero="0" class="selected" aria-pressed="true"><span class="roster-window" aria-hidden="true"><i style="background-position:0% center"></i></span><b>漩涡鸣人</b><em>突进 / 近战</em><span>螺旋丸 · 影分身突进 · 风遁旋涡</span></button><button data-hero="1" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:25% center"></i></span><b>机器猫</b><em>哆啦A梦 · 道具支援</em><span>空气炮 · 竹蜻蜓 · 任意门</span></button><button data-hero="2" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:50% center"></i></span><b>五条悟</b><em>术式 · 迎弹护送</em><span>术式·苍 · 无下限 · 虚式·茈</span></button><button data-hero="3" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:75% center"></i></span><b>孙悟空</b><em>气功 · 站定蓄劲</em><span>气弹 · 瞬身 · 龟派气功</span></button><button data-hero="4" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:100% center"></i></span><b>蒙奇·D·路飞</b><em>伸缩 / 近战</em><span>橡胶手枪 · 橡胶火箭 · 橡胶机关枪</span></button></div><small class="aim-guide"><span class="thumb-guide">点地前往，点敌人追击。左侧摇杆可斜走，移动能打断回城。</span>范围与直线技能可拖动瞄准，松手施放。键盘按住 Shift 和技能键，指向地面后松开技能键。</small><button id="start" class="primary">进入战场 →</button><p class="hint">WASD 移动 · J 普攻 · Q / E / R 技能 · T 回城 · P 暂停 · F 推塔优先<br>单人 5 对 5 · 四名队友协同对线</p></div></section><section id="end" class="veil hidden"><div class="panel"><small>战斗结束</small><h2 id="endtitle"></h2><p id="endstats"></p><button id="restart" class="primary">回到选人</button></div></section><div id="bottom"><button type="button" class="portrait" id="field-supplies" aria-expanded="false" aria-controls="field-stock" aria-label="战场补给，查看铜钱与装备"><b id="heroName">鸣人</b><span id="level">Lv.1</span><div class="health"><i id="hpbar"></i></div><small id="hp">生命值</small><small id="role-tip" hidden></small><small id="purse-line">0 铜钱 · 置装 ›</small></button><div class="skills"><button data-key="attack"><kbd>J</kbd><b>普攻</b><span id="attackPriority">英雄／补刀</span></button><button data-key="q"><kbd>Q</kbd><b id="qn">技能</b><span id="qc">就绪</span></button><button data-key="e"><kbd>E</kbd><b id="en">技能</b><span id="ec">就绪</span></button><button data-key="r"><kbd>R</kbd><b id="rn">终极技能</b><span id="rc">就绪</span></button></div><div id="log"></div></div><aside id="field-stock" role="dialog" aria-labelledby="field-heading" hidden>
+</style><style>
+#bottom .skills { width: 214px; height: 204px; }
+#bottom .skills [data-key=attack] { right: 6px; bottom: 44px; }
+#bottom .skills [data-key=q] { right: 143px; bottom: 3px; }
+#bottom .skills [data-key=e] { right: 135px; bottom: 74px; }
+#bottom .skills [data-key=r] { right: 75px; bottom: 140px; }
+#bottom .skills .side-attack {
+  --size: 47px;
+  background: radial-gradient(ellipse at 36% 23%, #43535b, #233541 62%, #192731);
+  color: #c3cac0;
+  border: 1px solid #989e90;
+  box-shadow: 0 0 0 2px #1e2a30, inset 0 0 0 2px #506063, 0 2px 5px #19282e99;
+}
+#bottom .skills .side-attack.in-range {
+  color: #ffe7a4;
+  border-color: #efcf83;
+  background: radial-gradient(ellipse at 34% 20%, #726448, #3d4349 60%, #232e38);
+  box-shadow: 0 0 0 2px #303438, inset 0 0 0 2px #998358, 0 0 6px #eedf9c48;
+}
+#bottom .skills [data-key=farm] { right: 81px; bottom: 0; }
+#bottom .skills [data-key=siege] { right: 0; bottom: 135px; }
+#bottom .side-attack .command-symbol {
+  pointer-events: none;
+  position: absolute;
+  top: 11%; left: 27%; width: 46%; height: 49%;
+  background: currentColor;
+}
+.side-attack[data-key=farm] .command-symbol {
+  clip-path: polygon(87% 4%, 81% 36%, 64% 53%, 58% 49%, 31% 79%, 41% 87%, 34% 96%, 21% 87%, 11% 99%, 3% 91%, 14% 79%, 4% 69%, 12% 60%, 23% 69%, 50% 40%, 45% 34%);
+}
+.side-attack[data-key=siege] .command-symbol {
+  clip-path: polygon(6% 6%, 24% 6%, 24% 23%, 40% 23%, 40% 4%, 60% 4%, 60% 23%, 76% 23%, 76% 6%, 94% 6%, 90% 41%, 77% 48%, 82% 85%, 93% 88%, 93% 99%, 57% 99%, 57% 72%, 50% 66%, 43% 72%, 43% 99%, 7% 99%, 7% 88%, 18% 85%, 23% 48%, 10% 41%);
+}
+#bottom .skills .side-attack b { font-size: 10px; bottom: 4px; padding: 0; background: transparent; }
+#attack-notice { position: fixed; z-index: 4; right: 16px; bottom: 227px; padding: 4px 8px; border-radius: 4px;
+  color: #ffe9b4; background: #15272bea; font: 600 12px/1.4 system-ui; pointer-events: none; }
+#attack-notice[hidden] { display: none; }
+#aim-cancel { right: 15px; bottom: max(222px,calc(214px + env(safe-area-inset-bottom))); }
+@media(max-width:750px),(pointer:coarse) and (max-width:1050px) {
+  #bottom .skills { width: 174px; height: 177px; right: max(7px,env(safe-area-inset-right)); bottom: max(10px,env(safe-area-inset-bottom)); }
+  #bottom .skills [data-key=attack] { --size: 62px; right: 2px; bottom: 38px; }
+  #bottom .skills [data-key=q] { right: 113px; bottom: 3px; }
+  #bottom .skills [data-key=e] { right: 111px; bottom: 63px; }
+  #bottom .skills [data-key=r] { right: 57px; bottom: 121px; }
+  #bottom .skills .side-attack { --size: 44px; }
+  #bottom .skills [data-key=farm] { right: 61px; bottom: 0; }
+  #bottom .skills [data-key=siege] { right: 0; bottom: 111px; }
+  #aim-cancel, #attack-notice { bottom: calc(187px + env(safe-area-inset-bottom)); }
+  body:has(#mapPanel.field-left) :is(#objective,#routeHint) {
+    left: 135px; right: 7px; transform: none; max-width: calc(100vw - 142px);
+  }
+}
+@media(max-width:360px) {
+  #bottom .skills [data-key=q] { right:105px; }
+  #bottom .skills [data-key=e] { right:106px; }
+  #field-recall { left:108px; }
+}
+#world{touch-action:none}
+</style></head><body><canvas id="world"></canvas><div id="top"><div><small>ANIME CROSSROADS</small><h1>次元交锋</h1></div><div class="score"><b id="time">00:00</b><span id="stats">蓝方先锋</span></div><button id="pause">暂停</button><details id="battle-options"><summary>设置</summary><div><button id="focus" aria-pressed="false" title="普通攻击优先英雄和可补的小兵。F 切换为优先拆塔，点选单位可指定目标。">英雄／补刀</button><button type="button" id="map-anchor" aria-pressed="true">小地图 固定左上</button><button id="quality">画质 高</button><button id="sound">音乐 开</button><button id="perfToggle">性能</button></div></details></div><div id="objective">沿同一路推掉三座塔，护送兵线击破核心</div><aside id="routeHint" hidden></aside><section id="menu" class="veil"><div class="panel"><small>独立同人试玩 · 5 对 5 AI 战场</small><h2>选择英雄</h2><p>从左下泉水出发。护送兵线，沿同一路攻破外塔、二塔和高地塔，再带兵攻入右上核心。</p><div id="choices"><button data-hero="0" class="selected" aria-pressed="true"><span class="roster-window" aria-hidden="true"><i style="background-position:0% center"></i></span><b>漩涡鸣人</b><em>突进 / 近战</em><span>螺旋丸 · 影分身突进 · 风遁旋涡</span></button><button data-hero="1" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:25% center"></i></span><b>机器猫</b><em>哆啦A梦 · 道具支援</em><span>空气炮 · 竹蜻蜓 · 任意门</span></button><button data-hero="2" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:50% center"></i></span><b>五条悟</b><em>术式 · 迎弹护送</em><span>术式·苍 · 无下限 · 虚式·茈</span></button><button data-hero="3" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:75% center"></i></span><b>孙悟空</b><em>气功 · 站定蓄劲</em><span>气弹 · 瞬身 · 龟派气功</span></button><button data-hero="4" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:100% center"></i></span><b>蒙奇·D·路飞</b><em>伸缩 / 近战</em><span>橡胶手枪 · 橡胶火箭 · 橡胶机关枪</span></button></div><small class="aim-guide"><span class="thumb-guide">手机用左摇杆移动，右侧拖动战场看远处，松手回英雄。轻点射程内的敌人可锁定普攻。电脑可点地前往、点敌人追击。</span>范围与直线技能可拖动瞄准，松手施放。键盘按住 Shift 和技能键，指向地面后松开技能键。</small><button id="start" class="primary">进入战场 →</button><p class="hint">左手移动，右手拖瞄技能，松手释放。普攻旁可点补刀或推塔。<br>WASD 移动 · J 普攻 · K 补刀 · L 推塔 · Q / E / R 技能 · T 回城</p></div></section><section id="end" class="veil hidden"><div class="panel"><small>战斗结束</small><h2 id="endtitle"></h2><p id="endstats"></p><button id="restart" class="primary">回到选人</button></div></section><div id="bottom"><button type="button" class="portrait" id="field-supplies" aria-expanded="false" aria-controls="field-stock" aria-label="战场补给，查看铜钱与装备"><b id="heroName">鸣人</b><span id="level">Lv.1</span><div class="health"><i id="hpbar"></i></div><small id="hp">生命值</small><small id="role-tip" hidden></small><small id="purse-line">0 铜钱 · 置装 ›</small></button><div id="attack-notice" role="status" hidden></div><div class="skills"><button type="button" class="side-attack" data-key="farm" aria-label="补刀" title="优先攻击能一击收下的小兵。附近没有敌兵时攻击野怪。"><kbd>K</kbd><i class="command-symbol" aria-hidden="true"></i><b>补刀</b></button><button type="button" class="side-attack" data-key="siege" aria-label="推塔" title="攻击射程内可以拆除的塔或核心。"><kbd>L</kbd><i class="command-symbol" aria-hidden="true"></i><b>推塔</b></button><button data-key="attack"><kbd>J</kbd><b>普攻</b><span id="attackPriority">英雄／补刀</span></button><button data-key="q"><kbd>Q</kbd><b id="qn">技能</b><span id="qc">就绪</span></button><button data-key="e"><kbd>E</kbd><b id="en">技能</b><span id="ec">就绪</span></button><button data-key="r"><kbd>R</kbd><b id="rn">终极技能</b><span id="rc">就绪</span></button></div><div id="log"></div></div><aside id="field-stock" role="dialog" aria-labelledby="field-heading" hidden>
 <header><b id="field-heading">战场商店</b><button type="button" data-close aria-label="关闭补给">关闭</button></header>
 <div id="field-counter"></div><div class="build-row"><span data-owned></span><button type="button" data-build aria-pressed="true">自动出装已开</button></div>
 <button type="button" data-gear="boots"><b>渡风履</b><span>移动速度提高 18%</span><em>20 铜钱</em></button>
@@ -336,4 +394,4 @@ body:has(#menu:not(.hidden)) #field-recall,body:has(#end:not(.hidden)) #field-re
 <button type="button" data-gear="blade"><b>听潮刃</b><span>普攻伤害增加 14</span><em>55 铜钱</em></button>
 <button type="button" data-gear="focus"><b>流光佩</b><span>技能冷却缩短 16%</span><em>58 铜钱</em></button>
 <button type="button" data-gear="standard"><b>先登旗</b><span>自己在塔前时，友方兵对建筑伤害增加 32%</span><em>76 铜钱</em></button>
-<small id="field-kit-note" aria-live="polite"></small></aside><div id="aim-cancel" hidden>拖到这里取消</div><div id="pad" role="group" aria-label="移动摇杆，推得越远移动越快"><i class="thumb-handle" aria-hidden="true"></i><button aria-label="向上移动" data-dir="0,-1">▲</button><button aria-label="向左移动" data-dir="-1,0">◀</button><button aria-label="向下移动" data-dir="0,1">▼</button><button aria-label="向右移动" data-dir="1,0">▶</button></div><aside id="mapPanel"><small>三路战场</small><canvas id="minimap" aria-label="三路战场地图。点按侦察，拖动查看，松手回到英雄"></canvas><div class="map-tools"><button type="button" id="map-size" aria-label="放大战场地图" aria-expanded="false" aria-controls="minimap" title="切换地图大小"><span aria-hidden="true">⛶</span></button><button type="button" id="camera-view" aria-pressed="false">查看全景</button></div><button type="button" id="map-home" hidden title="回到英雄（C）">回到英雄</button></aside><button type="button" id="field-recall" aria-label="回城，原地引导五秒，T 键" aria-pressed="false">回城</button><pre id="performance" class="hidden"></pre><div id="error" class="hidden"></div><script type="importmap">{"imports":{"three":"../qa-anime-area-counterplay-20261115-r1/vendor/three.module.min.js"}}</script><script type="module" src="river-lobby.mjs?v=jade-ground2"></script></body></html>
+<small id="field-kit-note" aria-live="polite"></small></aside><div id="aim-cancel" hidden>拖到这里取消</div><div id="pad" role="group" aria-label="移动摇杆，推得越远移动越快"><i class="thumb-handle" aria-hidden="true"></i><button aria-label="向上移动" data-dir="0,-1">▲</button><button aria-label="向左移动" data-dir="-1,0">◀</button><button aria-label="向下移动" data-dir="0,1">▼</button><button aria-label="向右移动" data-dir="1,0">▶</button></div><aside id="mapPanel" class="field-left"><small>三路战场</small><canvas id="minimap" aria-label="三路战场地图。点按侦察，拖动查看，松手回到英雄"></canvas><div class="map-tools"><button type="button" id="map-size" aria-label="放大战场地图" aria-expanded="false" aria-controls="minimap" title="切换地图大小"><span aria-hidden="true">⛶</span></button><button type="button" id="camera-view" aria-pressed="false">查看全景</button></div><button type="button" id="map-home" hidden title="回到英雄（C）">回到英雄</button></aside><button type="button" id="field-recall" aria-label="回城，原地引导五秒，T 键" aria-pressed="false">回城</button><pre id="performance" class="hidden"></pre><div id="error" class="hidden"></div><script type="importmap">{"imports":{"three":"../qa-anime-area-counterplay-20261115-r1/vendor/three.module.min.js"}}</script><script type="module" src="river-lobby.mjs?v=canyon-paired1"></script></body></html>
