@@ -229,7 +229,7 @@ const shadowVertex=`precision highp float;
 const shadowFragment=`precision mediump float;in vec2 ground;out vec4 ink;
   void main(){float a=.29*(1.-smoothstep(.16,1.,dot(ground,ground)));if(a<.014)discard;ink=vec4(.105,.14,.145,a);}`;
 
-export function laneCompany(T,scene,floor){
+export function laneCompany(T,scene,floor,markFighter){
   const capacity=54,history=new Map(),scratch=[{},{}];
   const playerRect={value:new T.Vector4(-5,-5,-5,-5)};
   function attribute(n){return new T.InstancedBufferAttribute(new Float32Array(n*capacity),n).setUsage(T.DynamicDrawUsage);}
@@ -248,6 +248,7 @@ export function laneCompany(T,scene,floor){
     uniforms:scene.userData.battleLight?.uniforms??{},glslVersion:T.GLSL3,side:T.DoubleSide});
   const ranks=["河卫 · 盾枪","河卫 · 弩手","河卫 · 炮车"].map((name,role)=>batch(name,marchingModel(T,role),armour,
     {anchor:attribute(4),bearing:attribute(4),feetA:attribute(4),feetB:attribute(4)}));
+  if(markFighter)for(const rank of ranks)markFighter(rank.mesh);
   const common={anchor:attribute(4),life:attribute(2)};
   const bars=batch("兵线生命",quad(),new T.RawShaderMaterial({vertexShader:barVertex,fragmentShader:barFragment,
     uniforms:{playerRect},glslVersion:T.GLSL3,side:T.DoubleSide}),common);

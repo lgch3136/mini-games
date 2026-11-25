@@ -1,5 +1,5 @@
-import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,huntingGrounds,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=canyon-thicket1";
-import {addReeds} from "./river-reeds.mjs?v=canyon-thicket1";
+import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,stoneLandmarks,huntingGrounds,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=canyon-stonepath3";
+import {addReeds} from "./river-reeds.mjs?v=canyon-stonepath3";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
@@ -207,7 +207,7 @@ export function estuaryStonework(T){
   const mesh=new T.Mesh(g,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   mesh.userData.cull=fieldVisibility(T,g);return mesh;
 }
-export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-canopy3";
+export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-rockdepth1";
 export function fieldMini(ctx,width,height){
   const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height,unit=width/(2*extent);
   const land=ctx.createRadialGradient(width*.45,height*.52,0,width*.5,height*.5,width*.71);
@@ -222,6 +222,13 @@ export function fieldMini(ctx,width,height){
   }
   for(const t of garden)if(t.kind<2)patch(t.x,t.z,t.size*.54,t.size*.43,'#305343');
   for(const b of banks){patch(b.x,b.z,b.rx+.34,b.rz+.34,'#212f35');patch(b.x-.1,b.z-.13,b.rx,b.rz,'#6a776b');}
+  ctx.beginPath();ctx.fillStyle='#849184';
+  for(const rock of stoneLandmarks)if(rock){
+    const edge=rock.hull;ctx.moveTo(x(edge[0].x),z(edge[0].z));
+    for(let i=1;i<edge.length;i++)ctx.lineTo(x(edge[i].x),z(edge[i].z));
+    ctx.closePath();
+  }
+  ctx.fill();
   for(const r of jungles)trace(r,'#72816b',1.05);
   trace(streams,'#1a474c',6.7);trace(streams,'#447e84',5.6);trace(streams,'#68a2a0',2.5);
   for(const r of routes){trace(r,'#35473f',3.75);trace(r,'#a09a7a',2.82);trace(r,'#c5b99a',1.28);}

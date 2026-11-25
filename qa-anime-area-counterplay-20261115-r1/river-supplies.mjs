@@ -1,4 +1,4 @@
-import {visibleTo} from "./river-reeds.mjs?v=canyon-thicket1";
+import {visibleTo} from "./river-reeds.mjs?v=canyon-stonepath3";
 
 const gear = {
   boots:    {name:"渡风履",  price:[20,80],   detail:["移动速度 +18%","移速加成提高至 25%"]},

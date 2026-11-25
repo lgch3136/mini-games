@@ -1,4 +1,5 @@
 // All field positions use x east and z south. Both teams follow the same measured polylines.
+import {stoneSites} from "./garden-stones.mjs?v=canyon-stonepath3";
 export const extent=36;
 export const homes=[{x:-28,z:26},{x:28,z:-26}];
 // Fixed geography is public. An occupied camp or a missing monster needs allied sight.
@@ -124,6 +125,7 @@ for(const plant of garden){
   }
   plant.art=best;placed[best].push(plant);
 }
+export const stoneLandmarks=stoneSites(garden);
 export const banks=garden.filter(p=>p.kind===2&&(p.art===2||p.art===4)&&!overlapsRoad(p.x,p.z,2.46)).map(p=>({x:p.x,z:p.z,rx:p.size*.33,rz:p.size*.24}));
 const bankCells=new Map(),cellSize=5;
 function cell(x,z){return Math.floor((x+40)/cellSize)*32+Math.floor((z+40)/cellSize);}

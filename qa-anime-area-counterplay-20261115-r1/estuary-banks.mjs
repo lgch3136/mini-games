@@ -1,4 +1,4 @@
-import {streams,routes,along,measure,floorHeight} from "./estuary-map.mjs?v=canyon-thicket1";
+import {streams,routes,along,measure,floorHeight} from "./estuary-map.mjs?v=canyon-stonepath3";
 import {addUv,slate} from "./field-architecture.mjs?v=canyon-slate4";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 

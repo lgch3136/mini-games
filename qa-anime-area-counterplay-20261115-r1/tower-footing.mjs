@@ -1,5 +1,7 @@
 // A standing tower is solid at its stone plinth. The match owns the live structure objects.
-import {keeperFord} from "./river-keeper.mjs?v=canyon-thicket2";
+import {keeperFord} from "./river-keeper.mjs?v=canyon-stonepath3";
+import {stoneLandmarks} from "./estuary-map.mjs?v=canyon-stonepath3";
+import {stopAtStone} from "./garden-stones.mjs?v=canyon-stonepath3";
 const grids=new WeakMap(),empty=[],cellSize=6;
 const key=(x,z)=>Math.floor((x+48)/cellSize)*32+Math.floor((z+48)/cellSize);
 function near(match,x,z){
@@ -7,16 +9,19 @@ function near(match,x,z){
   if(!grid){
     grid=new Map();
     const ford={...keeperFord,id:-17,get hp(){return match.river?.keeper?.hp||0;}};
-    for(const u of [...match.units,ford]){
-      if(u!==ford&&u.kind!=="tower"&&u.kind!=="core")continue;
-      const size=u===ford ? .91 : u.kind==="core"?1.94:[1.10,1.31,1.54][u.tier]??1.22;
-      const reach=size+3.8,base={unit:u,radius:size};
+    function register(u,size,rock=null){
+      const reach=size+3.8,base={unit:u,radius:size,rock};
       const x0=Math.floor((u.x-reach+48)/cellSize),x1=Math.floor((u.x+reach+48)/cellSize);
       const z0=Math.floor((u.z-reach+48)/cellSize),z1=Math.floor((u.z+reach+48)/cellSize);
       for(let i=x0;i<=x1;i++)for(let j=z0;j<=z1;j++){
         const k=i*32+j,items=grid.get(k);if(items)items.push(base);else grid.set(k,[base]);
       }
     }
+    for(const u of [...match.units,ford]){
+      if(u!==ford&&u.kind!=="tower"&&u.kind!=="core")continue;
+      register(u,u===ford?.91:u.kind==="core"?1.94:[1.10,1.31,1.54][u.tier]??1.22);
+    }
+    for(const rock of stoneLandmarks)if(rock)register(rock,Math.hypot(rock.rx,rock.rz),rock);
     grids.set(match,grid);
   }
   return grid.get(key(x,z))??empty;
@@ -65,6 +70,10 @@ function formationOffset(match,unit,ux,uz) {
 export function settleFooting(match,actor,fromX,fromZ){
   const feet=footRadius(actor);
   for(const base of near(match,actor.x,actor.z)){
+    if(base.rock){
+      stopAtStone(base.rock,actor,feet,fromX,fromZ);
+      continue;
+    }
     const u=base.unit;if(!standing(u))continue;
     const dx=actor.x-u.x,dz=actor.z-u.z,r=base.radius+feet;
     if(Math.abs(dx)>=r||Math.abs(dz)>=r||dx*dx+dz*dz>=r*r)continue;
@@ -99,13 +108,15 @@ export function walkField(match,actor,dx,dz,dt,move,seek=false){
     let obstacle=null,closest=Infinity,pass=0;
     for(const base of near(match,actor.x,actor.z)){
       const u=base.unit;if(!standing(u))continue;
-      const rx=u.x-actor.x,rz=u.z-actor.z,r=base.radius+footRadius(actor)+.16;
+      const rx=u.x-actor.x,rz=u.z-actor.z,feet=footRadius(actor)+.16;
+      const r=(base.rock?Math.abs(uz)*u.rx+Math.abs(ux)*u.rz:base.radius)+feet;
+      const reach=base.rock?Math.abs(ux)*u.rx+Math.abs(uz)*u.rz+feet:r;
       const forward=rx*ux+rz*uz,cross=rz*ux-rx*uz;
-      if(forward<=0||forward>r+1.95||Math.abs(cross)>=r||forward>=closest)continue;
+      if(forward<=0||forward>reach+1.95||Math.abs(cross)>=r||forward>=closest)continue;
       // Keep the chosen flank stable around one plinth, including perfectly centred lane orders.
       const side=actor.passingFort===u.id?actor.fortSide:Math.abs(cross)>.10?-Math.sign(cross):Math.sign(actor.pathOffset||((actor.id??0)%2?1:-1));
       obstacle=u;closest=forward;
-      pass=side*(.78+1.38*(1-Math.abs(cross)/r))*Math.min(1,(r+1.95-forward)/1.13);
+      pass=side*(.78+1.38*(1-Math.abs(cross)/r))*Math.min(1,(reach+1.95-forward)/1.13);
     }
     if(obstacle){
       actor.passingFort=obstacle.id;actor.fortSide=Math.sign(pass);

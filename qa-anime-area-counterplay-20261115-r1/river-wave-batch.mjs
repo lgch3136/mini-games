@@ -1,6 +1,6 @@
-import {laneCompany} from "./lane-company.mjs?v=canyon-carving2";
-export function makeWaveBatches(T,scene,heightAt) {
-  const company=laneCompany(T,scene,heightAt);
+import {laneCompany} from "./lane-company.mjs?v=canyon-silhouette1";
+export function makeWaveBatches(T,scene,heightAt,markFighter) {
+  const company=laneCompany(T,scene,heightAt,markFighter);
   return {start:company.start,draw:company.draw,reset:company.reset,dispose:company.dispose,
     protect(box,canvas){company.protect(box,canvas.clientWidth,canvas.clientHeight);}};
 }

@@ -1,8 +1,10 @@
-// Each stand grows from its map coordinate. All branches, canopy lobes and courses
-// of stone share one indexed mesh and one scene material; there are no image cards.
-import {garden,floorHeight} from "./estuary-map.mjs?v=canyon-thicket1";
+// Each stand grows from its map coordinate. Solid stone and soft foliage share
+// vertex buffers, but stone establishes real depth before the fighters are drawn.
+import {garden,floorHeight,stoneLandmarks} from "./estuary-map.mjs?v=canyon-stonepath3";
+import {rockRings} from "./garden-stones.mjs?v=canyon-stonepath3";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {spellVertex} from "./surface-impact.mjs?v=canyon-thicket2";
+import {sceneryOcclusion} from "./scenery-occlusion.mjs?v=canyon-rockdepth1";
 
 // A repeating 96px material supplies needles, broad leaves and sparse mineral veins.
 // Mipmaps keep these marks quiet behind fighters and out towards the far bank.
@@ -67,8 +69,9 @@ function surfaceMarks(T){
   return texture;
 }
 
-export function growRiverGarden(T,lighting){
-  const positions=[],ink=[],normals=[],roots=[],leaves=[],triangles=[];
+export function growRiverGarden(T,lighting,hasStencil=false){
+  const positions=[],ink=[],normals=[],roots=[],leaves=[],foliage=[],stones=[],stands=[];
+  let triangles=foliage;
   const palette=new Map(),axis=new T.Vector3(),side=new T.Vector3(),across=new T.Vector3(),up=new T.Vector3(0,1,0);
   let site,seed,finish=0;
   function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
@@ -164,15 +167,9 @@ export function growRiverGarden(T,lighting){
       }
     }
   }
-  function rock(cx,cy,cz,rx,ry,rz,colour,count=7){
+  function rock({cx,cy,cz,rx,ry,rz,colour,count,tilt,hull}){
     finish=3;
-    const hull=[],tilt=(rand()-.5)*.30;
-    for(let j=0;j<count;j++){
-      const a=2*Math.PI*j/count+.43+.15*(rand()-.5),co=Math.cos(a),si=Math.sin(a);
-      const r=.82+.24*rand(),xp=Math.sign(co)*Math.abs(co)**.62*r,zp=Math.sign(si)*Math.abs(si)**.68*r;
-      hull.push([xp,zp,.89+.11*rand()+tilt*xp]);
-    }
-    const rings=[[.91,-.06],[1,.57],[.90,.82],[.78,1]].map(([rad,h],j)=>hull.map(([x,z,top])=>
+    const rings=rockRings.map(([rad,h],j)=>hull.map(([x,z,top])=>
       [cx+rx*(x*rad+.052*j),cy+ry*h*top,cz+rz*(z*rad-.023*j)]));
     function face(vertices,c,gain){
       const [a,b,d]=vertices,ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],
@@ -187,35 +184,40 @@ export function growRiverGarden(T,lighting){
       face([rings[3][k],rings[3][i],[cx+rx*.07,cy+ry*(1.01+.02*tilt),cz-rz*.08]],colour,1.06);
     }
   }
-  function stoneGroup(ruin){
-    if(ruin){
-      for(let layer=0;layer<3;layer++)for(let j=0;j<3-layer*.52;j++){
-        const x=-.38+j*.32+.085*(layer%2),y=layer*.125,z=.02*Math.sin(j*3);
-        rock(x,y-.025,z,.205,.145,.17,layer===2?0xa5ab91:0x8b9487,5);
-      }
-      rock(.44,-.014,.14,.17,.15,.13,0x858e77);
-    }else{
-      rock(-.12,-.045,0,.46,.32,.31,0x8f9b94);
-      rock(.22,-.026,.10,.255,.16,.19,0xa6ada0);rock(.06,-.018,.26,.14,.10,.10,0x7d8b81);
-    }
+  function stoneGrass(){
     for(let j=0;j<5;j++)leaf([-.27+.11*j,.065,.19],j*1.4,.19,.038,j%2?0x819168:0x9ca36f);
   }
+  const point=new T.Vector3(),box=new T.Box3(),centre=new T.Vector3(),size=new T.Vector3();
   for(const [index,p] of garden.entries()){
     site={...p,y:floorHeight(p.x,p.z)};seed=15497+index*7307;
-    if(p.kind<2)tree(p.kind===0);else if(p.kind===2)stoneGroup(p.art===2||p.art===4);else bamboo();
+    if(p.kind===2){
+      triangles=stones;
+      for(const piece of stoneLandmarks[index].pieces)rock(piece);
+      triangles=foliage;
+    }
+    const firstVertex=positions.length,start=foliage.length;
+    if(p.kind<2)tree(p.kind===0);else if(p.kind===2)stoneGrass();else bamboo();
+    box.makeEmpty();
+    for(let i=firstVertex;i<positions.length;i+=3)box.expandByPoint(point.fromArray(positions,i));
+    box.expandByScalar(.04); // Includes the furthest branch sway.
+    box.getCenter(centre);box.getSize(size).multiplyScalar(.5);
+    stands.push({start,count:triangles.length-start,x:centre.x,y:centre.y,z:centre.z,
+      rx:size.x,ry:size.y,rz:size.z,selected:false});
   }
   const geo=new T.BufferGeometry();
   geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.setAttribute('normal',new T.Float32BufferAttribute(normals,3));
   geo.setAttribute('color',new T.Float32BufferAttribute(ink,3));geo.setAttribute('rootSite',new T.Float32BufferAttribute(roots,4));
   geo.setAttribute('leafWeight',new T.Float32BufferAttribute(leaves,1));geo.setIndex(triangles);geo.computeBoundingSphere();
-  const zones=Array.from({length:3},()=>({value:new T.Vector4(-5,-5,.01,.01)})),pixel={value:new T.Vector2(1,1)},wind={value:0};
-  const marks=surfaceMarks(T);
+  const wind={value:0},marks=surfaceMarks(T);
+  const soft=hasStencil?{}:{softBounds:{value:Array.from({length:3},()=>new T.Vector4(-8,-8,1,1))},
+    softDepth:{value:new Float32Array(3)},screenScale:{value:new T.Vector2(1,1)}};
   const material=new T.RawShaderMaterial({glslVersion:T.GLSL3,side:T.DoubleSide,toneMapped:false,
-    uniforms:{...lighting.uniforms,zone0:zones[0],zone1:zones[1],zone2:zones[2],pixel,wind,marks:{value:marks}},
+    defines:hasStencil?{}:{SOFT_FOREGROUND:1},
+    uniforms:{...lighting.uniforms,...soft,wind,marks:{value:marks},veil:{value:0}},
     vertexShader:`precision highp float;
       in vec3 position,normal,color;in vec4 rootSite;in float leafWeight;
       uniform mat4 modelViewMatrix,projectionMatrix;uniform float wind;
-      out lowp vec3 albedo;out lowp float canopy;out mediump vec2 materialUv;flat out lowp float finish;
+      out lowp vec3 albedo;out mediump vec2 materialUv;flat out lowp float finish;
       ${spellVertex}
       void main(){
         vec3 v=position;float move=leafWeight*sin(position.x*.73+position.z*.41+wind)*.024;
@@ -223,35 +225,56 @@ export function growRiverGarden(T,lighting){
         vec3 n=normalize(normal),sun=normalize(vec3(-.43,1.,.34));float lit=dot(n,sun);
         vec3 light=mix(vec3(.75,.83,.91),vec3(1.10,1.055,.93),smoothstep(-.35,.85,lit));
         albedo=color*light+spellAt(v,n)*(.12+.33*color);
-        canopy=clamp((v.y-rootSite.z*.22)*2.,0.,1.);finish=rootSite.w;
+        finish=rootSite.w;
         materialUv=finish>3.5?rootSite.xy:(v.xz-rootSite.xy*.38+vec2(.32,-.57)*v.y)*.77;
         gl_Position=projectionMatrix*modelViewMatrix*vec4(v,1.);
       }`,
     fragmentShader:`precision mediump float;
-      in lowp vec3 albedo;in lowp float canopy;in mediump vec2 materialUv;flat in lowp float finish;
-      uniform sampler2D marks;uniform vec2 pixel;uniform vec4 zone0,zone1,zone2;out vec4 paint;
-      float hide(vec2 p,vec4 z){vec2 d=(p-z.xy)/z.zw;return 1.-smoothstep(.72,1.12,dot(d,d));}
-      void main(){vec2 p=gl_FragCoord.xy*pixel;float mask=max(hide(p,zone0),max(hide(p,zone1),hide(p,zone2)))*canopy;
-        if(mask>.03&&fract(dot(mod(floor(gl_FragCoord.xy),4.),vec2(.375,.1875)))<mask*.93)discard;
+      in lowp vec3 albedo;in mediump vec2 materialUv;flat in lowp float finish;
+      uniform sampler2D marks;uniform lowp float veil;out vec4 paint;
+      #ifdef SOFT_FOREGROUND
+      uniform highp vec4 softBounds[3];uniform highp float softDepth[3];uniform highp vec2 screenScale;
+      #endif
+      void main(){
         vec4 sampleInk=texture(marks,materialUv);
         if(finish>3.5&&sampleInk.a<.39)discard;
         vec4 strokes=sampleInk-.5;
         float grain=finish>2.5?strokes.b:(finish>1.5?strokes.g:(finish>.5?strokes.r:strokes.b));
         vec3 coloured=albedo*(1.+grain*.62+strokes.g*.12)+max(0.,grain)*vec3(.043,.054,.016);
-        paint=vec4(coloured,1.);}`});
-  const mesh=new T.Mesh(geo,material),projected=new T.Vector3();mesh.name="实景林石与竹丛";
-  mesh.userData.cull=fieldVisibility(T,geo);
-  mesh.userData.sight=(hero,target,ally,camera,canvas)=>{
-    const units=[hero,target,ally];pixel.value.set(1/Math.max(1,canvas.width),1/Math.max(1,canvas.height));
-    for(const [i,u] of units.entries()){
-      const z=zones[i].value;if(!u||u.dead){z.set(-5,-5,.01,.01);continue;}
-      const h=floorHeight(u.x,u.z),lift=u.kind==="minion"?.66:1.05;
-      projected.set(u.x,h+lift,u.z).project(camera);const x=projected.x,y=projected.y;
-      projected.set(u.x+.89,h+lift,u.z).project(camera);const rx=Math.abs(projected.x-x)*.5;
-      projected.set(u.x,h-.10,u.z+.48).project(camera);z.set(.5+x*.5,.5+y*.5,Math.max(.005,rx),Math.max(.006,Math.abs(projected.y-y)*.5));
-    }
-  };
+        float covered=veil;
+        #ifdef SOFT_FOREGROUND
+        highp vec2 pt=gl_FragCoord.xy*screenScale-1.;
+        highp float depth=1./gl_FragCoord.w;
+        for(int i=0;i<3;i++){
+          highp vec2 d=(pt-softBounds[i].xy)*softBounds[i].zw;
+          float silhouette=1.-smoothstep(.65,1.32,dot(d,d));
+          covered=max(covered,silhouette*smoothstep(0.,.40,softDepth[i]-depth));
+        }
+        #endif
+        float surface=finish>3.5?.15:.18;
+        paint=vec4(coloured,mix(1.,surface,covered));}`});
+  const mesh=new T.Mesh(geo,material);mesh.name="实景林石与竹丛";
+  const rockGeometry=new T.BufferGeometry();
+  for(const [name,attribute] of Object.entries(geo.attributes))rockGeometry.setAttribute(name,attribute);
+  rockGeometry.setIndex(stones);
+  rockGeometry.boundingSphere=geo.boundingSphere;
+  const rockMaterial=new T.RawShaderMaterial({glslVersion:material.glslVersion,side:material.side,
+    toneMapped:material.toneMapped,vertexShader:material.vertexShader,fragmentShader:material.fragmentShader,
+    uniforms:material.uniforms});
+  const solid=new T.Mesh(rockGeometry,rockMaterial);solid.name="实心岸石";solid.renderOrder=2.2;
+  mesh.add(solid);
+  const cover=sceneryOcclusion(T,mesh,stands,geo.index.array,floorHeight,hasStencil);
+  const cullPlants=fieldVisibility(T,geo),cullRocks=fieldVisibility(T,rockGeometry);
+  mesh.userData.cull=frustum=>{cullRocks(frustum);cullPlants(frustum);};
+  mesh.userData.markFighter=cover.mark;
+  mesh.userData.sight=cover.update;
   mesh.userData.tick=(time,tier)=>{wind.value=tier<2?time*.72:0;};
-  mesh.userData.start=()=>{};mesh.userData.close=()=>{marks.dispose();};
+  mesh.userData.start=()=>{};
+  mesh.userData.close=()=>{
+    cover.dispose();solid.removeFromParent();
+    // The foliage geometry owns the shared vertex buffers.
+    for(const name of Object.keys(rockGeometry.attributes))rockGeometry.deleteAttribute(name);
+    rockGeometry.dispose();rockMaterial.dispose();marks.dispose();
+  };
   return mesh;
 }
