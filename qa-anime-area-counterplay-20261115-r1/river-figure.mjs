@@ -1,6 +1,7 @@
 import {actorStrides,footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
-import {bindImpact} from "./surface-impact.mjs?v=canyon-riverlight2";
-import {paintedCheeks} from "./river-tailoring.mjs?v=field-sculpt1";
+import {bindImpact} from "./surface-impact.mjs?v=canyon-thicket2";
+import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-carving2";
+import {skullBand} from "./character-plates.mjs?v=canyon-carving2";
 const bound = value => Math.max(0, Math.min(1, value));
 const ease = value => { const x = bound(value); return x * x * (3 - 2 * x); };
 
@@ -19,7 +20,7 @@ export function sculptHead(T, hero, head, add, skin, sheet) {
   ];
   const points=[], indices=[], segments=16;
   for (let j=0;j<levels.length;j++){
-    const [y,rx,rz,forward]=levels[j];
+    const [y,rx,rz,forward]=skullBand(hero,...levels[j]);
     for(let n=0;n<segments;n++){
       const a=n*Math.PI*2/segments;
       points.push(rx*Math.sin(a),y,forward+rz*Math.cos(a));
@@ -29,7 +30,16 @@ export function sculptHead(T, hero, head, add, skin, sheet) {
   }
   for(let n=1;n+1<segments;n++)indices.push(0,n+1,n);
   add(head,shape(T,points,indices),skin);
-  if(sheet){paintedCheeks(T,hero,head,add);head.scale.set(.94,.98,.96);return;}
+  if(sheet){
+    paintedCheeks(T,hero,head,add);
+    // The nose retains a bridge and a near-side wing when the cheek turns out of view.
+    const tip=hero===3?.265:hero===4?.253:.246;
+    const profile=[[-.018,.151,.229],[.018,.151,.229],[-.032,.052,.228],[.032,.052,.228],
+      [0,.069,tip],[-.027,.042,.228],[.027,.042,.228],[0,.037,.238]];
+    const nose=shape(T,profile.flat(),[0,4,1,0,2,4,1,4,3,2,5,4,4,5,7,4,7,6,3,4,6]);
+    nose.userData.fieldGloss=.20;add(head,nose,hero===3?0xe3ad83:0xefc19b);
+    head.scale.set(hero===3?.985:hero===4?.955:.94,hero===2?1.02:.98,.96);return;
+  }
   function patch(vertices, hue) {
     const ix=[];
     const winding=vertices.reduce((sum,p,j)=>{const q=vertices[(j+1)%vertices.length];return sum+p[0]*q[1]-p[1]*q[0];},0);

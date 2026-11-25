@@ -1,4 +1,4 @@
-import {basicDamage} from "./river-supplies.mjs?v=canyon-march1";
+import {basicDamage} from "./river-supplies.mjs?v=canyon-canopy3";
 const skillSlots = { q: 0, e: 1, r: 2 };
 export const attackKeys = { KeyJ: "attack", KeyK: "farm", KeyL: "siege" };
 export const isAttack = key => key === "attack" || key === "farm" || key === "siege";
@@ -44,8 +44,8 @@ export function basicTargets(match, hero, intent, towerFirst, marked, targetable
     const effectiveHP = unit.hp + (unit.shield || 0);
     const fraction = unit.hp / Math.max(1, unit.maxHp);
     if (building && distance < towerDistance) { tower = unit; towerDistance = distance; }
-    if (unit.kind === "minion" || unit.kind === "keeper") {
-      const category = unit.kind === "keeper" ? 2 : effectiveHP <= strike ? 0 : 1;
+    if (unit.kind === "minion" || unit.kind === "keeper" || unit.kind==="camp") {
+      const category = unit.kind !== "minion" ? 2 : effectiveHP <= strike ? 0 : 1;
       if (category < farmRank || category === farmRank &&
           (effectiveHP < farmHP || effectiveHP === farmHP && distance < farmDistance)) {
         farm = unit; farmRank = category; farmHP = effectiveHP; farmDistance = distance;

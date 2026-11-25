@@ -1,6 +1,11 @@
 // All field positions use x east and z south. Both teams follow the same measured polylines.
 export const extent=36;
 export const homes=[{x:-28,z:26},{x:28,z:-26}];
+// Fixed geography is public. An occupied camp or a missing monster needs allied sight.
+export const huntingGrounds = [1,-1].flatMap((sign,side) => [
+  {side,species:"boar",name:"栗鬃山豕",x:-20.6*sign,z:9.2*sign},
+  {side,species:"stag",name:"青角灵鹿",x:-14.9*sign,z:1.7*sign}
+]);
 const top=[[-28,26],[-29,18],[-29,5],[-28,-10],[-27,-21],[-21,-27],[-9,-28],[8,-28],[20,-27],[28,-26]];
 const middle=[[-28,26],[-21,20],[-15,14],[-8,6],[0,0],[8,-6],[15,-14],[21,-20],[28,-26]];
 const bottom=top.map(([x,z])=>[-x,-z]).reverse();

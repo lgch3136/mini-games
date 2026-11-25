@@ -46,7 +46,7 @@ export function architectureArt(T){
     return material;
   }
   return {bind,start(){
-    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/estuary-architecture-scout.webp",import.meta.url).href).then(atlas=>{
+    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/canyon-cut-stone.webp",import.meta.url).href).then(atlas=>{
       if(closed){atlas.dispose();return;}
       atlas.colorSpace=T.SRGBColorSpace;atlas.anisotropy=1;sheet=atlas;
       for(const material of pending)material.map=atlas;

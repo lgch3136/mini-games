@@ -1,5 +1,5 @@
 // Each bed is walkable. The visible plants and the sight rule use the same ellipse.
-import {rushes,extent} from "./estuary-map.mjs?v=river-marching6";
+import {rushes,extent} from "./estuary-map.mjs?v=canyon-thicket1";
 export const reedBeds=rushes;
 export function patchAt(x,z) {
   for(let i=0;i<reedBeds.length;i++){
@@ -134,7 +134,7 @@ export function observedBattle(match,team=0){
   view.units.length=0;view.projectiles.length=0;view.events.length=0;view.inFog.clear();
   for(const unit of match.units){
     if(!visibleTo(match,team,unit)){
-      if(unit.kind==="hero"||unit.kind==="keeper")view.inFog.add(unit.id);
+      if(unit.kind==="hero"||unit.kind==="keeper"||unit.kind==="camp")view.inFog.add(unit.id);
       continue;
     }
     if(landmark(unit)&&unit.team!==team&&!(unit.sightRangeMask&(1<<team))){

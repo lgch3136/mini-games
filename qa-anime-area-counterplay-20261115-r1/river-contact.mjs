@@ -1,4 +1,4 @@
-import {visibleTo} from "./river-reeds.mjs?v=team-vision1";
+import {visibleTo} from "./river-reeds.mjs?v=canyon-thicket1";
 
 // Project the head, limbs and body onto the field along the same sun direction used by the figures.
 // A soft rim and a single shared mesh keep all ten moving shadows inexpensive on the balanced preset.
@@ -120,7 +120,18 @@ export function contactShadows(T, scene, floor, modelFor) {
       let count=0;
       for(const unit of match.units){
         if(unit.dead||unit.hp<=0||count>=82||!visibleTo(match,0,unit)||withinView&&!withinView(unit))continue;
-        const rig=unit.hero===1?modelFor?.(unit.id):null;
+        const rig=unit.hero===1||unit.kind==="camp"?modelFor?.(unit.id):null;
+        if(rig?.hooves){
+          for(const hoof of rig.hooves){
+            if(count>=81)break;
+            sole.copy(hoof.tip);hoof.bone.localToWorld(sole);
+            const ground=floor(sole.x,sole.z),gap=Math.max(0,sole.y-ground);
+            const strength=Math.max(0,1-gap/.29);if(strength<.06)continue;
+            placement.makeScale(.18+.15*gap,1,.13+.15*gap);
+            placement.setPosition(sole.x,ground+.043,sole.z);
+            weight.setX(count,.72*strength);mesh.setMatrixAt(count++,placement);
+          }
+        }
         if(rig?.legs?.length===2){
           for(const leg of rig.legs){
             sole.set(0,-.14,.095);leg.localToWorld(sole);

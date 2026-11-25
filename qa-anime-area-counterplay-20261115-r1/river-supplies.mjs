@@ -1,4 +1,4 @@
-import {visibleTo} from "./river-reeds.mjs?v=team-vision1";
+import {visibleTo} from "./river-reeds.mjs?v=canyon-thicket1";
 
 const gear = {
   boots:    {name:"渡风履",  price:[20,80],   detail:["移动速度 +18%","移速加成提高至 25%"]},
@@ -183,6 +183,13 @@ export function fieldBounty(match,killer,fallen) {
   if (!teamActor(killer) || fallen.team===killer.team) return;
   const team=teams[killer.team];
   if (fallen.kind==="minion") {shareWave(match,team,killer,fallen);return;}
+  if (fallen.kind==="camp") {
+    if(fallen.secured===killer.id && !fallen.paid){
+      fallen.paid=true;
+      award(match,killer,fallen.coins,fallen.xp,fallen.name);
+    }
+    return;
+  }
   if (fallen.kind!=="tower" && !(fallen.kind==="keeper" && fallen.claimedBy===killer.team)) return;
   const tower=fallen.kind==="tower";
   for(const hero of team) {
@@ -206,7 +213,7 @@ export function markLaneUnit(match,point){
   if(!alive(me)||!point)return null;
   let mark=null,radius=1.04;
   for(const unit of match.units){
-    if(unit.kind!=="minion"||unit.team===me.team||!alive(unit)||distance(me,unit)>14||!visibleTo(match,me.team,unit))continue;
+    if((unit.kind!=="minion"&&unit.kind!=="camp")||unit.team===me.team||!alive(unit)||distance(me,unit)>14||!visibleTo(match,me.team,unit))continue;
     const r=distance(point,unit);if(r<=radius){mark=unit;radius=r;}
   }
   if(mark)match.laneMark={id:mark.id,until:match.time+3};
@@ -227,6 +234,7 @@ function setText(node,value) {
 function kitName(hero,key) { return gear[key].name+(hero.gearTiers[key]===2?"Ⅱ":""); }
 
 export function fieldScoreboard(getMatch,playing,definitions,releaseInput) {
+  const scoreFaceCrop=[[56,35,114,133],[51,32,125,146],[56,49,119,139],[67,68,108,126],[58,27,114,133]];
   const trigger=document.getElementById("score-open"),panel=document.getElementById("field-scoreboard");
   const closeButton=panel.querySelector("[data-score-close]"),sheet=panel.querySelector("[data-teams]");
   let previous=null,revision=-1,rows=[],headings=[];
@@ -249,7 +257,11 @@ export function fieldScoreboard(getMatch,playing,definitions,releaseInput) {
           const face=el("i","score-face"),legend=el("span","score-identity"),upper=el("b","score-name"),
             rank=el("small","score-rank"),items=el("span","score-items"),figures=el("span","score-numbers"),
             kda=el("b","score-kda"),gold=el("small","score-gold");
-          face.style.backgroundPosition=(hero.hero*25)+"% center"; face.setAttribute("aria-hidden","true");
+          // At 25–30 CSS pixels each hero needs the eyes, brim or blindfold inside the tile.
+          const [x,y,w,h]=scoreFaceCrop[hero.hero];
+          face.style.backgroundSize=(1120/w*100)+"% "+(560/h*100)+"%";
+          face.style.backgroundPosition=((hero.hero*224+x)/(1120-w)*100)+"% "+(y/(560-h)*100)+"%";
+          face.setAttribute("aria-hidden","true");
           setText(upper,definitions[hero.hero].name+(hero.id===match.playerId?" · 你":""));
           legend.append(upper,rank);figures.append(kda,gold);row.append(face,legend,items,figures);list.append(row);
           rows.push({hero,rank,items,kda,gold});
@@ -262,7 +274,7 @@ export function fieldScoreboard(getMatch,playing,definitions,releaseInput) {
       setText(headings[side],match.teamKills[side]+" 击败  ·  "+team.reduce((n,h)=>n+h.earnedGold,0)+" 总经济");
     }
     for(const {hero,rank,items,kda,gold} of rows) {
-      setText(rank,"Lv."+hero.level+" · "+hero.lastHits+" 补刀");
+      setText(rank,"Lv."+hero.level+" · "+hero.lastHits+" 补刀"+(hero.hunts||hero.campsTaken?" · "+(hero.campsTaken||0)+" 野":""));
       setText(items,hero.inventory.map(k=>kitName(hero,k)).join(" · ") || "尚未购装");
       setText(kda,hero.kills+" / "+hero.deaths+" / "+hero.assists);
       setText(gold,hero.earnedGold+" 铜钱");

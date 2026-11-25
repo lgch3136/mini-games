@@ -1,7 +1,7 @@
-import {basicDamage} from "./river-supplies.mjs?v=canyon-march1";
-import {commissionRam} from "./river-keeper.mjs?v=team-vision1";
-import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=river-marching6";
-import {visibleTo,groundSeen} from "./river-reeds.mjs?v=team-vision1";
+import {basicDamage} from "./river-supplies.mjs?v=canyon-canopy3";
+import {commissionRam} from "./river-keeper.mjs?v=canyon-thicket2";
+import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=canyon-thicket1";
+import {visibleTo,groundSeen} from "./river-reeds.mjs?v=canyon-thicket1";
 const alive=u=>u&&!u.dead&&u.hp>0;
 const far=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const labels=["上路","中路","下路"],names=["外塔","二塔","高地塔"],lanes=[-1,1,0,0,1];
@@ -51,6 +51,7 @@ export function spawnRiverWave(match,spawn){
 }
 export function coreOpen(match,team){return match.fieldKeeps[team].some(lane=>lane.every(t=>!alive(t)));}
 export function canTarget(match,target){
+  if(target.kind==="camp")return !target.returning;
   if(target.kind==="core")return coreOpen(match,target.team);
   if(target.kind!=="tower"||target.tier===0)return true;
   return !alive(match.fieldKeeps[target.team][target.lane+1][target.tier-1]);
@@ -72,7 +73,7 @@ export function towerTarget(match, tower) {
   let nearest = null, nearestDistance = Infinity, minion = null, minionDistance = Infinity;
   const rangeSquared = tower.range * tower.range;
   for (const unit of match.units) {
-    if (unit.team === tower.team || !alive(unit)) continue;
+    if (unit.team === tower.team || unit.team===2 || !alive(unit)) continue;
     const dx = tower.x - unit.x, dz = tower.z - unit.z, distance = dx * dx + dz * dz;
     if (distance > rangeSquared || !visibleTo(match, tower.team, unit)) continue;
     if (unit.kind === "hero" && tower.threats?.get(unit.id) > match.time) {
@@ -300,7 +301,7 @@ export function laneEnemy(match,actor,windup) {
 export function steerLane(actor,target,dt,move) {
   if(!(dt>0))return;
   const route=routes[(actor.lane??0)+1],dx=target.x-actor.x,dz=target.z-actor.z,gap=Math.hypot(dx,dz);
-  const rallying=target.kind==="rally",tracking=target.kind==="hero"||target.kind==="minion"||target.kind==="keeper";
+  const rallying=target.kind==="rally",tracking=target.kind==="hero"||target.kind==="minion"||target.kind==="keeper"||target.kind==="camp";
   let x=dx,z=dz;
   if(!target.riverScout && !tracking && gap>3.25){
     const pos=measure(route,actor.x,actor.z),end=measure(route,target.x,target.z).at;

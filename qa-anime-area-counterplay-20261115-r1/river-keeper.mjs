@@ -1,4 +1,5 @@
-import {visibleTo} from "./river-reeds.mjs?v=team-vision1";
+import {groundSeen,visibleTo} from "./river-reeds.mjs?v=canyon-thicket1";
+import {huntingGrounds,keepOutsideBanks,nearestLane} from "./estuary-map.mjs?v=canyon-thicket1";
 
 // The upstream ford is reachable on foot from mid, outside either outer tower's range.
 export const keeperFord = {x:-9, z:-8};
@@ -6,6 +7,145 @@ const scoutFord={kind:"rally",riverScout:true,...keeperFord};
 export const surgeRadius = 4.1;
 const alive = unit => unit && !unit.dead && unit.hp>0;
 const distance = (a,b) => Math.hypot(a.x-b.x,a.z-b.z);
+
+const breeds={
+  boar:{hp:235,radius:.77,range:1.53,speed:3.45,damage:18,windup:.53,interval:1.58,leash:7.1,rest:48,coins:24,xp:46},
+  stag:{hp:310,radius:.83,range:2.06,speed:3.85,damage:24,windup:.68,interval:1.78,leash:7.6,rest:62,coins:32,xp:52}
+};
+export function prepareHunt(match,playerHunts=false) {
+  const heroes=match.units.filter(u=>u.kind==="hero"),me=heroes.find(u=>u.id===match.playerId);
+  const hunters=[0,1].map(team=>{
+    const party=heroes.filter(u=>u.team===team && u!==me);
+    return team===me.team && playerHunts?me:party.find(u=>u.hero===3)||party.find(u=>u.hero===4);
+  });
+  for(const hunter of hunters) hunter.hunts=true;
+  // When a laner takes the jungle, the spare mid hero covers the vacated lane.
+  if(playerHunts && me.hero!==3)heroes.find(u=>u.team===me.team&&u.hero===3).lane=me.lane;
+  match.hunt={hunters:hunters.map(u=>u.id),camps:huntingGrounds.map(site=>({
+    site,scout:{kind:"rally",riverScout:true,x:site.x,z:site.z},nextAt:6,beast:null,knownEmpty:[false,false]
+  }))};
+}
+
+function trot(beast,to,dt,speed) {
+  const x=to.x-beast.x,z=to.z-beast.z,d=Math.hypot(x,z);
+  if(d<.002)return;
+  const step=Math.min(d,dt*speed),oldX=beast.x,oldZ=beast.z;
+  beast.x+=x/d*step;beast.z+=z/d*step;beast.face=Math.atan2(x,z);keepOutsideBanks(beast);
+  beast.stride+=Math.hypot(beast.x-oldX,beast.z-oldZ);
+}
+function nextPatrol(match,hunter) {
+  // Choose the nearest visible enemy hero out in a lane, then rejoin normal lane tactics.
+  let best=null,score=Infinity;
+  for(const enemy of match.units){
+    if(enemy.team===hunter.team || enemy.kind!=="hero" || !alive(enemy) || !visibleTo(match,hunter.team,enemy))continue;
+    const home=match.fieldKeeps[enemy.team][(enemy.lane??0)+1].find(alive);
+    if(home&&distance(enemy,home)<5)continue;
+    const cost=distance(hunter,enemy)+3*enemy.hp/enemy.maxHp;
+    if(cost<score){best=enemy;score=cost;}
+  }
+  hunter.lane=best?nearestLane(best.x,best.z):0;
+  hunter.huntRotateAt=match.time;
+}
+export function huntAssignment(match,hunter) {
+  if(!hunter.hunts || hunter.retreating || hunter.hp<hunter.maxHp*.35)return null;
+  const camps=match.hunt.camps,now=match.time;
+  for(const camp of camps){
+    if(camp.site.side!==hunter.team)continue;
+    const beast=camp.beast;
+    if(alive(beast)&&visibleTo(match,hunter.team,beast)){
+      if(beast.returning)continue;
+      hunter.laneIntent="hunt";return beast;
+    }
+    if(camp.knownEmpty[hunter.team]||(!beast&&now<6&&camp.site.species!=="boar"))continue;
+    hunter.laneIntent="hunt-scout";return camp.scout;
+  }
+  if(hunter.laneIntent==="hunt"||hunter.laneIntent==="hunt-scout")nextPatrol(match,hunter);
+  return null;
+}
+export function claimCamp(match,beast,killer){
+  const camp=match.hunt.camps[beast.campIndex];
+  if(camp.beast!==beast||beast.secured!=null||killer?.kind!=="hero")return;
+  beast.secured=killer.id;beast.swing=null;
+  camp.nextAt=match.time+breeds[beast.species].rest;
+  camp.knownEmpty[killer.team]=true;
+  if(visibleTo(match,1-killer.team,beast))camp.knownEmpty[1-killer.team]=true;
+  killer.campsTaken=(killer.campsTaken||0)+1;
+  killer.lastHunt={name:camp.site.name,at:match.time,coins:beast.coins,xp:beast.xp};
+}
+export function stepHunt(match,dt,spawn,damage) {
+  for(const [index,camp] of match.hunt.camps.entries()){
+    const site=camp.site,tune=breeds[site.species],now=match.time;
+    let beast=camp.beast;
+    if(beast?.dead&&now-beast.fallenAt>1.05){
+      match.units=match.units.filter(u=>u!==beast);camp.beast=beast=null;
+    }
+    if(!beast&&now>=camp.nextAt){
+      beast=camp.beast=spawn(match,2,"camp",site.x,site.z);
+      Object.assign(beast,tune,{maxHp:tune.hp,campIndex:index,species:site.species,name:site.name,
+        face:site.side?-.95:2.2,stride:0,ready:0,focus:null,returning:false,swing:null});
+      // A team may scout a previous kill again once the known respawn interval has elapsed.
+      camp.knownEmpty.fill(false);
+    }
+    if(!alive(beast)){
+      if(now>=6)for(let team=0;team<2;team++)
+        if(!camp.knownEmpty[team]&&groundSeen(match,team,site.x,site.z))camp.knownEmpty[team]=true;
+      continue;
+    }
+    const focus=match.teamSight?.byId.get(beast.impactOrigin);
+    if(!beast.returning && focus?.kind==="hero" && alive(focus) && distance(focus,site)<=tune.leash+.75 &&
+        now-(beast.lastImpactTime??-99)<3.5)beast.focus=focus;
+    const prey=beast.focus;
+    if(prey&&(!alive(prey)||distance(prey,site)>tune.leash+.75 || distance(beast,site)>tune.leash ||
+        now-(beast.lastImpactTime??0)>4.2&&distance(prey,beast)>tune.range+prey.radius)){
+      beast.returning=true;beast.focus=null;beast.swing=null;beast.impactOrigin=null;
+    }
+    if(beast.returning){
+      trot(beast,site,dt,tune.speed*1.45);
+      beast.hp=Math.min(beast.maxHp,beast.hp+dt*beast.maxHp*.52);
+      if(distance(beast,site)<.06){beast.x=site.x;beast.z=site.z;beast.hp=beast.maxHp;beast.returning=false;beast.ready=now+.45;}
+      continue;
+    }
+    if(!prey){
+      // The first attacker can die or blink away in the tick before target acquisition.
+      if(beast.hp<beast.maxHp&&now-(beast.lastImpactTime??0)>1.1)beast.returning=true;
+      continue;
+    }
+    if(beast.stun>0){beast.swing=null;beast.ready=Math.max(beast.ready,now+.26);continue;}
+    if(beast.swing){
+      const swing=beast.swing;
+      if(now<swing.end)continue;
+      beast.swing=null;beast.struckAt=now;beast.ready=now+tune.interval;
+      const dx=prey.x-beast.x,dz=prey.z-beast.z;
+      if(Math.hypot(dx,dz)<=tune.range+prey.radius+.18 &&
+          dx*Math.sin(swing.face)+dz*Math.cos(swing.face)>-.06)
+        damage(match,prey,tune.damage,beast,{gadget:"antler",fromX:beast.x,fromZ:beast.z});
+    }else if(distance(beast,prey)>tune.range+prey.radius-.13){
+      trot(beast,prey,dt,tune.speed*(beast.slow>0?.55:1));
+    }else if(now>=beast.ready){
+      beast.face=Math.atan2(prey.x-beast.x,prey.z-beast.z);
+      beast.swing={start:now,end:now+tune.windup,face:beast.face};
+    }
+  }
+}
+
+export function huntCaption(match,me){
+  if(me.dead)return "";
+  const last=me.lastHunt;
+  if(last&&match.time-last.at<3.2)return last.name+" · +"+last.xp+" 经验　+"+last.coins+" 铜钱";
+  if(!match.hunt)return "";
+  let nearby=null,nearest=4.9;
+  for(const camp of match.hunt.camps){
+    const beast=camp.beast;if(!alive(beast)||!visibleTo(match,me.team,beast))continue;
+    const d=distance(me,beast);if(d<nearest){nearby=beast;nearest=d;}
+  }
+  if(nearby)return nearby.name+" "+Math.ceil(nearby.hp)+"/"+nearby.maxHp+
+    (nearby.returning?" · 脱战回营":nearby.swing?" · 侧移躲开扑击":" · 补刀键可选中");
+  if(me.hunts&&match.time<32){
+    const camp=match.hunt.camps.find(c=>c.site.side===me.team&&!c.knownEmpty[me.team]);
+    return camp?"打野 · "+(camp.site.species==="boar"?"先取":"再取")+camp.site.name+"，见小地图浅金兽印":"两营已清 · 经河口支援中路";
+  }
+  return "";
+}
 
 function notice(match,type,unit,extra) {
   match.events.push({id:++match.eventSeq,type,x:unit.x,z:unit.z,team:unit.team,

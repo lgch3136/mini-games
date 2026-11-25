@@ -48,19 +48,7 @@ export function costumeColour(hero,team,colour) {
 }
 export function teamCloth(T,hero,team,hip,arms,attach,cylinder) {
   const dye=team===1?0xda697b:0x48b7c0,edge=team===1?0xf4b38b:0xaddfd6;
-  const side=team===1?-1:1;
-  // Broad seams wrap across front, outer shoulder, and back; they stay visible while turning.
-  const path=[[-.18*side,.13,.24],[.12*side,.47,.24],[.28*side,.70,.17],[.31*side,.74,-.04],
-    [.24*side,.66,-.20],[.03*side,.40,-.25],[-.18*side,.14,-.22]];
-  function strip(thickness,offset,colour){
-    const pos=[],index=[];
-    for(const [x,y,z] of path)pos.push(x-thickness+offset,y,z,x+thickness+offset,y,z);
-    for(let i=0;i+1<path.length;i++){const j=i*2;index.push(j,j+1,j+2,j+1,j+3,j+2);}
-    const geo=new T.BufferGeometry();geo.setAttribute("position",new T.Float32BufferAttribute(pos,3));
-    geo.setIndex(index);geo.computeVertexNormals();
-    attach(hip,geo,colour);
-  }
-  strip(.036,0,dye);strip(.009,.043*side,edge);
+  // This band belongs to the sleeve bone so it stays on the cloth through a punch.
   const arm=arms[team===1?0:1],rad=hero===3?.155:hero===4?.119:.142;
   cylinder(arm,dye,0,-.205,0,rad,rad*.92,.11);
   cylinder(arm,edge,0,-.27,0,rad*.93,rad*.91,.021);

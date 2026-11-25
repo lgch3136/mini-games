@@ -1,5 +1,5 @@
 import {footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
-import {spellVertex} from "./surface-impact.mjs?v=canyon-riverlight2";
+import {spellVertex} from "./surface-impact.mjs?v=canyon-thicket2";
 const barVertex=`precision highp float;
 in vec3 position;in vec4 anchor;in vec2 life;uniform vec4 playerRect;
 uniform mat4 modelViewMatrix,projectionMatrix;out vec2 uv;flat out vec2 status;
@@ -120,6 +120,9 @@ function marchingModel(T,role) {
         [-.332+w*.59,.784-h*.15,z],[-.332,.784-h*.59,z+.024],[-.332-w*.62,.784-h*.16,z]];
       plate(panel(.53,.31,.257),.065,7,gold,0,.67);
       plate(panel(.473,.255,.278),.068,7,coat,.84,.35);
+      // Raised heraldry follows the shield arm when the spear carrier braces to strike.
+      for(const side of [-1,1])plate([[-.332,.711,.348],[-.332+side*.096,.825,.318],
+        [-.332+side*.085,.858,.319],[-.332,.771,.354]],.009,7,light,0,.54);
       oval(-.332,.798,.36,.062,.076,.036,bronze,7,0,.68);
       limb([.331,.424,.175],[.353,1.078,.275],.025,wood,8,0,.17);
       plate([[.35,1.068,.277],[.411,1.22,.297],[.367,1.458,.32],[.295,1.219,.307]],.031,8,light,0,.77);
@@ -132,6 +135,12 @@ function marchingModel(T,role) {
       limb([-.378,.773,.235],[.43,.78,.272],.011,light,8);
       limb([.07,.795,.337],[.168,.802,.523],.013,light,8,0,.5);
       limb([-.185,.63,-.12],[.10,1.065,-.175],.071,leather,12,0,.12,.92);
+      for(let j=0;j<3;j++){
+        const x=.047+j*.037,top=1.18+.038*(j%2);
+        limb([x-.077,1.005,-.177],[x,top,-.202],.010,wood,12,0,.12,.86,4);
+        plate([[x-.03,top-.048,-.218],[x-.025,top+.025,-.224],
+          [x+.008,top+.032,-.216],[x+.011,top-.006,-.207]],-.008,12,teal,.60);
+      }
     }
   }else{
     box(0,.47,0,.82,.19,1.09,wood);box(0,.595,.03,.68,.085,1.01,bronze,0,0,.4);

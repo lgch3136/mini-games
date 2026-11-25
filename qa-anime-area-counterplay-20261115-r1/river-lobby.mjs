@@ -1,6 +1,6 @@
 const choices = document.getElementById("choices");
 const start = document.getElementById("start");
-const runtime = new URL("./game.min.js?v=canyon-airwake3",import.meta.url);
+const runtime = new URL("./game.min.js?v=canyon-slate4",import.meta.url);
 let warming = false, opening = false, selected = 0;
 
 // Download on a deliberate hero choice. No WebGL context is needed to browse these cards.
@@ -72,10 +72,23 @@ async function enter() {
   }
 }
 const openingSkill=document.getElementById("opening-skill");
+const tactics=[
+  "近身用螺旋丸换血，把影分身留给追击或脱身。",
+  "用空气炮压住兵线，留竹蜻蜓拉开距离，四级后用任意门支援。",
+  "用术式消耗，遇到敌方弹道时开无下限掩护兵线。",
+  "先找安全位置蓄劲，再用龟派气功沿敌人走位方向出手。",
+  "从兵线侧面用橡胶手枪消耗，贴近后接连续拳。"
+];
 function openingLabels(button){
   if(!button)return;
-  const labels=button.querySelector("span:last-child")?.textContent.split("·");
+  const id=Number(button.dataset.hero),kit=button.lastElementChild.textContent;
+  const labels=kit.split(" · ");
   if(labels?.length>=2)for(let slot=0;slot<2;slot++)openingSkill.options[slot].textContent=labels[slot].trim();
+  document.getElementById("draft-name").textContent=button.querySelector("b").textContent;
+  document.getElementById("draft-role").textContent=button.querySelector("em").textContent;
+  document.getElementById("draft-kit").textContent=kit;
+  document.getElementById("draft-play").textContent=tactics[id];
+  document.getElementById("draft-model").style.backgroundPositionX=(id*25)+"%";
 }
 choices.addEventListener("click",event=>openingLabels(event.target.closest("[data-hero]")));
 openingLabels(choices.querySelector("[aria-pressed=true]"));

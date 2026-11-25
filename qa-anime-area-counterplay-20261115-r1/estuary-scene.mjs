@@ -1,9 +1,9 @@
-import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=river-marching6";
-import {addReeds} from "./river-reeds.mjs?v=team-vision1";
+import {extent,routes,streams,jungles,homes,keeps,rushes,garden,banks,huntingGrounds,floorHeight,waterDistance,along,measure} from "./estuary-map.mjs?v=canyon-thicket1";
+import {addReeds} from "./river-reeds.mjs?v=canyon-thicket1";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
 import {terrainPaint} from "./field-mask.mjs?v=river-marching6";
 import {paintedSun} from "./painted-sun.mjs?v=jade-ground2";
-import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-riverlight2";
+import {spellVertex,battleLight} from "./surface-impact.mjs?v=canyon-thicket2";
 export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
   const p=[],uv=[],kind=[],flat=[],ix=[],flow=[],n=73;
   const bridgeRoad=routes[1],bridgeCentre=measure(bridgeRoad,0,0).at;
@@ -132,7 +132,7 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     for(let i=n*n;i<exposure.count;i++)exposure.array[i]=field.values[border[(i-n*n)%border.length]];
     exposure.needsUpdate=true;
   },start(){
-    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/estuary-shallows.webp",import.meta.url).href).then(image=>{
+    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/canyon-seeded-ground.webp",import.meta.url).href).then(image=>{
       if(closed){image.dispose();return;}
       texture=image;image.colorSpace=T.NoColorSpace;image.anisotropy=1;uniforms.field.value=image;uniforms.ready.value=1;
     }).catch(()=>{});
@@ -164,63 +164,50 @@ export function estuaryStonework(T){
       block(a,b,.085,.074+(k%3)*.012,k+l,false);
     }
   }
+  for(const site of huntingGrounds){
+    const stag=site.species==="stag",sign=site.side?-1:1;
+    function point(x,z,h){const xx=site.x+sign*x,zz=site.z+sign*z;return [xx,floorHeight(xx,zz)+h,zz];}
+    // Low outcrops taper into the turf. The two habitats have different skyline and spacing.
+    const stones=stag?[[-1.65,-.70,.61,.36],[-1.28,-1.12,.29,.19],[.38,1.72,.39,.17],[1.24,1.25,.20,.10]]:
+      [[-1.74,-.39,.54,.25],[-1.68,.15,.22,.13],[-.69,1.47,.40,.22],[.97,-1.35,.27,.11]];
+    for(const [i,[x,z,r,h]] of stones.entries()){
+      const count=7,base=[],band=[],crest=point(x-r*.17,z+r*.06,h);
+      const top=stag?["#9eab8f","#a7aa88","#8e9d80"]:["#a59b7d","#a69e82","#989775"];
+      for(let j=0;j<count;j++){
+        const a=j*2*Math.PI/count+i*.94,noise=.88+.12*Math.sin(i*3.1+j*2.7);
+        const dx=r*noise*Math.cos(a),dz=r*.72*noise*Math.sin(a);
+        base.push(point(x+dx,z+dz,-.022));
+        band.push(point(x+.81*dx,z+.77*dz,h*(.39+.16*Math.cos(a-.64))));
+      }
+      for(let j=0;j<count;j++){
+        const k=(j+1)%count;
+        face(base[j],base[k],band[k],band[j],["#6b725f","#74755e","#7c8068"][j%3]);
+        tri(band[j],band[k],crest,top[(j+i)%3]);
+      }
+      // A little vegetation at the buried edge bridges stone and grass colour.
+      for(let leaf=0;leaf<4;leaf++){
+        const at=leaf*.83+i,px=x+r*.84*Math.cos(at),pz=z+r*.63*Math.sin(at);
+        tri(point(px-.045,pz,.012),point(px+.050,pz,.014),
+          point(px+.10*Math.cos(at),pz+.11*Math.sin(at),.10+.03*(leaf%3)),
+          ["#7b8358","#92935d","#677b53","#85915c"][leaf]);
+      }
+    }
+    for(let i=0;i<9;i++){
+      const x=1.95-i*.30,z=.54*Math.sin(i*.64)+(i%2?.16:-.16);
+      // Two narrow toes, pressed into the earth along the path.
+      for(const side of [-1,1]){
+        const toe=z+side*.063;
+        tri(point(x-.09,toe,.031),point(x+.09,toe-.046,.032),point(x+.04,toe+.041,.033),stag?"#716f53":"#78634d");
+      }
+    }
+  }
   addReeds((a,b,d,col)=>{const ox=(a[0]+b[0]+d[0])/3,oz=(a[2]+b[2]+d[2])/3,dy=floorHeight(ox,oz)-.055;
     tri([a[0],a[1]+dy,a[2]],[b[0],b[1]+dy,b[2]],[d[0],d[1]+dy,d[2]],col);});
   const g=new T.BufferGeometry();g.setAttribute("position",new T.Float32BufferAttribute(p,3));g.setAttribute("color",new T.Float32BufferAttribute(c,3));g.computeBoundingSphere();
   const mesh=new T.Mesh(g,new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   mesh.userData.cull=fieldVisibility(T,g);return mesh;
 }
-export function estuaryGarden(T){
-  const pos=[],uv=[],ix=[],base=[];
-  for(const a of [...garden].sort((a,b)=>a.z-b.z)){
-    const {x,z,size,art}=a,w=size*([.57,.61,.69,.48,.68,.49,.63,.52][art]);
-    const h=size*([1.08,1.09,.72,.72,.66,1.08,.83,.63][art]),y=floorHeight(x,z)+.018,s=pos.length/3;
-    pos.push(x-w,y,z,x+w,y,z,x-w,y+h*.74,z-h*.67,x+w,y+h*.74,z-h*.67);
-    for(let j=0;j<4;j++)base.push(x,z,size);
-    const u=(art%4)*.25,v=(1-Math.floor(art/4))*.5;
-    uv.push(u+.001,v+.002,u+.249,v+.002,u+.001,v+.498,u+.249,v+.498);ix.push(s,s+1,s+2,s+2,s+1,s+3);
-  }
-  const g=new T.BufferGeometry();g.setAttribute("position",new T.Float32BufferAttribute(pos,3));g.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
-  g.setAttribute("sceneryFoot",new T.Float32BufferAttribute(base,3));g.setIndex(ix);g.computeBoundingSphere();
-  const m=new T.MeshBasicMaterial({side:T.FrontSide,transparent:true,depthWrite:false,alphaTest:.46,toneMapped:false});
-  const viewer={value:new T.Vector2(1000,1000)},opponent={value:new T.Vector2(1000,1000)};
-  const zones=[0,1,2].map(()=>({value:new T.Vector4(-5,-5,.01,.01)}));
-  const pixel={value:new T.Vector2(1,1)},projected=new T.Vector3();
-  m.onBeforeCompile=shader=>{
-    shader.uniforms.gardenViewer=viewer;shader.uniforms.gardenOpponent=opponent;
-    shader.uniforms.gardenPixel=pixel;
-    zones.forEach((cell,i)=>{shader.uniforms["readZone"+i]=cell;});
-    shader.vertexShader=`attribute vec3 sceneryFoot;uniform vec2 gardenViewer,gardenOpponent;
-    varying float gardenCut;
-    float coversFigure(vec2 actor){vec2 d=sceneryFoot.xy-actor;
-      vec2 overlap=vec2(abs(d.x)/(sceneryFoot.z*.57+.38),abs(d.y-sceneryFoot.z*.23)/(sceneryFoot.z*.56+.55));
-      return (1.-smoothstep(.62,1.24,max(overlap.x,overlap.y)))*smoothstep(-1.1,-.26,d.y);}\n`+shader.vertexShader.replace("#include <begin_vertex>",
-      "#include <begin_vertex>\ngardenCut=max(coversFigure(gardenViewer),coversFigure(gardenOpponent));");
-    shader.fragmentShader=`varying float gardenCut;uniform vec4 readZone0,readZone1,readZone2;uniform vec2 gardenPixel;
-      float nearActor(vec2 coord,vec4 oval){vec2 d=(coord-oval.xy)/oval.zw;return 1.-smoothstep(.58,1.12,dot(d,d));}\n`+
-      shader.fragmentShader.replace("#include <alphatest_fragment>",
-      "#include <alphatest_fragment>\nvec2 where=gl_FragCoord.xy*gardenPixel;float actor=max(nearActor(where,readZone0),max(nearActor(where,readZone1),nearActor(where,readZone2)));diffuseColor.a*=1.-max(.84*gardenCut,.96*actor);");
-  };
-  m.customProgramCacheKey=()=>"estuary-foliage-sight-v1";
-  const mesh=new T.Mesh(g,m);mesh.visible=false;let ended=false,loading=null;
-  mesh.userData.sight=(hero,target,ally,camera,canvas)=>{
-    viewer.value.set(hero?.x??1000,hero?.z??1000);
-    opponent.value.set(target?.x??1000,target?.z??1000);
-    pixel.value.set(1/Math.max(1,canvas.width),1/Math.max(1,canvas.height));
-    for(let i=0;i<3;i++){
-      const u=i===0?hero:i===1?target:ally,zone=zones[i].value;
-      if(!u||u.dead){zone.set(-5,-5,.01,.01);continue;}
-      const floor=floorHeight(u.x,u.z),h=u.kind==="minion"?.70:1.07;
-      projected.set(u.x,floor+h,u.z).project(camera);const mx=projected.x,my=projected.y;
-      projected.set(u.x+1.26,floor+h,u.z).project(camera);const rx=Math.abs(projected.x-mx)*.5;
-      projected.set(u.x,floor-.20,u.z+.75).project(camera);const ry=Math.abs(projected.y-my)*.5;
-      zone.set(mx*.5+.5,my*.5+.5,Math.max(.005,rx),Math.max(.007,ry));
-    }
-  };
-  mesh.userData.start=()=>{if(loading||ended)return loading;loading=new T.TextureLoader().loadAsync(new URL("./assets/river-landmarks.webp",import.meta.url).href).then(tex=>{
-    if(ended){tex.dispose();return;}tex.colorSpace=T.SRGBColorSpace;m.map=tex;m.needsUpdate=true;mesh.visible=true;
-  }).catch(()=>{});return loading;};mesh.userData.close=()=>{ended=true;m.map?.dispose();};return mesh;
-}
+export {growRiverGarden as estuaryGarden} from "./forest-volumes.mjs?v=canyon-canopy3";
 export function fieldMini(ctx,width,height){
   const map=v=>(v+extent)/(2*extent),x=v=>map(v)*width,z=v=>map(v)*height,unit=width/(2*extent);
   const land=ctx.createRadialGradient(width*.45,height*.52,0,width*.5,height*.5,width*.71);

@@ -1,4 +1,4 @@
-import {laneCompany} from "./lane-company.mjs?v=canyon-riverlight2";
+import {laneCompany} from "./lane-company.mjs?v=canyon-carving2";
 export function makeWaveBatches(T,scene,heightAt) {
   const company=laneCompany(T,scene,heightAt);
   return {start:company.start,draw:company.draw,reset:company.reset,dispose:company.dispose,
@@ -47,18 +47,33 @@ export function unitBars(T,scene){
       void main(){
         panelUV=uv;barLife=life;barMetrics=metrics;
         gl_Position=projectionMatrix*modelViewMatrix*instanceMatrix*vec4(0.,0.,0.,1.);
-        float badge=metrics.w>.5?metrics.y*2.12:0.;
+        float badge=metrics.w>.5?metrics.y*2.12:metrics.z>3.5?metrics.y*1.87:0.;
         vec2 outer=vec2(metrics.x+badge,max(metrics.y,badge));
         gl_Position.xy+=(position.xy*outer-vec2(.5*badge,0.)+nudge)*2./viewport*gl_Position.w;
       }`,
     fragmentShader:`varying vec2 panelUV;varying vec4 barLife;varying vec4 barMetrics;
       uniform sampler2D digitAtlas;
+      float stroke(vec2 p,vec2 a,vec2 b){
+        vec2 ab=b-a;return length(p-a-ab*clamp(dot(p-a,ab)/dot(ab,ab),0.,1.));
+      }
       void main(){
         vec2 wh=barMetrics.xy;
-        float badge=barMetrics.w>.5?wh.y*2.12:0.;
+        float badge=barMetrics.w>.5?wh.y*2.12:barMetrics.z>3.5?wh.y*1.87:0.;
         vec2 whole=vec2(wh.x+badge,max(wh.y,badge)),p=panelUV*whole;
         if(badge>0.&&p.x<badge){
           vec2 local=p/badge;
+          if(barMetrics.z>3.5){
+            vec2 q=vec2(abs(local.x-.5),local.y);
+            float outer=length((local-.5)*vec2(.98,1.05));
+            float fade=1.-smoothstep(.42,.51,outer);if(fade<.02)discard;
+            bool deer=barMetrics.z>4.5;
+            float mark=deer?min(stroke(q,vec2(.05,.28),vec2(.23,.74)),
+              stroke(q,vec2(.145,.52),vec2(.29,.58))):
+              min(stroke(q,vec2(.04,.35),vec2(.20,.43)),stroke(q,vec2(.20,.43),vec2(.25,.65)));
+            vec3 trim=deer?vec3(.68,.84,.70):vec3(.91,.71,.44);
+            vec3 base=mix(vec3(.13,.17,.14),trim,smoothstep(.34,.43,outer));
+            gl_FragColor=vec4(mix(base,vec3(.99,.93,.77),1.-smoothstep(.034,.092,mark)),fade);return;
+          }
           float d=length((local-.5)*badge),radius=badge*.48;
           float aa=clamp(fwidth(d),.65,1.4);
           float alpha=1.-smoothstep(radius-aa*.55,radius+aa*.45,d);
@@ -79,7 +94,7 @@ export function unitBars(T,scene){
         float x=clamp((p.x-1.6)/(wh.x-3.2),0.,1.);
         float band=smoothstep(.65,1.45,border);
         float role=barMetrics.z;
-        vec3 ink=role<.5?vec3(.65,.86,.37):role<1.5?vec3(.20,.72,.88):role<2.5?vec3(.93,.35,.34):vec3(.90,.65,.28);
+        vec3 ink=role<.5?vec3(.65,.86,.37):role<1.5?vec3(.20,.72,.88):role<2.5?vec3(.93,.35,.34):role>4.5?vec3(.51,.79,.64):vec3(.90,.65,.28);
         float glint=smoothstep(.48,.85,uv.y),aa=1./wh.x;
         vec3 fill=mix(ink*.72,min(vec3(1.),ink*1.13+.04),uv.y*.56+glint*.44);
         float tail=1.-smoothstep(barLife.y-aa,barLife.y+aa,x);
@@ -116,7 +131,8 @@ export function unitBars(T,scene){
   }
   function anchor(root,kind){
     const p=root.position,s=root.scale;
-    return unitPoint.set(p.x,p.y+(kind==='hero'?2.90:kind==='keeper'?1.78:4.40)*s.y,p.z);
+    const height=root.userData.barHeight??(kind==='hero'?2.90:kind==='keeper'?1.78:4.40);
+    return unitPoint.set(p.x,p.y+height*s.y,p.z);
   }
   function measure(root,kind,camera,width,height){
     anchor(root,kind).applyMatrix4(camera.matrixWorldInverse);
@@ -149,7 +165,7 @@ export function unitBars(T,scene){
       unitPoint.project(camera);
       const x=(.5+.5*unitPoint.x)*width,y=(.5-.5*unitPoint.y)*height;
       const rank=u.kind==="hero"?Math.min(15,Math.max(1,u.level||(u.id===playerId?level:1))):0;
-      const badge=rank?size.h*2.12:0,outerH=Math.max(size.h,badge);
+      const badge=rank?size.h*2.12:u.kind==="camp"?size.h*1.87:0,outerH=Math.max(size.h,badge);
       const left=x-size.w*.5-badge,top=y-outerH*.5;
       const box=s.box;box.left=left;box.right=x+size.w*.5;box.top=top;box.bottom=y+outerH*.5;
       if(box.right>0&&box.left<width&&box.bottom>0&&box.top<height&&unitPoint.z<1&&unitPoint.z>-1){
@@ -182,7 +198,8 @@ export function unitBars(T,scene){
       nudge.setXY(used,box.left-left,top-box.top);
       mesh.setMatrixAt(used,matrix);
       life.setXYZW(used,u.hp/total,Math.min(1,(Math.max(u.hp,s.trail)+shield)/total),(u.hp+shield)/total,Math.max(0,1-(now-s.struck)/.14));
-      metrics.setXYZW(used,size.w,size.h,u.id===playerId?0:u.team===0?1:u.team===1?2:3,rank);used++;
+      const role=u.id===playerId?0:u.team===0?1:u.team===1?2:u.kind!=="camp"?3:u.species==="boar"?4:5;
+      metrics.setXYZW(used,size.w,size.h,role,rank);used++;
     }
     for(const [key,s] of pool)if(s.stamp!==stamp)pool.delete(key);
     mesh.count=used;mesh.visible=used>0;

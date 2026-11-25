@@ -1,4 +1,4 @@
-import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-airwake3";
+import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-slate4";
 import {towerSight} from "./tower-sight.mjs?v=river-readable-hit1";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
@@ -80,7 +80,8 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
       return [x*radius,y+height+((i%2===0)?kick:0),z*radius];
     });
     const lip=loop(span,0,.19),trim=loop(span,.085,.19),mid=loop(span*.67,rise*.24,.04),crown=loop(span*.17,rise,0);
-    connect(lip,trim,colors.edge);
+    const underside=loop(span*.88,-.07,.145);
+    connect(underside,lip,"#735a45");connect(lip,trim,colors.edge);
     const skin=(lower,upper,v0,v1,lowerWidth,upperWidth)=>{
       for(let i=0;i<8;i++){
         const j=(i+1)%8,u0=(i%2)*.5,u1=u0+.5;
@@ -90,19 +91,27 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
       }
     };
     skin(trim,mid,1,.63,1,.67);skin(mid,crown,.63,0,.67,.17);cap(crown,colors.edge);
+    // Raised hip ridges turn with the slope and cast a dark edge across the tiles.
     for(let i=0;i<8;i+=2){
-      const p=trim[i],q=mid[i],r=crown[i];
-      tri(p,[q[0]+.045,q[1]+.035,q[2]],q,colors.edge);
-      tri(q,[r[0]+.045,r[1]+.04,r[2]],r,colors.edge);
+      const cross=[Math.sign(trim[i][2])*.051,0,-Math.sign(trim[i][0])*.051];
+      const ridges=[trim[i],mid[i],crown[i]].map((p,j)=>[
+        [p[0]-cross[0],p[1]+.012,p[2]-cross[2]],
+        [p[0],p[1]+(j===0?.105:.071),p[2]],
+        [p[0]+cross[0],p[1]+.012,p[2]+cross[2]]]);
+      for(let j=0;j<2;j++){
+        const [a,b,c]=ridges[j],[d,e,f]=ridges[j+1];
+        quad(a,b,e,d,colors.edge);quad(b,c,f,e,team?"#80515b":"#42686c");
+      }
     }
-    if(!art)for(let i=0;i<8;i++){
+    for(let i=0;i<8;i++){
       const j=(i+1)%8;
-      for(const f of [.27,.57,.81]){
+      for(const f of [.19,.44,.69,.92]){
         const at=(row,h)=>row[i].map((v,k)=>v+(row[j][k]-v)*f+(k===1?h:0));
-        const edge=at(trim,.018),fold=at(mid,.025),peak=at(crown,.018);
-        const dx=(trim[j][0]-trim[i][0])*.012,dz=(trim[j][2]-trim[i][2])*.012;
-        quad(edge,[edge[0]+dx,edge[1],edge[2]+dz],[fold[0]+dx,fold[1],fold[2]+dz],fold,colors.edge);
-        tri(fold,[fold[0]+dx,fold[1],fold[2]+dz],peak,colors.edge);
+        const edge=at(trim,.018),fold=at(mid,.025),peak=at(crown,.018),toe=at(lip,.012);
+        const dx=(trim[j][0]-trim[i][0])*.021,dz=(trim[j][2]-trim[i][2])*.021;
+        quad(edge,[edge[0]+dx,edge[1]+.010,edge[2]+dz],[fold[0]+dx,fold[1]+.006,fold[2]+dz],fold,colors.edge);
+        tri(fold,[fold[0]+dx,fold[1]+.006,fold[2]+dz],peak,colors.edge);
+        quad(toe,[toe[0]+dx*1.6,toe[1],toe[2]+dz*1.6],[edge[0]+dx*1.6,edge[1],edge[2]+dz*1.6],edge,"#c4a777");
       }
     }
     surface=masonry;
@@ -143,9 +152,17 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
         for(const z of [-.43,.43])beam(side*1.19,1.44,z,.76,.27,.28,"#a59e89");
       }
       roof(1.93,.54,span*1.13);
-      cylinder(0,0,2.42,3.09,.47,.54,"#8f7856",8);
-      cylinder(0,0,3.09,3.37,.55,.38,colors.edge,8);
-      cylinder(0,0,3.37,4.07,.38,.045,colors.light,6);
+      cylinder(0,0,2.42,2.68,.41,.30,"#755b44",12);
+      cylinder(0,0,2.68,2.76,.38,.38,"#d4b77b",12);
+      cylinder(0,0,2.76,3.02,.30,.265,colors.roof,12);
+      cylinder(0,0,3.02,3.10,.36,.41,"#a77e48",12);
+      cylinder(0,0,3.10,3.27,.35,.30,colors.edge,8);
+      const gem=[ring(0,3.19,0,.24,.24,8),ring(0,3.47,0,.345,.345,8),
+        ring(0,3.71,0,.245,.245,8),ring(0,4.04,0,.030,.030,8)];
+      const jade=team?["#c7848b","#e6a09c","#a96880","#edb3a1"]:["#72b6aa","#a5d4b5","#528c94","#c1e1ba"];
+      for(let j=0;j<3;j++)for(let i=0;i<8;i++){
+        const k=(i+1)%8,a=gem[j],b=gem[j+1];quad(a[k],a[i],b[i],b[k],jade[(i+2*j)%4]);
+      }
     }
   }
   const front=postSpan+.115, y=core?2.1:1.74, half=core?.30:.25;

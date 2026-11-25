@@ -79,7 +79,8 @@ export function battleLight(T,height){
   function pulse(x,z,y,radius,ink,strength,time,length){
     if(!Number.isFinite(x+z))return;
     const p=pulses[cursor++%pulses.length];
-    Object.assign(p,{x,z,y:height(x,z)+y,radius,ink,strength,start:time,end:time+length});
+    Object.assign(p,{x,z,y:height(x,z)+y,radius,ink,strength,start:time,end:time+length,travel:false});
+    return p;
   }
   function reset(){cursor=last=0;lastTime=-1;for(const p of pulses)p.end=-1;for(const p of points)p.w=0;}
   function update(view,centre,muzzleOf){
@@ -103,7 +104,11 @@ export function battleLight(T,height){
         const socket=e.hero===1&&line?muzzleOf?.(e.source):null;
         if(socket){
           socket.getWorldPosition(muzzle);
-          pulse(muzzle.x,muzzle.z,muzzle.y-height(muzzle.x,muzzle.z),3.15,ink,.88,time,.24);
+          const wake=pulse(muzzle.x,muzzle.z,muzzle.y-height(muzzle.x,muzzle.z),2.75,ink,.86,time,.25);
+          if(wake&&Number.isFinite(e.targetX+e.targetZ)){
+            wake.travel=true;wake.dx=e.targetX-muzzle.x;wake.dz=e.targetZ-muzzle.z;
+            wake.dy=height(e.targetX,e.targetZ)+.89-muzzle.y;
+          }
         }else if(e.hero!==4){
           pulse(e.x+(line?Math.sin(f)*1.12:0),e.z+(line?Math.cos(f)*1.12:0),1.05,
             slot===2?4.4:3.2,ink,slot===2?1.03:.84,time,slot===2?.42:.23);
@@ -122,7 +127,11 @@ export function battleLight(T,height){
     }
     for(const p of pulses)if(p.end>time){
       const u=(time-p.start)/(p.end-p.start);
-      consider(p.x,p.y,p.z,p.radius,p.ink,p.strength*(1-u)*(1-u));
+      if(p.travel){
+        // Both the light and the visible pressure front use the same eased travel.
+        const front=1-(1-u)*(1-u),fall=Math.max(0,1-u*u);
+        consider(p.x+p.dx*front,p.y+p.dy*front,p.z+p.dz*front,p.radius,p.ink,p.strength*fall);
+      }else consider(p.x,p.y,p.z,p.radius,p.ink,p.strength*(1-u)*(1-u));
     }
     for(const u of view.units){
       if(u.kind!=="hero"||u.dead||u.sceneryOnly)continue;

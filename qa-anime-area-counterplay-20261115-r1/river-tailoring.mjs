@@ -1,9 +1,8 @@
-// One draw samples the roster's portraits and the front and back of each uniform.
-export async function readFaceSheet(T) {
-  try{
-    const map=await new T.TextureLoader().loadAsync(new URL("./assets/river-faces-and-uniforms.webp",import.meta.url).href);
-    map.colorSpace=T.SRGBColorSpace;return map;
-  }catch{return null;}
+import {paintCharacterSheet,skullBand} from "./character-plates.mjs?v=canyon-carving2";
+export async function readFaceSheet(T){
+  const canvas=paintCharacterSheet(document.createElement("canvas"));
+  const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=1;
+  return texture;
 }
 
 function geometry(T,positions,indices,uv) {
@@ -19,7 +18,7 @@ export function paintedCheeks(T,hero,head,attach) {
     [.125,.232,.203,.020],[.247,.231,.207,.008],[.337,.199,.179,-.008],[.363,.162,.153,-.014]];
   const pos=[],uv=[],idx=[],cols=14,col=hero%3,row=Math.floor(hero/3);
   for(let j=0;j<rings.length;j++)for(let i=0;i<=cols;i++){
-    const [y,rx,rz,offset]=rings[j],u=i/cols,theta=(u-.5)*Math.PI*.91;
+    const [y,rx,rz,offset]=skullBand(hero,...rings[j]),u=i/cols,theta=(u-.5)*Math.PI*.91;
     pos.push((rx+.004)*Math.sin(theta),y,offset+(rz+.007)*Math.cos(theta));
     const v=(.363-y)/.444;
     uv.push((col+(.013+.974*u))/3,1-(row+.013+.974*v)/2);
@@ -137,23 +136,26 @@ function shapedCrown(T,hero,head,attach) {
     [.04,.41,-.17,.08,.53,-.22,.14,.59,-.29,.105],
     [.16,.37,-.08,.23,.49,-.12,.32,.52,-.16,.105],
     [.17,.37,.04,.25,.50,.02,.32,.56,-.035,.10],
-    [-.06,.40,.10,-.015,.55,.08,.08,.70,.016,.115],
-    [.07,.39,.10,.15,.53,.06,.23,.63,-.017,.115],
-    [-.13,.34,.12,-.13,.34,.21,-.085,.287,.233,.07],
-    [.08,.37,.13,.085,.33,.22,.042,.276,.243,.071]
+    [-.06,.40,.10,-.024,.57,.12,.072,.66,.014,.115],
+    [.07,.39,.10,.15,.53,.06,.25,.60,-.057,.115],
+    [-.13,.34,.12,-.162,.32,.22,-.192,.215,.195,.066],
+    [.08,.37,.13,.085,.33,.234,.030,.239,.239,.059],
+    [.04,.42,.12,.002,.336,.226,-.066,.264,.230,.061],
+    [.145,.34,.10,.207,.322,.146,.224,.233,.123,.059]
   ]:[
-    [-.10,.34,.04,-.27,.45,.05,-.47,.46,.03,.14],
-    [-.12,.36,-.06,-.29,.53,-.09,-.49,.63,-.14,.145],
-    [-.05,.39,-.14,-.17,.58,-.22,-.28,.75,-.25,.14],
+    [-.10,.34,.04,-.31,.39,.05,-.49,.43,.011,.135],
+    [-.12,.36,-.06,-.32,.50,-.09,-.51,.61,-.14,.155],
+    [-.05,.39,-.14,-.13,.63,-.22,-.24,.77,-.25,.14],
     [.075,.38,-.13,.14,.56,-.20,.23,.70,-.25,.14],
     [.16,.32,-.08,.29,.40,-.17,.44,.45,-.25,.13],
     [.15,.29,.025,.28,.34,.015,.43,.35,-.035,.105],
-    [-.035,.405,.045,-.05,.57,.02,-.08,.76,-.01,.135],
-    [.10,.37,.07,.16,.49,.09,.23,.59,.085,.115],
-    [-.10,.36,.15,-.12,.32,.23,-.074,.238,.239,.08],
-    [.06,.38,.15,.10,.33,.23,.155,.270,.226,.087]
+    [-.035,.405,.045,-.096,.60,.035,-.17,.72,.005,.129],
+    [.10,.37,.07,.16,.49,.09,.25,.55,.065,.115],
+    [-.10,.36,.15,-.18,.32,.254,-.132,.173,.24,.104],
+    [.035,.377,.16,.013,.300,.251,.064,.209,.243,.083],
+    [.14,.33,.14,.217,.285,.189,.197,.181,.169,.072]
   ];
-  const p=[],shade=[],idx=[],sides=6,steps=4;
+  const p=[],shade=[],idx=[],sides=8,steps=6;
   const vec=(x,y,z)=>new T.Vector3(x,y,z);
   for(const [x,y,z,cx,cy,cz,ex,ey,ez,r] of tiers){
     const a=vec(x,y,z),b=vec(cx,cy,cz),c=vec(ex,ey,ez),base=p.length/3;
@@ -166,14 +168,16 @@ function shapedCrown(T,hero,head,attach) {
       for(let i=0;i<sides;i++){
         const angle=i*Math.PI*2/sides,cs=Math.cos(angle),sn=Math.sin(angle);
         const v=mid.clone().addScaledVector(cross,rad*sn).addScaledVector(front,rad*.62*cs);p.push(v.x,v.y,v.z);
-        const vLight=(white?.55:.52)+.33*(cs*.5+.5)+.14*t;shade.push(vLight*.96,vLight,Math.min(1.02,vLight*1.08));
+        const stripe=(angle<Math.PI?angle:angle-2*Math.PI)-.45;
+        const ridge=Math.exp(-stripe*stripe/.42)*Math.sin(Math.PI*t);
+        const vLight=(white?.48:.40)+.32*(cs*.5+.5)+.13*t+.22*ridge;shade.push(vLight*.96,vLight,Math.min(1.03,vLight*1.10));
         if(j){const k=base+(j-1)*sides+i,n=base+(j-1)*sides+(i+1)%sides;idx.push(k,n,k+sides,n,n+sides,k+sides);}
       }
     }
   }
   const g=new T.BufferGeometry();g.setIndex(idx);
   g.setAttribute("position",new T.Float32BufferAttribute(p,3));g.setAttribute("color",new T.Float32BufferAttribute(shade,3));
-  g.computeVertexNormals();g.userData.fieldGloss=white?.43:.50;attach(head,g,white?0xe3e8ef:0x293047);
+  g.computeVertexNormals();g.userData.fieldGloss=white?.39:.39;attach(head,g,white?0xe3e8ef:0x30394c);
 }
 export function sweptLocks(T,hero,head,attach) {
   if(hero===2||hero===3){shapedCrown(T,hero,head,attach);return;}
@@ -207,4 +211,95 @@ export function sweptLocks(T,hero,head,attach) {
     lock([x,.405,.125],[x+angle,.277+(i%2)*.036,.200+.04*(1-Math.abs(i-1))],.078,i+1);
   }
   for(const b of groups)attach(head,geometry(T,b.p,b.ix),b.colour);
+}
+
+// Garment panels have shaped hems and neck openings; they follow the torso into the shared skin.
+export function sewnHeroDetails(T,hero,hip,head,add) {
+  function panel(parent,rows,col,gloss=.16){
+    const p=[],ix=[],depth=rows[0].length;
+    for(const row of rows)for(const v of row)p.push(...v);
+    for(let j=0;j<rows.length-1;j++)for(let i=0;i<depth-1;i++){
+      const a=j*depth+i;ix.push(a,a+depth,a+1,a+1,a+depth,a+depth+1);
+    }
+    const g=geometry(T,p,ix);g.userData.fieldGloss=gloss;add(parent,g,col);
+  }
+  function seam(parent,pts,r,col){
+    const curve=new T.CatmullRomCurve3(pts.map(p=>new T.Vector3(...p)));
+    const g=new T.TubeGeometry(curve,Math.max(6,pts.length*2),r,5,false);
+    g.userData.fieldGloss=.21;add(parent,g,col);
+  }
+  function ring(parent,levels,col,count=28,gloss=.18){
+    const rows=levels.map(([y,rx,rz,z])=>Array.from({length:count+1},(_,j)=>{
+      const a=j/count*Math.PI*2;return [rx*Math.sin(a),y,rz*Math.cos(a)+(z||0)];
+    }));
+    // The ring is viewed from outside, using clockwise rows top to bottom.
+    panel(parent,rows,col,gloss);
+  }
+  for(const side of [-1,1]){
+    const points=[[.246,.146,.017],[.257,.15,.003],[.26,.139,-.016],[.258,.119,-.025],[.25,.103,-.014]];
+    seam(head,points.map(([x,y,z])=>[side*x,y,z]),.005,0xb78770);
+  }
+  if(hero!==2){
+    ring(hip,[[.86,.111,.111,.008],[.825,.151,.134,.006],[.767,.206,.177,.003]],
+      hero===0?0x334957:hero===3?0x294858:0xeabd94);
+  }
+  if(hero===0){
+    ring(hip,[[.83,.137,.126,.005],[.804,.184,.161,.006],[.758,.236,.194,.004],[.724,.292,.209,.002]],0x394c57);
+    seam(hip,[[-.168,.801,.071],[-.12,.776,.143],[0,.769,.185],[.12,.776,.143],[.168,.801,.071]],.007,0x78888a);
+    const plateZ=x=>.259*Math.sqrt(1-(x/.273)**2);
+    const plaque=[[.329,.120],[.319,.146],[.251,.146],[.236,.117]].map(([y,half])=>
+      Array.from({length:9},(_,i)=>{const x=(i/4-1)*half;return [x,y,plateZ(x)];}));
+    panel(head,plaque,0xa8bac0,.72);
+    for(const x of [-.123,.123]){
+      const pin=new T.SphereGeometry(.009,7,4);pin.userData.fieldGloss=.82;
+      const rivet=add(head,pin,0x637479);rivet.position.set(x,.282,plateZ(x)+.002);
+    }
+    for(const s of [-1,1]){
+      const cap=[[[s*.202,.732,.05],[s*.26,.745,.11],[s*.33,.705,.105]],
+        [[s*.259,.692,.204],[s*.329,.686,.205],[s*.408,.644,.153]],
+        [[s*.288,.59,.184],[s*.366,.58,.178],[s*.424,.57,.100]]];
+      if(s<0)cap.forEach(row=>row.reverse());
+      panel(hip,cap,0xbd713c);seam(hip,[[s*.24,.708,.159],[s*.315,.69,.215],[s*.385,.655,.184]],.009,0xe6a463);
+    }
+    seam(head,[[-.097,.279,.257],[-.073,.283,.264],[-.029,.306,.268],[.014,.311,.269],[.034,.294,.27],[.018,.275,.269],[-.016,.279,.268],[-.021,.295,.268],[-.003,.300,.27]],.0064,0x3f4b4b);
+    seam(head,[[-.095,.266,.257],[-.073,.283,.266],[-.050,.268,.266],[.052,.268,.263]],.006,0x445250);
+  }else if(hero===3){
+    for(const s of [-1,1]){
+      const apex=s===1?-.077:.068,rows=[
+        [[s*.105,.791,.158],[s*.166,.782,.184],[s*.229,.745,.168]],
+        [[s*.036,.651,.270],[s*.113,.657,.276],[s*.176,.666,.249]],
+        [[apex,.444,.261],[apex+s*.047,.487,.276],[apex+s*.102,.545,.268]]
+      ];
+      if(s<0)rows.forEach(row=>row.reverse());panel(hip,rows,0x2f4f63);
+      seam(hip,[[s*.195,.747,.190],[s*.135,.65,.267],[apex+s*.055,.495,.271]],.0065,0x6b8490);
+    }
+    seam(hip,[[-.29,.31,.171],[-.17,.33,.256],[.09,.416,.274]],.008,0xb7784b);
+  }else if(hero===4){
+    // A red vest wraps around an actual, continuous chest and opens at the clavicles.
+    for(const s of [-1,1]){
+      const levels=[[.745,.19,.29,.17],[.652,.132,.344,.224],[.48,.11,.325,.234],[.27,.108,.30,.221],[.044,.15,.26,.196],[-.042,.173,.223,.160]];
+      const rows=levels.map(([y,edge,width,front])=>[[s*edge,y,front+.026],[s*((edge+width)*.52),y+.009,front+.015],[s*width,y-.005,.055],[s*width*.91,y-.004,-.123]]);
+      if(s>0)rows.forEach(row=>row.reverse());panel(hip,rows,0xba4140);
+      seam(hip,levels.map(([y,edge,,front])=>[s*edge,y,front+.028]),.009,0xe08b64);
+    }
+    const hat=[];
+    for(const [rad,base] of [[.256,.355],[.34,.345],[.407,.339],[.478,.349],[.485,.346],[.444,.331],[.30,.325]]){
+      hat.push(Array.from({length:43},(_,j)=>{const a=j/42*Math.PI*2;
+        const front=Math.max(0,Math.cos(a));
+        return [rad*Math.sin(a),base+(rad-.25)*(.139*Math.cos(2*a-.6)+.060*Math.sin(a)+.27*front),rad*(.89-.15*front)*Math.cos(a)];}));
+    }
+    panel(head,hat,0xddad60,.30);
+    ring(head,[[.578,.025,.024,-.015],[.571,.166,.145,-.015],[.555,.236,.206,-.012],
+      [.525,.266,.237,-.009],[.464,.277,.249,-.006],[.406,.287,.260,-.004],[.37,.305,.271,-.002]],0xe4b961,40,.27);
+    ring(head,[[.440,.283,.254,-.006],[.433,.288,.26,-.004],[.377,.304,.273,-.002],[.368,.304,.273,-.002]],0xb34444,40,.23);
+    for(let i=0;i<3;i++){
+      const r=.305+i*.056,points=[];
+      for(let j=0;j<=32;j++){const a=j/32*Math.PI*2;
+        const front=Math.max(0,Math.cos(a));
+        points.push([r*Math.sin(a),.351+(r-.25)*(.139*Math.cos(2*a-.6)+.060*Math.sin(a)+.27*front),r*(.89-.15*front)*Math.cos(a)]);}
+      seam(head,points,.0028,0xbc8949);
+    }
+  }else if(hero===2){
+    seam(hip,[[-.115,.745,.185],[-.071,.718,.221],[.06,.709,.229],[.197,.752,.173]],.008,0x758294);
+  }
 }
