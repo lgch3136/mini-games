@@ -14,3 +14,83 @@
 @media(max-width:750px){#routeHint{top:108px;left:7px;transform:none;width:calc(100vw - 128px);font-size:11px}#routeHint div{padding:1px 5px;flex:1}#routeHint b{font-size:11px}#routeHint small{font-size:9px}#minimap{width:110px;height:66px}}
 
 #routeHint{border-inline-start:3px solid #79dac0;background:#102633ea;padding:.45em .65em}
+
+/* Screen-space combat lettering follows the positions negotiated with the 3D bars. */
+#battle-readouts {
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:0;
+}
+.world-name,.self-vitals {
+  position:absolute;
+  top:0;
+  left:0;
+  display:flex;
+  align-items:center;
+  pointer-events:none;
+  user-select:none;
+}
+.world-name[hidden],.self-vitals[hidden] {display:none}
+.world-name {
+  justify-content:center;
+  gap:.24em;
+  white-space:nowrap;
+  line-height:1;
+  font-weight:700;
+  color:#fff5d6;
+  -webkit-text-stroke:1.75px #243432;
+  paint-order:stroke fill;
+  text-shadow:0 1px 1px #192528;
+}
+.world-name::before {
+  content:"";
+  width:.42em;
+  height:.42em;
+  flex:none;
+  border:1px solid #344539;
+  background:#9fe9ef;
+  border-radius:50%;
+}
+.world-name.self::before {border-radius:1px;transform:rotate(45deg);background:#ffdb78}
+.world-name.foe {color:#ffe7da}
+.world-name.foe::before {
+  width:0;height:0;
+  border:0;
+  border-left:.29em solid transparent;
+  border-right:.29em solid transparent;
+  border-top:.51em solid #ffb19a;
+  border-radius:0;
+  background:transparent;
+  filter:drop-shadow(0 1px 0 #2c2725);
+}
+.vitals-level {
+  display:grid;
+  place-items:center;
+  border:1px solid #ddc78a;
+  border-radius:50%;
+  color:#fff5d9;
+  background:linear-gradient(#405047,#182227);
+  line-height:1;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  box-shadow:0 1px 1px #1925289c;
+}
+.vitals-track {
+  position:relative;
+  overflow:hidden;
+  border:1px solid #26382e;
+  border-radius:1.5px;
+  background:#192329;
+  box-shadow:0 1px 1px #192528a6;
+}
+.vitals-track i,.vitals-track::after {position:absolute;inset:0;transform-origin:left center}
+.vitals-track::after {
+  content:"";
+  background:repeating-linear-gradient(90deg,transparent 0 calc(25% - 1px),#35492588 calc(25% - 1px) 25%);
+}
+.vitals-trail {background:#f4b95e}
+.vitals-shield {background:repeating-linear-gradient(135deg,#d0dfe1 0 2px,#9abccb 2px 4px)}
+.vitals-life {background:linear-gradient(#d3eb8c,#a2cf60 45%,#66974b)}
+.vitals-life.hit {background:linear-gradient(#fff6c5,#cde99a 70%,#88ac67)}

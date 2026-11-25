@@ -1,40 +1,58 @@
-// The same atlas supplies the name, contrast plate, team shape and player mark in one draw.
-const atlases=new WeakMap();
-function nameAtlas(T,names) {
-  if(atlases.has(T))return atlases.get(T);
-  const width=192,height=52,canvas=document.createElement("canvas");
-  canvas.width=width*5;canvas.height=height*3;
-  const ctx=canvas.getContext("2d");
-  if(!ctx)throw Error("无法生成角色名牌");
-  for(let row=0;row<3;row++)for(let hero=0;hero<5;hero++){
-    const x=hero*width,y=row*height,enemy=row===1,self=row===2;
-    ctx.save();ctx.translate(x,y);ctx.lineJoin="round";ctx.textAlign="center";ctx.textBaseline="middle";
-    const name=names[hero];
-    ctx.font='600 34px "Noto Sans CJK SC","PingFang SC",sans-serif';
-    const nameWidth=Math.min(147,ctx.measureText(name).width);
-    const markerX=(width-nameWidth-17)/2;
-    ctx.strokeStyle="rgba(25,34,36,.94)";ctx.lineWidth=5;
-    ctx.fillStyle=enemy?"#ffc0ac":self?"#ffde83":"#9fe9ef";ctx.beginPath();
-    if(self){ctx.moveTo(markerX+6,16);ctx.lineTo(markerX+13,25);ctx.lineTo(markerX+6,34);ctx.lineTo(markerX-1,25);}
-    else if(enemy){ctx.moveTo(markerX,18);ctx.lineTo(markerX+13,18);ctx.lineTo(markerX+6.5,32);}
-    else ctx.arc(markerX+6,25,5.6,0,Math.PI*2);
-    ctx.closePath();ctx.stroke();ctx.fill();
-    const nameX=markerX+18+nameWidth/2;
-    ctx.lineWidth=5.5;ctx.strokeText(name,nameX,27,nameWidth);
-    ctx.fillStyle=enemy?"#ffe6da":"#fff5d6";ctx.fillText(name,nameX,27,nameWidth);ctx.restore();
+// Nameplates are display-space lettering. The player's own level and health
+// share that resolution; other units retain the depth-tested bar in the world.
+export function heroTag(layer,name,team,player){
+  const append=(parent,tag,style)=>{
+    const node=document.createElement(tag);node.className=style;parent.appendChild(node);return node;
+  };
+  const label=append(layer,"span","world-name "+(player?"self":team===1?"foe":"ally"));
+  label.textContent=name;label.hidden=true;
+  let plate,digit,track,trail,shield,life;
+  if(player){
+    plate=append(layer,"span","self-vitals");plate.hidden=true;
+    digit=append(plate,"b","vitals-level");track=append(plate,"span","vitals-track");
+    trail=append(track,"i","vitals-trail");shield=append(track,"i","vitals-shield");life=append(track,"i","vitals-life");
   }
-  const map=new T.CanvasTexture(canvas);
-  map.colorSpace=T.SRGBColorSpace;map.generateMipmaps=false;map.minFilter=T.LinearFilter;map.magFilter=T.LinearFilter;
-  atlases.set(T,map);return map;
-}
-export function heroTag(T,names,hero,team,player) {
-  const column=Math.max(0,Math.min(4,hero|0)),row=player?2:team===1?1:0;
-  const group=new T.Group(),geometry=new T.PlaneGeometry(2.28,.62),uv=geometry.attributes.uv;
-  for(let i=0;i<uv.count;i++)uv.setXY(i,(column+uv.getX(i))/5,(2-row+uv.getY(i))/3);
-  const material=new T.MeshBasicMaterial({map:nameAtlas(T,names),transparent:true,depthWrite:false,depthTest:false,toneMapped:false});
-  const mesh=new T.Mesh(geometry,material);mesh.renderOrder=31;group.add(mesh);
-  return {group,faceCamera(camera){group.quaternion.copy(camera.quaternion);},
-    dispose(){group.removeFromParent();geometry.dispose();material.dispose();}};
+  let namePlaced=false,barPlaced=false;
+  function place(node,x,y,density){
+    const px=Math.round(x*density)/density,py=Math.round(y*density)/density;
+    if(node.screenX===px&&node.screenY===py)return;
+    node.screenX=px;node.screenY=py;node.style.transform="translate("+px+"px,"+py+"px)";
+  }
+  function dimension(node,property,value){
+    const px=Math.round(value*100)/100+"px";
+    if(node.style[property]!==px)node.style[property]=px;
+  }
+  function amount(node,fraction){
+    const value=Math.round(Math.min(1,Math.max(0,fraction))*10000)/10000;
+    if(node.fraction!==value){node.fraction=value;node.style.transform="scaleX("+value+")";}
+  }
+  // Reserve the native 9 px lettering, the team mark and its stroke at map zoom.
+  const minWidth=Math.ceil(9*(Array.from(name).length+.86)+3);
+  return {wanted:false,minWidth,
+    placeName(box,density){
+      namePlaced=true;place(label,box.left,box.top,density);
+      const height=box.bottom-box.top;
+      dimension(label,"width",box.right-box.left);dimension(label,"height",height);
+      dimension(label,"fontSize",Math.min(14,Math.max(9,height*.69)));
+    },
+    placeVitals(box,w,h,rank,hp,after,guard,flash,density){
+      if(!plate)return;
+      barPlaced=true;place(plate,box.left,box.top,density);
+      const badge=box.bottom-box.top;
+      dimension(digit,"width",badge);dimension(digit,"height",badge);
+      dimension(digit,"fontSize",Math.max(9,badge*.69));dimension(track,"width",w);dimension(track,"height",h);
+      const text=String(rank);if(digit.textContent!==text)digit.textContent=text;
+      amount(life,hp);amount(trail,after);amount(shield,guard);
+      const lit=flash>.16;if(life.classList.contains("hit")!==lit)life.classList.toggle("hit",lit);
+    },
+    suppressName(){namePlaced=false;},
+    paint(){
+      if(label.hidden===namePlaced)label.hidden=!namePlaced;
+      if(plate&&plate.hidden===barPlaced)plate.hidden=!barPlaced;
+      namePlaced=barPlaced=false;
+    },
+    dispose(){label.remove();plate?.remove();}
+  };
 }
 const awayPalette=[
   new Map([[15958566,0xcd543b],[15262669,0xbf573f]]),

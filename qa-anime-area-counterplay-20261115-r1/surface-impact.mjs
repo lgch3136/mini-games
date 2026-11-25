@@ -1,4 +1,4 @@
-import {towerCharge,towerMuzzleHeight} from "./river-keeps.mjs?v=canyon-tower-lamplight2";
+import {towerCharge,towerMuzzleHeight} from "./river-keeps.mjs?v=canyon-eaves-batch1";
 // One uniform belongs to each skinned hero; program code stays shared by all ten.
 // Surface character stays in the existing skinned draw. A coat absorbs light, skin keeps a soft shoulder, enamel catches a small crisp reflection.
 export function bindFigureFinish(shader,material){

@@ -1,7 +1,7 @@
-import {laneCompany} from "./lane-company.mjs?v=canyon-tower-lamplight2";
+import {laneCompany} from "./lane-company.mjs?v=canyon-eaves-batch1";
 export function makeWaveBatches(T,scene,heightAt,markFighter) {
   const company=laneCompany(T,scene,heightAt,markFighter);
-  return {start:company.start,draw:company.draw,reset:company.reset,dispose:company.dispose,
+  return {start:company.start,draw:company.draw,reset:company.reset,dispose:company.dispose,setTier:company.setTier,
     protect(box,canvas){company.protect(box,canvas.clientWidth,canvas.clientHeight);}};
 }
 // One camera-facing batch. The fill changes on the damage frame and the amber edge
@@ -142,7 +142,7 @@ export function unitBars(T,scene){
     size.h=phone?5.8:7;
     size.nameWidth=Math.min(width<620?Math.min(65,width*.20):79,2.28*pixel*root.scale.x);
   }
-  function draw(units,models,playerId,now,camera,width,height,level=1,bodyBox=null,faces=[],placeName=null){
+  function draw(units,models,playerId,now,camera,width,height,level=1,bodyBox=null,faces=[],displayDensity=1){
     if(now<priorTime)pool.clear();priorTime=now;
     reserved.length=0;if(bodyBox)reserved.push(bodyBox);
     for(const face of faces)reserved.push(face);
@@ -168,36 +168,42 @@ export function unitBars(T,scene){
       const badge=rank?size.h*2.12:u.kind==="camp"?size.h*1.87:0,outerH=Math.max(size.h,badge);
       const left=x-size.w*.5-badge,top=y-outerH*.5;
       const box=s.box;box.left=left;box.right=x+size.w*.5;box.top=top;box.bottom=y+outerH*.5;
-      if(box.right>0&&box.left<width&&box.bottom>0&&box.top<height&&unitPoint.z<1&&unitPoint.z>-1){
-        const showName=placeName&&model.identity?.group.visible;
-        const nameWidth=showName?size.nameWidth:0,nameHeight=nameWidth*.62/2.28;
-        const middle=(box.left+box.right)*.5,nameLeft=middle-nameWidth*.5;
-        const pair=s.pair;
-        const panelLeft=Math.min(left,nameLeft),panelTop=showName?top-nameHeight-2:top;
-        pair.left=panelLeft;pair.right=Math.max(box.right,middle+nameWidth*.5);
-        pair.top=panelTop;pair.bottom=box.bottom;
-        const edgeX=Math.max(0,1-pair.left)+Math.min(0,width-1-pair.right);
-        const edgeY=Math.max(0,1-pair.top)+Math.min(0,height-1-pair.bottom);
-        pair.left+=edgeX;pair.right+=edgeX;pair.top+=edgeY;pair.bottom+=edgeY;
-        const fits=placeClearBar(pair,reserved,width,height);
-        if(fits){
-          const dx=pair.left-panelLeft,dy=pair.top-panelTop;
-          box.left+=dx;box.right+=dx;box.top+=dy;box.bottom+=dy;
-          if(showName){
-            const name=s.name;name.left=nameLeft+dx;name.right=name.left+nameWidth;
-            name.top=pair.top;name.bottom=box.top-2;
-            placeName(model.identity,root,camera,width,height,name);
-          }
-          reserved.push(pair);
-        }else{
-          if(showName)model.identity.group.visible=false;
-          placeClearBar(box,reserved,width,height);reserved.push(box);
+      const onScreen=box.right>0&&box.left<width&&box.bottom>0&&box.top<height&&unitPoint.z<1&&unitPoint.z>-1;
+      if(!onScreen){seenRoots.delete(root);continue;}
+      const showName=model.identity?.wanted;
+      const nameWidth=showName?Math.max(size.nameWidth,model.identity.minWidth):0;
+      const nameHeight=showName?Math.max(12,nameWidth*.62/2.28):0;
+      const middle=(box.left+box.right)*.5,nameLeft=middle-nameWidth*.5;
+      const pair=s.pair;
+      const panelLeft=Math.min(left,nameLeft),panelTop=showName?top-nameHeight-2:top;
+      pair.left=panelLeft;pair.right=Math.max(box.right,middle+nameWidth*.5);
+      pair.top=panelTop;pair.bottom=box.bottom;
+      const edgeX=Math.max(0,1-pair.left)+Math.min(0,width-1-pair.right);
+      const edgeY=Math.max(0,1-pair.top)+Math.min(0,height-1-pair.bottom);
+      pair.left+=edgeX;pair.right+=edgeX;pair.top+=edgeY;pair.bottom+=edgeY;
+      const fits=placeClearBar(pair,reserved,width,height);
+      if(fits){
+        const dx=pair.left-panelLeft,dy=pair.top-panelTop;
+        box.left+=dx;box.right+=dx;box.top+=dy;box.bottom+=dy;
+        if(showName){
+          const name=s.name;name.left=nameLeft+dx;name.right=name.left+nameWidth;
+          name.top=pair.top;name.bottom=box.top-2;
+          model.identity.placeName(name,displayDensity);
         }
-      }else if(model.identity)model.identity.group.visible=false;
+        reserved.push(pair);
+      }else{
+        placeClearBar(box,reserved,width,height);reserved.push(box);
+      }
       seenRoots.set(root,s);
+      const hp=u.hp/total,after=Math.min(1,(Math.max(u.hp,s.trail)+shield)/total);
+      const guard=(u.hp+shield)/total,flash=Math.max(0,1-(now-s.struck)/.14);
+      if(u.id===playerId&&model.identity){
+        model.identity.placeVitals(box,size.w,size.h,rank,hp,after,guard,flash,displayDensity);
+        continue;
+      }
       nudge.setXY(used,box.left-left,top-box.top);
       mesh.setMatrixAt(used,matrix);
-      life.setXYZW(used,u.hp/total,Math.min(1,(Math.max(u.hp,s.trail)+shield)/total),(u.hp+shield)/total,Math.max(0,1-(now-s.struck)/.14));
+      life.setXYZW(used,hp,after,guard,flash);
       const role=u.id===playerId?0:u.team===0?1:u.team===1?2:u.kind!=="camp"?3:u.species==="boar"?4:5;
       metrics.setXYZW(used,size.w,size.h,role,rank);used++;
     }

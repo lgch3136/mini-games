@@ -34,20 +34,35 @@ function rasterHeight(parts,project,record,casts=null){
 // down the tile. B controls the glaze, A is the narrow crevice at the lap.
 function tileRelief(T){
   const size=64,bytes=new Uint8Array(size*size*4);
-  const crown=u=>(.5+.5*Math.cos(2*Math.PI*(u-.24)))**3;
-  const lap=v=>{
-    const phase=v-Math.floor(v),edge=clamp((phase-.86)/.14,0,1);
-    return phase*(.54+.46*phase)*(1-edge*edge*(3-2*edge));
-  };
-  const height=(u,v)=>.049*crown(u)+.028*lap(v)*(.77+.23*crown(u));
+  const phase=v=>v-Math.floor(v);
+  const smooth=x=>{const t=clamp(x,0,1);return t*t*(3-2*t);};
+  const across=u=>Math.abs(phase(u-.24+.5)-.5);
+  // The mouth flares downhill over the narrower head of the next barrel.
+  // Pan tiles in the channel have their own, offset overlap.
+  function barrel(u,v){
+    const row=phase(v);
+    const taper=row*(1-smooth((row-.88)/.12));
+    const x=clamp(across(u)/(.219+.075*taper),0,1);
+    return (.5+.5*Math.cos(Math.PI*x))**.84;
+  }
+  function overlap(v){
+    const t=phase(v);
+    return smooth(t)* (1-smooth((t-.87)/.13));
+  }
+  function height(u,v){
+    const arch=barrel(u,v);
+    return .073*arch+.049*overlap(v)*arch+.039*overlap(v+.34)*(1-arch);
+  }
+  const seam=t=>{const distance=(phase(t+.475)-.5)/.090;return Math.exp(-distance*distance);};
   const h=.5/size,channel=v=>Math.round(255*clamp(v,0,1));
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
     const u=(x+.5)/size,v=(y+.5)/size,offset=4*(y*size+x);
     bytes[offset]=channel(.5-.5*(height(u+h,v)-height(u-h,v))/(2*h));
     bytes[offset+1]=channel(.5-.5*(height(u,v+h)-height(u,v-h))/(2*h));
-    bytes[offset+2]=channel(.35+.50*crown(u)+.12*Math.cos(2*Math.PI*v));
-    const joint=1-Math.cos(2*Math.PI*(v-.025));
-    bytes[offset+3]=channel(1-.82*Math.exp(-joint*18));
+    const arch=barrel(u,v);
+    const joint=arch*seam(v)+(1-arch)*seam(v+.34);
+    bytes[offset+2]=channel(.19+.60*arch+.15*overlap(v)-.17*joint);
+    bytes[offset+3]=channel(1-.74*joint);
   }
   const map=new T.DataTexture(bytes,size,size,T.RGBAFormat);
   map.wrapS=map.wrapT=T.RepeatWrapping;map.magFilter=T.LinearFilter;
@@ -66,29 +81,39 @@ export function keepRelief(T){
     rasterHeight(parts,(x,y,z,u,v,h,i)=>{
       u[i]=(x+dirX*y-left)/span*(side-1);
       v[i]=(z+dirZ*y-back)/span*(side-1);h[i]=y;
-    },(n,h)=>{heights[n]=Math.max(heights[n],h);if(h>0&&h<.32)foot[n]=1;});
+    },(n,h)=>{heights[n]=Math.max(heights[n],h);});
+    // Contact sits directly beneath the lower masonry. A sun-projected mask
+    // would slide it away from the actual foot of the building.
+    rasterHeight(parts,(x,y,z,u,v,h,i)=>{
+      u[i]=(x-left)/span*(side-1);v[i]=(z-back)/span*(side-1);h[i]=y;
+    },n=>{foot[n]=1;},(part,j)=>{
+      const p=parts[part];return Math.max(p[j+1],p[j+4],p[j+7])<.65;
+    });
     rasterHeight(parts,(x,y,z,u,v,h,i)=>{
       u[i]=(dot(fillAcross,x,y,z)+3)/6*(side-1);
       v[i]=(dot(fillUp,x,y,z)+1)/6*(side-1);h[i]=dot(fillRay,x,y,z);
     },(n,h)=>{fillDepth[n]=Math.max(fillDepth[n],h);});
     const tx=slot%columns*side,tz=Math.floor(slot/columns)*side;
     const kernel=[1,4,6,4,1],taps=[];
-    for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)taps.push([i,j,kernel[i+2]*kernel[j+2]]);
+    const near=[0,1,3,1,0];
+    for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)taps.push([i,j,kernel[i+2]*kernel[j+2],near[i+2]*near[j+2]]);
     for(let z=0;z<side;z++)for(let x=0;x<side;x++){
-      const h=heights[z*side+x],index=4*((z+tz)*width+x+tx);let cast=0,contact=0;
-      for(const [dx,dz,w] of taps){
+      const h=heights[z*side+x],index=4*((z+tz)*width+x+tx);let cast=0,sharp=0,blockerSum=0,contact=0;
+      for(const [dx,dz,w,close] of taps){
         const k=clamp(z+dz,0,side-1)*side+clamp(x+dx,0,side-1);
-        if(heights[k]>.02)cast+=w;
+        if(heights[k]>.02){cast+=w;sharp+=close;blockerSum+=heights[k]*w;}
         contact+=w*foot[k];
       }
       bytes[index]=Math.round(255*h/ceiling);
-      bytes[index+1]=Math.round(255*cast/256);bytes[index+2]=Math.round(255*contact/256);
+      const softness=cast?clamp((blockerSum/cast-.18)/3.5,.08,.76):0;
+      bytes[index+1]=Math.round(255*((1-softness)*sharp/25+softness*cast/256));
+      bytes[index+2]=Math.round(255*contact/256);
       bytes[index+3]=Math.round(255*clamp((fillDepth[z*side+x]+3.5)/8,0,1));
     }
     ready.add(slot);texture.needsUpdate=true;
   }
   function shadeCorners(geometry,slot){
-    const {position,normal,color,keepMaterial}=geometry.attributes;
+    const {position,color,keepMaterial}=geometry.attributes;
     const tileX=slot%columns*side,tileY=Math.floor(slot/columns)*side;
     function readDepth(u,v,channel){
       u=clamp(u,0,1)*(side-1);v=clamp(v,0,1)*(side-1);
@@ -106,15 +131,17 @@ export function keepRelief(T){
     for(let i=0;i<position.count;i++){
       // Glazed tiles keep their view-dependent specular response. Bake
       // ambient occlusion only into the diffuse colour of fittings and walls.
-      if(keepMaterial.getX(i)>=10)continue;
       const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
-      const sun=readDepth((x+dirX*y-left)/span,(z+dirZ*y-back)/span,0)*ceiling;
       const rim=readDepth((dot(fillAcross,x,y,z)+3)/6,(dot(fillUp,x,y,z)+1)/6,3)*8-3.5;
-      const overhang=obscured(sun-y),sideCover=obscured(rim-dot(fillRay,x,y,z));
-      const facing=clamp(dot(fillRay,normal.getX(i),normal.getY(i),normal.getZ(i)),0,1);
-      const recess=overhang*(.40+.60*sideCover),cool=sideCover*facing;
-      color.setXYZ(i,color.getX(i)*(1-.31*recess-.04*cool),
-        color.getY(i)*(1-.35*recess-.09*cool),color.getZ(i)*(1-.38*recess-.19*cool));
+      const sideCover=obscured(rim-dot(fillRay,x,y,z)),kind=keepMaterial.getX(i);
+      // Two bytes share the fractional part of this exact Float32 value. The
+      // upper byte is reserved for the lantern. The lower byte blocks the fill.
+      keepMaterial.setX(i,kind+Math.round(255*sideCover)/131072);
+      if(kind>=10)continue;
+      const sun=readDepth((x+dirX*y-left)/span,(z+dirZ*y-back)/span,0)*ceiling;
+      const recess=obscured(sun-y)*(.40+.60*sideCover);
+      color.setXYZ(i,color.getX(i)*(1-.31*recess),
+        color.getY(i)*(1-.35*recess),color.getZ(i)*(1-.38*recess));
     }
   }
   // Look down from the luminous shoulder. Reciprocal depth interpolates linearly
@@ -137,7 +164,7 @@ export function keepRelief(T){
     const {y,depth,centre,scale}=lamp;
     for(let i=0;i<position.count;i++){
       const kind=keepMaterial.getX(i),dy=y-position.getY(i);
-      if(kind===7||dy<=.015)continue;
+      if(Math.floor(kind)===7||dy<=.015)continue;
       const x=position.getX(i),z=position.getZ(i),distance=Math.hypot(x,dy,z);
       const facing=(-x*normal.getX(i)+dy*normal.getY(i)-z*normal.getZ(i))/distance;
       if(facing<=0)continue;
@@ -151,8 +178,7 @@ export function keepRelief(T){
       const near=(depth[n]<=threshold?1-fx:0)+(depth[n+1]<=threshold?fx:0);
       const far=(depth[n+side]<=threshold?1-fx:0)+(depth[n+side+1]<=threshold?fx:0);
       const reach=(near*(1-fz)+far*fz)*Math.sqrt(facing)/(1+1.18*distance*distance);
-      // The integer is the material/roof selector. Reuse its fractional bits so the
-      // standing, falling and stencil meshes keep exactly the same vertex layout.
+      // Add the lamp byte without disturbing the blue-light visibility beneath it.
       keepMaterial.setX(i,kind+Math.round(255*reach)/512);
     }
   }
@@ -168,17 +194,23 @@ vec2 keepTile(vec2 ground,float slot){
 export function bindKeepFinish(T,material,relief,slot,lamp={value:0},team=0){
   const uniforms={keepDepth:{value:relief.texture},keepTileFinish:{value:relief.tile},keepSlot:{value:slot},
     keepCharge:lamp,keepLampTint:{value:new T.Color(team?"#ff9873":"#85e4e0")}};
-  const vary='varying float keepKind,keepLampReach;varying vec3 keepLocal,keepFace,keepAcross;varying vec2 keepUv;\n';
+  const vary='varying float keepKind,keepLampReach;varying vec3 keepLocal,keepFace,keepAcross,keepTileData;\n';
   const getSun='getDirectionalLightInfo( directionalLight, directLight );';
   const lights=T.ShaderChunk.lights_fragment_begin.replace(getSun,`${getSun}
     #if UNROLLED_LOOP_INDEX == 0 && (!defined(USE_SHADOWMAP) || NUM_DIR_LIGHT_SHADOWS == 0)
       directLight.color*=mix(vec3(1.),vec3(.27,.32,.39),shelter);
+    #endif
+    #if UNROLLED_LOOP_INDEX == 1
+      directLight.color*=1.-keepTileData.z;
     #endif`);
   material.onBeforeCompile=s=>{
     Object.assign(s.uniforms,uniforms);
     s.vertexShader='attribute float keepMaterial;'+vary+s.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
       float finish=mod(floor(keepMaterial),16.);keepKind=finish>=10.?1.:finish;
-      keepLampReach=fract(keepMaterial)*(512./255.);keepLocal=position;keepFace=normal;keepUv=uv;
+      float packedLight=floor(fract(keepMaterial)*131072.+.5);
+      keepLampReach=floor(packedLight/256.)/255.;
+      keepTileData=vec3(uv,mod(packedLight,256.)/255.);
+      keepLocal=position;keepFace=normal;
       float panel=finish-10.;
       vec3 transverse=panel<.5?vec3(1.,0.,0.):panel<1.5?vec3(0.,0.,1.):panel<2.5?vec3(-1.,0.,0.):vec3(0.,0.,-1.);
       keepAcross=mat3(modelViewMatrix)*transverse;`);
@@ -193,10 +225,10 @@ export function bindKeepFinish(T,material,relief,slot,lamp={value:0},team=0){
       vec4 tileSample=vec4(.5,.5,.5,1.);
       if(glaze){
         // Remove the diffuse atlas gutter. Both teams share the same ceramic relief.
-        vec2 cell=fract(keepUv*vec2(2.,4.));cell.y=1.-cell.y;
+        vec2 cell=fract(keepTileData.xy*vec2(2.,4.));cell.y=1.-cell.y;
         vec2 courses=(cell-.009)/.982*vec2(10.,6.);
         tileSample=texture2D(keepTileFinish,courses);
-        diffuseColor.rgb*=mix(.71,1.,tileSample.a);
+        diffuseColor.rgb*=mix(.56,1.,tileSample.a);
       }
       if(abs(keepKind-5.)<.25 && abs(keepFace.y)<.8){
         float course=keepLocal.y/.35+.15;
@@ -219,9 +251,9 @@ export function bindKeepFinish(T,material,relief,slot,lamp={value:0},team=0){
       }`);
     s.fragmentShader=s.fragmentShader.replace('#include <lights_phong_fragment>',`#include <lights_phong_fragment>
       bool brass=abs(keepKind-3.)<.25,wood=abs(keepKind-2.)<.25,trim=abs(keepKind-6.)<.25;
-      material.specularColor=glaze?vec3(.050,.060,.068):brass?vec3(.28,.17,.065):
+      material.specularColor=glaze?mix(vec3(.028,.038,.044),vec3(.098,.116,.12),tileSample.b):brass?vec3(.28,.17,.065):
         wood?vec3(.026,.018,.012):trim?vec3(.045,.052,.05):vec3(.011);
-      material.specularShininess=glaze?mix(32.,62.,tileSample.b):brass?54.:wood?15.:trim?35.:8.;
+      material.specularShininess=glaze?mix(24.,76.,tileSample.b):brass?54.:wood?15.:trim?35.:8.;
       vec2 ray=keepLocal.xz+vec2(.43333333,-.33333333)*keepLocal.y;
       float blocker=texture2D(keepDepth,keepTile(ray,keepSlot)).r*5.1;
       float shelter=smoothstep(.095,.26,blocker-keepLocal.y);`);
@@ -251,7 +283,7 @@ export function bindKeepFinish(T,material,relief,slot,lamp={value:0},team=0){
       if(brass)response+=vec3(.49,.37,.21);
       reflectedLight.directDiffuse+=glow*keepLampTint*response*2.65;`);
   };
-  material.customProgramCacheKey=()=>'keep-lens-spill-v2';
+  material.customProgramCacheKey=()=>'keep-overlapping-barrels-v1';
 }
 
 // The ground uses the same footprint as the surface shadow test. Static vertices follow
@@ -264,12 +296,17 @@ export function keepFloorShadows(T,scene,floor,relief){
   const geo=new T.BufferGeometry();geo.setAttribute("position",pos);geo.setAttribute("uv",uv);geo.setIndex(index);geo.setDrawRange(0,0);
   const uniforms={depthSheet:{value:relief.texture},shadowAmount:{value:1}};
   const mat=new T.ShaderMaterial({uniforms,transparent:true,depthWrite:false,side:T.DoubleSide,toneMapped:false,
+    blending:T.CustomBlending,blendEquation:T.AddEquation,blendSrc:T.DstColorFactor,blendDst:T.ZeroFactor,
+    blendSrcAlpha:T.ZeroFactor,blendDstAlpha:T.OneFactor,
     vertexShader:"varying vec2 vShadowUv;void main(){vShadowUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
     fragmentShader:`uniform sampler2D depthSheet;uniform float shadowAmount;varying vec2 vShadowUv;
     void main(){vec3 shape=texture2D(depthSheet,vShadowUv).rgb;
-      float opacity=shadowAmount*.39*shape.g+.19*shape.b;if(opacity<.009)discard;
-      gl_FragColor=vec4(.066,.105,.15,min(.62,opacity));
-      #include <colorspace_fragment>
+      float sunCover=shadowAmount*shape.g,contact=shape.b;
+      if(max(sunCover,contact)<.009)discard;
+      // Transmittance in framebuffer space. The receiver keeps its stone
+      // pattern and a dark paving joint can never turn lighter in shade.
+      vec3 through=mix(vec3(1.),vec3(.67,.73,.81),sunCover)*mix(vec3(1.),vec3(.75,.79,.84),contact);
+      gl_FragColor=vec4(through,1.);
     }`});
   const mesh=new T.Mesh(geo,mat);mesh.frustumCulled=false;mesh.renderOrder=-1;scene.add(mesh);
   let entries=[],mask=-1;

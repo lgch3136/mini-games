@@ -1,6 +1,6 @@
 import {streams,routes,along,measure,floorHeight} from "./estuary-map.mjs?v=canyon-bank-grove2";
-import {addUv,slate} from "./field-architecture.mjs?v=canyon-tower-lamplight2";
-import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
+import {addUv,slate} from "./field-architecture.mjs?v=canyon-eaves-batch1";
+import {fieldVisibility} from "./field-visibility.mjs?v=canyon-eaves-batch1";
 
 const wave=(a,b)=>.5+.5*Math.sin(a*8.346+b*13.36);
 export function forEachRiverRock(visit){

@@ -1,4 +1,4 @@
-import {keepRelief} from "./keep-light.mjs?v=canyon-tower-lamplight2";
+import {keepRelief} from "./keep-light.mjs?v=canyon-eaves-batch1";
 // One sheet supplies sunlit limestone, jade tile, lacquer, paving and the red team's tile dye.
 export const stone=0,jadeTile=1,timber=2,paving=3,plain=4,clayTile=5,slate=6,flagFace=7;
 export function addUv(array,cell,u,v){
@@ -39,14 +39,14 @@ export function indexStoneFaces(T,geometry){
 export function architectureArt(T){
   const blank=new T.DataTexture(new Uint8Array([228,228,216,255]),1,1);
   blank.colorSpace=T.SRGBColorSpace;blank.needsUpdate=true;
-  const pending=new Set(),shade=keepRelief(T);
+  const pending=new Set(),shade=keepRelief(T),keepModels=new Map();
   let loading=null,closed=false,sheet=null,filterLevel=1;
   function bind(material){
     material.map=sheet||blank;
     if(!sheet&&!closed)pending.add(material);
     return material;
   }
-  return {bind,keepRelief:shade,filter(level){filterLevel=level;if(sheet&&sheet.anisotropy!==level){sheet.anisotropy=level;sheet.needsUpdate=true;}},start(){
+  return {bind,keepRelief:shade,keepModels,filter(level){filterLevel=level;if(sheet&&sheet.anisotropy!==level){sheet.anisotropy=level;sheet.needsUpdate=true;}},start(){
     if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/canyon-fired-tile.webp",import.meta.url).href).then(atlas=>{
       if(closed){atlas.dispose();return;}
       atlas.colorSpace=T.SRGBColorSpace;atlas.anisotropy=filterLevel;sheet=atlas;
@@ -54,5 +54,17 @@ export function architectureArt(T){
       pending.clear();blank.dispose();
     }).catch(()=>{});
     return loading;
-  },dispose(){closed=true;shade.dispose();pending.clear();if(sheet)sheet.dispose();else blank.dispose();}};
+  },dispose(){
+    closed=true;
+    for(const parts of keepModels.values()){
+      // The two collapse ranges borrow GPU buffers from the standing tower.
+      for(const range of [parts.wall,parts.roof]){
+        range.setIndex(null);
+        for(const name of Object.keys(range.attributes))range.deleteAttribute(name);
+        range.dispose();
+      }
+      parts.full.dispose();parts.ruin.dispose();
+    }
+    keepModels.clear();shade.dispose();pending.clear();if(sheet)sheet.dispose();else blank.dispose();
+  }};
 }

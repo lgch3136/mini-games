@@ -1,5 +1,5 @@
 import {actorStrides,footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
-import {bindImpact} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
+import {bindImpact} from "./surface-impact.mjs?v=canyon-eaves-batch1";
 import {paintedCheeks} from "./river-tailoring.mjs?v=canyon-keep-lit2";
 import {skullBand} from "./character-plates.mjs?v=canyon-clavicle1";
 import {elasticHands} from "./elastic-arm.mjs?v=canyon-bank-grove2";

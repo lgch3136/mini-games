@@ -2,8 +2,8 @@
 // vertex buffers, but stone establishes real depth before the fighters are drawn.
 import {garden,groundContact,riverbedHeight,stoneLandmarks} from "./estuary-map.mjs?v=canyon-bank-grove2";
 import {rockRings} from "./garden-stones.mjs?v=canyon-archway1";
-import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
-import {spellVertex} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
+import {fieldVisibility} from "./field-visibility.mjs?v=canyon-eaves-batch1";
+import {spellVertex} from "./surface-impact.mjs?v=canyon-eaves-batch1";
 import {sceneryOcclusion} from "./scenery-occlusion.mjs?v=canyon-eave-batch1";
 
 // The two halves are a pine spray and a willow spray. Alpha cuts out the actual
@@ -383,7 +383,7 @@ export function growRiverGarden(T,lighting,hasStencil=false){
   const solid=new T.Mesh(rockGeometry,rockMaterial);solid.name="实心岸石";solid.renderOrder=2.2;
   mesh.add(solid);
   const cover=sceneryOcclusion(T,mesh,stands,geo.index.array,groundContact,hasStencil);
-  const cullPlants=fieldVisibility(T,geo),cullRocks=fieldVisibility(T,rockGeometry);
+  const cullPlants=fieldVisibility(T,geo,3.75,.035),cullRocks=fieldVisibility(T,rockGeometry,3.75);
   mesh.userData.cull=frustum=>{cullRocks(frustum);cullPlants(frustum);};
   mesh.userData.markFighter=cover.mark;
   mesh.userData.sight=cover.update;

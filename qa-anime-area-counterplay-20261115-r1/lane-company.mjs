@@ -1,5 +1,5 @@
 import {footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
-import {spellVertex} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
+import {spellVertex} from "./surface-impact.mjs?v=canyon-eaves-batch1";
 const barVertex=`precision highp float;
 in vec3 position;in vec4 anchor;in vec2 life;uniform vec4 playerRect;
 uniform mat4 modelViewMatrix,projectionMatrix;out vec2 uv;flat out vec2 status;
@@ -31,7 +31,7 @@ void main(){
 
 // Static geometry for the three roles. Each vertex follows one articulated part.
 // Both factions reuse these index buffers, changing only cloth dye at draw time.
-function marchingModel(T,role) {
+function marchingModel(T,role,compact=false) {
   const position=[],normal=[],colour=[],binding=[],indices=[];
   const palette=new Map(),m=new T.Matrix4(),q=new T.Quaternion(),v=new T.Vector3(),n=new T.Vector3(),up=new T.Vector3(0,1,0);
   const dark=0x293e49,steel=0x879e9d,light=0xc7d7cc,bronze=0xa9804a,gold=0xe2ba72,
@@ -52,18 +52,20 @@ function marchingModel(T,role) {
   }
   function oval(x,y,z,rx,ry,rz,c,part=0,dye=0,shine=.10) {
     const small=Math.max(rx,ry,rz)<.115;
-    add(new T.SphereGeometry(1,small?6:8,small?3:4),x,y,z,rx,ry,rz,c,part,dye,shine);
+    const around=compact?(small?5:6):(small?6:8),rows=compact?(small?2:3):(small?3:4);
+    add(new T.SphereGeometry(1,around,rows),x,y,z,rx,ry,rz,c,part,dye,shine);
   }
   function box(x,y,z,sx,sy,sz,c,part=0,dye=0,shine=.12) {
     add(new T.BoxGeometry(1,1,1),x,y,z,sx,sy,sz,c,part,dye,shine);
   }
+  const facets=sides=>compact?Math.min(sides,Math.max(5,Math.round(sides*.65))):sides;
   function shell(x,y,z,top,bottom,height,depth,c,part=0,dye=0,shine=.15,sides=10) {
-    add(new T.CylinderGeometry(top,bottom,height,sides),x,y,z,1,1,depth,c,part,dye,shine);
+    add(new T.CylinderGeometry(top,bottom,height,facets(sides)),x,y,z,1,1,depth,c,part,dye,shine);
   }
   function limb(a,b,thick,c,part=0,dye=0,shine=.2,taper=1,sides=7) {
     const axis=new T.Vector3(b[0]-a[0],b[1]-a[1],b[2]-a[2]),len=axis.length();if(!len)return;
     const turn=new T.Quaternion().setFromUnitVectors(up,axis.normalize());
-    add(new T.CylinderGeometry(thick*taper,thick,len,sides),(a[0]+b[0])*.5,(a[1]+b[1])*.5,
+    add(new T.CylinderGeometry(thick*taper,thick,len,facets(sides)),(a[0]+b[0])*.5,(a[1]+b[1])*.5,
       (a[2]+b[2])*.5,1,1,1,c,part,dye,shine,turn);
   }
   function plate(outline,depth,part,c,dye=0,shine=.2) {
@@ -167,8 +169,10 @@ function marchingModel(T,role) {
     plate([[-.32,1.37,-.41],[.12,1.31,-.41],[.033,1.125,-.41],[.11,1.061,-.41],[-.32,1.106,-.41]],.015,12,teal,.89);
   }
   const g=new T.InstancedBufferGeometry();
-  g.setAttribute("position",new T.Float32BufferAttribute(position,3));g.setAttribute("normal",new T.Float32BufferAttribute(normal,3));
-  g.setAttribute("dye",new T.Float32BufferAttribute(colour,4));g.setAttribute("binding",new T.Float32BufferAttribute(binding,2));
+  g.setAttribute("position",new T.Float32BufferAttribute(position,3));
+  g.setAttribute("normal",compact?new T.Int8BufferAttribute(Int8Array.from(normal,v=>Math.round(v*127)),3,true):new T.Float32BufferAttribute(normal,3));
+  g.setAttribute("dye",compact?new T.Uint8BufferAttribute(Uint8Array.from(colour,v=>Math.round(v*255)),4,true):new T.Float32BufferAttribute(colour,4));
+  g.setAttribute("binding",new T.Float32BufferAttribute(binding,2));
   g.setIndex(indices);g.instanceCount=0;return g;
 }
 
@@ -246,9 +250,20 @@ export function laneCompany(T,scene,floor,markFighter){
   }
   const armour=new T.RawShaderMaterial({vertexShader:soldierVertex,fragmentShader:soldierFragment,
     uniforms:scene.userData.battleLight?.uniforms??{},glslVersion:T.GLSL3,side:T.DoubleSide});
-  const ranks=["河卫 · 盾枪","河卫 · 弩手","河卫 · 炮车"].map((name,role)=>batch(name,marchingModel(T,role),armour,
+  const ranks=["河卫 · 盾枪","河卫 · 弩手","河卫 · 炮车"].map(name=>batch(name,new T.InstancedBufferGeometry(),armour,
     {anchor:attribute(4),bearing:attribute(4),feetA:attribute(4),feetB:attribute(4)}));
   if(markFighter)for(const rank of ranks)markFighter(rank.mesh);
+  let economical=null;
+  function setTier(tier){
+    const compact=tier===2;
+    if(compact===economical)return;
+    economical=compact;
+    ranks.forEach((rank,role)=>{
+      const old=rank.mesh.geometry,next=marchingModel(T,role,compact);
+      for(const [key,attr] of Object.entries(rank.attrs)){old.deleteAttribute(key);next.setAttribute(key,attr);}
+      next.instanceCount=rank.used;rank.mesh.geometry=next;old.dispose();
+    });
+  }
   const common={anchor:attribute(4),life:attribute(2)};
   const bars=batch("兵线生命",quad(),new T.RawShaderMaterial({vertexShader:barVertex,fragmentShader:barFragment,
     uniforms:{playerRect},glslVersion:T.GLSL3,side:T.DoubleSide}),common);
@@ -264,6 +279,7 @@ export function laneCompany(T,scene,floor,markFighter){
     }
   }
   function draw(match,dt,visible){
+    if(economical===null)setTier(1);
     for(const b of ranks)b.used=0;
     bars.used=0;serial++;
     for(const u of match.units){
@@ -315,7 +331,7 @@ export function laneCompany(T,scene,floor,markFighter){
     if(!box){playerRect.value.set(-5,-5,-5,-5);return;}
     playerRect.value.set(2*(box.left-1)/w-1,1-2*(box.bottom+1)/h,2*(box.right+1)/w-1,1-2*(box.top-1)/h);
   }
-  return {start(){},ready:true,draw,reset,protect,dispose(){
+  return {start(){},ready:true,draw,reset,protect,setTier,dispose(){
     reset();for(const b of [...ranks,bars,contact]){b.mesh.removeFromParent();b.mesh.geometry.dispose();}
     armour.dispose();bars.mesh.material.dispose();contact.mesh.material.dispose();
   }};

@@ -58,12 +58,23 @@ export function pavilionRoof(y,rise,span,colors,tri,quad){
     }
 
     const sx=ox-tx,sz=oz-tz,px=-sz/Math.SQRT2,pz=sx/Math.SQRT2;
-    const ridge=up.map(t=>{
-      const p=tile(side,-1,t).p,w=Math.min(.053,.05*span)*(1-.30*t);
-      return [[-1,.01],[-.72,.72],[0,1],[.72,.72],[1,.01]].map(([v,h])=>offset(p,px*w*v,w*h+.007,pz*w*v));
-    });
-    for(let j=0;j<ridge.length-1;j++)for(let k=0;k<4;k++)
-      quad(ridge[j][k+1],ridge[j][k],ridge[j+1][k],ridge[j+1][k+1],colors.edge);
-    for(let k=1;k<4;k++)tri(ridge[0][0],ridge[0][k],ridge[0][k+1],colors.cap);
+    // Ridge covers are bedded one over the next. Their projecting mouths
+    // interrupt the highlight and cast a narrow shadow across the hip.
+    function capSection(t,mouth){
+      const p=tile(side,-1,t).p,w=Math.min(.088,.083*span)*(1-.30*t);
+      const width=w*(mouth?1:.76),height=w*(mouth?1.10:.68);
+      return [[-1,.01],[-.72,.66],[0,1],[.72,.66],[1,.01]].map(
+        ([v,h])=>offset(p,px*width*v,height*h+.006,pz*width*v));
+    }
+    let head=null;
+    for(let row=0;row<5;row++){
+      const mouth=capSection(row/5,true),upper=capSection((row+1)/5,false);
+      for(let k=0;k<4;k++){
+        if(head)quad(head[k+1],head[k],mouth[k],mouth[k+1],k===1||k===2?colors.cap:colors.soffit);
+        quad(mouth[k+1],mouth[k],upper[k],upper[k+1],colors.edge);
+      }
+      if(!head)for(let k=1;k<4;k++)tri(mouth[0],mouth[k],mouth[k+1],colors.cap);
+      head=upper;
+    }
   }
 }

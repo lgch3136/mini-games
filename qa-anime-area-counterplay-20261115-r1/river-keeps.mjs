@@ -1,7 +1,7 @@
 import {joinStandingKeep} from "./standing-keep.mjs?v=canyon-eave-batch1";
-import {bindKeepFinish} from "./keep-light.mjs?v=canyon-tower-lamplight2";
-import {pavilionRoof} from "./pavilion-roof.mjs?v=canyon-eave-glaze2";
-import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-tower-lamplight2";
+import {bindKeepFinish} from "./keep-light.mjs?v=canyon-eaves-batch1";
+import {pavilionRoof} from "./pavilion-roof.mjs?v=canyon-eaves-batch1";
+import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-eaves-batch1";
 import {towerSight} from "./tower-sight.mjs?v=canyon-eave-batch1";
 
 // Local heights of the socket, widest facet, shoulder and tip; followed by radius and model scale.
@@ -40,7 +40,16 @@ export function betweenCameraAndFighter(unit,actor,camera,foot,ground,width,low,
   return Math.max(first,Math.min(a,b))<=Math.min(last,Math.max(a,b));
 }
 
-export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=false) {
+function mountKeepPart(T,parent,geometry,art,slot,lamp,team,roof=false){
+  const material=art?art.bind(new T.MeshPhongMaterial({vertexColors:true,shininess:20,side:T.DoubleSide})):
+    roof?new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide}):
+    new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.035,side:T.DoubleSide});
+  if(art?.keepRelief)bindKeepFinish(T,material,art.keepRelief,slot,lamp,team);
+  const mesh=new T.Mesh(geometry,material);
+  mesh.castShadow=mesh.receiveShadow=true;parent.add(mesh);return mesh;
+}
+
+function buildKeepModel(T,parent,team,core,tier,art,span,slot,lamp){
   const part=()=>({pos:[],rgb:[],uv:[],finish:[],smooth:[]});
   const masonry=part(),tiles=part(),ruin=part();let surface=masonry;
   const palette=new Map();
@@ -51,7 +60,6 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
   const carved=new Set(["#4c6265","#a1aba0","#667a76","#8a8977","#c2b793","#8e9483","#b8ac8b","#a59e89","#827e69","#a29b83"]);
   const brass=new Set(["#d4ac77","#d4b77b","#e0bd79","#c4a777","#ead398"]);
   const glass=team?["#a84551","#ec7c68","#b45669","#ffc08f"]:["#348884","#81ccbc","#448e9d","#b3e5ce"];
-  const lamp={value:0};
   // The atlas carries grain. Recover the authored linear-light pigment for
   // each course from its ratio to the neutral limestone or timber swatch.
   const limestone=new T.Color("#c2b696"),oak=new T.Color("#8b5c3c");
@@ -121,10 +129,21 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
     pavilionRoof(y,rise,span,colors,tri,quad);
     surface=masonry;
   }
-  const span=core?1.82:1.17;
-  cylinder(0,0,.03,.24,span*1.10,span*1.10,"#4c6265");
-  cylinder(0,0,.24,.49,span*1.02,span*.95,"#a1aba0");
-  cylinder(0,0,.49,.62,span*.94,span*.96,"#667a76");
+  // A continuous turned profile gives the footing a projecting toe and an
+  // undercut joint. Only its uppermost face closes the solid.
+  const footing=[
+    [.030,1.095], [.126,1.095,"#4c6265"], [.184,1.055,"#667a76"],
+    [.184,.931,"#8e9483"], [.253,.931,"#4c6265"], [.273,1.020,"#667a76"],
+    [.435,.977,"#a1aba0"], [.483,.943,"#c2b793"],
+    [.483,.879,"#8e9483"], [.540,.879,"#4c6265"],
+    [.564,.971,"#667a76"], [.602,.971,"#a1aba0"], [.640,.925,"#b8ac8b"]
+  ];
+  let course=ring(0,footing[0][0],0,span*footing[0][1],span*footing[0][1]);
+  for(const [height,radius,colour] of footing.slice(1)){
+    const next=ring(0,height,0,span*radius,span*radius);
+    connect(course,next,colour);course=next;
+  }
+  cap(course,"#a1aba0");
   const postSpan=span*.59;
   const lintel=core?2.09:1.77;
   for(const sign of [-1,1]){
@@ -236,7 +255,6 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
     const a=i*2.399,x=Math.cos(a)*span*.73,z=Math.sin(a)*span*.68,w=.26+(i%3)*.08;
     beam(x,.13,z,w,.12+(i%3)*.08,w*.76,i%3?colors.roof:"#a29b83");
   }
-  const slot=core?3:tier;
   art?.keepRelief?.bake(slot,[masonry.pos,tiles.pos]);art?.keepRelief?.bake(slot+4,[ruin.pos]);
   if(!core&&art?.keepRelief?.bakeLamp){
     const [,waist,shoulder]=towerLenses[tier]||towerLenses[0];
@@ -254,14 +272,38 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
     indexStoneFaces(T,g);
     art?.keepRelief?.shadeCorners?.(g,part===ruin?slot+4:slot);
     if(!core&&part!==ruin)art?.keepRelief?.shadeLamp?.(g,slot);
-    const mat=art?art.bind(new T.MeshPhongMaterial({vertexColors:true,shininess:20,side:T.DoubleSide})):roof?new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide}):
-      new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.035,side:T.DoubleSide});
-    if(art?.keepRelief)bindKeepFinish(T,mat,art.keepRelief,part===ruin?slot+4:slot,lamp,team);
-    const mesh=new T.Mesh(g,mat);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
+    return mountKeepPart(T,parent,g,art,part===ruin?slot+4:slot,lamp,team,roof);
   }
   const frame=mesh(masonry),roofMesh=mesh(tiles,true),debris=mesh(ruin);debris.visible=false;
   frame.material.forceSinglePass=roofMesh.material.forceSinglePass=true;
   const joined=art?joinStandingKeep(T,parent,frame,roofMesh,art):null;
+  return {frame,roofMesh,debris,joined};
+}
+
+export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=false){
+  const slot=core?3:tier,span=core?1.82:1.17,lamp={value:0};
+  const cache=art?.keepModels,key=team*4+slot;
+  const geometry=cache?.get(key);
+  let model;
+  if(geometry){
+    const frame=mountKeepPart(T,parent,geometry.wall,art,slot,lamp,team);
+    const roofMesh=mountKeepPart(T,parent,geometry.roof,art,slot,lamp,team,true);
+    const debris=mountKeepPart(T,parent,geometry.ruin,art,slot+4,lamp,team);
+    const full=mountKeepPart(T,parent,geometry.full,art,slot,lamp,team);
+    frame.visible=roofMesh.visible=debris.visible=false;
+    frame.material.forceSinglePass=roofMesh.material.forceSinglePass=full.material.forceSinglePass=true;
+    full.name="完整守塔";
+    model={frame,roofMesh,debris,joined:{mesh:full}};
+  }else{
+    model=buildKeepModel(T,parent,team,core,tier,art,span,slot,lamp);
+    if(cache){
+      const parts={wall:model.frame.geometry,roof:model.roofMesh.geometry,
+        ruin:model.debris.geometry,full:model.joined.mesh.geometry};
+      for(const part of Object.values(parts))part.userData.keepShared=true;
+      cache.set(key,parts);
+    }
+  }
+  const {frame,roofMesh,debris,joined}=model;
   const sight=joined?towerSight(T,joined.mesh,hasStencil):null;
   let lastTime=-1;
   function fade(node,target,dt){
@@ -272,7 +314,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
     if(mat.transparent!==transparent){mat.transparent=transparent;mat.depthWrite=!transparent;mat.needsUpdate=true;}
     mat.opacity=value;
   }
-  return {dispose(){ sight?.dispose();joined?.disposeViews(); },
+  return {dispose(){ sight?.dispose();if(!cache)joined?.disposeViews(); },
     update(unit,hero,time,camera,subjects,floor,view=null,canvas=null){
     const fallen=unit.dead,phase=fallen?Math.min(1,Math.max(0,(time-(unit.fallenAt??time))/.72)):0;
     lamp.value=core?0:towerCharge(unit);
