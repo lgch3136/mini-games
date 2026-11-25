@@ -10,6 +10,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
+from flagstone_relief import flagstones
 
 ROOT = Path(__file__).resolve().parent
 ASSETS = ROOT / "assets"
@@ -21,6 +22,8 @@ raw = subprocess.check_output(["node", "--input-type=module", "-e",
     "console.log(JSON.stringify({routes:routes.map(r=>r.points),jungles:jungles.map(r=>r.points),river:streams.points,homes,garden,keeps,elevation}));"
 ], cwd=ROOT)
 world = json.loads(raw)
+ASSETS.mkdir(exist_ok=True)
+flagstones(ASSETS / "canyon-sunlit-flags.webp")
 N = 1280
 S = (N-1)/72
 Y, X = np.mgrid[:N,:N].astype(np.float32)
@@ -51,9 +54,6 @@ def mix(a,b,t):
 def rgb(t):
     return np.array(t,dtype=np.float32)
 
-def poly(points):
-    return [pix(x,z) for x,z in points]
-
 lane=field(world["routes"]);wood=field(world["jungles"]);river=field([world["river"]])
 broad=noise(15);tufts=noise(88);grain=noise(260)
 grass=mix(rgb([82,113,89]),rgb([151,164,106]),np.clip(.49+.75*broad+.18*tufts,0,1))
@@ -62,7 +62,12 @@ grass=mix(grass,rgb([93,130,105]),(1-smooth(2.6,8.7,river))*.47)
 earth=rgb([152,144,113])+(16*broad+8*tufts+5*grain)[...,None]
 ground=mix(grass,earth,1-smooth(.44,1.37,wood+.30*tufts))
 stone=rgb([160,159,137])+(12*broad+4*grain)[...,None]
-ground=mix(ground,stone,1-smooth(1.48,2.35,lane+.15*tufts))
+# A narrow shoulder of compacted grit meets the grass. The render-time flag
+# material breaks on individual stones along its inner edge.
+shoulder=lane+.10*tufts+.038*grain
+grit=rgb([151,137,108])+(15*broad+9*tufts+11*grain)[...,None]
+ground=mix(ground,grit,1-smooth(1.92,2.18,shoulder))
+ground=mix(ground,stone,1-smooth(1.50,1.81,shoulder))
 bank=rgb([170,170,130])+(14*tufts+8*broad)[...,None]
 ground=mix(ground,bank,1-smooth(2.54,3.33,river+.15*tufts))
 depth=1-smooth(.2,2.87,river)
@@ -103,34 +108,13 @@ visibility=(1-smooth(2.5,2.96,river))*(.30+.52*smooth(.32,2.1,river)+.27*(1-smoo
 ground+=(relief*visibility)[...,None]*rgb([.72,1.03,.92])
 canvas=Image.fromarray(np.uint8(np.clip(ground,0,255)));draw=ImageDraw.Draw(canvas)
 
-def route_sampler(path):
-    points=np.array([[v["x"],v["z"]] for v in path]);steps=np.diff(points,axis=0)
-    dist=np.sqrt((steps*steps).sum(axis=1));at=np.r_[0,np.cumsum(dist)]
-    def point(s,side=0):
-        i=int(np.clip(np.searchsorted(at,s,side="right")-1,0,len(steps)-1))
-        d=steps[i]/dist[i];out=points[i]+d*np.clip(s-at[i],0,dist[i])+side*np.array([-d[1],d[0]])
-        return tuple(out)
-    return at[-1],point
+# The established verge and masonry use the map's original PCG sequence.
+# Give those drawings a fixed starting point independent of the paving layout.
+rng = np.random.default_rng(70419)
+rng.bit_generator.advance(41581)
+rng.integers(0, 1 << 32, dtype=np.uint32)
+rng.random(2)
 
-for path in world["routes"]:
-    length,point=route_sampler(path)
-    for row,across in enumerate([-1.39,-.69,.01,.71,1.41]):
-        s=1.8+.48*(row%2)
-        while s<length-1.3:
-            run=float(rng.uniform(.85,1.60)); z0=across-.32; z1=across+.32
-            c=point(s+run*.5,across);u,v=pix(*c)
-            if 0<=u<N and 0<=v<N and river[v,u]>2.75:
-                # Adjacent joints follow the tangent of this lane, including at a bend.
-                corners=[(.10,z0),(run-.16,z0),(run-.05,z0+.09),(run-.06,z1-.08),(run-.18,z1),(.12,z1),(.035,z1-.095),(.03,z0+.105)]
-                pts=[point(s+x,y) for x,y in corners];value=int(rng.integers(-11,13));base=(161+value,161+value,143+value)
-                draw.polygon(poly(pts),fill=(121+value,128+value,116+value))
-                top=[(x-.018+(c[0]-x)*.052,z-.027+(c[1]-z)*.052) for x,z in pts]
-                draw.polygon(poly(top),fill=base)
-                if rng.random()<.76:draw.line(poly([top[7],top[0],top[1]]),fill=tuple(k+14 for k in base),width=1)
-                if rng.random()<.14:
-                    x=s+run*.42
-                    draw.line(poly([point(x,z0+.02),point(x+.11,z0+.19),point(x+.05,z0+.28)]),fill=tuple(k-18 for k in base))
-            s+=run
 # Grass has strokes in families at the verge, not a frame of random noise over the whole map.
 for unused in range(9100):
     u,v=map(int,rng.integers(2,N-2,2))
@@ -142,6 +126,12 @@ for unused in range(9100):
         cx=u+int(rng.integers(-4,5));cy=v+int(rng.integers(-3,4));rise=int(rng.integers(2,6))
         ink=tuple(np.uint8(np.clip(base*light+np.array([1,4,-5]),0,255)))
         draw.line([(cx,cy),(cx+1+rise//3,cy-rise)],fill=ink)
+chips=np.random.default_rng(41907)
+for u,v in chips.integers(2,N-3,(6800,2)):
+    if not (1.72<shoulder[v,u]<2.14 and river[v,u]>3.08):continue
+    colour=np.array(canvas.getpixel((u,v)),dtype=int)
+    colour=np.uint8(np.clip(colour*chips.uniform(.89,1.07)+[6,5,1],0,255))
+    draw.line([(u,v),(u+int(chips.integers(1,3)),v-1)],fill=tuple(colour))
 # Smooth projected canopy shade and a dense contact patch follow the locations of the real meshes.
 mask=np.zeros((N,N),np.uint8)
 for tree in world["garden"]:
@@ -156,7 +146,7 @@ shade+=cv2.GaussianBlur(mask,(0,0),1.9).astype(np.float32)/255
 raw=np.asarray(canvas).astype(np.float32)*(1-shade[...,None]*rgb([.40,.32,.23]))
 raw+=(2.8*grain+2.2*tufts)[...,None]
 ASSETS.mkdir(exist_ok=True)
-Image.fromarray(np.uint8(np.clip(raw,0,255))).save(ASSETS/"canyon-seeded-ground.webp",quality=88,method=5)
+Image.fromarray(np.uint8(np.clip(raw,0,255))).save(ASSETS/"canyon-verge-ground.webp",quality=88,method=5)
 
 # Stone, glazed roof tile, timber, deck joint, neutral lime, terracotta, shale and the bridge flagstone face.
 tile=192

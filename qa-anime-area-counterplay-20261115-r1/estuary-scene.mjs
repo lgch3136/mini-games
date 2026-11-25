@@ -14,7 +14,7 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     const at=measure(streams,x,z).at,axis=along(streams,at),bank=along(streams,at,1);
     flow.push(at-middleOfRiver,(x-axis.x)*(bank.x-axis.x)+(z-axis.z)*(bank.z-axis.z));
   }
-  const classes=terrainPaint()[3];
+  const terrain=terrainPaint(),classes=terrain[3],road=terrain[1];
   const fallbacks=[[.42,.54,.31],[.73,.69,.56],[.28,.58,.56]];
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
     const u=i/(n-1),v=j/(n-1),x=(2*u-1)*extent,z=(2*v-1)*extent,wet=waterDistance(x,z);
@@ -28,6 +28,8 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
       y-=.16*width*length;
     }
     p.push(x,y,z);uv.push(u,1-v);kind.push(bridge?9:wet);
+    // End the paving at the bank, including under the separately modelled bridge.
+    road[cell]=Math.round(road[cell]*Math.min(1,Math.max(0,(wet-2.66)/.72)));
     streamCoords(x,z,wet);
     flat.push(...fallbacks[classes[cell]&3]);
     if(i<n-1&&j<n-1){const a=j*n+i;ix.push(a,a+n,a+1,a+1,a+n,a+n+1);}
@@ -62,21 +64,26 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
   const bankFaces=g.index.array.slice((n-1)*(n-1)*6);
   g.setAttribute("river",new T.Float32BufferAttribute(kind,1));g.setAttribute("fallback",new T.Float32BufferAttribute(flat,3));
   g.setAttribute("flowCoord",new T.Float32BufferAttribute(flow,2));
+  const paving=new Uint8Array(p.length/3);
+  paving.set(road);
+  g.setAttribute("paving",new T.Uint8BufferAttribute(paving,1,true));
   const exposure=new T.Uint8BufferAttribute(new Uint8Array(p.length/3).fill(255),1,true).setUsage(T.DynamicDrawUsage);
   g.setAttribute("exposure",exposure);let lastField=null,fieldRevision=-1;
   const blank=new T.DataTexture(new Uint8Array([205,206,169,255]),1,1);blank.needsUpdate=true;
-  const uniforms={field:{value:blank},ready:{value:0},time:{value:0},motion:{value:0},...lighting.uniforms};
+  const uniforms={field:{value:blank},ready:{value:0},flags:{value:blank},flagsReady:{value:0},
+    time:{value:0},motion:{value:0},...lighting.uniforms};
   const mat=new T.RawShaderMaterial({uniforms,glslVersion:T.GLSL3,toneMapped:false,
     vertexShader:`precision highp float;
     in vec3 position,fallback;in vec2 uv;in float river;
+    in float paving;out mediump float laneCover;
     in vec2 flowCoord;
     in float exposure;out lowp float sight;
     uniform mat4 modelViewMatrix,projectionMatrix;uniform highp float time,motion;
     ${spellVertex}
-    out mediump vec2 coord;out lowp vec3 base;out lowp vec3 reflection;
+    out highp vec2 coord;out lowp vec3 base;out lowp vec3 reflection;
     out mediump vec3 flowInk;out lowp vec3 castLight;out mediump vec3 shoreInk;
     void main(){
-      coord=uv;base=fallback;reflection=vec3(0.);sight=exposure;
+      coord=uv;base=fallback;reflection=vec3(0.);sight=exposure;laneCover=paving;
       flowInk=vec3(0.,0.,river);shoreInk=vec3(0.);
       castLight=spellAt(position,vec3(0.,1.,0.));
       if(river<4.6){
@@ -98,10 +105,29 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     }`,
     fragmentShader:`precision mediump float;
     uniform sampler2D field;uniform float ready;
-    in mediump vec2 coord;in lowp vec3 base,reflection;in lowp float sight;out vec4 paint;
+    uniform sampler2D flags;uniform float flagsReady;
+    in highp vec2 coord;in lowp vec3 base,reflection;in lowp float sight;out vec4 paint;
+    in mediump float laneCover;
     in mediump vec3 flowInk;in lowp vec3 castLight;in mediump vec3 shoreInk;
     void main(){
       vec3 colour=ready>.5?texture(field,coord).rgb:base;
+      // Nine repeats across 72 world units. Derivatives outside the branch keep
+      // the same mip level across road edges, also when the whole map is visible.
+      highp vec2 slabUV=vec2(coord.x,1.-coord.y)*9.;
+      highp vec2 dx=dFdx(slabUV),dz=dFdy(slabUV);
+      float vergeAA=clamp(fwidth(laneCover)*.75,.014,.16);
+      if(laneCover>.04 && flagsReady>.5){
+        vec4 slab=textureGrad(flags,slabUV,dx,dz);
+        float verge=1.-smoothstep(.49,.94,laneCover);
+        float damp=1.-smoothstep(3.05,6.7,flowInk.z);
+        float moss=verge*(.26+.48*damp)*clamp((.824-slab.r)*3.78,0.,1.);
+        vec3 stone=colour*(slab.rgb*(4./3.));
+        stone=mix(stone,stone*vec3(.79,.96,.74),moss);
+        float key=clamp((slab.a*255.-192.)/63.,0.,1.);
+        float cut=mix(.22,.67,key);
+        float cover=smoothstep(cut-vergeAA,cut+vergeAA,laneCover);
+        colour=mix(colour,stone,cover);
+      }
       vec3 daylight=colour+reflection;
       if(flowInk.z<3.10){
         float edge=max(.041,fwidth(flowInk.x)*.8);
@@ -119,7 +145,7 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     }`
   });
   const mesh=new T.Mesh(g,mat);const sun=paintedSun(T,mesh,mat,uniforms);mesh.renderOrder=2;scene.add(mesh);
-  let loading=null,closed=false,texture=null;
+  let loading=null,closed=false,texture=null,flagTexture=null;
   // Match the very triangles seen by the GPU, including the lowered bed under the bridge.
   function groundY(x,z){
     const u=Math.max(0,Math.min(n-1.00001,(x+extent)*(n-1)/(2*extent)));
@@ -156,13 +182,34 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     for(let i=n*n;i<exposure.count;i++)exposure.array[i]=field.values[border[(i-n*n)%border.length]];
     exposure.needsUpdate=true;
   },start(){
-    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/canyon-seeded-ground.webp",import.meta.url).href).then(image=>{
-      if(closed){image.dispose();return;}
-      texture=image;image.colorSpace=T.NoColorSpace;image.anisotropy=filterLevel;uniforms.field.value=image;uniforms.ready.value=1;
-    }).catch(()=>{});
+    if(!loading&&!closed){
+      const loader=new T.TextureLoader();
+      function load(url,bind){
+        return loader.loadAsync(url).then(image=>{
+          if(closed){image.dispose();return;}
+          image.colorSpace=T.NoColorSpace;image.anisotropy=filterLevel;bind(image);
+        }).catch(()=>{});
+      }
+      loading=Promise.all([
+        load(new URL("./assets/canyon-verge-ground.webp",import.meta.url).href,image=>{
+          texture=image;uniforms.field.value=image;uniforms.ready.value=1;
+        }),
+        load(new URL("./assets/canyon-sunlit-flags.webp",import.meta.url).href,image=>{
+          flagTexture=image;image.flipY=false;image.wrapS=image.wrapT=T.RepeatWrapping;
+          image.anisotropy=filterLevel>=4?2:1;
+          image.minFilter=T.LinearMipmapLinearFilter;image.magFilter=T.LinearFilter;
+          uniforms.flags.value=image;uniforms.flagsReady.value=1;
+        })
+      ]);
+    }
     return loading;
-  },filter(level){filterLevel=level;if(texture&&texture.anisotropy!==level){texture.anisotropy=level;texture.needsUpdate=true;}},setTier:tier=>sun.tier(tier),tick(time,tier){uniforms.time.value=time%2048;uniforms.motion.value=tier<2?1:0;},
-  dispose(){closed=true;mesh.removeFromParent();g.dispose();texture?.dispose();blank.dispose();sun.dispose();mat.dispose();}};
+  },filter(level){
+    filterLevel=level;
+    if(texture&&texture.anisotropy!==level){texture.anisotropy=level;texture.needsUpdate=true;}
+    const slabFilter=level>=4?2:1;
+    if(flagTexture&&flagTexture.anisotropy!==slabFilter){flagTexture.anisotropy=slabFilter;flagTexture.needsUpdate=true;}
+  },setTier:tier=>sun.tier(tier),tick(time,tier){uniforms.time.value=time%2048;uniforms.motion.value=tier<2?1:0;},
+  dispose(){closed=true;mesh.removeFromParent();g.dispose();texture?.dispose();flagTexture?.dispose();blank.dispose();sun.dispose();mat.dispose();}};
 }
 export function estuaryStonework(T){
   const p=[],c=[],palette=new Map();
