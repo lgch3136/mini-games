@@ -1,5 +1,5 @@
 import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {addUv,stone,flagFace,plain,indexStoneFaces} from "./field-architecture.mjs?v=canyon-eave-batch1";
+import {addUv,stone,flagFace,plain,indexStoneFaces} from "./field-architecture.mjs?v=canyon-keep-recess3";
 import {bindLitSurface} from "./surface-impact.mjs?v=canyon-keep-lit2";
 
 // Coordinates are metres along the actual mid-lane and metres across it.

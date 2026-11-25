@@ -1,7 +1,7 @@
 import {joinStandingKeep} from "./standing-keep.mjs?v=canyon-eave-batch1";
-import {bindKeepFinish} from "./keep-light.mjs?v=canyon-eave-batch1";
+import {bindKeepFinish} from "./keep-light.mjs?v=canyon-keep-recess3";
 import {pavilionRoof} from "./pavilion-roof.mjs?v=canyon-pavilion1";
-import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-eave-batch1";
+import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-keep-recess3";
 import {towerSight} from "./tower-sight.mjs?v=canyon-eave-batch1";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
@@ -32,9 +32,12 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
   const colors=team
     ? {roof:"#603d59",edge:"#925659",cap:"#c78a69",cloth:"#b44c61",light:"#efd2a0"}
     : {roof:"#284959",edge:"#426970",cap:"#82a3a0",cloth:"#2b8b89",light:"#ddd4a4"};
-  const wooden=new Set(["#69493a","#856848","#784f39","#a77e48"]);
+  const wooden=new Set(["#69493a","#735a45","#856848","#784f39","#a77e48"]);
   const carved=new Set(["#4c6265","#a1aba0","#667a76","#8a8977","#c2b793","#8e9483","#b8ac8b","#a59e89","#827e69","#a29b83"]);
   const brass=new Set(["#d4ac77","#d4b77b","#e0bd79","#c4a777","#ead398"]);
+  // The atlas carries grain. Recover the authored linear-light pigment for
+  // each course from its ratio to the neutral limestone or timber swatch.
+  const limestone=new T.Color("#c2b696"),oak=new T.Color("#8b5c3c");
   function tri(a,b,c,color,faceUv=null,normals=null) {
     if(!palette.has(color))palette.set(color,new T.Color(color));
     const tint=palette.get(color);
@@ -53,8 +56,10 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
     for(const [i,p] of [a,b,c].entries()){
       surface.finish.push(finish);
       if(!art||cell===plain)surface.rgb.push(tint.r,tint.g,tint.b);
-      else if(cell===timber){const warm=color==="#69493a"?.68:1;surface.rgb.push(warm,.93*warm,.84*warm);}
-      else if(cell===stone){const tone=.72+.29*tint.g;surface.rgb.push(tone,.99*tone,.95*tone);}
+      else if(cell===timber||cell===stone){
+        const base=cell===timber?oak:limestone;
+        surface.rgb.push(.20+.80*tint.r/base.r,.20+.80*tint.g/base.g,.20+.80*tint.b/base.b);
+      }
       else surface.rgb.push(.93,.97,.96);
       if(faceUv){addUv(surface.uv,cell,...faceUv[i]);continue;}
       if(cell===plain){addUv(surface.uv,plain,.5,.5);continue;}
@@ -191,6 +196,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null,hasStencil=fals
       c.setXYZ(i,c.getX(i)*shade,c.getY(i)*shade,c.getZ(i)*shade);
     }}
     indexStoneFaces(T,g);
+    art?.keepRelief?.shadeCorners?.(g,part===ruin?slot+4:slot);
     const mat=art?art.bind(new T.MeshPhongMaterial({vertexColors:true,shininess:20,side:T.DoubleSide})):roof?new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide}):
       new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.035,side:T.DoubleSide});
     if(art?.keepRelief)bindKeepFinish(T,mat,art.keepRelief,part===ruin?slot+4:slot);

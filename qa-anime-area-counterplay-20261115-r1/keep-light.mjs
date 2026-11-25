@@ -3,6 +3,31 @@
 const side=80,columns=4,rows=2,span=7,left=-2.75,back=-4.05,ceiling=5.1;
 const dirX=13/30,dirZ=-1/3;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+// Orthographic depth from the blue fill at (10,7,-18). Rigid buildings
+// sample it once when the vertex buffers are built.
+const unit=v=>v.map(n=>n/Math.hypot(...v));
+const fillRay=unit([10,7,-18]),fillAcross=unit([18,0,10]);
+const fillUp=unit([-70,424,126]);
+const dot=(a,x,y,z)=>a[0]*x+a[1]*y+a[2]*z;
+
+function rasterHeight(parts,project,record){
+  const px=new Float64Array(3),py=new Float64Array(3),depth=new Float64Array(3);
+  for(const positions of parts)for(let start=0;start<positions.length;start+=9){
+    for(let i=0;i<3;i++){
+      const j=start+i*3;
+      project(positions[j],positions[j+1],positions[j+2],px,py,depth,i);
+    }
+    const ax=px[1]-px[0],ay=py[1]-py[0],bx=px[2]-px[0],by=py[2]-py[0],area=ax*by-bx*ay;
+    if(Math.abs(area)<.0001)continue;
+    const x0=clamp(Math.floor(Math.min(...px)),0,side-1),x1=clamp(Math.ceil(Math.max(...px)),0,side-1);
+    const y0=clamp(Math.floor(Math.min(...py)),0,side-1),y1=clamp(Math.ceil(Math.max(...py)),0,side-1);
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+      const dx=x-px[0],dy=y-py[0],a=(dx*by-dy*bx)/area,b=(ax*dy-ay*dx)/area;
+      if(a<-.0001||b<-.0001||a+b>1.0001)continue;
+      record(y*side+x,depth[0]+a*(depth[1]-depth[0])+b*(depth[2]-depth[0]));
+    }
+  }
+}
 // One tile repeats between the hips. R/G store the surface slope across and
 // down the tile. B controls the glaze, A is the narrow crevice at the lap.
 function tileRelief(T){
@@ -31,25 +56,15 @@ export function keepRelief(T){
   function bake(slot,parts){
     if(ready.has(slot))return;
     const heights=new Float32Array(side*side),foot=new Uint8Array(side*side);
-    for(const pos of parts)for(let i=0;i<pos.length;i+=9){
-      const x=[],z=[],y=[];
-      for(let v=0;v<3;v++){
-        const j=i+3*v;y[v]=pos[j+1];
-        x[v]=(pos[j]+dirX*y[v]-left)/span*(side-1);
-        z[v]=(pos[j+2]+dirZ*y[v]-back)/span*(side-1);
-      }
-      const ax=x[1]-x[0],az=z[1]-z[0],bx=x[2]-x[0],bz=z[2]-z[0],area=ax*bz-bx*az;
-      if(Math.abs(area)<.0001)continue;
-      const x0=clamp(Math.floor(Math.min(...x)),0,side-1),x1=clamp(Math.ceil(Math.max(...x)),0,side-1);
-      const z0=clamp(Math.floor(Math.min(...z)),0,side-1),z1=clamp(Math.ceil(Math.max(...z)),0,side-1);
-      for(let j=z0;j<=z1;j++)for(let k=x0;k<=x1;k++){
-        const dx=k-x[0],dz=j-z[0],a=(dx*bz-dz*bx)/area,b=(ax*dz-az*dx)/area;
-        if(a<-.0001||b<-.0001||a+b>1.0001)continue;
-        const h=y[0]+a*(y[1]-y[0])+b*(y[2]-y[0]),n=j*side+k;
-        heights[n]=Math.max(heights[n],h);
-        if(h>.0&&h<.32)foot[n]=1;
-      }
-    }
+    const fillDepth=new Float32Array(side*side).fill(-3.5);
+    rasterHeight(parts,(x,y,z,u,v,h,i)=>{
+      u[i]=(x+dirX*y-left)/span*(side-1);
+      v[i]=(z+dirZ*y-back)/span*(side-1);h[i]=y;
+    },(n,h)=>{heights[n]=Math.max(heights[n],h);if(h>0&&h<.32)foot[n]=1;});
+    rasterHeight(parts,(x,y,z,u,v,h,i)=>{
+      u[i]=(dot(fillAcross,x,y,z)+3)/6*(side-1);
+      v[i]=(dot(fillUp,x,y,z)+1)/6*(side-1);h[i]=dot(fillRay,x,y,z);
+    },(n,h)=>{fillDepth[n]=Math.max(fillDepth[n],h);});
     const tx=slot%columns*side,tz=Math.floor(slot/columns)*side;
     const kernel=[1,4,6,4,1],taps=[];
     for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)taps.push([i,j,kernel[i+2]*kernel[j+2]]);
@@ -61,12 +76,43 @@ export function keepRelief(T){
         contact+=w*foot[k];
       }
       bytes[index]=Math.round(255*h/ceiling);
-      bytes[index+1]=Math.round(255*cast/256);bytes[index+2]=Math.round(255*contact/256);bytes[index+3]=255;
+      bytes[index+1]=Math.round(255*cast/256);bytes[index+2]=Math.round(255*contact/256);
+      bytes[index+3]=Math.round(255*clamp((fillDepth[z*side+x]+3.5)/8,0,1));
     }
     ready.add(slot);texture.needsUpdate=true;
   }
+  function shadeCorners(geometry,slot){
+    const {position,normal,color,keepMaterial}=geometry.attributes;
+    const tileX=slot%columns*side,tileY=Math.floor(slot/columns)*side;
+    function readDepth(u,v,channel){
+      u=clamp(u,0,1)*(side-1);v=clamp(v,0,1)*(side-1);
+      const x0=Math.floor(u),y0=Math.floor(v),x1=Math.min(x0+1,side-1),y1=Math.min(y0+1,side-1);
+      const fx=u-x0,fy=v-y0;
+      const texel=(x,y)=>bytes[4*((tileY+y)*width+tileX+x)+channel];
+      const near=texel(x0,y0)*(1-fx)+texel(x1,y0)*fx;
+      const far=texel(x0,y1)*(1-fx)+texel(x1,y1)*fx;
+      return (near*(1-fy)+far*fy)/255;
+    }
+    function obscured(distance){
+      const t=clamp((distance-.09)/.18,0,1);
+      return t*t*(3-2*t);
+    }
+    for(let i=0;i<position.count;i++){
+      // Glazed tiles keep their view-dependent specular response. Bake
+      // ambient occlusion only into the diffuse colour of fittings and walls.
+      if(keepMaterial.getX(i)>=10)continue;
+      const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
+      const sun=readDepth((x+dirX*y-left)/span,(z+dirZ*y-back)/span,0)*ceiling;
+      const rim=readDepth((dot(fillAcross,x,y,z)+3)/6,(dot(fillUp,x,y,z)+1)/6,3)*8-3.5;
+      const overhang=obscured(sun-y),sideCover=obscured(rim-dot(fillRay,x,y,z));
+      const facing=clamp(dot(fillRay,normal.getX(i),normal.getY(i),normal.getZ(i)),0,1);
+      const recess=overhang*(.40+.60*sideCover),cool=sideCover*facing;
+      color.setXYZ(i,color.getX(i)*(1-.31*recess-.04*cool),
+        color.getY(i)*(1-.35*recess-.09*cool),color.getZ(i)*(1-.38*recess-.19*cool));
+    }
+  }
   const tile=tileRelief(T);
-  return {texture,tile,bake,dispose(){texture.dispose();tile.dispose();}};
+  return {texture,tile,bake,shadeCorners,dispose(){texture.dispose();tile.dispose();}};
 }
 
 const mapping=`
