@@ -161,20 +161,24 @@ Image.fromarray(np.uint8(np.clip(raw,0,255))).save(ASSETS/"canyon-seeded-ground.
 # Stone, glazed roof tile, timber, deck joint, neutral lime, terracotta, shale and the bridge flagstone face.
 tile=192
 sheet=Image.new("RGB",(tile*2,tile*4))
-colours=[(194,182,150),(106,148,132),(140,94,63),(173,172,151),(240,238,221),(162,108,85),(145,157,147),(131,138,135)]
+colours=[(194,182,150),(83,128,119),(139,92,60),(173,172,151),(240,238,221),(148,91,78),(145,157,147),(131,138,135)]
 ty,tx=np.mgrid[:tile,:tile].astype(np.float32)
 for idx,colour in enumerate(colours):
     vals=cv2.resize(rng.normal(0,1,(9,9)).astype(np.float32),(tile,tile),interpolation=cv2.INTER_CUBIC)
     if idx in (1,5):
-        # Glazed half tiles overlap as shingled courses. Ridges have a narrow
-        # sunward glint and a broad shadow, visible even under the gameplay camera.
-        band=np.floor(ty/31)
-        col=(tx+2*np.sin(band*1.47+tx*.055))%18
-        rib=np.exp(-((col-5.5)/2.6)**2);hollow=np.exp(-((col-13)/4.7)**2)
-        joint=(ty+1.8*np.cos(tx*np.pi/9))%31
-        detail=29*rib-22*hollow+4*vals+11*np.exp(-((joint-3.8)/2.)**2)-17*np.exp(-((joint-.9)/1.8)**2)
+        # Fired pieces have different pigments. The renderer supplies the
+        # directional highlight from the matching curved tile and overlap.
+        u=((tx+.5)/tile-.009)/.982*10
+        v=((ty+.5)/tile-.009)/.982*6
+        kiln=np.sin(np.floor(u)*5.73+np.floor(v)*23.17+idx)*437.87
+        kiln=kiln-np.floor(kiln)-.5
+        dust=(.5+.5*np.cos(2*np.pi*(u-.70)))**3
+        lap=np.exp(-(1-np.cos(2*np.pi*v))*24)
+        detail=12*kiln+4.3*vals+4*dust-4*lap
     elif idx==2:
-        detail=4*vals+6*np.sin(tx*.139+vals*.81+ty*.012)+2*np.sin(tx*.56+ty*.017)
+        bend=2.4*vals+2*np.exp(-((ty-126)/24)**2)*np.sin(tx*.07)
+        fibre=np.sin(tx*.151+bend+ty*.008)
+        detail=4.6*vals+4.5*fibre-5.2*np.maximum(0,fibre)**7+1.8*np.sin(tx*.55+ty*.013)
     elif idx==4:detail=vals*1.3
     elif idx==7:
         seam=abs(np.sin(tx*.026+ty*.019+.47*vals))
@@ -189,7 +193,7 @@ for idx,colour in enumerate(colours):
             for k in range(4):pts.append((pts[-1][0]+int(rng.integers(3,13)),pts[-1][1]+int(rng.integers(-5,4))))
             pen.line(pts,fill=tuple(max(0,v-13) for v in colour))
     sheet.paste(cell,((idx%2)*tile,(idx//2)*tile))
-sheet.save(ASSETS/"canyon-cut-stone.webp",quality=88,method=5)
+sheet.save(ASSETS/"canyon-fired-tile.webp",quality=88,method=5)
 
 # The draft screen uses a chart of the actual battle map. Its inline paths scale
 # from a phone to desktop, and need no image download or additional GL context.

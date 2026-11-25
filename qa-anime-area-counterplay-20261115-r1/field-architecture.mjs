@@ -1,4 +1,4 @@
-import {keepRelief} from "./keep-light.mjs?v=canyon-keep-lit2";
+import {keepRelief} from "./keep-light.mjs?v=canyon-pavilion1";
 // One sheet supplies sunlit limestone, jade tile, lacquer, paving and the red team's tile dye.
 export const stone=0,jadeTile=1,timber=2,paving=3,plain=4,clayTile=5,slate=6,flagFace=7;
 export function addUv(array,cell,u,v){
@@ -47,7 +47,7 @@ export function architectureArt(T){
     return material;
   }
   return {bind,keepRelief:shade,filter(level){filterLevel=level;if(sheet&&sheet.anisotropy!==level){sheet.anisotropy=level;sheet.needsUpdate=true;}},start(){
-    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/canyon-cut-stone.webp",import.meta.url).href).then(atlas=>{
+    if(!loading&&!closed)loading=new T.TextureLoader().loadAsync(new URL("./assets/canyon-fired-tile.webp",import.meta.url).href).then(atlas=>{
       if(closed){atlas.dispose();return;}
       atlas.colorSpace=T.SRGBColorSpace;atlas.anisotropy=filterLevel;sheet=atlas;
       for(const material of pending)material.map=atlas;

@@ -3,6 +3,27 @@
 const side=80,columns=4,rows=2,span=7,left=-2.75,back=-4.05,ceiling=5.1;
 const dirX=13/30,dirZ=-1/3;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+// One tile repeats between the hips. R/G store the surface slope across and
+// down the tile. B controls the glaze, A is the narrow crevice at the lap.
+function tileRelief(T){
+  const size=64,bytes=new Uint8Array(size*size*4);
+  const crown=u=>(.5+.5*Math.cos(2*Math.PI*(u-.24)))**3;
+  const seam=v=>1-Math.cos(2*Math.PI*(v-.065));
+  const lip=v=>Math.exp(-seam(v)*14);
+  const height=(u,v)=>.064*crown(u)+.017*lip(v)*(.78+.22*crown(u));
+  const h=.5/size,channel=v=>Math.round(255*clamp(v,0,1));
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+    const u=(x+.5)/size,v=(y+.5)/size,offset=4*(y*size+x);
+    bytes[offset]=channel(.5-.5*(height(u+h,v)-height(u-h,v))/(2*h));
+    bytes[offset+1]=channel(.5-.5*(height(u,v+h)-height(u,v-h))/(2*h));
+    bytes[offset+2]=channel(.35+.50*crown(u)+.12*Math.cos(2*Math.PI*v));
+    bytes[offset+3]=channel(1-.62*Math.exp(-seam(v+.065)*30));
+  }
+  const map=new T.DataTexture(bytes,size,size,T.RGBAFormat);
+  map.wrapS=map.wrapT=T.RepeatWrapping;map.magFilter=T.LinearFilter;
+  map.minFilter=T.LinearMipmapLinearFilter;map.generateMipmaps=true;map.needsUpdate=true;
+  return map;
+}
 export function keepRelief(T){
   const width=side*columns,height=side*rows,bytes=new Uint8Array(width*height*4),ready=new Set();
   const texture=new T.DataTexture(bytes,width,height,T.RGBAFormat);
@@ -44,7 +65,8 @@ export function keepRelief(T){
     }
     ready.add(slot);texture.needsUpdate=true;
   }
-  return {texture,bake,dispose:()=>texture.dispose()};
+  const tile=tileRelief(T);
+  return {texture,tile,bake,dispose(){texture.dispose();tile.dispose();}};
 }
 
 const mapping=`
@@ -53,57 +75,63 @@ vec2 keepTile(vec2 ground,float slot){
   return (vec2(mod(slot,4.),floor(slot*.25))*80.+.5+79.*local)/vec2(320.,160.);
 }`;
 export function bindKeepFinish(T,material,relief,slot){
-  const uniforms={keepDepth:{value:relief.texture},keepSlot:{value:slot}};
+  const uniforms={keepDepth:{value:relief.texture},keepTileFinish:{value:relief.tile},keepSlot:{value:slot}};
+  const vary='varying float keepKind;varying vec3 keepLocal,keepFace,keepAcross;varying vec2 keepUv;\n';
+  const getSun='getDirectionalLightInfo( directionalLight, directLight );';
+  const lights=T.ShaderChunk.lights_fragment_begin.replace(getSun,`${getSun}
+    #if UNROLLED_LOOP_INDEX == 0 && (!defined(USE_SHADOWMAP) || NUM_DIR_LIGHT_SHADOWS == 0)
+      directLight.color*=mix(vec3(1.),vec3(.27,.32,.39),shelter);
+    #endif`);
   material.onBeforeCompile=s=>{
     Object.assign(s.uniforms,uniforms);
-    s.vertexShader="attribute float keepMaterial;varying float keepKind;varying vec3 keepLocal,keepFace;varying vec2 keepUv;\n"+s.vertexShader.replace("#include <begin_vertex>",
-      "#include <begin_vertex>\nkeepKind=keepMaterial;keepLocal=position;keepFace=normal;keepUv=uv;");
-    s.fragmentShader="uniform sampler2D keepDepth;uniform float keepSlot;varying float keepKind;varying vec3 keepLocal,keepFace;varying vec2 keepUv;\n"+mapping+"\n"+s.fragmentShader;
-    s.fragmentShader=s.fragmentShader.replace("#include <color_fragment>",`#include <color_fragment>
-      float stoneRise=0.;
-      if(keepKind>4.5 && abs(keepFace.y)<.8){
+    s.vertexShader='attribute float keepMaterial;'+vary+s.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+      keepKind=keepMaterial>=10.?1.:keepMaterial;keepLocal=position;keepFace=normal;keepUv=uv;
+      float panel=keepMaterial-10.;
+      vec3 transverse=panel<.5?vec3(1.,0.,0.):panel<1.5?vec3(0.,0.,1.):panel<2.5?vec3(-1.,0.,0.):vec3(0.,0.,-1.);
+      keepAcross=mat3(modelViewMatrix)*transverse;`);
+    s.fragmentShader='uniform sampler2D keepDepth,keepTileFinish;uniform float keepSlot;'+vary+mapping+'\n'+s.fragmentShader;
+    s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      bool glaze=abs(keepKind-1.)<.25;
+      vec4 tileSample=vec4(.5,.5,.5,1.);
+      if(glaze){
+        // Remove the diffuse atlas gutter. Both teams share the same ceramic relief.
+        vec2 cell=fract(keepUv*vec2(2.,4.));cell.y=1.-cell.y;
+        vec2 courses=(cell-.009)/.982*vec2(10.,6.);
+        tileSample=texture2D(keepTileFinish,courses);
+        diffuseColor.rgb*=mix(.86,1.,tileSample.a);
+      }
+      if(abs(keepKind-5.)<.25 && abs(keepFace.y)<.8){
         float course=keepLocal.y/.35+.15;
         float run=(abs(keepFace.x)>abs(keepFace.z)?keepLocal.z:keepLocal.x)/.69+.50*mod(floor(course),2.);
-        vec2 cell=fract(vec2(run,course));vec2 gap=min(cell,1.-cell)*vec2(.69,.35);
-        float edge=min(gap.x,gap.y),aa=max(.003,min(.031,fwidth(edge)));
-        float solid=smoothstep(.005-aa,.021+aa,edge);
+        vec2 cell=fract(vec2(run,course)),gap=min(cell,1.-cell)*vec2(.69,.35);
+        float edge=min(gap.x,gap.y),aa=clamp(fwidth(edge),.003,.031);
+        float solid=smoothstep(.003-aa,.021+aa,edge);
         float readable=1.-smoothstep(.25,.65,max(fwidth(run),fwidth(course)));
-        float courseLip=(1.-smoothstep(.021,.054,gap.y))*step(.5,cell.y)*solid;
-        diffuseColor.rgb*=mix(vec3(1.),mix(vec3(.57,.62,.68),vec3(1.),solid)+vec3(.075,.064,.042)*courseLip,readable);
-        stoneRise=.009*solid*readable;
+        float lip=(1.-smoothstep(.019,.048,gap.y))*step(.5,cell.y)*solid;
+        float tint=fract(dot(floor(vec2(run,course)),vec2(.381966,.618034)));
+        vec3 face=mix(vec3(.94,.96,.98),vec3(1.05,1.02,.98),tint);
+        diffuseColor.rgb*=mix(vec3(1.),mix(vec3(.55,.60,.64),face,solid)+vec3(.065,.06,.05)*lip,readable);
       }`);
-    s.fragmentShader=s.fragmentShader.replace("#include <roughnessmap_fragment>",`#include <roughnessmap_fragment>
-      bool glaze=keepKind>.5&&keepKind<1.5,wood=keepKind>1.5&&keepKind<2.5,brass=keepKind>2.5&&keepKind<3.5;
-      roughnessFactor=glaze?.41:wood?.67:brass?.38:.88;`);
-    s.fragmentShader=s.fragmentShader.replace("#include <metalnessmap_fragment>","#include <metalnessmap_fragment>\nmetalnessFactor=brass?.44:.012;");
-    s.fragmentShader=s.fragmentShader.replace("#include <normal_fragment_maps>",`#include <normal_fragment_maps>
-      // Project slope in view space. A curved pan catches a thin moving highlight;
-      // distant subpixel ridges fade, and timber only has a broad grain response.
-      vec2 chart=keepUv*vec2(2.,4.); float pan=chart.x*10.65,course=chart.y*6.20;
-      float reliefHeight=stoneRise;
+    s.fragmentShader=s.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
       if(glaze){
-        float visible=1.-smoothstep(.20,.58,fwidth(pan));
-        reliefHeight=.015*(.5+.5*cos(6.28318*pan))*visible;
-        reliefHeight+=.011*(1.-smoothstep(.015,.14,fract(course)))*(1.-smoothstep(.20,.60,fwidth(course)));
-      }else if(wood){
-        float fibre=chart.x*4.5+sin(chart.y*5.)*.22;
-        reliefHeight=.004*sin(fibre*6.28318)*(1.-smoothstep(.18,.56,fwidth(fibre)));
-      }
-      vec3 surface=-vViewPosition,dpX=dFdx(surface),dpY=dFdy(surface);
-      vec3 r1=cross(dpY,normal),r2=cross(normal,dpX);float signedArea=dot(dpX,r1);
-      normal=normalize(max(abs(signedArea),.000001)*normal-sign(signedArea)*(dFdx(reliefHeight)*r1+dFdy(reliefHeight)*r2));`);
-    s.fragmentShader=s.fragmentShader.replace("#include <lights_fragment_end>",`#include <lights_fragment_end>
-      vec2 sameRay=keepLocal.xz+vec2(.43333333,-.33333333)*keepLocal.y;
-      float blocker=texture2D(keepDepth,keepTile(sameRay,keepSlot)).r*5.1;
-      float shelter=smoothstep(.095,.26,blocker-keepLocal.y);
-      #if !defined(USE_SHADOWMAP) || NUM_DIR_LIGHT_SHADOWS == 0
-        reflectedLight.directDiffuse*=mix(vec3(1.),vec3(.32,.40,.53),shelter);
-        reflectedLight.directSpecular*=1.-.84*shelter;
-      #endif
-      reflectedLight.indirectDiffuse*=mix(vec3(1.),vec3(.65,.73,.83),shelter);
-    `);
+        vec3 across=normalize(keepAcross-normal*dot(keepAcross,normal));
+        vec3 down=cross(normal,across);
+        vec2 tilt=tileSample.rg*2.-1.;
+        normal=normalize(normal+across*tilt.x+down*tilt.y);
+      }`);
+    s.fragmentShader=s.fragmentShader.replace('#include <lights_phong_fragment>',`#include <lights_phong_fragment>
+      bool brass=abs(keepKind-3.)<.25,wood=abs(keepKind-2.)<.25,trim=abs(keepKind-6.)<.25;
+      material.specularColor=glaze?vec3(.038,.046,.048):brass?vec3(.28,.17,.065):
+        wood?vec3(.026,.018,.012):trim?vec3(.045,.052,.05):vec3(.011);
+      material.specularShininess=glaze?mix(28.,48.,tileSample.b):brass?54.:wood?15.:trim?35.:8.;
+      vec2 ray=keepLocal.xz+vec2(.43333333,-.33333333)*keepLocal.y;
+      float blocker=texture2D(keepDepth,keepTile(ray,keepSlot)).r*5.1;
+      float shelter=smoothstep(.095,.26,blocker-keepLocal.y);`);
+    s.fragmentShader=s.fragmentShader.replace('#include <lights_fragment_begin>',lights);
+    s.fragmentShader=s.fragmentShader.replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
+      reflectedLight.indirectDiffuse*=mix(vec3(1.),vec3(.63,.70,.79),shelter);`);
   };
-  material.customProgramCacheKey=()=>"keep-sun-glaze-v1";
+  material.customProgramCacheKey=()=>'keep-curved-tile-v1';
 }
 
 // The ground uses the same footprint as the surface shadow test. Static vertices follow

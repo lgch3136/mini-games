@@ -1,5 +1,6 @@
-import {bindKeepFinish} from "./keep-light.mjs?v=canyon-keep-lit2";
-import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-keep-lit2";
+import {bindKeepFinish} from "./keep-light.mjs?v=canyon-pavilion1";
+import {pavilionRoof} from "./pavilion-roof.mjs?v=canyon-pavilion1";
+import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-pavilion1";
 import {towerSight} from "./tower-sight.mjs?v=canyon-keep-lit2";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
@@ -24,24 +25,30 @@ export function betweenCameraAndFighter(unit,actor,camera,foot,ground,width,low,
 }
 
 export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
-  const part=()=>({pos:[],rgb:[],uv:[],finish:[]});
+  const part=()=>({pos:[],rgb:[],uv:[],finish:[],smooth:[]});
   const masonry=part(),tiles=part(),ruin=part();let surface=masonry;
   const palette=new Map();
   const colors=team
-    ? {roof:"#603d59",edge:"#be6f76",cloth:"#ce5b71",light:"#ffd3ae"}
-    : {roof:"#284959",edge:"#67a1a2",cloth:"#44b8b0",light:"#d2ffe6"};
+    ? {roof:"#603d59",edge:"#925659",cap:"#c78a69",cloth:"#b44c61",light:"#efd2a0"}
+    : {roof:"#284959",edge:"#426970",cap:"#82a3a0",cloth:"#2b8b89",light:"#ddd4a4"};
   const wooden=new Set(["#69493a","#856848","#784f39","#a77e48"]);
   const carved=new Set(["#4c6265","#a1aba0","#667a76","#8a8977","#c2b793","#8e9483","#b8ac8b","#a59e89","#827e69","#a29b83"]);
   const brass=new Set(["#d4ac77","#d4b77b","#e0bd79","#c4a777","#ead398"]);
-  function tri(a,b,c,color,faceUv=null) {
+  function tri(a,b,c,color,faceUv=null,normals=null) {
     if(!palette.has(color))palette.set(color,new T.Color(color));
     const tint=palette.get(color);
+    if(normals)surface.smooth.push([surface.pos.length/3,normals]);
     surface.pos.push(...a,...b,...c);
     const isRoof=surface===tiles&&color===colors.roof;
     const cell=isRoof?(team?clayTile:jadeTile):wooden.has(color)?timber:carved.has(color)?stone:plain;
     const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
     const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
-    const finish=isRoof||surface===tiles&&color===colors.edge?1:wooden.has(color)?2:brass.has(color)?3:color===colors.cloth?4:cell===stone?5:0;
+    let finish=wooden.has(color)?2:brass.has(color)?3:color===colors.cloth?4:cell===stone?5:0;
+    if(isRoof){
+      const x=a[0]+b[0]+c[0],z=a[2]+b[2]+c[2];
+      const side=Math.abs(x)>Math.abs(z)?(x>0?1:3):(z>0?2:0);
+      finish=10+side;
+    }else if(surface===tiles&&(color===colors.edge||color===colors.cap))finish=6;
     for(const [i,p] of [a,b,c].entries()){
       surface.finish.push(finish);
       if(!art||cell===plain)surface.rgb.push(tint.r,tint.g,tint.b);
@@ -87,45 +94,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
   }
   function roof(y,rise,span){
     surface=tiles;
-    const loop=(radius,height,kick)=>Array.from({length:8},(_,i)=>{
-      const x=[-1,0,1,1,1,0,-1,-1][i],z=[-1,-1,-1,0,1,1,1,0][i];
-      return [x*radius,y+height+((i%2===0)?kick:0),z*radius];
-    });
-    const lip=loop(span,0,.19),trim=loop(span,.085,.19),mid=loop(span*.67,rise*.24,.04),crown=loop(span*.17,rise,0);
-    const underside=loop(span*.88,-.07,.145);
-    cap(underside,"#69493a");connect(underside,lip,"#735a45");connect(lip,trim,colors.edge);
-    const skin=(lower,upper,v0,v1,lowerWidth,upperWidth)=>{
-      for(let i=0;i<8;i++){
-        const j=(i+1)%8,u0=(i%2)*.5,u1=u0+.5;
-        const lo=u=>.5+(u-.5)*lowerWidth,hi=u=>.5+(u-.5)*upperWidth;
-        tri(lower[j],lower[i],upper[i],colors.roof,[[lo(u1),v0],[lo(u0),v0],[hi(u0),v1]]);
-        tri(lower[j],upper[i],upper[j],colors.roof,[[lo(u1),v0],[hi(u0),v1],[hi(u1),v1]]);
-      }
-    };
-    skin(trim,mid,1,.63,1,.67);skin(mid,crown,.63,0,.67,.17);cap(crown,colors.edge);
-    // Raised hip ridges turn with the slope and cast a dark edge across the tiles.
-    for(let i=0;i<8;i+=2){
-      const cross=[Math.sign(trim[i][2])*.051,0,-Math.sign(trim[i][0])*.051];
-      const ridges=[trim[i],mid[i],crown[i]].map((p,j)=>[
-        [p[0]-cross[0],p[1]+.012,p[2]-cross[2]],
-        [p[0],p[1]+(j===0?.105:.071),p[2]],
-        [p[0]+cross[0],p[1]+.012,p[2]+cross[2]]]);
-      for(let j=0;j<2;j++){
-        const [a,b,c]=ridges[j],[d,e,f]=ridges[j+1];
-        quad(a,b,e,d,colors.edge);quad(b,c,f,e,team?"#80515b":"#42686c");
-      }
-    }
-    for(let i=0;i<8;i++){
-      const j=(i+1)%8;
-      for(const f of [.19,.44,.69,.92]){
-        const at=(row,h)=>row[i].map((v,k)=>v+(row[j][k]-v)*f+(k===1?h:0));
-        const edge=at(trim,.018),fold=at(mid,.025),peak=at(crown,.018),toe=at(lip,.012);
-        const dx=(trim[j][0]-trim[i][0])*.021,dz=(trim[j][2]-trim[i][2])*.021;
-        quad(edge,[edge[0]+dx,edge[1]+.010,edge[2]+dz],[fold[0]+dx,fold[1]+.006,fold[2]+dz],fold,colors.edge);
-        tri(fold,[fold[0]+dx,fold[1]+.006,fold[2]+dz],peak,colors.edge);
-        quad(toe,[toe[0]+dx*1.6,toe[1],toe[2]+dz*1.6],[edge[0]+dx*1.6,edge[1],edge[2]+dz*1.6],edge,"#c4a777");
-      }
-    }
+    pavilionRoof(y,rise,span,colors,tri,quad);
     surface=masonry;
   }
   const span=core?1.82:1.17;
@@ -133,10 +102,22 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
   cylinder(0,0,.24,.49,span*1.02,span*.95,"#a1aba0");
   cylinder(0,0,.49,.62,span*.94,span*.96,"#667a76");
   const postSpan=span*.59;
+  const lintel=core?2.09:1.77;
+  for(const sign of [-1,1]){
+    beam(0,lintel-.15,sign*postSpan,postSpan*2+.26,.15,.16,"#784f39");
+    beam(sign*postSpan,lintel-.15,0,.16,.15,postSpan*2+.26,"#784f39");
+  }
+  function corbel(x,z,alongX,sign){
+    const outline=[[-.075,-.25],[.11,-.25],[.18,-.14],[.26,-.10],[.26,-.025],[-.075,-.025]];
+    const cheek=(across)=>outline.map(([u,h])=>[x+(alongX?sign*u:across),lintel+h,z+(alongX?across:sign*u)]);
+    const a=cheek(-.073),b=cheek(.073);
+    for(let i=1;i<a.length-1;i++){tri(a[0],a[i],a[i+1],"#856848");tri(b[0],b[i+1],b[i],"#856848");}
+    for(let i=0;i<a.length;i++){const j=(i+1)%a.length;quad(a[i],b[i],b[j],a[j],"#784f39");}
+  }
   for(const x of [-postSpan,postSpan])for(const z of [-postSpan,postSpan]){
     beam(x,.59,z,.20,core?1.65:1.31,.20,"#69493a");
     beam(x,.61,z,.26,.21,.26,"#d4ac77");
-    beam(x,core?2.06:1.73,z,.31,.13,.31,colors.edge);
+    corbel(x,z,true,Math.sign(x));corbel(x,z,false,Math.sign(z));
   }
   beam(0,.64,0,span*1.6,.14,span*1.58,"#856848");
   if(core){
@@ -177,12 +158,19 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
       }
     }
   }
-  const front=postSpan+.115, y=core?2.1:1.74, half=core?.30:.25;
+  const front=postSpan+.129,y=lintel-.058,half=core?.195:.157;
   for(const sign of [-1,1]){
-    const x=sign*postSpan;
-    quad([x-half,y,front],[x+half,y,front],[x+half,y-.60,front],[x-half,y-.54,front],colors.cloth);
-    tri([x-half,y-.54,front],[x+half,y-.60,front],[x,y-.86,front+.03],colors.cloth);
-    tri([x,y-.16,front+.015],[x+.10,y-.34,front+.015],[x-.10,y-.34,front+.015],colors.light);
+    const x=sign*(postSpan-.09),length=core?.67:.54;
+    const edge=(u,v)=>[x+u*half+.016*v,y-v*length,front+.014+(.016+.026*v)*(1-Math.abs(u))+.013*u*v];
+    const left=edge(-1,.79),peak=edge(0,1),right=edge(1,.76),middle=edge(0,.77);
+    quad(edge(-1,0),edge(0,0),middle,left,colors.cloth);
+    quad(edge(0,0),edge(1,0),right,middle,colors.cloth);
+    tri(left,middle,peak,colors.cloth);tri(middle,right,peak,colors.cloth);
+    // The chevrons lie on the same two cloth planes as the pennant.
+    for(const s of [-1,1]){
+      const stitch=(u,v)=>{const pt=edge(u,v);pt[2]+=.006;return pt;};
+      quad(stitch(0,.44),stitch(s*.63,.28),stitch(s*.63,.34),stitch(0,.51),colors.light);
+    }
   }
   surface=ruin;
   cylinder(0,0,.01,.18,span*1.07,span*.93,"#827e69");
@@ -195,13 +183,14 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
   function mesh(part,roof=false){
     const g=new T.BufferGeometry();g.setAttribute("position",new T.Float32BufferAttribute(part.pos,3));
     g.setAttribute("color",new T.Float32BufferAttribute(part.rgb,3));g.computeVertexNormals();g.computeBoundingSphere();
+    for(const [start,faces] of part.smooth)for(let i=0;i<3;i++)g.attributes.normal.setXYZ(start+i,...faces[i]);
     if(art){g.setAttribute("uv",new T.Float32BufferAttribute(part.uv,2));g.setAttribute("keepMaterial",new T.Float32BufferAttribute(part.finish,1));}
     if(roof&&!art){const c=g.attributes.color,n=g.attributes.normal;for(let i=0;i<c.count;i++){
       const shade=.73+.26*Math.max(0,n.getY(i))+.095*Math.abs(n.getX(i)-n.getZ(i));
       c.setXYZ(i,c.getX(i)*shade,c.getY(i)*shade,c.getZ(i)*shade);
     }}
     indexStoneFaces(T,g);
-    const mat=art?art.bind(new T.MeshStandardMaterial({vertexColors:true,roughness:.78,metalness:.01,side:T.DoubleSide})):roof?new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide}):
+    const mat=art?art.bind(new T.MeshPhongMaterial({vertexColors:true,shininess:20,side:T.DoubleSide})):roof?new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide}):
       new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.035,side:T.DoubleSide});
     if(art?.keepRelief)bindKeepFinish(T,mat,art.keepRelief,part===ruin?slot+4:slot);
     const mesh=new T.Mesh(g,mat);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
