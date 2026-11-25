@@ -1,4 +1,4 @@
-import {addUv,stone,jadeTile,timber,plain,clayTile} from "./field-architecture.mjs?v=jade-ground2";
+import {addUv,stone,jadeTile,timber,plain,clayTile,indexStoneFaces} from "./field-architecture.mjs?v=canyon-airwake3";
 import {towerSight} from "./tower-sight.mjs?v=river-readable-hit1";
 
 // Test the segment from the fighter to the camera against one visible part of the building.
@@ -169,6 +169,7 @@ export function makeRiverKeep(T,parent,team,core,tier=0,art=null) {
       const shade=.73+.26*Math.max(0,n.getY(i))+.095*Math.abs(n.getX(i)-n.getZ(i));
       c.setXYZ(i,c.getX(i)*shade,c.getY(i)*shade,c.getZ(i)*shade);
     }}
+    indexStoneFaces(T,g);
     const mat=art?art.bind(new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide})):roof?new T.MeshBasicMaterial({vertexColors:true,toneMapped:false,side:T.DoubleSide}):
       new T.MeshStandardMaterial({vertexColors:true,roughness:.85,metalness:.035,side:T.DoubleSide});
     const mesh=new T.Mesh(g,mat);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;

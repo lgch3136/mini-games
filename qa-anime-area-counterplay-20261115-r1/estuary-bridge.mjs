@@ -1,5 +1,5 @@
 import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=river-marching6";
-import {addUv,stone,flagFace,plain} from "./field-architecture.mjs?v=jade-ground2";
+import {addUv,stone,flagFace,plain,indexStoneFaces} from "./field-architecture.mjs?v=canyon-airwake3";
 import {bindLitSurface} from "./surface-impact.mjs?v=canyon-riverlight2";
 
 // Coordinates are metres along the actual mid-lane and metres across it.
@@ -125,7 +125,7 @@ export function riverBridge(T,art,lighting){
   const geo=new T.BufferGeometry();
   geo.setAttribute("position",new T.Float32BufferAttribute(points,3));geo.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
   geo.setAttribute("normal",new T.Float32BufferAttribute(normals,3));
-  geo.setAttribute("color",new T.Float32BufferAttribute(colour,3));geo.computeBoundingSphere();
+  geo.setAttribute("color",new T.Float32BufferAttribute(colour,3));indexStoneFaces(T,geo);geo.computeBoundingSphere();
   const mat=art.bind(new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,toneMapped:false}));
   if(lighting)mat.onBeforeCompile=shader=>bindLitSurface(shader,lighting);
   mat.customProgramCacheKey=()=>"river-damp-stone-spell-v1";

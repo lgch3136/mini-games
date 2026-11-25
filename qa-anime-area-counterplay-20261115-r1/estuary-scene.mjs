@@ -71,43 +71,43 @@ export function estuaryFloor(T,scene,lighting=battleLight(T,floorHeight)){
     uniform mat4 modelViewMatrix,projectionMatrix;uniform highp float time,motion;
     ${spellVertex}
     out mediump vec2 coord;out lowp vec3 base;out lowp vec3 reflection;
-    out mediump vec3 current;out lowp vec3 castLight;out mediump vec2 crest;
+    out mediump vec3 flowInk;out lowp vec3 castLight;out mediump vec3 shoreInk;
     void main(){
       coord=uv;base=fallback;reflection=vec3(0.);sight=exposure;
-      current=vec3(flowCoord,river);
+      flowInk=vec3(0.,0.,river);shoreInk=vec3(0.);
       castLight=spellAt(position,vec3(0.,1.,0.));
-      crest=vec2(0.);
       if(river<4.6){
         float travel=time*motion;
-        crest=sin(vec2(current.x*.88+current.y*.42-travel*.62,current.x*2.03+current.y*.85-travel*.63));
-        float leafShade=.5+.5*sin(current.x*.46+current.y*.24);
+        float along=flowCoord.x,across=flowCoord.y;
+        vec2 crest=sin(vec2(along*.88+across*.42-travel*.62,along*2.03+across*.85-travel*.63));
+        float leafShade=.5+.5*sin(along*.46+across*.24);
         float depth=1.-smoothstep(.95,3.02,river);
         reflection=mix(vec3(-.040,-.036,-.012),vec3(-.049,-.009,.013),leafShade)*depth;
+        // Continuous coordinates interpolate across a tile. Only the narrow reflection
+        // and its anti-aliased boundaries need to be resolved at individual pixels.
+        flowInk.x=across*(1.53+.15*crest.x)+along*.29+.62*crest.x+.24*crest.y-travel*.38;
+        flowInk.y=along*.43+across*.21+crest.x*.37+crest.y*.26+travel*.039;
+        float shelter=smoothstep(-.62,.58,crest.x-.51*crest.y+across*.048);
+        shoreInk=vec3((.18+.82*shelter)*(.35+.65*depth),2.28+.075*crest.y,
+          smoothstep(-.46,.68,crest.x+.26*crest.y));
       }
       gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);
     }`,
     fragmentShader:`precision mediump float;
-    uniform sampler2D field;uniform float ready;uniform highp float time,motion;
+    uniform sampler2D field;uniform float ready;
     in mediump vec2 coord;in lowp vec3 base,reflection;in lowp float sight;out vec4 paint;
-    in mediump vec3 current;in lowp vec3 castLight;in mediump vec2 crest;
+    in mediump vec3 flowInk;in lowp vec3 castLight;in mediump vec3 shoreInk;
     void main(){
       vec3 colour=ready>.5?texture(field,coord).rgb:base;
       vec3 daylight=colour+reflection;
-      if(current.z<3.10){
-        float along=current.x,across=current.y,depth=1.-smoothstep(.65,2.95,current.z);
-        float travel=motion*time;
-        float bends=crest.x;
-        float ribbons=across*2.12+along*.41+bends*.26-travel*.44;
-        float folded=abs(fract(ribbons)-.5);
-        float edge=max(.035,fwidth(ribbons)*.8);
-        float groups=1.-2.*abs(fract(along*.346+bends*.22+travel*.042)-.5);
-        float glimmer=(1.-smoothstep(.025,.025+edge,folded))*smoothstep(.57,.88,groups);
-        float ripple=crest.y;
-        float wetLip=(1.-smoothstep(.035,.20,abs(current.z-2.28-.075*ripple)))*
-          smoothstep(-.46,.68,bends+.26*ripple);
-        float pool=1.-smoothstep(2.65,3.08,current.z);
-        daylight+=pool*(vec3(.075,.111,.103)*glimmer*(.35+.65*depth)
-          +vec3(.105,.107,.080)*wetLip+castLight*glimmer*(.075+.14*depth));
+      if(flowInk.z<3.10){
+        float edge=max(.041,fwidth(flowInk.x)*.8);
+        float groups=1.-2.*abs(fract(flowInk.y)-.5);
+        float glimmer=(1.-smoothstep(.026,.026+edge,abs(fract(flowInk.x)-.5)))*
+          smoothstep(.57,.93,groups)*shoreInk.x;
+        float wetLip=(1.-smoothstep(.035,.20,abs(flowInk.z-shoreInk.y)))*shoreInk.z;
+        float pool=1.-smoothstep(2.65,3.08,flowInk.z);
+        daylight+=pool*((vec3(.075,.111,.103)+castLight*.18)*glimmer+vec3(.105,.107,.080)*wetLip);
       }
       daylight+=castLight*(.11+.30*colour);
       vec3 shade=daylight*vec3(.56,.62,.72)+vec3(.024,.029,.034);

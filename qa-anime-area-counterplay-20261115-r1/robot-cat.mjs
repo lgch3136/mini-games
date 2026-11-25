@@ -66,10 +66,11 @@ export function robotCat(T,team){
   const pocketDirection=new T.Vector3(),elbowHint=new T.Vector3(),pocketUpper=new T.Vector3(),pocketFore=new T.Vector3();
   const pocketShoulder=new T.Quaternion(),pocketElbow=new T.Quaternion();
   const upperLength=Math.hypot(.139,.237,.030),foreLength=Math.hypot(.025,.214,.093);
-  let equip=0, openStance=0;
+  let equip=0, openStance=0, footPlant=0;
   const pocketAxis=new T.Vector3(),heldPosition=new T.Vector3();
   const hipRotation=new T.Quaternion(),pocketRotation=new T.Quaternion(),sideRotation=new T.Quaternion(),heldRotation=new T.Quaternion();
-  const plantedFoot=new T.Vector3(), hipInverse=new T.Quaternion();
+  const plantedFoot=new T.Vector3(), firingFoot=new T.Vector3(), hipInverse=new T.Quaternion();
+  const soleAngles=new T.Euler(0,0,0,"YXZ"),soleAim=new T.Quaternion();
   const gripBefore=new T.Vector3(), gripAfter=new T.Vector3();
   const sightline=new T.Euler(0,0,0,'YXZ'), headTurn=new T.Quaternion();
   const barrelAxis=new T.Vector3(0,0,1),rearSocket=new T.Vector3(0,0,-.125),palmSupport=new T.Vector3();
@@ -295,6 +296,14 @@ export function robotCat(T,team){
       const settle=point&&after>=0?Math.sin(Math.PI*limit((after-.08)/.21))*Math.exp(-after*4):0;
       const brace=Math.max(holding,point?smooth(limit(charge/.67))*(1-smooth(limit((after-.095)/Math.max(.05,rest-.095)))):0);
       const load=Math.max(.72*holding,draw);
+      // The gun is heavy. The support knee takes the weight before the elbow comes forward.
+      // Drive the release off the real muzzle event so an interrupted cast cannot kick.
+      const sinceBlast=clock-(muzzle.userData.airReleaseAt??-1000);
+      const gather=cannon?smooth(limit(charge/.54))*(1-smooth(limit((elapsed-wind*.76)/(wind*.32)))):0;
+      const drive=cannon?smooth(limit((charge-.52)/.48))*(1-smooth(limit(after/.10))):0;
+      const returned=sinceBlast>=0&&sinceBlast<.31?smooth(limit(sinceBlast/.050))*
+        (1-smooth(limit((sinceBlast-.060)/.25))):0;
+      const shoulderSet=Math.max(gather,drive,returned);
       // When firing off the far right corner of the bridge, step around the supporting leg.
       // The torso places the cannon on the target side; eyes and muzzle keep their own aim.
       const backRight=farSide*smooth(limit((Math.sin(look)+.10)/.76));
@@ -306,10 +315,16 @@ export function robotCat(T,team){
       hip.position.set(-.035*plant*movingWeight-.055*load+.041*reach,
         .032*Math.abs(swing)+lift*(.49+.035*Math.sin(time*8))-.071*load-.029*recoil,
         -.058*load+.065*reach-.099*recoil);
+      hip.position.x-=.145*gather+.075*returned;
+      hip.position.y-=.155*gather+.096*returned;
+      hip.position.z+=-.135*gather+.10*drive-.092*returned;
       hip.rotation.set(.095*movingWeight+.115*load-.10*reach+.235*recoil,
         .10*swing+(-.17+.38*farSide)*load+(-.30+(1.68-.30*smooth(limit((back-.34)/.38)))*farSide-.78*nearRight)*brace+.21*openStance,
         -.064*swing+.12*load-.10*reach+.13*openStance-.09*recoil*openStance);
+      hip.rotation.z+=.205*gather-.15*drive+.18*returned;
       head.position.set(-(.145+.075*farSide)*brace-.045*load-.060*openStance,1.54-.044*load-.025*openStance,.019-.105*brace);
+      head.position.x-=.11*gather+.045*returned;
+      head.position.y-=.038*gather;
       head.rotation.set(-.235-.040*movingWeight-.07*load+.051*reach-.11*recoil+.035*settle,
         -.64*hip.rotation.y-.32*farSide*brace+.06*swing,-.50*hip.rotation.z);
       // Let the eyes look along the outside of the barrel while the shoulders turn underneath.
@@ -323,10 +338,15 @@ export function robotCat(T,team){
       }
       // The discharged cannon pushes the upper body back along its aim. Keep the rear foot planted.
       const kickback=(cannon?1:0)*farSide*recoil;
+      const floorTarget=Math.max(shoulderSet,holding,cannon?brace:0);
+      if(reset||actor?.dead||hover)footPlant=actor?.dead||hover?0:floorTarget;
+      else if(cannon&&after<.085)footPlant=Math.max(footPlant,floorTarget);
+      else footPlant=Math.max(floorTarget,footPlant-dt*5.6);
       hip.position.z-=.28*kickback;
       hip.position.y-=.06*kickback;
       plantedFoot.set(0,.06*kickback,.28*kickback);
-      if(kickback>0)plantedFoot.applyQuaternion(hipInverse.copy(hip.quaternion).invert());
+      if(kickback>0||footPlant>0)hipInverse.copy(hip.quaternion).invert();
+      if(kickback>0)plantedFoot.applyQuaternion(hipInverse);
       for(let j=0;j<2;j++){
         const side=j?1:-1,foot=footTrack(walkFeet[j],phase/(Math.PI*2)+j*.5,actorStrides[1]/1.1,.53,.157);
         const ground=movingWeight*(1-lift),braceStep=side*(.118*Math.max(fade,holding)+.095*openStance);
@@ -334,8 +354,20 @@ export function robotCat(T,team){
           .003+foot.z*ground+braceStep);
         legs[j].position.addScaledVector(plantedFoot,j?.55:1);
         legs[j].rotation.set(foot.roll*ground+.25*lift+side*.09*load,side*.09,side*.035);
+        if(footPlant>.001){
+          // Establish the same foothold during the aim drag, cast and recoil.
+          // A planted sole stays level with the bridge when the upper body twists or dips.
+          firingFoot.set(side*(.268+.075*footPlant),.164+ground*foot.lift,side*.174*footPlant+foot.z*ground);
+          firingFoot.sub(hip.position).applyQuaternion(hipInverse);
+          legs[j].position.lerp(firingFoot,footPlant);
+          soleAngles.set(foot.roll*ground+(j?.065*returned:0),side*(.09+.10*footPlant),side*.025);
+          soleAim.setFromEuler(soleAngles).premultiply(hipInverse);
+          legs[j].quaternion.slerp(soleAim,footPlant);
+        }
       }
       arms[0].rotation.set(-.19-.42*swing-.61*load+.16*reach-(door?.68:0),-.17-.19*load,-.28-.40*load-.35*lift);
+      arms[0].rotation.x+=.48*gather+.32*returned;
+      arms[0].rotation.z-=.55*gather+.33*drive;
       arms[1].position.set(.414+(.032+.035*farSide)*brace,.895+.073*brace+.030*load,.015+.048*reach);
       arms[1].rotation.set(-.26+.35*swing-.42*brace-.04*load-.46*reach+.28*recoil,
         -.04-.09*brace+.19*load,.36+(.70+.24*farSide)*brace+.17*load-.10*reach);
@@ -346,10 +378,10 @@ export function robotCat(T,team){
       // The shoulder remains in its socket and both limb segments keep their bind lengths.
       const flank = farSide * Math.max(brace, reach);
       if (flank > .001) {
-        upperAim.set(1,-.32+.23*reach-.30*recoil,.10+.24*reach-.22*recoil).normalize();
+        upperAim.set(1,-.32+.23*reach+.56*gather-.30*recoil,.10+.24*reach-.42*gather-.22*recoil).normalize();
         upperTurn.setFromUnitVectors(upperRest, upperAim);
         arms[1].quaternion.slerp(upperTurn, flank);
-        foreAim.set(.71+.12*reach,.11+.31*load+.27*reach-.72*recoil,.77+.15*reach-.18*recoil).normalize();
+        foreAim.set(.71+.12*reach,.11+.31*load+.27*reach+.47*gather-.72*recoil,.77+.15*reach-.42*gather-.18*recoil).normalize();
         foreAim.applyQuaternion(upperTurn.copy(arms[1].quaternion).invert());
         foreTurn.setFromUnitVectors(foreRest, foreAim);
         cannonElbow.quaternion.slerp(foreTurn, flank);
@@ -384,7 +416,6 @@ export function robotCat(T,team){
       }
       if(show)slideFromPocket(exposure);
       // The ring has already left the muzzle. Pivot the tube around the cuff in the palm.
-      const sinceBlast=clock-(muzzle.userData.airReleaseAt??-1000);
       const boreCharge=cannon&&after<0?charge*charge:0;
       const exhaust=sinceBlast>=0&&sinceBlast<.14?1-sinceBlast/.14:0;
       bore.visible=show&&boreCharge+exhaust>.025;
@@ -396,7 +427,7 @@ export function robotCat(T,team){
         gripAfter.copy(rearSocket).applyQuaternion(gadget.quaternion);
         gadget.position.add(gripBefore).sub(gripAfter);
       }
-      tail.rotation.set(.14*swing-.22*recoil,0,.14*Math.sin(phase-.8)*movingWeight-.14*load);
+      tail.rotation.set(.14*swing-.22*recoil+.34*gather-.44*returned,0,.14*Math.sin(phase-.8)*movingWeight-.14*load);
       rotor.visible=hover||action?.kind==="skill"&&action.skillIndex===1;
       if(rotor.visible){blades.rotation.y=time*35;wake.visible=lift>.06;wakeMaterial.opacity=lift;}
     },poseSignature(){return [head.rotation.x,arms[1].rotation.x,hip.position.y,Number(rotor.visible),Number(gadget.visible)];}};

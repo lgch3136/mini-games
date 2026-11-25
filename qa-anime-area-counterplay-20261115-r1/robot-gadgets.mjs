@@ -142,62 +142,8 @@ export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
     return {group,hinge,material,phase,start:-100};
   }
   const winds=[],doors=[];
-  const pressureSlots=Array(12);
-  let windCursor=0,doorCursor=0,pressureCursor=0,pressureMesh=null,last=0;
-  function remember(kind,event,time,origin=null){
-    const x=origin?.x??event.fromX??event.x,z=origin?.z??event.fromZ??event.z,dx=event.targetX-x,dz=event.targetZ-z,length=Math.hypot(dx,dz);
-    if(!Number.isFinite(length)||length<.015)return;
-    pressureSlots[pressureCursor++%pressureSlots.length]={kind,x,z,dx:dx/length,dz:dz/length,length,start:time,lift:origin?origin.y-land(x,z):.89};
-  }
-  function pressure(time){
-    if(!pressureCursor)return;
-    if(!pressureMesh){
-      const geom=new T.BufferGeometry(),capacity=12*36;
-      geom.setAttribute("position",new T.BufferAttribute(new Float32Array(capacity*3),3).setUsage(T.DynamicDrawUsage));
-      geom.setAttribute("color",new T.BufferAttribute(new Float32Array(capacity*4),4).setUsage(T.DynamicDrawUsage));
-      const mat=new T.MeshBasicMaterial({vertexColors:true,transparent:true,depthWrite:false,toneMapped:false,side:T.DoubleSide});
-      pressureMesh=new T.Mesh(geom,mat);pressureMesh.name="气压轨迹";pressureMesh.frustumCulled=false;scene.add(pressureMesh);
-    }
-    const geom=pressureMesh.geometry,pos=geom.attributes.position,rgba=geom.attributes.color;
-    let count=0,active=false;
-    function quad(a,b,c,d,opacity,tone){
-      const rgb=tone==="edge"?[.025,.31,.37]:tone==="contact"?[1,.91,.57]:[.78,.98,1];
-      for(const v of [a,b,c,a,c,d]){
-        pos.setXYZ(count,v[0],v[1],v[2]);
-        rgba.setXYZW(count,...rgb,opacity*v[3]);count++;
-      }
-    }
-    for(const item of pressureSlots){
-      if(!item)continue;
-      const trail=item.kind==="trail",age=(time-item.start)/(trail?.22:.20);
-      if(age<0||age>=1)continue;
-      active=true;
-      const loc=(along,side,up,fade)=>{
-        const x=item.x+item.dx*along+item.dz*side,z=item.z+item.dz*along-item.dx*side;
-        return [x,land(x,z)+up+(trail?(item.lift-.89)*(1-clamp(along/item.length,0,1)):0),z,fade];
-      };
-      if(trail){
-        const length=item.length,start=.02+age*.58,mid=length*.5,end=length*(.91+.09*age);
-        for(const side of [-1,1]){
-          const offset=side*(.08+.28*age),lift=.89+side*.10;
-          const a=loc(start,offset*.30,lift,.58),b=loc(mid,offset,lift+.023,1),c=loc(end,offset*1.7,lift+.012,.06);
-          const edge=loc(mid,offset+side*.13,lift+.045,.93),core=loc(mid,offset+side*.086,lift+.052,1);
-          quad(a,edge,c,b,.83*(1-age),"edge");quad(a,core,c,b,.94*(1-age),"core");
-        }
-      }else{
-        const centre=item.length*age,r=.28+.24*age,opacity=.76*(1-age);
-        for(let k=0;k<6;k++){
-          const a=-1.05+k*.35,b=a+.35;
-          const tip=(v,w)=>loc(centre+Math.cos(v)*r,Math.sin(v)*(r+w),.70+Math.cos(v)*(.12+w),1-Math.abs(v)*.58);
-          quad(tip(a,0),tip(b,0),tip(b,.082),tip(a,.082),opacity,"contact");
-        }
-      }
-    }
-    pressureMesh.visible=count>0;geom.setDrawRange(0,count);
-    if(count){pos.clearUpdateRanges();rgba.clearUpdateRanges();pos.addUpdateRange(0,count*3);rgba.addUpdateRange(0,count*4);pos.needsUpdate=true;rgba.needsUpdate=true;}
-    if(!active){pressureSlots.fill(null);pressureCursor=0;}
-  }
-  function clear(){last=0;pressureSlots.fill(null);pressureCursor=0;if(pressureMesh)pressureMesh.visible=false;for(const r of winds){r.start=-100;r.mesh.visible=false;}for(const d of doors){d.start=-100;d.group.visible=false;}}
+  let windCursor=0,doorCursor=0,wave=null,last=0;
+  function clear(){last=0;wave?.clear();for(const r of winds){r.start=-100;r.mesh.visible=false;}for(const d of doors){d.start=-100;d.group.visible=false;}}
   function draw(match){
     const time=match.time;
     for(const e of match.events){
@@ -210,16 +156,16 @@ export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
         const dx=e.targetX-x,dz=e.targetZ-z;
         const angle=from&&Math.hypot(dx,dz)>.10?Math.atan2(dx,dz):(e.face||0);
         if(strong){
-          remember("trail",e,time,from);
+          wave??=airPressure(T,scene,land);
+          wave.emit(e,time,from,false);
           if(socket)socket.userData.airReleaseAt=time;
+          continue;
         }
         const slot=windCursor++%9,r=winds[slot]??={mesh:ring(),start:-100};
-        Object.assign(r,{start:time,life:strong?.245:.16,angle,x,z,lift:from?from.y-land(x,z):.86,atTip:!!from,
-          range:strong?3.75:1.25,width:strong?.55:.25});
-        r.mesh.material.uniforms.force.value=strong?1:0;
+        Object.assign(r,{start:time,life:.16,angle,x,z,lift:from?from.y-land(x,z):.86,atTip:!!from,range:1.25,width:.25});
         r.mesh.rotation.set(0,angle,0);
       }else if(e.type==="airPush"){
-        remember("contact",e,time);
+        if(!e.unknownOrigin){wave??=airPressure(T,scene,land);wave.emit(e,time,null,true);}
       }else if(e.type==="anywhereDoor"){
         const endpoints=e.singleDoor?[[e.targetX,e.targetZ]]:[[e.fromX,e.fromZ],[e.targetX,e.targetZ]];
         for(const [x,z] of endpoints){
@@ -229,7 +175,7 @@ export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
         }
       }
     }
-    pressure(time);
+    wave?.draw(time);
     for(const r of winds){
       const t=(time-r.start)/r.life;r.mesh.visible=t>=0&&t<1;
       if(!r.mesh.visible)continue;
@@ -245,7 +191,79 @@ export function gadgetEffects(T,scene,land,muzzleOf=()=>null){
       d.material.opacity=Math.min(1,(1-t)*4);
     }
   }
-  return {draw,clear,dispose(){if(pressureMesh){pressureMesh.removeFromParent();pressureMesh.geometry.dispose();pressureMesh.material.dispose();}
+  return {draw,clear,dispose(){wave?.dispose();
     for(const r of winds){r.mesh.removeFromParent();r.mesh.material.dispose();}ringGeometry.dispose();
     for(const d of doors){d.group.removeFromParent();d.material.dispose();}doorShapes?.forEach(g=>g.dispose());}};
+}
+
+// One open compression front and two short curls describe the volume of the blast.
+// Reuse those arcs on a displaced target. Only a new wave uploads endpoints.
+function airPressure(T,scene,land){
+  const capacity=12,expiry=new Float64Array(capacity).fill(-1);
+  const p=[],ink=[],indices=[];
+  function arc(start,end,radius,width,lag,tail,colour,opacity,segments){
+    const first=p.length/3;
+    for(let i=0;i<=segments;i++){
+      const t=i/segments,angle=start+(end-start)*t;
+      const taper=Math.sin(Math.PI*t),bend=1+.14*taper*tail;
+      for(const edge of [-1,1]){
+        const r=radius*bend+edge*width*(.12+.88*taper);
+        p.push(Math.cos(angle)*r,Math.sin(angle)*r,-lag-tail*(1-t));
+        ink.push(...colour,opacity*Math.min(1,taper*3));
+      }
+      if(i){const j=first+i*2;indices.push(j-2,j-1,j,j,j-1,j+1);}
+    }
+  }
+  arc(-.47,2.16,1,.105,0,0,[.87,.99,1],.96,10);
+  arc(2.59,4.40,.93,.086,.035,0,[.32,.79,.88],.80,7);
+  arc(.33,1.93,.74,.065,.11,.80,[.69,.93,.96],.67,8);
+  arc(3.41,4.91,.81,.074,.22,.47,[.28,.72,.83],.59,7);
+  const g=new T.InstancedBufferGeometry(),clock={value:0};
+  g.setIndex(indices);g.setAttribute("position",new T.Float32BufferAttribute(p,3));
+  g.setAttribute("arcInk",new T.Float32BufferAttribute(ink,4));
+  const origins=new T.InstancedBufferAttribute(new Float32Array(capacity*4),4).setUsage(T.DynamicDrawUsage);
+  const routes=new T.InstancedBufferAttribute(new Float32Array(capacity*4),4).setUsage(T.DynamicDrawUsage);
+  g.setAttribute("origin",origins);g.setAttribute("route",routes);g.instanceCount=0;
+  const mat=new T.RawShaderMaterial({glslVersion:T.GLSL3,transparent:true,depthWrite:false,
+    side:T.DoubleSide,forceSinglePass:true,toneMapped:false,uniforms:{waveClock:clock},
+    vertexShader:`precision highp float;
+      uniform mat4 modelViewMatrix,projectionMatrix;uniform float waveClock;
+      in vec3 position;in vec4 origin,route,arcInk;out lowp vec4 colour;
+      void main(){
+        bool contact=route.z<0.;float reach=abs(route.z);
+        float age=(waveClock-origin.w)/(contact?.19:.25);
+        if(age<0.||age>=1.||(contact&&position.z<-.06)){
+          colour=vec4(0.);gl_Position=vec4(2.,2.,2.,1.);return;
+        }
+        float rise=1.-(1.-age)*(1.-age);
+        float front=reach*rise;
+        float tail=contact?.10:min(2.55,reach*.42)*(.32+.68*rise);
+        float along=max(0.,front+position.z*tail);
+        float radius=contact?(.22+.32*rise):(.21+.54*rise);
+        vec2 ground=origin.xz+route.xy*along+vec2(route.y,-route.x)*position.x*radius;
+        float y=origin.y+route.w*(along/reach)+position.y*radius;
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(ground.x,y,ground.y,1.);
+        colour=vec4(contact?mix(vec3(.98,.79,.49),vec3(1.,.94,.76),arcInk.r):arcInk.rgb,
+          arcInk.a*(1.-age*age)*smoothstep(-.05,.10,age));
+      }`,
+    fragmentShader:`precision mediump float;in lowp vec4 colour;out vec4 paint;void main(){paint=colour;}`});
+  const mesh=new T.Mesh(g,mat);mesh.name="空气炮波前与受击气弧";mesh.visible=false;mesh.frustumCulled=false;scene.add(mesh);
+  function emit(event,time,from,contact){
+    const x=from?.x??event.fromX??event.x,z=from?.z??event.fromZ??event.z;
+    const dx=event.targetX-x,dz=event.targetZ-z,length=Math.hypot(dx,dz);
+    if(!Number.isFinite(length)||length<.015)return;
+    let slot=0;
+    for(let i=0;i<capacity;i++){if(expiry[i]<=time){slot=i;break;}if(expiry[i]<expiry[slot])slot=i;}
+    const y=from?.y??land(x,z)+(contact?.72:.89);
+    const yEnd=land(event.targetX,event.targetZ)+(contact?.78:.89);
+    origins.setXYZW(slot,x,y,z,time);routes.setXYZW(slot,dx/length,dz/length,contact?-length:length,yEnd-y);
+    for(const attr of [origins,routes]){attr.addUpdateRange(slot*4,4);attr.needsUpdate=true;}
+    expiry[slot]=time+(contact?.19:.25);g.instanceCount=Math.max(g.instanceCount,slot+1);
+  }
+  function clear(){expiry.fill(-1);g.instanceCount=0;mesh.visible=false;origins.clearUpdateRanges();routes.clearUpdateRanges();}
+  return {emit,clear,draw(time){
+    clock.value=time;
+    while(g.instanceCount&&expiry[g.instanceCount-1]<=time)g.instanceCount--;
+    mesh.visible=g.instanceCount>0;
+  },dispose(){mesh.removeFromParent();g.dispose();mat.dispose();}};
 }
