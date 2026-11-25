@@ -1,4 +1,4 @@
-import {punchPose,pistol,rubberMove} from "./rubber-strike.mjs?v=canyon-skill-choice1";
+import {punchPose,pistol,rubberMove} from "./rubber-strike.mjs?v=canyon-tower-lock1";
 
 // Keep each sandal on its own patch of ground while the pelvis turns into the punch.
 // The hip and knee bend towards an ankle target. The sole keeps the terrain's pitch.

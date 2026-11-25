@@ -1,5 +1,5 @@
 import {wardEntry,shieldTaken} from "./river-ward.mjs?v=canyon-palm1";
-import {canTarget} from "./estuary-lanes.mjs?v=canyon-skill-choice1";
+import {canTarget} from "./estuary-lanes.mjs?v=canyon-tower-lock1";
 
 export const kiBolt=Object.freeze({length:10,width:.30,speed:22,damage:85});
 

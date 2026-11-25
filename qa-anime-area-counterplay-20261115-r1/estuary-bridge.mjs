@@ -1,6 +1,6 @@
 import {routes,measure,along,floorHeight} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {addUv,stone,flagFace,plain,indexStoneFaces} from "./field-architecture.mjs?v=canyon-eave-glaze2";
-import {bindLitSurface} from "./surface-impact.mjs?v=canyon-keep-lit2";
+import {addUv,stone,flagFace,plain,indexStoneFaces} from "./field-architecture.mjs?v=canyon-tower-lamplight2";
+import {bindLitSurface} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
 
 // Coordinates are metres along the actual mid-lane and metres across it.
 // Each flagstone has a recessed joint, a broken corner and its own bevel.

@@ -1,5 +1,5 @@
 import {actorStrides,footTrack} from "./river-roles.mjs?v=canyon-march1";
-import {articulate} from "./river-figure.mjs?v=canyon-skill-choice1";
+import {articulate} from "./river-figure.mjs?v=canyon-tower-lamplight2";
 
 const blue=0x078dd0,white=0xfff9ed,ink=0x2e2833,red=0xe4373c,gold=0xf7bc2e;
 const limit=(n)=>Math.max(0,Math.min(1,n));

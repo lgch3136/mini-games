@@ -10,9 +10,11 @@ const fillRay=unit([10,7,-18]),fillAcross=unit([18,0,10]);
 const fillUp=unit([-70,424,126]);
 const dot=(a,x,y,z)=>a[0]*x+a[1]*y+a[2]*z;
 
-function rasterHeight(parts,project,record){
+function rasterHeight(parts,project,record,casts=null){
   const px=new Float64Array(3),py=new Float64Array(3),depth=new Float64Array(3);
-  for(const positions of parts)for(let start=0;start<positions.length;start+=9){
+  for(let part=0;part<parts.length;part++)for(let start=0;start<parts[part].length;start+=9){
+    if(casts&&!casts(part,start))continue;
+    const positions=parts[part];
     for(let i=0;i<3;i++){
       const j=start+i*3;
       project(positions[j],positions[j+1],positions[j+2],px,py,depth,i);
@@ -54,6 +56,7 @@ function tileRelief(T){
 }
 export function keepRelief(T){
   const width=side*columns,height=side*rows,bytes=new Uint8Array(width*height*4),ready=new Set();
+  const lamps=new Map();
   const texture=new T.DataTexture(bytes,width,height,T.RGBAFormat);
   texture.minFilter=texture.magFilter=T.LinearFilter;texture.generateMipmaps=false;texture.needsUpdate=true;
   function bake(slot,parts){
@@ -114,8 +117,47 @@ export function keepRelief(T){
         color.getY(i)*(1-.35*recess-.09*cool),color.getZ(i)*(1-.38*recess-.19*cool));
     }
   }
+  // Look down from the luminous shoulder. Reciprocal depth interpolates linearly
+  // after perspective projection. The glass encloses the source and never blocks it.
+  function bakeLamp(slot,parts,y){
+    if(lamps.has(slot))return;
+    const depth=new Float32Array(side*side),centre=(side-1)*.5,scale=centre/2.5;
+    rasterHeight(parts.map(p=>p.pos),(x,h,z,u,v,d,i)=>{
+      d[i]=1/(y-h);u[i]=centre+scale*x*d[i];v[i]=centre+scale*z*d[i];
+    },(i,d)=>{depth[i]=Math.max(d,depth[i]);},(i,j)=>{
+      const part=parts[i],p=part.pos;
+      return part.finish[j/3]!==7&&Math.max(p[j+1],p[j+4],p[j+7])<y-.015;
+    });
+    lamps.set(slot,{y,depth,centre,scale});
+  }
+  function shadeLamp(geometry,slot){
+    const lamp=lamps.get(slot);
+    if(!lamp)return;
+    const {position,normal,keepMaterial}=geometry.attributes;
+    const {y,depth,centre,scale}=lamp;
+    for(let i=0;i<position.count;i++){
+      const kind=keepMaterial.getX(i),dy=y-position.getY(i);
+      if(kind===7||dy<=.015)continue;
+      const x=position.getX(i),z=position.getZ(i),distance=Math.hypot(x,dy,z);
+      const facing=(-x*normal.getX(i)+dy*normal.getY(i)-z*normal.getZ(i))/distance;
+      if(facing<=0)continue;
+      const u=centre+scale*x/dy,v=centre+scale*z/dy;
+      if(u<0||u>=side-1||v<0||v>=side-1)continue;
+      const ix=Math.floor(u),iz=Math.floor(v),fx=u-ix,fz=v-iz;
+      // Half a projected texel of slope bias keeps a tile from shadowing itself.
+      const bias=.020+Math.min(.075,.64*dy/(scale*Math.max(facing,.22)));
+      const threshold=1/Math.max(.012,dy-bias);
+      const n=iz*side+ix;
+      const near=(depth[n]<=threshold?1-fx:0)+(depth[n+1]<=threshold?fx:0);
+      const far=(depth[n+side]<=threshold?1-fx:0)+(depth[n+side+1]<=threshold?fx:0);
+      const reach=(near*(1-fz)+far*fz)*Math.sqrt(facing)/(1+1.18*distance*distance);
+      // The integer is the material/roof selector. Reuse its fractional bits so the
+      // standing, falling and stencil meshes keep exactly the same vertex layout.
+      keepMaterial.setX(i,kind+Math.round(255*reach)/512);
+    }
+  }
   const tile=tileRelief(T);
-  return {texture,tile,bake,shadeCorners,dispose(){texture.dispose();tile.dispose();}};
+  return {texture,tile,bake,shadeCorners,bakeLamp,shadeLamp,dispose(){lamps.clear();texture.dispose();tile.dispose();}};
 }
 
 const mapping=`
@@ -123,9 +165,10 @@ vec2 keepTile(vec2 ground,float slot){
   vec2 local=clamp((ground-vec2(-2.75,-4.05))/7.,0.,1.);
   return (vec2(mod(slot,4.),floor(slot*.25))*80.+.5+79.*local)/vec2(320.,160.);
 }`;
-export function bindKeepFinish(T,material,relief,slot){
-  const uniforms={keepDepth:{value:relief.texture},keepTileFinish:{value:relief.tile},keepSlot:{value:slot}};
-  const vary='varying float keepKind;varying vec3 keepLocal,keepFace,keepAcross;varying vec2 keepUv;\n';
+export function bindKeepFinish(T,material,relief,slot,lamp={value:0},team=0){
+  const uniforms={keepDepth:{value:relief.texture},keepTileFinish:{value:relief.tile},keepSlot:{value:slot},
+    keepCharge:lamp,keepLampTint:{value:new T.Color(team?"#ff9873":"#85e4e0")}};
+  const vary='varying float keepKind,keepLampReach;varying vec3 keepLocal,keepFace,keepAcross;varying vec2 keepUv;\n';
   const getSun='getDirectionalLightInfo( directionalLight, directLight );';
   const lights=T.ShaderChunk.lights_fragment_begin.replace(getSun,`${getSun}
     #if UNROLLED_LOOP_INDEX == 0 && (!defined(USE_SHADOWMAP) || NUM_DIR_LIGHT_SHADOWS == 0)
@@ -134,11 +177,17 @@ export function bindKeepFinish(T,material,relief,slot){
   material.onBeforeCompile=s=>{
     Object.assign(s.uniforms,uniforms);
     s.vertexShader='attribute float keepMaterial;'+vary+s.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
-      float finish=mod(keepMaterial,16.);keepKind=finish>=10.?1.:finish;keepLocal=position;keepFace=normal;keepUv=uv;
+      float finish=mod(floor(keepMaterial),16.);keepKind=finish>=10.?1.:finish;
+      keepLampReach=fract(keepMaterial)*(512./255.);keepLocal=position;keepFace=normal;keepUv=uv;
       float panel=finish-10.;
       vec3 transverse=panel<.5?vec3(1.,0.,0.):panel<1.5?vec3(0.,0.,1.):panel<2.5?vec3(-1.,0.,0.):vec3(0.,0.,-1.);
       keepAcross=mat3(modelViewMatrix)*transverse;`);
-    s.fragmentShader='uniform sampler2D keepDepth,keepTileFinish;uniform float keepSlot;'+vary+mapping+'\n'+s.fragmentShader;
+    s.fragmentShader='uniform sampler2D keepDepth,keepTileFinish;uniform float keepSlot,keepCharge;uniform vec3 keepLampTint;'+vary+mapping+'\n'+s.fragmentShader;
+    s.fragmentShader=s.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+      if(abs(keepKind-7.)<.25){
+        float hot=keepCharge*keepCharge;
+        totalEmissiveRadiance+=diffuseColor.rgb*(.10+1.85*hot)+vec3(.42,.31,.20)*hot*hot;
+      }`);
     s.fragmentShader=s.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       bool glaze=abs(keepKind-1.)<.25;
       vec4 tileSample=vec4(.5,.5,.5,1.);
@@ -170,9 +219,9 @@ export function bindKeepFinish(T,material,relief,slot){
       }`);
     s.fragmentShader=s.fragmentShader.replace('#include <lights_phong_fragment>',`#include <lights_phong_fragment>
       bool brass=abs(keepKind-3.)<.25,wood=abs(keepKind-2.)<.25,trim=abs(keepKind-6.)<.25;
-      material.specularColor=glaze?vec3(.038,.046,.048):brass?vec3(.28,.17,.065):
+      material.specularColor=glaze?vec3(.050,.060,.068):brass?vec3(.28,.17,.065):
         wood?vec3(.026,.018,.012):trim?vec3(.045,.052,.05):vec3(.011);
-      material.specularShininess=glaze?mix(28.,48.,tileSample.b):brass?54.:wood?15.:trim?35.:8.;
+      material.specularShininess=glaze?mix(32.,62.,tileSample.b):brass?54.:wood?15.:trim?35.:8.;
       vec2 ray=keepLocal.xz+vec2(.43333333,-.33333333)*keepLocal.y;
       float blocker=texture2D(keepDepth,keepTile(ray,keepSlot)).r*5.1;
       float shelter=smoothstep(.095,.26,blocker-keepLocal.y);`);
@@ -187,9 +236,22 @@ export function bindKeepFinish(T,material,relief,slot){
         float underside=clamp(.72-.34*keepFace.y,0.,1.);
         ambientShade+=vec3(.53,.37,.20)*openSide*underside;
       }
-      reflectedLight.indirectDiffuse*=mix(vec3(1.),ambientShade,shelter);`);
+      reflectedLight.indirectDiffuse*=mix(vec3(1.),ambientShade,shelter);
+      if(glaze){
+        vec3 eye=normalize(vViewPosition);
+        float rim=1.-clamp(dot(normal,eye),0.,1.);
+        float sky=smoothstep(-.12,.76,dot(reflect(-eye,normal),viewMatrix[1].xyz));
+        reflectedLight.indirectDiffuse*=vec3(.82,.87,.93);
+        reflectedLight.indirectSpecular+=vec3(.49,.75,.93)*sky*(.008+.078*rim*rim*rim)
+          *(.55+.45*tileSample.b)*(1.-shelter);
+      }
+      float glow=keepCharge*keepCharge*keepLampReach;
+      vec3 response=diffuseColor.rgb*(brass?.62:1.08);
+      if(glaze)response+=vec3(.23,.25,.26)*(.6+.4*tileSample.b);
+      if(brass)response+=vec3(.49,.37,.21);
+      reflectedLight.directDiffuse+=glow*keepLampTint*response*2.65;`);
   };
-  material.customProgramCacheKey=()=>'keep-standing-eave-v4';
+  material.customProgramCacheKey=()=>'keep-lens-spill-v2';
 }
 
 // The ground uses the same footprint as the surface shadow test. Static vertices follow

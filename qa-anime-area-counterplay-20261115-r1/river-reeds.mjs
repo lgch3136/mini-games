@@ -141,7 +141,7 @@ export function observedBattle(match,team=0){
       let scenery=view.landmarks.get(unit);
       if(!scenery){
         scenery=Object.assign(Object.create(unit),{sceneryOnly:true,action:null,shield:0,attackT:0,
-          guardTargetId:null,lastImpactTime:-Infinity,impactOrigin:null});
+          guardTargetId:null,lockedTargetId:null,lastImpactTime:-Infinity,impactOrigin:null});
         view.landmarks.set(unit,scenery);
       }
       scenery.hp=unit.dead?0:unit.knownHealth?.[team]??unit.maxHp;view.units.push(scenery);

@@ -1,4 +1,4 @@
-import {spellTint} from "./surface-impact.mjs?v=canyon-keep-lit2";
+import {spellTint} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
 // Directional bolts, cart shells and hero shots follow the same live simulation positions.
 // Each shape occupies at most one instanced draw regardless of the size of the wave.
 function laneShotGeometry(T,kind){
@@ -23,6 +23,11 @@ function laneShotGeometry(T,kind){
       const x=Math.cos(angle)*.112,y=Math.sin(angle)*.112;
       tri([0,0,-.82],[x,y,-.74],[0,0,-.36],i===0?"#367b7e":"#ffe5a3");
     }
+  }else if(kind==="tower"){
+    taper(-.52,-.13,.012,.078,"#c39775",5);
+    taper(-.18,.045,.072,.162,"#ffd7a8",6);
+    taper(.045,.23,.162,.038,"#fff6dc",6);
+    taper(.23,.28,.038,.001,"#ffffff",6);
   }else{
     taper(-.77,-.10,.012,.105,"#d78c3d",6);
     taper(-.32,-.04,.074,.174,"#ffe392",8);
@@ -34,13 +39,27 @@ function laneShotGeometry(T,kind){
   g.setAttribute("color",new T.Float32BufferAttribute(rgb,3));g.computeBoundingSphere();return g;
 }
 
+export function towerShotPose(out,shot,target,floor){
+  const v=shot.visual,tx=target?.x??v.targetX,tz=target?.z??v.targetZ;
+  const travel=Math.hypot(shot.x-v.fromX,shot.z-v.fromZ);
+  const left=Math.max(0,Math.hypot(tx-shot.x,tz-shot.z)-(target?.radius??v.hitRadius??.4));
+  const span=Math.max(.001,travel+left),t=travel/span;
+  const start=floor(v.fromX,v.fromZ)+v.muzzleHeight;
+  const end=floor(tx,tz)+(target?.copterActive?1.40:v.hitHeight??.9);
+  out.y=start+(end-start)*t+.16*Math.sin(Math.PI*t);
+  out.yaw=Math.atan2(tx-shot.x,tz-shot.z);
+  out.pitch=Math.atan2(end-start+.16*Math.PI*Math.cos(Math.PI*t),span);
+  return out;
+}
+
 export function fieldProjectiles(T,scene,floor,applyLight){
   const pose=new T.Matrix4(),tint=new T.Color(),bounds=new T.Sphere(new T.Vector3(),.84),batches=new Map();
+  const rotation=new T.Euler(0,0,0,"YXZ"),towerPose={};
   function allocate(batch,size){
     const mesh=new T.InstancedMesh(batch.geometry,batch.material,size);
     mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
     mesh.setColorAt(0,tint.setHex(0xffffff));mesh.instanceColor.setUsage(T.DynamicDrawUsage);
-    mesh.name=batch.kind==="bolt"?"弩箭":batch.kind==="shell"?"车炮":"气弹";
+    mesh.name=batch.kind==="bolt"?"弩箭":batch.kind==="shell"?"车炮":batch.kind==="tower"?"守塔光矢":"气弹";
     mesh.count=0;mesh.visible=false;mesh.frustumCulled=false;mesh.castShadow=batch.kind==="orb";
     if(batch.mesh){
       mesh.instanceMatrix.array.set(batch.mesh.instanceMatrix.array);
@@ -62,14 +81,16 @@ export function fieldProjectiles(T,scene,floor,applyLight){
     return b;
   }
   function reset(){for(const b of batches.values()){b.used=0;b.mesh.count=0;b.mesh.visible=false;}}
-  return {draw(shots=[],frustum){
+  return {draw(shots=[],frustum,units=[]){
     for(const b of batches.values())b.used=0;
     for(const shot of shots){
       if(shot.kind==="ki")continue;
       const visual=shot.visual,form=visual?.formation;
-      const kind=form==="ranged"?"bolt":form==="siege"?"shell":"orb";
+      const kind=visual?.muzzleHeight!=null&&visual.sourceKind==="tower"?"tower":form==="ranged"?"bolt":form==="siege"?"shell":"orb";
       let y=floor(shot.x,shot.z)+.90;
-      if(kind==="shell"){
+      if(kind==="tower"){
+        y=towerShotPose(towerPose,shot,units.find(u=>u.id===shot.target&&!u.sceneryOnly),floor).y;
+      }else if(kind==="shell"){
         const total=Math.hypot(visual.targetX-visual.fromX,visual.targetZ-visual.fromZ)||1;
         const travelled=Math.hypot(shot.x-visual.fromX,shot.z-visual.fromZ);
         y+=.54*Math.sin(Math.PI*Math.min(1,travelled/total));
@@ -77,10 +98,11 @@ export function fieldProjectiles(T,scene,floor,applyLight){
       bounds.center.set(shot.x,y,shot.z);
       if(frustum&&!frustum.intersectsSphere(bounds))continue;
       const b=group(kind),slot=b.used++;
-      if(kind==="orb")pose.makeTranslation(shot.x,y,shot.z);
+      if(kind==="tower")pose.makeRotationFromEuler(rotation.set(-towerPose.pitch,towerPose.yaw,0,"YXZ")).setPosition(shot.x,y,shot.z);
+      else if(kind==="orb")pose.makeTranslation(shot.x,y,shot.z);
       else pose.makeRotationY(shot.yaw??visual.face??0).setPosition(shot.x,y,shot.z);
       b.mesh.setMatrixAt(slot,pose);
-      b.mesh.setColorAt(slot,tint.setHex(kind==="orb"?shot.color:shot.team?0xffd6c3:0xf4ffff));
+      b.mesh.setColorAt(slot,tint.setHex(kind==="orb"?shot.color:kind==="tower"?(shot.team?0xffaa8c:0x81f1ea):shot.team?0xffd6c3:0xf4ffff));
     }
     for(const b of batches.values()){
       const mesh=b.mesh;mesh.count=b.used;mesh.visible=b.used>0;

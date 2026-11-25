@@ -1,4 +1,4 @@
-import {projectedStrips} from "./field-warning.mjs?v=canyon-kiink1";
+import {projectedStrips} from "./field-warning.mjs?v=canyon-tower-lock1";
 const slots = {q: 0, e: 1, r: 2};
 const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
 

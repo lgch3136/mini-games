@@ -1,15 +1,17 @@
-import {basicDamage} from "./river-supplies.mjs?v=canyon-skill-choice1";
-import {commissionRam} from "./river-keeper.mjs?v=canyon-palm1";
+import {basicDamage} from "./river-supplies.mjs?v=canyon-tower-lock1";
+import {commissionRam} from "./river-keeper.mjs?v=canyon-tower-lock1";
 import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=canyon-stonepath3";
-import {visibleTo,groundSeen} from "./river-reeds.mjs?v=canyon-palm1";
+import {visibleTo,groundSeen} from "./river-reeds.mjs?v=canyon-tower-lock1";
 const alive=u=>u&&!u.dead&&u.hp>0;
 const far=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const labels=["上路","中路","下路"],names=["外塔","二塔","高地塔"],lanes=[-1,1,0,0,1];
+const lockedUnits=new WeakMap();
 export function placeKeeps(match,spawn){
   match.fieldKeeps=[Array.from({length:3},()=>[]),Array.from({length:3},()=>[])];
   for(const p of keeps){
     const tower=spawn(match,p.team,"tower",p.x,p.z);
-    Object.assign(tower,{lane:p.lane,tier:p.tier,range:5.8,damage:[48,55,62][p.tier],maxHp:[790,990,1220][p.tier]});
+    Object.assign(tower,{lane:p.lane,tier:p.tier,range:5.8,lockedTargetId:null,guardTargetId:null,
+      damage:[48,55,62][p.tier],maxHp:[790,990,1220][p.tier]});
     tower.hp=tower.maxHp;match.fieldKeeps[p.team][p.lane+1][p.tier]=tower;
   }
 }
@@ -61,30 +63,54 @@ export function canTarget(match,target){
 export function protectDefender(match, attacker, defender) {
   for (const lane of match.fieldKeeps[defender.team]) {
     for (const tower of lane) {
-      if (!alive(tower) || far(tower, defender) > tower.range + defender.radius) continue;
+      if (!alive(tower) || far(tower, defender) > tower.range + defender.radius ||
+          far(tower,attacker)>tower.range) continue;
       const threats = tower.threats || (tower.threats = new Map());
       threats.set(attacker.id, match.time + 2.4);
     }
   }
 }
 
+export function inTowerRange(tower,unit){
+  return (unit.x-tower.x)**2+(unit.z-tower.z)**2<=tower.range**2;
+}
+function towerCanSee(match,tower,unit){
+  return alive(unit)&&unit.team===1-tower.team&&inTowerRange(tower,unit)&&visibleTo(match,tower.team,unit);
+}
+function rememberTarget(tower,unit){
+  const id=unit?.id??null;
+  if(tower.lockedTargetId===id)return unit;
+  if(unit)lockedUnits.set(tower,unit);else lockedUnits.delete(tower);
+  tower.lockNotified=false;tower.lockedTargetId=id;
+  tower.guardTargetId=unit?.kind==="hero"?unit.id:null;
+  return unit;
+}
 export function towerTarget(match, tower) {
-  let guard = null, guardDistance = Infinity;
-  let nearest = null, nearestDistance = Infinity, minion = null, minionDistance = Infinity;
-  const rangeSquared = tower.range * tower.range;
-  for (const unit of match.units) {
-    if (unit.team === tower.team || unit.team===2 || !alive(unit)) continue;
-    const dx = tower.x - unit.x, dz = tower.z - unit.z, distance = dx * dx + dz * dz;
-    if (distance > rangeSquared || !visibleTo(match, tower.team, unit)) continue;
-    if (unit.kind === "hero" && tower.threats?.get(unit.id) > match.time) {
-      if (unit.id === tower.guardTargetId) return unit;
-      if (distance < guardDistance) { guard = unit; guardDistance = distance; }
-    }
-    if (unit.kind === "minion" && distance < minionDistance) { minion = unit; minionDistance = distance; }
-    if (distance < nearestDistance) { nearest = unit; nearestDistance = distance; }
+  let kept=lockedUnits.get(tower);
+  if(kept===undefined&&tower.lockedTargetId!=null)kept=match.units.find(u=>u.id===tower.lockedTargetId);
+  if(kept&&!towerCanSee(match,tower,kept)){
+    if(tower.action?.target===kept.id&&!tower.action.resolved)tower.action=null;
+    kept=rememberTarget(tower,null);
   }
-  tower.guardTargetId = guard?.id ?? null;
-  return guard || minion || nearest;
+  if(tower.action||tower.cd>0||kept?.kind==="hero")return kept||null;
+  if(kept&&!tower.threats?.size)return kept;
+  let guard=null,guardDistance=Infinity,minion=null,minionDistance=Infinity,hero=null,heroDistance=Infinity;
+  if(tower.threats)for(const [id,expiry] of tower.threats){
+    if(expiry<=match.time){tower.threats.delete(id);continue;}
+    const attacker=match.teamSight?.byId.get(id)??match.units.find(u=>u.id===id);
+    if(!attacker||!towerCanSee(match,tower,attacker)){tower.threats.delete(id);continue;}
+    const d=(attacker.x-tower.x)**2+(attacker.z-tower.z)**2;
+    if(d<guardDistance){guard=attacker;guardDistance=d;}
+  }
+  if(guard)return rememberTarget(tower,guard);
+  if(kept)return kept;
+  for (const unit of match.units) {
+    if ((unit.kind!=="minion"&&unit.kind!=="hero")||!towerCanSee(match,tower,unit))continue;
+    const dx = tower.x - unit.x, dz = tower.z - unit.z, distance = dx * dx + dz * dz;
+    if (unit.kind === "minion" && distance < minionDistance) { minion = unit; minionDistance = distance; }
+    if (unit.kind === "hero" && distance < heroDistance) { hero = unit; heroDistance = distance; }
+  }
+  return rememberTarget(tower,minion||hero);
 }
 
 export function towerImpactScale(tower, target, now) {
@@ -199,7 +225,7 @@ function heroLaneEnemy(match, actor, windup) {
       if (unit.kind === "minion" && unit.lane === lane) {
         const d = far(unit, homes[1 - team]);
         if (d < closestToEnemy) { closestToEnemy = d; front = unit; }
-        if (fort && far(unit, fort) < fort.range - .12) covered = true;
+        if (fort && fort.lockedTargetId===unit.id) covered = true;
       } else if (unit.kind === "hero" && far(unit, actor) <= 7.2) nearbyFriends++;
     } else if (unit.kind === "hero" && visibleTo(match, team, unit)) {
       const d = far(actor, unit);
@@ -222,6 +248,7 @@ function heroLaneEnemy(match, actor, windup) {
     const follow = team ? Math.max(cap, wave + 1.35 + extra) : Math.min(cap, wave - 1.35 - extra);
     return rally(actor, along(route, follow, actor.hero % 2 ? .73 : -.73));
   }
+  if(fort&&fort.lockedTargetId===actor.id)return choose("withdraw",fallBack(1.0));
   if (returning) return choose("withdraw",rally(actor,{x:actor.tradeExitX,z:actor.tradeExitZ}));
   if (fort && !covered && far(actor, fort) < fort.range + .22)
     return choose("withdraw", fallBack(1.0));
@@ -323,11 +350,12 @@ export function crossingCall(match,me,objective){
   if(me.dead)return "复活 "+Math.ceil(me.respawn)+" 秒";
   const lane=nearestLane(me.x,me.z),tower=match.fieldKeeps[1-me.team][lane+1].find(alive);
   if(!tower)return labels[lane+1]+"高地已破 · "+(objective.mode==="breached"?"可进攻核心":"带下一波兵进核心");
-  if(tower.guardTargetId===me.id)
-    return labels[lane+1]+" · "+names[tower.tier]+"已转火你";
+  if(tower.lockedTargetId===me.id)
+    return labels[lane+1]+" · "+names[tower.tier]+"瞄准你 · 撤出红线";
   const nearby=far(me,tower)<7.8,escort=nearby&&hasEscort(match,tower);
   const health=groundSeen(match,me.team,tower.x,tower.z)?" "+Math.ceil(tower.hp)+"/"+tower.maxHp:"";
-  return labels[lane+1]+" · "+names[tower.tier]+health+(nearby?(escort?" · 兵线进塔":" · 等兵入塔"):" · 下波兵 "+Math.ceil(Math.max(0,match.waveTimer))+" 秒");
+  const bearing=nearby&&tower.lockedTargetId!=null&&match.units.find(u=>u.id===tower.lockedTargetId);
+  return labels[lane+1]+" · "+names[tower.tier]+health+(nearby?(bearing?.kind==="minion"?" · 小兵承伤":bearing?.kind==="hero"?" · 队友承伤":escort?" · 兵线进塔":" · 等兵入塔"):" · 下波兵 "+Math.ceil(Math.max(0,match.waveTimer))+" 秒");
 }
 export function startRecall(match){
   const p=match.units.find(u=>u.id===match.playerId);

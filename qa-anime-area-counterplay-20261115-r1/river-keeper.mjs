@@ -1,4 +1,4 @@
-import {groundSeen,visibleTo} from "./river-reeds.mjs?v=canyon-palm1";
+import {groundSeen,visibleTo} from "./river-reeds.mjs?v=canyon-tower-lock1";
 import {huntingGrounds,keepOutsideBanks,nearestLane} from "./estuary-map.mjs?v=canyon-stonepath3";
 
 // The upstream ford is reachable on foot from mid, outside either outer tower's range.

@@ -16,7 +16,7 @@ export function leaderFraction(x,y,dx,dy,body){
   if(!clip(x,dx,body.left,body.right)||!clip(y,dy,body.top,body.bottom))return 1;
   return Math.max(0,enter-3/Math.max(1,Math.hypot(dx,dy)));
 }
-export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
+export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null,markGround=ground){
   const point=new T.Vector3(),cache=new Map(),effects=[],labels=[],onScreen=[];
   const measurements=new Map();let measurementWidth=0;
   const maxVertices=1500,positions=new Float32Array(maxVertices*3),colors=new Float32Array(maxVertices*4);
@@ -175,19 +175,25 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
     const hero=match.units.find(u=>u.id===match.playerId);
     // These marks reuse the combat stroke batch and stay on the tower side of the player's feet.
     if(hero && !hero.dead) {
-      for(const lane of match.fieldKeeps[1-hero.team]) for(const tower of lane) {
-        const primed=tower.action?.phase==="windup" && tower.action.target===hero.id;
-        if(tower.dead || (tower.guardTargetId!==hero.id && !primed))continue;
-        const dx=tower.x-hero.x,dz=tower.z-hero.z,len=Math.hypot(dx,dz)||1;
+      for(const tower of match.units){
+        if(tower.kind!=="tower"||tower.team===hero.team||tower.dead||tower.sceneryOnly||
+           tower.lockedTargetId==null||Math.hypot(tower.x-hero.x,tower.z-hero.z)>tower.range+2.8)continue;
+        const own=tower.lockedTargetId===hero.id;
+        const target=own?hero:match.units.find(u=>u.id===tower.lockedTargetId);
+        if(!target||target.dead||target.team!==hero.team)continue;
+        const primed=tower.action?.phase==="windup"&&tower.action.target===target.id;
+        const dx=tower.x-target.x,dz=tower.z-target.z,len=Math.hypot(dx,dz)||1;
         const ux=dx/len,uz=dz/len;
         const mark=(forward,side)=>{
-          const x=hero.x+ux*forward+uz*side,z=hero.z+uz*forward-ux*side;
-          return [x,ground(x,z)+.16,z];
+          const scale=target.kind==="minion"?.62:1;
+          const x=target.x+(ux*forward+uz*side)*scale,z=target.z+(uz*forward-ux*side)*scale;
+          return [x,markGround(x,z)+.042,z];
         };
         const tip=mark(.79,0),left=mark(1.27,-.34),right=mark(1.27,.34);
-        line(left,tip,.105,"#792b2a",.96);line(right,tip,.105,"#792b2a",.96);
-        line(left,tip,.058,"#ffe3a1",1);line(right,tip,.058,"#ffe3a1",1);
-        if(primed)line(mark(1.54,0),mark(1.31,0),.072,"#ff695c",1);
+        const dark=own?"#792b2a":"#255c4e",light=own?"#ffe3a1":"#a1efc9";
+        line(left,tip,.105,dark,.93);line(right,tip,.105,dark,.93);
+        line(left,tip,.058,light,1);line(right,tip,.058,light,1);
+        if(primed&&own)line(mark(1.54,0),mark(1.31,0),.072,"#ff695c",1);
       }
     }
     if(hero?.recall){

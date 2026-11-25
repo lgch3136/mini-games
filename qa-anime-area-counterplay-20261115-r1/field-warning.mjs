@@ -66,12 +66,20 @@ export function projectedStrips(T,scene,material,visit,name,order){
         if(Math.min(a,b,c)>w||Math.max(a,b,c)<-w)return;
         const u=(ax-s.x)*dx+(az-s.z)*dz,v=(bx-s.x)*dx+(bz-s.z)*dz,y=(cx-s.x)*dx+(cz-s.z)*dz;
         if(Math.min(u,v,y)>len||Math.max(u,v,y)<0)return;
+        if(s.ringRadius){
+          const r=s.ringRadius,middle=s.length*.5,az=u-middle,bz=v-middle,cz=y-middle;
+          const inner=r-.29,outer=r+.11;
+          if(Math.max(a*a+az*az,b*b+bz*bz,c*c+cz*cz)<inner*inner)return;
+          const gapX=Math.max(0,Math.min(a,b,c),-Math.max(a,b,c));
+          const gapZ=Math.max(0,Math.min(az,bz,cz),-Math.max(az,bz,cz));
+          if(gapX*gapX+gapZ*gapZ>outer*outer)return;
+        }
         out.push(ax,ay+.012,az,a,u,bx,by+.012,bz,b,v,cx,cy+.012,cz,c,y);
       });
   }
   function show(shapes,count){
     mesh.visible=count>0;
-    if(!count){active=0;geometry.setDrawRange(0,0);return;}
+    if(!count){if(active!==0)geometry.setDrawRange(0,0);active=0;return;}
     let changed=count!==active,total=0;
     for(let i=0;i<count;i++){
       const s=shapes[i],c=cache[i]||(cache[i]={values:[]});
@@ -144,6 +152,63 @@ export function directionalSignals(T,scene,resolve,visit){
       if(frustum&&!frustum.intersectsSphere(bound))continue;
       const k=count++;state[k].set(s.progress,s.hostile?1:0,s.length,s.width);shapes[k]=s;
       if(count===max)break;
+    }
+    ink.show(shapes,count);
+  }
+  return {draw,reset:ink.reset,dispose(){ink.dispose();material.dispose();}};
+}
+
+export function towerBoundaries(T,scene,visit){
+  const states=[new T.Vector4(),new T.Vector4()],shapes=[{},{}];
+  const material=new T.RawShaderMaterial({glslVersion:T.GLSL3,uniforms:{zones:{value:states}},
+    transparent:true,depthTest:true,depthWrite:false,side:T.DoubleSide,forceSinglePass:true,toneMapped:false,
+    vertexShader:`precision highp float;in vec3 position;in vec2 localMark;in float slot;
+      uniform mat4 projectionMatrix,modelViewMatrix;uniform vec4 zones[2];
+      out vec2 field;flat out vec4 zone;
+      void main(){zone=zones[int(slot)];field=localMark-vec2(0.,zone.x+.12);
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+    fragmentShader:`precision highp float;in vec2 field;flat in vec4 zone;out vec4 ink;
+      void main(){
+        float inward=zone.x-length(field);
+        if(inward<-.10||inward>.28)discard;
+        float aa=clamp(fwidth(inward)*.75,.012,.082);
+        float line=1.-smoothstep(.027,.048+aa,abs(inward));
+        float skirt=(1.-smoothstep(.055,.21,inward))*smoothstep(-.08,0.,inward);
+        float turn=atan(field.y,field.x)*3.183099;
+        float phase=abs(fract(turn+.5)-.5);
+        bool idle=zone.y<.5,danger=zone.y>1.5;
+        float broken=idle?mix(.28,1.,smoothstep(.085,.16,phase)):1.;
+        float tooth=danger?(1.-smoothstep(.010,.027+aa,abs(inward-(.215-1.4*phase))))*
+          smoothstep(.035,.065,inward)*(1.-smoothstep(.13,.16,phase)):0.;
+        float alpha=zone.z*(line*broken*(danger?.87:.72)+.16*skirt+tooth*.70);
+        if(alpha<.018)discard;
+        vec3 col=idle?vec3(.92,.70,.38):danger?vec3(1.,.25,.24):vec3(.34,.86,.63);
+        ink=vec4(mix(col,vec3(1.,.85,.61),tooth*(.19+.41*zone.w)),min(.96,alpha));
+      }`});
+  const ink=projectedStrips(T,scene,material,visit,"敌塔射界",1);
+  const towers=[null,null],scores=[0,0],bounds=new T.Sphere(new T.Vector3());
+  function draw(view,hero,frustum){
+    towers[0]=towers[1]=null;scores[0]=scores[1]=Infinity;
+    if(!hero||hero.dead||view.result){ink.reset();return;}
+    for(const tower of view.units){
+      if(tower.kind!=="tower"||tower.sceneryOnly||tower.dead||tower.team===hero.team)continue;
+      const gap=Math.hypot(tower.x-hero.x,tower.z-hero.z)-tower.range;
+      if(gap>=2.8)continue;
+      bounds.center.set(tower.x,1,tower.z);bounds.radius=tower.range+.4;
+      if(frustum&&!frustum.intersectsSphere(bounds))continue;
+      const score=gap-(tower.lockedTargetId===hero.id?18:0);
+      if(score<scores[0]){towers[1]=towers[0];scores[1]=scores[0];towers[0]=tower;scores[0]=score;}
+      else if(score<scores[1]){towers[1]=tower;scores[1]=score;}
+    }
+    let count=0;
+    for(const tower of towers){
+      if(!tower)continue;
+      const k=count++,s=shapes[k],r=tower.range;
+      s.x=tower.x;s.z=tower.z-r-.12;s.face=0;s.width=r+.12;s.length=2*(r+.12);s.ringRadius=r;
+      const mode=tower.lockedTargetId===hero.id?2:tower.lockedTargetId==null?0:1;
+      const fade=Math.min(1,Math.max(0,(r+2.8-Math.hypot(hero.x-tower.x,hero.z-tower.z))/1.45));
+      const a=tower.action,charge=a?.phase==="windup"?Math.min(1,a.elapsed/a.windup):0;
+      states[k].set(r,mode,fade,charge);
     }
     ink.show(shapes,count);
   }

@@ -3,7 +3,7 @@
 import {garden,floorHeight,stoneLandmarks} from "./estuary-map.mjs?v=canyon-stonepath3";
 import {rockRings} from "./garden-stones.mjs?v=canyon-stonepath3";
 import {fieldVisibility} from "./field-visibility.mjs?v=river-marching6";
-import {spellVertex} from "./surface-impact.mjs?v=canyon-keep-lit2";
+import {spellVertex} from "./surface-impact.mjs?v=canyon-tower-lamplight2";
 import {sceneryOcclusion} from "./scenery-occlusion.mjs?v=canyon-eave-batch1";
 
 // A repeating 96px material supplies needles, broad leaves and sparse mineral veins.

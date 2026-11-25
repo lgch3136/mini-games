@@ -1,3 +1,4 @@
+import {towerCharge,towerMuzzleHeight} from "./river-keeps.mjs?v=canyon-tower-lamplight2";
 // One uniform belongs to each skinned hero; program code stays shared by all ten.
 // Surface character stays in the existing skinned draw. A coat absorbs light, skin keeps a soft shoulder, enamel catches a small crisp reflection.
 export function bindFigureFinish(shader,material){
@@ -66,6 +67,7 @@ const vortex=[.24,.70,1.],mist=[.52,.74,.89],wind=[.40,.84,.96];
 const pressure=[.29,.83,1.],bamboo=[.92,.79,.36],doorPink=[1.,.34,.63];
 const azure=[.28,.64,1.],barrier=[.49,.83,1.],violet=[.75,.32,1.];
 const ki=[1.,.80,.34],flash=[1.,.87,.49],beam=[.40,.85,1.],leather=[.91,.58,.34];
+const towerInks=[[.36,.87,.76],[1.,.48,.25]];
 const strokes=[[vortex,mist,wind],[pressure,bamboo,doorPink],[azure,barrier,violet],
   [ki,flash,beam],[leather,leather,leather]];
 export function spellTint(hero,slot){return strokes[hero]?.[slot]??null;}
@@ -136,6 +138,11 @@ export function battleLight(T,height){
       }else consider(p.x,p.y,p.z,p.radius,p.ink,p.strength*(1-u)*(1-u));
     }
     for(const u of view.units){
+      if(u.kind==="tower"){
+        const charge=towerCharge(u);
+        if(charge>0)consider(u.x,height(u.x,u.z)+towerMuzzleHeight(u.tier),u.z,2.65,towerInks[u.team],.72*charge*charge);
+        continue;
+      }
       if(u.kind!=="hero"||u.dead||u.sceneryOnly)continue;
       const a=u.action;
       if(u.hero!==4&&a?.kind==="skill"&&!a.resolved&&a.windup>0&&a.elapsed<=a.windup){

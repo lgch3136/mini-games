@@ -1,4 +1,4 @@
-import {visibleTo} from "./river-reeds.mjs?v=canyon-palm1";
+import {visibleTo} from "./river-reeds.mjs?v=canyon-tower-lock1";
 
 // Project the head, limbs and body onto the field along the same sun direction used by the figures.
 // A soft rim and a single shared mesh keep all ten moving shadows inexpensive on the balanced preset.
