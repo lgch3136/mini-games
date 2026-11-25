@@ -1,3 +1,26 @@
+export const actorStrides=[1.92,1.36,1.78,1.90,1.82];
+const limitStride=(v,a,b)=>Math.max(a,Math.min(b,v));
+// During support the shoe travels backwards in model space at exactly the body's ground speed.
+// The return arc has continuous position and velocity at toe-off and heel strike.
+export function footTrack(out,phase,stride,stance,height) {
+  const cycle=phase-Math.floor(phase),half=stride*stance*.5;
+  if(cycle<stance){
+    out.z=half-stride*cycle;out.lift=0;
+    out.roll=.10*Math.max(0,1-cycle/(stance*.18))-.13*Math.max(0,(cycle/stance-.76)/.24);
+  }else{
+    const t=(cycle-stance)/(1-stance),arc=t*t*(3-2*t);
+    out.z=half*(2*arc-1)-stride*(1-stance)*t*(1-t)*(1-2*t);
+    out.lift=height*Math.sin(Math.PI*t)**1.55;out.roll=-.13+.23*arc-.22*Math.sin(2*Math.PI*t);
+  }
+  return out;
+}
+export function bendLeg(out,down,forward,thigh,shin) {
+  const c=limitStride((down*down+forward*forward-thigh*thigh-shin*shin)/(2*thigh*shin),-1,1);
+  out.knee=Math.acos(c);
+  out.hip=-Math.atan2(forward,down)-Math.atan2(shin*Math.sin(out.knee),thigh+shin*c);
+  return out;
+}
+
 export function trackFighterFooting(actor,dt) {
   if(actor.hero!==3||actor.kind!=="hero")return;
   const distance=Number.isFinite(actor.priorKiX)?Math.hypot(actor.x-actor.priorKiX,actor.z-actor.priorKiZ):Infinity;

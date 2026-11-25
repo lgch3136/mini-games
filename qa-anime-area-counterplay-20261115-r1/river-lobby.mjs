@@ -1,6 +1,6 @@
 const choices = document.getElementById("choices");
 const start = document.getElementById("start");
-const runtime = new URL("./game.min.js?v=river-landing1",import.meta.url);
+const runtime = new URL("./game.min.js?v=canyon-locks1",import.meta.url);
 let warming = false, opening = false, selected = 0;
 
 // Download on a deliberate hero choice. No WebGL context is needed to browse these cards.
@@ -71,6 +71,14 @@ async function enter() {
     start.addEventListener("click",() => location.reload(),{once:true});
   }
 }
+const openingSkill=document.getElementById("opening-skill");
+function openingLabels(button){
+  if(!button)return;
+  const labels=button.querySelector("span:last-child")?.textContent.split("·");
+  if(labels?.length>=2)for(let slot=0;slot<2;slot++)openingSkill.options[slot].textContent=labels[slot].trim();
+}
+choices.addEventListener("click",event=>openingLabels(event.target.closest("[data-hero]")));
+openingLabels(choices.querySelector("[aria-pressed=true]"));
 choices.addEventListener("click",choose);
 start.addEventListener("click",enter);
 

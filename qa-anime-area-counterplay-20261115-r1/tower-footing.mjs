@@ -23,6 +23,45 @@ function near(match,x,z){
 }
 const standing=u=>!u.dead&&u.hp>0;
 const footRadius=u=>Math.max(.13,Math.min(.38,(u.radius??.5)*.56));
+const formations=new WeakMap();
+const formationCell=2.2;
+const laneCell=n=>Math.floor((n+48)/formationCell);
+function movingRanks(match) {
+  let state=formations.get(match);
+  if(!state){state={at:-1,buckets:new Map(),used:[]};formations.set(match,state);}
+  if(match.time>=state.at && match.time-state.at<.09)return state.buckets;
+  state.at=match.time;
+  for(const list of state.used)list.length=0;
+  state.used.length=0;
+  for(const u of match.units){
+    if(!standing(u) || (u.kind!=="hero" && u.kind!=="minion"))continue;
+    const id=laneCell(u.x)*64+laneCell(u.z);
+    let group=state.buckets.get(id);
+    if(!group){group=[];state.buckets.set(id,group);}
+    if(!group.length)state.used.push(group);
+    group.push(u);
+  }
+  return state.buckets;
+}
+// Share only the lateral clearance. The steering vector keeps its forward component and commanded speed.
+function formationOffset(match,unit,ux,uz) {
+  const buckets=movingRanks(match),cx=laneCell(unit.x),cz=laneCell(unit.z);
+  let lateral=0;
+  for(let i=cx-1;i<=cx+1;i++)for(let j=cz-1;j<=cz+1;j++) {
+    const group=buckets.get(i*64+j);if(!group)continue;
+    for(const peer of group){
+      if(peer===unit||peer.team!==unit.team||!standing(peer))continue;
+      const rx=peer.x-unit.x,rz=peer.z-unit.z;
+      const along=rx*ux+rz*uz,side=rz*ux-rx*uz;
+      if(along<-.18 || along>1.25)continue;
+      const clearance=.29+unit.radius+peer.radius;
+      if(Math.abs(side)>=clearance)continue;
+      const flank=Math.abs(side)>.09?-Math.sign(side):(unit.pathOffset||((unit.id<peer.id)?-1:1))>0?1:-1;
+      lateral+=flank*(1-Math.abs(side)/clearance)*(1-Math.max(0,along)/1.25);
+    }
+  }
+  return Math.max(-.72,Math.min(.72,lateral*.96));
+}
 export function settleFooting(match,actor,fromX,fromZ){
   const feet=footRadius(actor);
   for(const base of near(match,actor.x,actor.z)){
@@ -47,8 +86,16 @@ export function settleFooting(match,actor,fromX,fromZ){
 }
 export function walkField(match,actor,dx,dz,dt,move,seek=false){
   if(!dt||(!dx&&!dz))return;
-  const distance=Math.hypot(dx,dz),ux=dx/distance,uz=dz/distance;
+  const fromX=actor.x,fromZ=actor.z,distance=Math.hypot(dx,dz);
+  let ux=dx/distance,uz=dz/distance;
   if(seek){
+    if(actor.id!==match.playerId && (actor.kind==="minion" || actor.kind==="hero")){
+      const side=formationOffset(match,actor,ux,uz);
+      if(side){
+        const x=ux-uz*side,z=uz+ux*side,norm=Math.hypot(x,z);
+        ux=x/norm;uz=z/norm;dx=ux*Math.min(1,distance);dz=uz*Math.min(1,distance);
+      }
+    }
     let obstacle=null,closest=Infinity,pass=0;
     for(const base of near(match,actor.x,actor.z)){
       const u=base.unit;if(!standing(u))continue;
@@ -68,4 +115,11 @@ export function walkField(match,actor,dx,dz,dt,move,seek=false){
   }else actor.passingFort=null;
   move(actor,dx,dz,dt);
   settleFooting(match,actor);
+  const mx=actor.x-fromX,mz=actor.z-fromZ,travel=Math.hypot(mx,mz);
+  if(travel>.0001 && travel<Math.max(.30,actor.speed*dt*1.7)){
+    actor.walkDistance=(actor.walkDistance||0)+travel;
+    actor.walkedAt=match.time;actor.walkSpeed=travel/dt;actor.walkFacing=Math.atan2(mx,mz);
+    actor.gaitScale=Math.max(.23,Math.min(1,Math.sqrt(actor.walkSpeed/Math.max(.1,actor.speed))));
+    actor.gaitDistance=(actor.gaitDistance||0)+travel/actor.gaitScale;
+  }
 }

@@ -1,3 +1,4 @@
+import {basicDamage} from "./river-supplies.mjs?v=canyon-march1";
 const skillSlots = { q: 0, e: 1, r: 2 };
 export const attackKeys = { KeyJ: "attack", KeyK: "farm", KeyL: "siege" };
 export const isAttack = key => key === "attack" || key === "farm" || key === "siege";
@@ -30,7 +31,7 @@ export function basicTargets(match, hero, intent, towerFirst, marked, targetable
   let touchLock = null;
   let rank = Infinity, vital = Infinity, near = Infinity, farmRank = Infinity, farmHP = Infinity;
   let farmDistance = Infinity, towerDistance = Infinity;
-  const strike = hero.damage * (1 + ((match.level || 1) - 1) * .06);
+  const strike = basicDamage(hero);
   for (const unit of match.units) {
     if (unit.team === hero.team || unit.dead || unit.hp <= 0) continue;
     const dx = unit.x - hero.x, dz = unit.z - hero.z;

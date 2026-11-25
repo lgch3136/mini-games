@@ -1,4 +1,5 @@
-import {articulate} from "./river-figure.mjs?v=jade-ground2";
+import {actorStrides,footTrack} from "./river-roles.mjs?v=canyon-march1";
+import {articulate} from "./river-figure.mjs?v=canyon-march1";
 
 const blue=0x078dd0,white=0xfff9ed,ink=0x2e2833,red=0xe4373c,gold=0xf7bc2e;
 const limit=(n)=>Math.max(0,Math.min(1,n));
@@ -227,6 +228,7 @@ export function robotCat(T,team){
   for(const m of colours.values())m.dispose();barrelMaterial.dispose();
   rotor.visible=false;gadget.visible=false;
   rig.skin.geometry.userData.setPocketProp(false);
+  const walkFeet=[{},{}];
   return {g,body,hip,head,arms,legs,teamRing,rotor,cannonElbow,wrist,gadget,muzzle,disposeSkin:rig.dispose,
     animate(time,moving,attack,face,action,phase=time*10,weight=moving?1:0,actor,clock=time,preview=null){
       const walking=limit(weight||0),stride=Math.sin(phase),plant=Math.cos(phase);
@@ -307,11 +309,12 @@ export function robotCat(T,team){
       plantedFoot.set(0,.06*kickback,.28*kickback);
       if(kickback>0)plantedFoot.applyQuaternion(hipInverse.copy(hip.quaternion).invert());
       for(let j=0;j<2;j++){
-        const side=j?1:-1,foot=side*stride,up=Math.max(0,side*plant)*movingWeight;
-        legs[j].position.set(side*(.268+.061*Math.max(fade,holding)),.203+.092*up+.042*lift,
-          .003+.179*foot*movingWeight+side*(.118*Math.max(fade,holding)+.095*openStance));
+        const side=j?1:-1,foot=footTrack(walkFeet[j],phase/(Math.PI*2)+j*.5,actorStrides[1]/1.1,.53,.157);
+        const ground=movingWeight*(1-lift),braceStep=side*(.118*Math.max(fade,holding)+.095*openStance);
+        legs[j].position.set(side*(.268+.061*Math.max(fade,holding)),.203+ground*foot.lift-.027*Math.abs(swing)*ground+.042*lift,
+          .003+foot.z*ground+braceStep);
         legs[j].position.addScaledVector(plantedFoot,j?.55:1);
-        legs[j].rotation.set(-foot*.50*movingWeight+.25*lift+side*.09*load-.07*up,side*.09,side*.035);
+        legs[j].rotation.set(foot.roll*ground+.25*lift+side*.09*load,side*.09,side*.035);
       }
       arms[0].rotation.set(-.19-.42*swing-.61*load+.16*reach-(door?.68:0),-.17-.19*load,-.28-.40*load-.35*lift);
       arms[1].position.set(.414+(.032+.035*farSide)*brace,.895+.073*brace+.030*load,.015+.048*reach);

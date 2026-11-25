@@ -1,3 +1,4 @@
+import {basicDamage} from "./river-supplies.mjs?v=canyon-march1";
 import {commissionRam} from "./river-keeper.mjs?v=team-vision1";
 import {routes,homes,keeps,along,measure,nearestLane} from "./estuary-map.mjs?v=river-marching6";
 import {visibleTo,groundSeen} from "./river-reeds.mjs?v=team-vision1";
@@ -40,7 +41,7 @@ export function spawnRiverWave(match,spawn){
       const d=i<2?4.65:i===2?3.0:i===3?1.70:.45;
       const offset=(i===0?-.76:i===1?.76:i===2?(match.wave%2?.24:-.24):0)*s;
       const p=along(route,team?route.length-d:d,offset);
-      const u=spawn(match,team,"minion",p.x,p.z);u.lane=lane;u.pathOffset=offset;
+      const u=spawn(match,team,"minion",p.x,p.z);u.lane=lane;u.pathOffset=offset;u.waveSeat=i;
       u.formation=i<2?"melee":i===2?"ranged":"siege";
       if(i===2){u.range=4.0;u.hp=u.maxHp=83;u.damage=15;}
       if(i===3){u.range=4.6;u.hp=u.maxHp=openHigh?285:195;u.damage=openHigh?29:22;u.speed=2.50;u.radius=.5;}
@@ -128,14 +129,14 @@ function waveHealth(match, actor, target, arrival) {
     const swing = ally.action;
     if (far(ally, target) > ally.range + target.radius) continue;
     if (swing && swing.target === target.id && swing.kind === "attack" && !swing.resolved) {
-      count(ally.damage, Math.max(0, swing.windup - swing.elapsed) + flight(ally, target, basicShotSpeed(ally)));
+      count(basicDamage(ally), Math.max(0, swing.windup - swing.elapsed) + flight(ally, target, basicShotSpeed(ally)));
     } else if (ally.waveShotTarget === target.id && match.time - ally.waveShotAt <= ally.interval + .15 &&
                (!swing || swing.kind === "attack" && swing.target === target.id)) {
       // An ally that kept attacking this minion may swing again. Use that less
       // certain prediction only to hold the attack, never to claim a guaranteed kill.
       const windup = ally.kind === "tower" ? .30 : .18;
       const next = Math.max(ally.cd, swing ? swing.duration - swing.elapsed : 0) + windup + flight(ally, target, basicShotSpeed(ally));
-      if (next <= arrival + .40) shortlyAfter -= ally.damage;
+      if (next <= arrival + .40) shortlyAfter -= basicDamage(ally);
     }
   }
   return {onHit, shortlyAfter};
@@ -234,9 +235,10 @@ function heroLaneEnemy(match, actor, windup) {
     const arrival = Math.max(approach, actor.cd) + windup + Math.max(0, Math.min(d, actor.range + unit.radius) - unit.radius) / (basicShotSpeed(actor) || Infinity);
     const hp = waveHealth(match, actor, unit, arrival);
     if (hp.onHit <= 0) continue;
-    if (hp.onHit <= actor.damage && hp.onHit + arrival * 5 < urgency) {
+    const strike = basicDamage(actor);
+    if (hp.onHit <= strike && hp.onHit + arrival * 5 < urgency) {
       lastHit = unit; urgency = hp.onHit + arrival * 5;
-    } else if (hp.onHit > actor.damage && hp.shortlyAfter > 0 && hp.shortlyAfter <= actor.damage && arrival < waitTime) {
+    } else if (hp.onHit > strike && hp.shortlyAfter > 0 && hp.shortlyAfter <= strike && arrival < waitTime) {
       wait = unit; waitTime = arrival;
     }
     const rank = hp.onHit + d * 3;
@@ -262,27 +264,59 @@ function heroLaneEnemy(match, actor, windup) {
   return choose("siege", fort || match.units.find(u => u.team !== team && u.kind === "core" && alive(u)));
 }
 
-export function laneEnemy(match, actor, windup) {
-  if (actor.kind === "hero") return heroLaneEnemy(match, actor, windup);
-  let nearest = null, range = 4.8;
-  for (const unit of match.units) {
-    if (unit.team === actor.team || !alive(unit) || unit.kind === "keeper" || unit.kind === "tower" || unit.kind === "core" || !visibleTo(match, actor.team, unit)) continue;
-    const d = far(actor, unit);
-    if (d < range && (unit.lane === actor.lane || d < 3)) { nearest = unit; range = d; }
+const marchOrders=new WeakMap();
+function marchTarget(match,actor) {
+  const route=routes[(actor.lane??0)+1],now=match.time;
+  let order=marchOrders.get(actor);
+  if(!order){order={target:null,next:0};marchOrders.set(actor,order);}
+  const old=order.target;
+  const fort=old && (old.kind==="tower" || old.kind==="core");
+  const valid=old && alive(old) && (fort || visibleTo(match,actor.team,old));
+  if(valid && now<order.next)return old;
+  order.next=now+.22+(actor.waveSeat||0)*.017;
+  const at=measure(route,actor.x,actor.z),detached=at.distance>4.6;
+  const kept=valid && !fort && far(actor,old)<=6.25+old.radius &&
+    (old.kind!=="hero" || !detached && measure(route,old.x,old.z).distance<=4.6);
+  let defender=null,front=null,hero=null,bestDef=Infinity,bestFront=Infinity,bestHero=Infinity;
+  for(const unit of match.units) {
+    if(unit.team===actor.team || !alive(unit) || (unit.kind!=="hero" && unit.kind!=="minion"))continue;
+    const dx=unit.x-actor.x,dz=unit.z-actor.z,dist2=dx*dx+dz*dz;
+    if(dist2>24 || !visibleTo(match,actor.team,unit))continue;
+    if(unit.kind==="minion"){
+      if(unit.lane===actor.lane && dist2<bestFront){front=unit;bestFront=dist2;}
+    }else if(!detached && (unit.lane===actor.lane || dist2<8) && measure(route,unit.x,unit.z).distance<=4.6){
+      if(unit.drewWaveUntil>now && dist2<bestDef){defender=unit;bestDef=dist2;}
+      if(dist2<bestHero){hero=unit;bestHero=dist2;}
+    }
   }
-  return nearest || match.fieldKeeps[1-actor.team][(actor.lane??0)+1].find(alive) ||
-    match.units.find(u => u.team !== actor.team && u.kind === "core");
+  order.target=(defender && !(kept && old.kind==="hero" && old.drewWaveUntil>now)?defender:null) ||
+    (kept?old:null) || front || hero || match.fieldKeeps[1-actor.team][(actor.lane??0)+1].find(alive) ||
+    match.units.find(u=>u.team!==actor.team&&u.kind==="core"&&alive(u));
+  return order.target;
 }
-export function steerLane(actor,target,dt,move){
-  const route=routes[(actor.lane??0)+1];
-  if(target.riverScout||!["rally","core","tower"].includes(target.kind)||far(actor,target)<3.25){
-    const x=target.x-actor.x,z=target.z-actor.z;
-    const flank=actor.formation==="melee"?actor.pathOffset/Math.max(2.0,Math.hypot(x,z)):0;
-    move(actor,x-z*flank,z+x*flank,dt);return;
+export function laneEnemy(match,actor,windup) {
+  return actor.kind==="hero"?heroLaneEnemy(match,actor,windup):marchTarget(match,actor);
+}
+export function steerLane(actor,target,dt,move) {
+  if(!(dt>0))return;
+  const route=routes[(actor.lane??0)+1],dx=target.x-actor.x,dz=target.z-actor.z,gap=Math.hypot(dx,dz);
+  const rallying=target.kind==="rally",tracking=target.kind==="hero"||target.kind==="minion"||target.kind==="keeper";
+  let x=dx,z=dz;
+  if(!target.riverScout && !tracking && gap>3.25){
+    const pos=measure(route,actor.x,actor.z),end=measure(route,target.x,target.z).at;
+    const lead=Math.max(-3.25,Math.min(3.25,end-pos.at));
+    if(Math.abs(lead)>1.2){
+      const dest=along(route,pos.at+lead,actor.pathOffset||0);
+      x=dest.x-actor.x;z=dest.z-actor.z;
+    }
+  }else if(tracking && actor.formation==="melee" && gap>1){
+    const side=(actor.pathOffset||0)*Math.min(.72,Math.max(0,gap-actor.range)*.36)/gap;
+    x=dx-dz*side;z=dz+dx*side;
   }
-  const pos=measure(route,actor.x,actor.z),end=measure(route,target.x,target.z).at;
-  const lead=Math.max(-3.5,Math.min(3.5,end-pos.at));
-  const p=along(route,pos.at+lead,actor.pathOffset||0);move(actor,p.x-actor.x,p.z-actor.z,dt);
+  const len=Math.hypot(x,z);if(len<.001)return;
+  // Following a walking wave needs a matching speed. A full-speed lunge and a long stop reads as stutter.
+  const pace=rallying?Math.min(1,gap/(actor.laneIntent==="withdraw"?.42:1.60)):1;
+  move(actor,x/len*pace,z/len*pace,dt);
 }
 export function crossingCall(match,me,objective){
   if(me.dead)return "复活 "+Math.ceil(me.respawn)+" 秒";

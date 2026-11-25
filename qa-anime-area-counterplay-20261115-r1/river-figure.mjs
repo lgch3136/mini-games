@@ -1,3 +1,4 @@
+import {actorStrides,footTrack,bendLeg} from "./river-roles.mjs?v=canyon-march1";
 import {bindImpact} from "./surface-impact.mjs?v=river-sun-poses1";
 import {paintedCheeks} from "./river-tailoring.mjs?v=field-sculpt1";
 const bound = value => Math.max(0, Math.min(1, value));
@@ -195,6 +196,7 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
   root.add(skin);skin.bind(skeleton);
   skin.boundingSphere=g.boundingSphere.clone();skin.boundingSphere.radius+=2.2;
   const ready=[[-.62,-.80],[-.68,-.87],[-.40,-1.02],[-.95,-.93],[-.60,-.69]][hero];
+  const travelFeet=[{},{}];
   function pose(phase,weight,action){
     const beat=Math.sin(phase),w=bound(weight||0);
     let coil=0,release=0,left=0,right=0,stance=0;
@@ -210,8 +212,18 @@ export function articulate(T, model, hero, exclusions, panels, sheet, bladeMount
     }
     joints[0].rotation.set(ready[0]+beat*w*.17-coil*left*.72+release*left*.56,0,-.08);
     joints[1].rotation.set(ready[1]-beat*w*.17-coil*right*.78+release*right*.73,0,.08);
-    joints[2].rotation.set(.09+.78*Math.max(0,-beat)*w+.13*stance,0,0);
-    joints[3].rotation.set(.09+.78*Math.max(0,beat)*w+.17*stance,0,0);
+    for(let side=0;side<2;side++){
+      const hinge=joints[side+2], leg=legs[side];
+      const restKnee=.09+(side?.17:.13)*stance;
+      hinge.rotation.set(restKnee,0,0);
+      if(hero===1 || !w)continue;
+      const track=footTrack(travelFeet[side],phase/(Math.PI*2)+side*.5,actorStrides[hero],.52,.225);
+      const mix=w*(1-stance*.83);
+      const upper=-kneeY,lower=.39;
+      bendLeg(track,.68-track.lift,track.z*.87,upper,lower);
+      leg.rotation.x+=(track.hip-leg.rotation.x)*mix;
+      hinge.rotation.x+=(track.knee-restKnee)*mix;
+    }
   }
   return {pose,joints,skin,dispose(){skeleton.dispose();}};
 }

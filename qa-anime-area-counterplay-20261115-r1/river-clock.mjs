@@ -5,6 +5,9 @@ function remember(list,memory){
     let sample=memory.get(item);
     if(!sample){sample={view:Object.create(item)};memory.set(item,sample);}
     sample.x=item.x;sample.z=item.z;sample.dead=item.dead;
+    if(item.kind==="hero" || item.kind==="minion"){
+      sample.walk=item.walkDistance||0;sample.gait=item.gaitDistance||0;
+    }
     sample.action=item.action;sample.elapsed=item.action?.elapsed||0;
   }
 }
@@ -16,6 +19,11 @@ function drawPositions(list,memory,out,alpha){
     const view=old.view,dx=current.x-old.x,dz=current.z-old.z;
     const snap=current.dead!==old.dead||dx*dx+dz*dz>2.25;
     view.x=snap?current.x:old.x+dx*alpha;view.z=snap?current.z:old.z+dz*alpha;
+    if(current.walkDistance!=null){
+      const walk=current.walkDistance,gait=current.gaitDistance??walk;
+      view.walkDistance=snap?walk:old.walk+(walk-old.walk)*alpha;
+      view.gaitDistance=snap?gait:old.gait+(gait-old.gait)*alpha;
+    }
     const action=current.action;
     if(action&&action===old.action){
       if(old.actionOwner!==action){old.actionOwner=action;old.drawAction=Object.create(action);}

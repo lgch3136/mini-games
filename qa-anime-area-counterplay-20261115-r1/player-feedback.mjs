@@ -69,7 +69,7 @@ export function playerFeedback(T,scene,ground,roster=[],showNamedHit=null){
     for(const e of match.events){
       if(e.id<=last)continue;last=e.id;
       const own=e.source===player.id,t=match.time,hue=accents[player.hero]||accents[0];
-      if(e.type==="lastCoin"){
+      if(e.type==="lastCoin"&&e.source===player.id){
         const coin=push("coin",e.x,e.z,0,t,.55,"#f3c15b");
         if(coin){coin.toX=player.x;coin.toZ=player.z;}
         caption(player.x,player.z,t,"补刀 +"+e.coins,"coin",1.74);continue;

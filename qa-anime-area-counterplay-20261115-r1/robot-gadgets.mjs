@@ -48,7 +48,7 @@ export function castGadget(match,actor,slot,action,context){
       emit(match,"airPush",actor,{...visual,target:victim.id,fromX,fromZ,targetX:victim.x,targetZ:victim.z,ttl:.30});
     }
   }else if(slot===1){
-    actor.copterStart=match.time;actor.copterUntil=match.time+2.45;
+    actor.copterStart=match.time;actor.copterUntil=match.time+2.45*(visual.skillPower||1);
     emit(match,"takeCopter",actor,{...visual,until:actor.copterUntil,ttl:.55});
   }else{
     const fromX=actor.x,fromZ=actor.z;
