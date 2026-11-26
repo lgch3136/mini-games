@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b1724" />
+    <title>月影忍途 · 守卫读势 r2</title>
+    <link rel="stylesheet" href="style.css?v=20260930-polish-r1&mobile=20260930-quality-r2" />
+  <link rel="stylesheet" href="../shared/mobile-quality.css?v=20260930-quality-r2&mobile=20260930-quality-r2">
+<style>
+      #arena > .court-sky {
+        position:absolute;
+        inset:0 auto auto -19px;
+        width:calc(100% + 38px);
+        height:100%;
+        pointer-events:none;
+      }
+      .vitals #moon-mastery {
+        position:static;
+        margin-top:4px;
+        line-height:1.25;
+      }
+      #phone-vitals {display:none}
+      @media (max-width:600px) and (orientation:portrait) {
+        body.playing .play-row {flex-direction:column;justify-content:center}
+        body.playing #phone-vitals {
+          display:grid; width:100%; flex:none; box-sizing:border-box;
+          padding:4px max(12px,env(safe-area-inset-right)) 6px max(12px,env(safe-area-inset-left));
+          background:#0c1b25; border-bottom:1px solid #34424b; color:#e8d8b9;
+        }
+        #phone-vitals #toast {
+          position:static; inset:auto; display:block; width:100%; min-width:0;
+          height:15px; min-height:15px; box-sizing:border-box; margin:1px 0 0;
+          padding:0; border:0; background:none; transform:none; text-align:left;
+          color:#ffdfa6; font:600 11px/15px system-ui; letter-spacing:.02em;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:none;
+        }
+        #phone-vitals #toast:empty {visibility:hidden}
+        #phone-vitals .vitals {
+          position:static; width:100%; max-width:none; display:grid;
+          grid-template-columns:minmax(100px,1.1fr) minmax(100px,1fr);
+          align-items:center; column-gap:12px; row-gap:3px; text-shadow:none;
+        }
+        #phone-vitals .chapter {grid-column:1;grid-row:1;font-size:11px;letter-spacing:1px}
+        #phone-vitals .hp {grid-column:1;grid-row:2;margin:0;height:6px}
+        #phone-vitals .energy {grid-column:2;grid-row:1;font-size:10px;gap:3px}
+        #phone-vitals .energy b {letter-spacing:0;white-space:nowrap}
+        #phone-vitals .energy #score {display:none}
+        #phone-vitals #moon-mastery {grid-column:2;grid-row:2;margin:0;font:600 10px/1.15 system-ui;color:#bdd0cf}
+        #phone-vitals .boss:not([hidden]) {
+          position:static;width:100%;display:grid;grid-template-columns:auto minmax(55px,1fr);
+          align-items:center;gap:10px;text-align:left;margin-top:4px;font-size:10px;
+        }
+        #phone-vitals .boss > div {margin:0;height:5px}
+
+        body.playing #arena {
+          width:100%;
+          height:clamp(186px,min(120vw,calc(100dvh - 265px)),540px);
+          flex:0 1 auto; min-height:0;
+          max-height:100%; aspect-ratio:auto;
+        }
+      }
+    </style></head>
+  <body>
+    <main id="shell">
+      <header class="topbar">
+        <a href="../">← 游戏合集</a
+        ><span class="brand">月影忍途 <small>守卫读势 r2 · 独立记录</small></span>
+        <nav>
+          <button id="help-btn">出招</button
+          ><button id="sound-btn">声音 开</button
+          ><button id="pause-btn" hidden>暂停</button
+          ><button id="exit-btn" hidden>退出</button>
+        </nav>
+      </header>
+      <div class="play-row">
+        <div id="phone-vitals" role="group" aria-label="忍者与守将状态"></div>
+        <div id="arena">
+          <canvas id="game" aria-label="月影忍途实时动作画面"></canvas
+          ><canvas id="fx" aria-hidden="true"></canvas>
+          <section id="hud" hidden>
+            <div class="vitals">
+              <span class="chapter" id="chapter"></span>
+              <div class="hp"><i id="hp-fill"></i></div>
+              <div class="energy">
+                <span>忍力</span><b id="energy"></b><span id="score"></span>
+              </div>
+              <div id="moon-mastery"></div>
+            </div>
+            <div id="combo"></div>
+            <div id="dash-state"></div>
+            <div class="boss" id="boss" hidden>
+              <span>无明 · 寺门守卫</span>
+              <div><i id="boss-fill"></i></div>
+            </div>
+            <div id="words">
+              <small id="meaning"></small><strong id="letters"></strong>
+            </div>
+            <div id="hint"></div>
+            <div id="toast" role="status"></div>
+          </section>
+          <div id="loading">正在准备月夜、角色与刀光…</div>
+          <section id="menu" class="screen">
+            <div class="menu-copy">
+              <p class="eyebrow">一人，一刀，穿越长夜。</p>
+              <h1>月影<span>忍途</span></h1>
+              <p class="roman">MOONBLADE</p>
+              <p class="intro">
+                踏雨越檐，刀锋截弹。<br />击碎封印补给，在长夜中找出自己的路。
+              </p>
+              <div class="chapters">
+                <span>壹 · 雨城</span><span>贰 · 雾谷</span
+                ><span>叁 · 无明寺</span>
+              </div>
+              <label class="chapter-select"
+                >出发点<select id="chapter-select">
+                  <option value="0">雨城屋脊</option>
+                  <option value="1" disabled>雾谷山道 · 未解锁</option>
+                  <option value="2" disabled>无明寺门 · 未解锁</option>
+                </select></label
+              >
+              <div class="options">
+                <label><input type="checkbox" id="easy" />宽容模式</label
+                ><label
+                  ><input
+                    type="checkbox"
+                    id="learning"
+                    checked
+                  />沿途记词</label
+                ><label
+                  ><input type="checkbox" id="detail" checked />氛围光效</label>
+                <label><input type="checkbox" id="power-saving" />省电画面</label
+                >
+                <label><input type="checkbox" id="comfort" />减少动态效果</label>
+                <label><input type="checkbox" id="guardian-mark" checked />守卫起手标记</label>
+              </div>
+              <p id="chapter-record" class="keys"></p>
+              <button id="start-btn" class="primary" disabled>
+                准备角色中…
+              </button>
+              <p class="keys" id="control-note">
+                A D 移动 · 空格 / K 跳跃 · J 刀击 · L 疾步 · I 忍术
+              </p>
+            </div>
+            <span class="vertical" aria-hidden="true"
+              >踏影无声<br />刀过留月</span
+            >
+          </section>
+          <section id="panel" class="screen panel-screen" hidden>
+            <div class="panel">
+              <p id="panel-kicker" class="eyebrow"></p>
+              <h2 id="panel-title"></h2>
+              <img id="chapter-medal" class="mastery-medal" alt="章节勋章" hidden /><p id="panel-text"></p>
+              <button id="primary-action" class="primary"></button
+              ><button id="menu-action">返回出发点</button>
+            </div>
+          </section>
+        </div>
+      </div>
+      <footer>
+        <span id="status">壹 · 雨城屋脊</span><span>单人闯关 · 自动检查点</span>
+      </footer>
+      <section id="touch" hidden aria-label="触屏操作">
+        <div class="dpad">
+          <button data-input="left" aria-label="向左移动">◀</button
+          ><button data-input="right" aria-label="向右移动">▶</button
+          ><button data-input="down" class="down" aria-label="下方向">↓</button>
+        </div>
+        <div class="actions">
+          <button data-input="dash" class="minor">疾步</button
+          ><button data-input="ninja" class="minor">忍术</button
+          ><button data-input="attack" class="attack">斩</button
+          ><button data-input="jump" class="jump">跳</button>
+        </div>
+      </section>
+      <dialog id="help">
+        <button id="close-help" aria-label="关闭出招表">×</button>
+        <p class="eyebrow">THE WAY OF MOONBLADE</p>
+        <h2>动起来，再出刀。</h2>
+        <dl>
+          <dt>移动 / 跳跃</dt>
+          <dd>A D 或 ← → 移动；空格、K 或 W 跳跃。长按跳得更高，轻点短跳。</dd>
+          <dt>贴墙 / 蹬墙</dt>
+          <dd>
+            空中靠住墙，缓缓下滑；再按跳跃蹬离墙面。迅速转回墙面可继续攀升。
+          </dd>
+          <dt>三段刀击</dt>
+          <dd>连续点斩接三段。贴墙再跳，刚离墙时点斩可折返横切。普通斩响檐铃得 30 分，壁返斩得 90 分。空中按下方向加斩是下落斩。</dd>
+          <dt>刀锋截弹 / 封印补给</dt>
+          <dd>刀刃生效时能截断来袭飞镖，回复一格忍力并获得 2.4 秒月息；下一次有效刀击伤害 +1，受伤会失去月息。斩击或忍术击碎金色封条的木箱，再靠近收取忍力。</dd>
+          <dt>疾步 / 忍术</dt>
+          <dd>
+            L 或 Shift 短距闪避，有冷却；I
+            投手里剑，每次消耗一格忍力。击倒敌人、探索高处可补充。
+          </dd>
+          <dt>寺门守将</dt>
+          <dd>守将起手后锁定朝向。双箭预告突进，贴地金弧预告横扫，青色上挑预告跃击。跳过横扫，再趁他垂刃时用刀命中，可回一格忍力。</dd>
+          <dt>检查点与暂停</dt>
+          <dd>
+            经过朱色小门会保存检查点并少量回血。P / Esc
+            暂停；离开窗口自动暂停。触屏建议横屏，左右手独立操作。
+          </dd>
+        </dl>
+        <p>原创三章动作游戏，参考经典忍者平台动作的规则，不是原版 ROM 移植。</p>
+      </dialog>
+    </main>
+    <script src="../shared/vocabulary.js?v=20260918-play-r1"></script>
+    <script type="module" src="main-stance-r2.mjs?v=20261126-stance-r2"></script>
+  </body>
+</html>
