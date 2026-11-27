@@ -1,0 +1,51 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>贪吃蛇背单词 · 水路贴尾回执 R4.3</title>
+<link rel="stylesheet" href="../qa-snake-tail-rule-20261117-r1/relay.css">
+<meta name="arcade-build" content="qa-snake-bay-tail-echo-20261127-r43">
+<style>
+.route-budget { border-inline-start: 3px solid #4d8469; background: #f2fcf1; color: #234638; margin: .45rem 0 .7rem; padding: .45rem .65rem; overflow-wrap: anywhere; }
+.route-budget[data-slack="exact"], .route-budget[data-slack="short"] { border-color: #ba732c; background: #fff3d9; color: #603914; }
+.route-budget small { display: block; color: inherit; }
+.build-eyebrow { display: block; color: #435f49; font-size: .75rem; margin: 0 0 .2rem; }
+.step-inspector { margin: .4rem 0 .9rem; padding: .45rem .58rem; border: 1px solid #9ab198; border-radius: .45rem; color: #244235; background: #f5faf1; }
+.step-inspector summary { cursor: pointer; font-weight: 700; }
+.step-inspector p, .step-inspector ol { margin: .45rem 0; font-size: .92rem; line-height: 1.45; }
+.step-inspector ol { list-style: none; padding: 0; }
+.step-inspector li { overflow-wrap: anywhere; min-height: 1.3em; }
+.step-inspector li[data-kind="wall"], .step-inspector li[data-kind="body"] { color: #882f28; font-weight: 600; }
+.step-inspector li[data-kind="tail"] { color: #215765; font-weight: 600; }
+
+.board-heading { min-height:64px; display:grid; align-content:center; gap:3px; margin-bottom:8px; }
+.board-heading p { margin:0; }
+#current-word { font-size:19px; line-height:1.35; font-weight:750; }
+.board-heading #metrics { font-size:14px; line-height:1.4; margin:0; }
+.cat-choice { display:flex; align-items:center; gap:7px; min-height:44px; margin:0 0 7px; font-size:14px; }
+.tail-legend { margin:6px 0; }
+#relay-setup { border-top:1px solid #bdcaae; padding:5px 0; }
+#relay-setup .challenge-choice { display:flex; align-items:center; min-height:44px; gap:6px; }
+@media(min-width:761px) and (min-height:540px) {
+  #board { height:clamp(286px,calc(100dvh - 205px),475px); }
+}
+@media(max-width:760px) { .board-heading { min-height:59px; } }
+.pack-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 10px}
+.pack-toggle button{min-height:44px;border:1px solid #739083;border-radius:8px;background:#edf4ef;color:#1e493d;font-size:15px;font-weight:700}
+.pack-toggle button[aria-pressed=true]{background:#206350;color:white}
+.pack-toggle button:focus-visible{outline:3px solid #bf772e;outline-offset:2px}
+.pack-toggle button:disabled{opacity:.75}
+</style>
+<main><header><small class="build-eyebrow">水路贴尾回执 r4.3 · 更新<time datetime="2026-11-27">2026-11-27</time></small><h1 id="page-title">三图无伤接力</h1><p class="quick-keys">方向键 / WASD，一次一格；松手可观察。Esc 暂停。</p></header>
+<div class="workspace"><section class="board-pane" aria-label="盘面与当前目标"><div class="board-heading"><p id="current-word">第 1 图 · A → R → C</p><p id="metrics"></p></div><canvas id="board" tabindex="0" aria-label="单词接力逐格场地" aria-describedby="board-state"></canvas><p id="board-state"></p><p id="eel-rule" hidden>E① 先收，E② 后收。暗色字母所在的空格可以走，轮到它才收取。</p><p id="drill-banner" role="status" hidden>本图不限步，碰撞可退回；不计接力成绩。</p><p id="status" role="status" aria-live="polite"></p><p id="route-budget" class="route-budget" hidden><strong>步数预判：</strong><span id="route-budget-value"></span><small>按顺序算格距，不计蛇身等阻挡。</small></p><p id="tail-feedback" role="status" hidden></p><p class="tail-legend">「尾」标出当前尾端，不表示安全格。未增长时尾格随移动腾开；实际增长时旧尾格保留。</p></section>
+<aside class="control-pane" aria-label="逐格与路线控制"><h2>逐格移动</h2><div class="pack-toggle" role="group" aria-label="接力地图"><button id="classic-pack" type="button" aria-pressed="true">经典</button><button id="water-pack" type="button" aria-pressed="false">水路</button></div><label class="cat-choice"><input id="water-sound" type="checkbox" autocomplete="off" disabled aria-describedby="water-sound-status">水路提示音</label><small id="water-sound-status" role="status"></small><label class="cat-choice"><input id="cat-tail" type="checkbox">第2图改拼 CAT（猫）</label><div class="pad" aria-label="单步方向控制"><button data-direction="3" aria-label="向上一步">↑</button><button data-direction="2" aria-label="向左一步">←</button><button data-direction="1" aria-label="向下一步">↓</button><button data-direction="0" aria-label="向右一步">→</button></div><div class="primary-controls"><button id="start">开始接力</button><button id="next" hidden>进入下一图</button><button id="pause" hidden>暂停</button><button id="drill-start" hidden>练习刚失败的这一图</button></div>
+<section id="record" hidden aria-live="polite"><h2>本页路线纪录</h2><p id="record-text"></p><p id="record-splits" hidden></p><button type="button" id="record-practice" hidden>练习复盘推荐图</button> <button type="button" id="retry-record" hidden>同模式再挑战</button></section>
+<div id="drill-controls" hidden><details class="step-inspector" id="step-inspector" hidden><summary>练习辅助：只看下一步</summary><p id="step-inspector-help">只看当前盘面，不推荐走法，不判断通关。</p><ol aria-label="四个方向的下一步"><li id="step-inspect-3"></li><li id="step-inspect-2"></li><li id="step-inspect-1"></li><li id="step-inspect-0"></li></ol></details><h2>退回与重看</h2><div class="pair"><button id="drill-undo" hidden disabled aria-describedby="drill-banner">退回刚才一步</button><button id="drill-redo" hidden disabled aria-describedby="drill-banner">重看刚退的一步</button></div><h2>试走岔路</h2><div class="branch-controls"><button id="drill-bookmark" hidden disabled aria-describedby="drill-banner">记住当前岔路</button><button id="drill-return" hidden disabled aria-describedby="drill-banner">回到已记岔路</button></div></div>
+<details class="session-options" id="session-options"><summary>本轮选项</summary><div class="options-controls"><button id="drill-retry" hidden>重练本图</button><button id="drill-exit" hidden>退出练习，查看原接力结果</button><button id="reset">放弃本轮，重新开始三图</button><label><input id="grid" type="checkbox" checked>显示格线</label></div></details></aside></div>
+<details id="relay-setup"><summary>玩法设置与步数说明</summary>
+<label class="challenge-choice"><input id="opening-fork" type="checkbox">第1图换成双路开局（开局前可切换）</label>
+<label class="challenge-choice"><input id="tight-mode" type="checkbox"><span id="tight-label">逐图 16 / 10 / 14 步挑战（开局前可切换）</span></label>
+<p id="formal-brief">三图合用 60 步；顺序看盘面上方。碰撞结束本轮。</p>
+<p>选项会随重开保留；想切换请先重开。不同路线与预算的无伤成绩分开记，只保留在当前页面。</p>
+
+</details>
+<section id="drill-summary" hidden><h2>本次单图练习</h2><p id="drill-result"></p></section>
+<section id="summary" hidden><h2>本轮已过关路线</h2><ol id="results"></ol></section><details id="rules"><summary>规则与暂停</summary><p>每一步使用原游戏转向、碰撞、取字和成长规则。不能直接掉头；无效方向不耗步数。取字后蛇身会增长，碰到后续字母不会提前收下。原60步模式恰好在总第60步拿到最后一个字母也算成功；逐图限步模式各图最后一步取齐也算成功。三图身体形状、取字距离不同，注意尾部移动后才腾出的格子。</p><p>过图后先停住，由你点击进入下一图，原60步模式剩余总步数不会补满；逐图挑战下一图使用对应预算，本图余步不结转。Esc、离开窗口或隐藏页面会暂停；返回后点继续，不会自动走格。点击重新开始会清空本轮所有进度。失败后可单独练习刚失败的图；无伤完赛且有一图比本模式此前整局最佳多走时，也可从复盘只练推荐图。单图练习从该图原始盘面开始、不限步数，碰撞后仍会停下，但可退回刚才一步换方向。取字和完成后也可退回最近一步，字母、身体、步数和路线一同恢复；不能连续退多步。暂停时不能退步。可重练或退出查看原接力结果。练习不能恢复接力、不保存成绩或星星。旧不限步逐格练习仍保留原三心和护栏救援规则；正式接力规则不变。</p><h2>接力说明</h2><p>先后挑战<strong>绕开盘身 → 穿过尾门 → 沿槽回转</strong>。按当图盘面顶部的单词顺序取字；可在开局前把第二图换成 CAT，默认三图合用<strong>60步</strong>；勾选挑战则三图依次<strong>16 / 10 / 14步</strong>，任意一次身体或护栏碰撞即结束。</p><p>方向键或 WASD，每次走一格，长按不连走。松手可观察，不限思考时间。水路提示音默认关闭，无背景音乐；不永久保存成绩或星星。</p><h2>单图练习细则</h2><p>单图练习 · 可退回刚才一步，换个方向再试。碰撞后会说明上一步起点、方向和撞到的位置，退回一步时保留提示，成功走出下一步后清除；回岔路或重练会清除。退步后可重看刚退的一步（包含碰撞结果）；只保留一步，选择新的有效走法或回岔路会清除重看。还可记住当前岔路，再多次回到这里尝试不同走法；只保留一处，新记会替换旧处。暂停时不能记或返回，重练与退出会清空。退步只保留最近一步；退回后先走一步才能再退。不计接力成绩。</p></details><nav><a href="../qa-snake-distinct-routes-20261114-r1/english-word-snake/practice.html">先玩不限步逐格练习</a><a href="../qa-snake-distinct-routes-20261114-r1/english-word-snake/index.html">此候选的实时模式</a><a href="../index.html">小游戏大厅</a></nav>
+<p class="build-note">双路接力 r4.2 · 更新2026-11-23 · 默认原图不变，可选第1图双路与第2图换词；模式与地图分别记录，刷新清空。保留步数预判和单格练习。</p>
+</main><script type="module" src="game.mjs?v=qa-snake-bay-tail-echo-20261127-r43"></script></html>
