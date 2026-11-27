@@ -1,0 +1,144 @@
+import { clamp } from "../qa-moonblade-dual-frame-20261125-r1/world.mjs?v=20261124-eave-return1";
+import { drawWallReturn } from "../qa-moonblade-dual-frame-20261125-r1/eave-bell.mjs?v=20261124-roof-canvas1";
+import { bladePose, drawBladePose, drawDiveImpact } from "../qa-moonblade-dual-frame-20261125-r1/suye-strikes.mjs";
+import { frames } from "../qa-moonblade-dual-frame-20261125-r1/suye-frames-v1.mjs";
+import { sampleSuye } from "../qa-moonblade-dual-frame-20261125-r1/suye-poses-v1.mjs";
+import { foes } from "../qa-moonblade-dual-frame-20261125-r1/court-frames-v1.mjs";
+import { sweepFrames } from "../qa-moonblade-dual-frame-20261125-r1/temple-guardian-frames.mjs";
+
+export function foePose(e, time) {
+  if (e.kind === "archer") {
+    if (e.stun > 0 || e.dead) return "archerHurt";
+    if (e.state === "tell") return "archerDraw";
+    return e.state === "recover" && e.timer > .76 ? "archerLoose" : "archerReady";
+  }
+  if (e.kind === "boss") {
+    if (e.dead) return "abbotRecover";
+    if (e.choice === 1) {
+      if (e.state === "tell") return e.timer > (e.tellLength || .55)*.53 ? "abbotDrawBack" : "abbotLowWind";
+      if (e.state === "sweep" && e.timer > .34) return "abbotUnwind";
+      if (e.state === "recover" && e.timer > .20) return "abbotSpent";
+    }
+    if (e.stun > 0 || e.state === "recover") return "abbotRecover";
+    if (e.state === "tell") return e.choice === 0 ? "abbotCoil" : "abbotGather";
+    if (e.state === "rush") return "abbotRush";
+    if (e.state === "sweep") return "abbotSweep";
+    if (e.state === "leap") return e.vy < -5 && e.y < .7 ? "abbotLand" : "abbotLeap";
+    return "abbotReady";
+  }
+  if (e.dead || e.stun > 0) return "guardStep";
+  if (e.state === "tell") return "guardTell";
+  if (e.state === "strike") return "guardStrike";
+  if (e.state === "recover" && e.timer > .43) return "guardStep";
+  return Math.abs(e.vx) > .4 && Math.sin(time*11 + e.id) > 0 ? "guardStep" : "guardReady";
+}
+
+// Shared pose geometry for the canvas painter and the camera bounds. No physics writes.
+export function visualFoeFrame(view,e){
+  let name=foePose(e,view.elapsed), sx=1,sy=1,anchor=null;
+  if(e.kind==="boss"&&!e.dead){
+    const tell=e.state==="tell", length=e.tellLength||.55;
+    const progress=tell?clamp(1-e.timer/length,0,1):1;
+    if(e.choice===1&&(tell||e.state==="sweep")){
+      // Keep the stance planted and low all through the sweep windup; loaded extra cels remain in use.
+      const low=tell?.82-.06*progress:.89;
+      sy=low;sx=1+(1-low)*.35;
+    }
+    if(e.choice===2&&tell){
+      if(progress<.60){ name="abbotGather";sy=.96-.08*progress; }
+      else { name="abbotLeap";anchor=foes.abbotLeap.size[1]+2; }
+    } else if(e.state==="leap"&&name==="abbotLeap"){
+      const t=clamp((.85-e.timer)/.105,0,1);
+      anchor=foes.abbotLeap.size[1]+2+(foes.abbotLeap.foot[1]-foes.abbotLeap.size[1]-2)*t;
+    }
+  }
+  if(sweepFrames[name]&&!view.sweepAtlas){
+    name=({abbotDrawBack:"abbotCoil",abbotLowWind:"abbotCoil",abbotUnwind:"abbotSweep",abbotSpent:"abbotRecover"})[name];
+  }
+  const isSweep=Boolean(sweepFrames[name]),f=isSweep?sweepFrames[name]:foes[name];
+  const k=e.kind==="boss"?.0092:.0073;
+  return {name,f,isSweep,left:-f.foot[0]*k*sx,bottom:-(anchor??f.foot[1])*k*sy,width:f.size[0]*k*sx,height:f.size[1]*k*sy};
+}
+function shadow(c, x, y, w, h) {
+  c.fillStyle = "rgba(11,22,29,.39)"; c.beginPath();
+  c.ellipse(x,y, Math.max(1,w), Math.max(1,h),0,0,2*Math.PI); c.fill();
+}
+
+export function drawFoe(view, world, e, alpha, dt) {
+  if (e.kind === "bat") return;
+  const death = view.deaths.get(e.id);
+  if (e.dead && !death) return;
+  const dx = e.px + (e.x-e.px)*alpha, dy=e.py+(e.y-e.py)*alpha;
+  const [x,y] = view.screen(dx,dy), unit=view.unit;
+  if (x < -unit*4 || x > view.w+unit*4) return;
+  const {name,f,isSweep,left,bottom,width,height}=visualFoeFrame(view,e);
+  const face = ["strike","rush","sweep","leap"].includes(e.state) || (e.kind==="guard" && e.state==="tell")
+    ? (e.lockDir || e.facing) : e.facing;
+  const c=view.context;
+  const floor=view.floorAt(world,dx,dy);
+  if(floor>-10 && dy-floor<3) shadow(c,x,view.screen(dx,floor)[1]+1,unit*(e.kind==="boss"?.68:.45),unit*.067);
+  c.save();c.translate(x,y);c.scale(face || 1,1);
+  if(death) {
+    const t = Math.min(1,death.age/.30);
+    c.globalAlpha=1-t; c.translate(-unit*t*.23,0); c.rotate(-.22*t);
+  } else if(e.stun>0) {
+    c.translate(-unit*Math.min(.16,e.stun*.7),0);
+  }
+  c.drawImage(isSweep ? view.sweepAtlas : view.foeAtlas,...f.rect,left*unit,bottom*unit,width*unit,height*unit);
+  c.restore();
+  view.enemyPoses[e.kind]=name;
+  view.counts.actors++;
+}
+
+export function drawHero(view, world, old, alpha, dt) {
+  const p=world.player, s=view.hero;
+  const x=p.px+(p.x-p.px)*alpha, y=p.py+(p.y-p.py)*alpha;
+  const phase=(old?.run??p.run)+(p.run-(old?.run??p.run))*alpha;
+  const pose=sampleSuye(s,p,phase,dt), f=frames[pose.name];
+  const offset=pose.name==="wall"?-.40*p.wall:0;
+  const [sx,sy]=view.screen(x+offset,y), scale=view.unit*.0064;
+  const floor=view.floorAt(world,x,y);
+  if(floor>-10 && y-floor<6) shadow(view.context,sx,view.screen(x,floor)[1]+1,view.unit*.47,view.unit*.074);
+  const active=world.attackRect();
+  if (view.wallSheet && !p.ground && !p.stun && p.dash<=0) {
+    const cutting=p.attack?.kind==="wallSlash";
+    const braced=!p.attack && p.wall && p.vy<=1.5;
+    const kicking=!p.attack && p.wallBladeWindow>.14;
+    if (cutting || braced || kicking) {
+      const name=braced?"wallGather":kicking || p.attack.frame<4?"wallSpring":active?"wallCut":"wallFall";
+      const direction=braced ? -p.wall : p.wallLaunchFacing || p.facing;
+      const [wx,wy]=view.screen(x,y);
+      drawWallReturn(view,p,x,y,wx,wy,dt,!!active,name,direction);
+      return;
+    }
+  }
+  const strike=view.bladeAtlas && (p.attack?.kind==="wallSlash" ? (active?"first":"draw") : bladePose(p,active,s.diveImpact||0));
+  if (s.diveImpact>0) drawDiveImpact(view,s);
+  if (s.freshDiveImpact) s.freshDiveImpact=false;
+  else s.diveImpact=Math.max(0,(s.diveImpact||0)-dt);
+  if (strike) {
+    const {base,tip}=drawBladePose(view,p,strike,x+offset,y,sx,sy);
+    if (dt>0) s.ribbon.update(base,tip,dt,!!active,p.facing);
+    s.pose=strike;s.x=x+offset;s.y=y;s.base=base;s.tip=tip;
+    view.counts.actors++;
+    return;
+  }
+  const c=view.context;
+  const breathe=pose.name==="guard"&&!view.reduced?1+Math.sin(view.elapsed*3)*.006:1;
+  const hiltX=f.grip[0]*.0064, hiltY=f.grip[1]*.0064;
+  c.save(); c.translate(sx,sy); c.scale(p.facing,breathe);
+  c.save(); c.translate(hiltX*view.unit,-hiltY*view.unit); c.rotate(-pose.angle);
+  c.beginPath(); c.moveTo(0,-.027*view.unit); c.lineTo(.78*view.unit,-.043*view.unit);
+  c.lineTo(1.05*view.unit,-.036*view.unit); c.lineTo(.76*view.unit,.003*view.unit);
+  c.lineTo(0,.023*view.unit); c.closePath();
+  c.fillStyle="#b1c7c7"; c.fill(); c.lineWidth=Math.max(.7,view.unit*.013);
+  c.strokeStyle="#f5f6de"; c.beginPath(); c.moveTo(0,-.027*view.unit);c.lineTo(1.05*view.unit,-.036*view.unit);c.stroke();
+  c.restore();
+  if(p.stun>0&&!view.reduced){c.shadowColor="#e9b488";c.shadowBlur=2;}
+  c.drawImage(view.heroAtlas,...f.rect,-f.pivot[0]*scale,-f.pivot[1]*scale,f.width*scale,f.height*scale);
+  c.restore(); view.counts.actors++;
+  const bx=x+offset+p.facing*hiltX, by=y+hiltY*breathe, co=Math.cos(pose.angle), si=Math.sin(pose.angle);
+  const base={x:bx,y:by,z:.9},tip={x:bx+p.facing*(1.05*co-.036*si),y:by+(1.05*si+.036*co)*breathe,z:.9};
+  if(dt>0)s.ribbon.update(base,tip,dt,!!active,p.facing);
+  s.pose=pose.name;s.x=x+offset;s.y=y;s.base=base;s.tip=tip;
+}
