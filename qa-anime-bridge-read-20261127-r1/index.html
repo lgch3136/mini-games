@@ -1,0 +1,571 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>次元交锋 · 桥头辨位 r1</title><link rel="stylesheet" href="../qa-anime-area-counterplay-20261115-r1/style.css?v=canyon-eaves-batch1"><style>#role-tip:not([hidden]){display:block;max-width:16em;line-height:1.25;margin-top:2px;color:#ffdc99;font-size:11px;white-space:normal}.portrait:has(#role-tip:not([hidden])){align-self:center}@media(max-width:620px){#role-tip:not([hidden]){font-size:10px;max-width:11em}}</style><style>#camera-view{display:block;width:100%;margin-top:3px;border:0;border-top:1px solid #547072;border-radius:0;background:transparent;color:#e3eee3;cursor:pointer;font:600 10px/1.6 system-ui;pointer-events:auto}#camera-view:focus-visible{outline:2px solid #f9db88}@media(pointer:coarse){#camera-view{min-height:28px}}</style><style>@media(max-width:750px){#pad{bottom:calc(var(--fight-hud-height,144px) + 20px + env(safe-area-inset-bottom,0px))}}</style><style>
+#map-size{display:none}
+@media(max-width:750px){
+  #mapPanel:not(.map-expanded){top:62px;padding:2px;line-height:1}
+  #mapPanel:not(.map-expanded) #minimap{width:76px;height:46px}
+  #mapPanel:not(.map-expanded) small,#mapPanel:not(.map-expanded) #camera-view{display:none}
+  #map-size{display:block;position:absolute;inset:0 0 auto;width:100%;height:100%;min-height:44px;
+    padding:0;border:0;background:transparent;pointer-events:auto;border-radius:5px;touch-action:manipulation}
+  #mapPanel.map-expanded #map-size{height:calc(100% - 30px)}
+  #mapPanel.map-expanded #camera-view{min-height:30px;position:relative}
+  #map-size:focus-visible{outline:2px solid #ffd58a}
+}
+</style><style>
+#choices .roster-window{display:grid;place-items:center;background:#173b48;width:100%;height:130px;border-radius:5px;overflow:hidden}
+.roster-window i{display:block;width:104px;max-width:100%;height:100%;background-image:var(--draft-art);background-repeat:no-repeat;background-size:500% 100%}
+@media(max-width:750px){#choices .roster-window{height:84px}.roster-window i{width:67.2px}}
+#start[aria-busy=true]{cursor:progress}
+</style><style>
+.skills button{touch-action:none;user-select:none;-webkit-user-select:none}
+#aim-cancel{position:fixed;right:12px;bottom:calc(var(--fight-hud-height,110px) + 28px + env(safe-area-inset-bottom,0px));
+ z-index:8;pointer-events:none;border:1px solid #f2b7a2;background:#542b32ed;color:#ffdfc6;border-radius:24px;
+ padding:10px 14px;font:600 13px/1.2 system-ui;box-shadow:0 2px 8px #13152077}
+#aim-cancel.over{color:white;background:#a43d45;border-color:white}
+</style><style>.thumb-guide{display:none}@media(max-width:750px),(pointer:coarse) and (max-width:1050px){.thumb-guide{display:inline}}
+#top{gap:8px;align-items:center;flex-wrap:nowrap;padding:9px 14px;z-index:4}
+#top h1{font-size:16px;line-height:1.25;letter-spacing:.16em}
+#top>div:first-child small{display:none}
+#top .score{margin:0 auto 0 6px;align-items:flex-start;text-align:left}
+#top .score b{font:700 16px/1.12 system-ui;font-variant-numeric:tabular-nums}
+#top .score span{font-size:10px}
+#battle-options{position:relative;pointer-events:auto;z-index:7}
+#battle-options summary,#top>button{border:1px solid #77969794;border-radius:6px;background:#112a32ed;
+ color:#f2eddb;padding:7px 10px;line-height:1.2;font-size:12px;cursor:pointer}
+#battle-options summary{list-style:none}
+#battle-options summary::-webkit-details-marker{display:none}
+#battle-options summary:focus-visible{outline:2px solid #f1d188}
+#battle-options>div{position:absolute;top:calc(100% + 3px);right:0;display:grid;min-width:96px;gap:4px;
+ padding:5px;border:1px solid #698783;border-radius:7px;background:#112b32fa;box-shadow:0 3px 10px #12212a55}
+#battle-options:not([open])>div{display:none}
+#battle-options button{text-align:left}
+#objective{top:11px;max-width:37vw;overflow:hidden;text-overflow:ellipsis;padding:4px 10px}
+#routeHint{top:40px}
+#performance{top:83px}
+#mapPanel{top:58px}
+#bottom{left:16px;right:16px;bottom:12px;transform:none;width:auto;padding:0;border:0;border-radius:0;
+ background:transparent;box-shadow:none;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+ gap:12px;align-items:end;pointer-events:none}
+#bottom .portrait,#bottom .skills button,#bottom #log:not(:empty){
+ background:linear-gradient(150deg,#19363be8,#0e232eeb);border:1px solid #819a8e66}
+#bottom .portrait{width:fit-content;min-width:136px;max-width:180px;padding:7px 10px;border-radius:8px}
+#bottom .portrait small{font-variant-numeric:tabular-nums}
+#bottom .portrait .health{margin:4px 0;height:5px}
+#bottom .skills{pointer-events:auto;gap:6px;align-items:end}
+#bottom .skills button{width:74px;height:57px;border-radius:9px;border-bottom:2px solid var(--rim,#d3b978);
+ gap:1px;align-items:center;padding:2px 3px;line-height:1.05}
+.skills button[data-key=q]{--rim:#91ceed}.skills button[data-key=e]{--rim:#9ee0be}.skills button[data-key=r]{--rim:#d8a0bc}
+#bottom .skills button::before{content:"";display:block;width:14px;height:12px;background:var(--rim,#e6ca8a)}
+.skills [data-art=slash]::before{clip-path:polygon(0 84%,28% 68%,96% 0,72% 49%,100% 25%,56% 84%,19% 100%)}
+.skills [data-art=orb]::before{border-radius:50%;background:radial-gradient(circle at 40% 40%,#fff6ce 8%,var(--rim) 42%,#395777 75%)!important}
+.skills [data-art=dash]::before{clip-path:polygon(0 24%,55% 24%,47% 0,100% 44%,44% 100%,54% 64%,0 64%,30% 45%)}
+.skills [data-art=shield]::before{clip-path:polygon(50% 0,95% 17%,89% 59%,70% 83%,50% 100%,27% 81%,9% 59%,5% 17%)}
+.skills [data-art=wave]::before{clip-path:polygon(0 78%,19% 33%,39% 10%,65% 9%,83% 30%,59% 28%,47% 44%,48% 61%,68% 69%,100% 55%,85% 85%,60% 98%,30% 92%,18% 75%)}
+.skills [data-art=beam]::before{clip-path:polygon(0 75%,64% 25%,59% 8%,100% 0,93% 41%,77% 37%,9% 100%)}
+#bottom .skills button:active{border-color:#ffe3a1;background:#35525a}
+#bottom .skills kbd{top:2px;left:4px;font-size:9px;line-height:1;padding:2px}
+#bottom .skills b{font-size:12px}
+#bottom .skills span{font-size:10px;line-height:1.25}
+#bottom #log{width:fit-content;max-width:230px;justify-self:end;border-radius:7px;padding:4px 8px}
+#bottom #log:empty{padding:0}
+@media(max-width:750px),(pointer:coarse) and (max-width:1050px){
+  #top{padding:3px 7px;gap:4px}
+  #top>div:first-child{display:none}
+  #top .score{margin:0 auto 0 0}
+  #top>button,#battle-options summary,#battle-options button{min-height:44px;min-width:44px;font-size:12px;
+    display:flex;align-items:center;justify-content:center;padding:6px 8px}
+  #objective{top:49px;left:7px;transform:none;max-width:calc(100vw - 101px);font-size:11px}
+  #routeHint{top:74px;left:7px;transform:none;max-width:calc(100vw - 100px);width:fit-content;font-size:11px}
+  #mapPanel,#mapPanel:not(.map-expanded){top:51px}
+  #performance{top:104px;max-width:75vw}
+  #bottom{left:0;right:0;bottom:0;display:block;height:0;padding:0}
+  #bottom .portrait{position:absolute;left:8px;bottom:calc(5px + env(safe-area-inset-bottom,0px));width:fit-content;
+    max-width:min(39vw,168px);min-width:min(31vw,130px);padding:4px 7px;line-height:1.05}
+  #bottom .portrait b{font-size:13px}#bottom .portrait span,#bottom .portrait small{font-size:10px}
+  #bottom .portrait span{margin-left:.3em}#bottom .portrait .health{margin:3px 0}
+  #bottom #role-tip:not([hidden]){font-size:10px;max-width:14em;line-height:1.1}
+  #bottom .skills{position:absolute;right:8px;bottom:calc(7px + env(safe-area-inset-bottom,0px));
+    display:grid;grid-template-columns:repeat(2,clamp(52px,15vw,68px));gap:4px}
+  #bottom .skills button{width:100%;height:54px;border-radius:14px;padding:3px 1px}
+  #bottom .skills button::before{width:12px;height:10px}
+  #bottom .skills b{font-size:11px;line-height:1.12}
+  #bottom .skills kbd{display:none}
+  #bottom .skills [data-key=attack]{grid-area:2/2}
+  #bottom .skills [data-slot=q]{grid-area:2/1}
+  #bottom .skills [data-slot=e]{grid-area:1/1}
+  #bottom .skills [data-slot=r]{grid-area:1/2}
+  #bottom #log{display:none}
+  #pad{position:fixed;display:block;width:104px;height:104px;border:1px solid #d3cf9d99;border-radius:50%;
+    left:10px;bottom:calc(76px + env(safe-area-inset-bottom,0px));touch-action:none;user-select:none;
+    background:radial-gradient(circle at center,#72918430 0 46%,#34524f8c 48% 66%,#182f30bb 69%);
+    box-shadow:inset 0 0 0 3px #cadaac26;pointer-events:auto}
+  #pad button{position:absolute;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;
+    background:transparent;color:#c6dcbdde;font:9px system-ui;line-height:1}
+  #pad [data-dir="0,-1"]{left:calc(50% - 16px);top:0}
+  #pad [data-dir="0,1"]{left:calc(50% - 16px);bottom:0}
+  #pad [data-dir="-1,0"]{left:0;top:calc(50% - 16px)}
+  #pad [data-dir="1,0"]{right:0;top:calc(50% - 16px)}
+  .thumb-handle{position:absolute;left:calc(50% - 16px);top:calc(50% - 16px);width:32px;height:32px;
+    border:1px solid #dbddae;border-radius:50%;pointer-events:none;background:radial-gradient(ellipse at 38% 30%,#95b5a2,#41685d 70%);
+    box-shadow:0 2px 4px #162a2f55}
+  #pad.engaged{border-color:#f6df96}.engaged .thumb-handle{border-color:#ffe4a6}
+  #aim-cancel{right:8px;bottom:calc(134px + env(safe-area-inset-bottom,0px));min-height:40px}
+}
+@media(max-height:450px) and (max-width:1050px){
+  #pad{width:88px;height:88px;bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+  #bottom .skills button{height:45px}
+  #aim-cancel{bottom:calc(111px + env(safe-area-inset-bottom,0px))}
+}
+</style><style>
+#bottom #field-supplies{pointer-events:auto;text-align:left;color:#eff3e4;cursor:pointer}
+#purse-line{display:block;letter-spacing:0;font-weight:650;color:#f2cc89;margin-top:3px}
+#field-stock[hidden]{display:none}#field-stock{position:fixed;z-index:5;left:16px;bottom:148px;width:min(285px,calc(100vw - 24px));
+ border:1px solid #a9b3a0;border-radius:11px;padding:10px;color:#eeefdc;background:#102b30fa;
+ box-shadow:0 5px 16px #13212c66;font:13px/1.3 system-ui}
+#field-stock header{display:flex;align-items:center;justify-content:space-between}
+#field-stock header button{padding:5px 8px;font:inherit}
+#field-stock p{margin:6px 0;color:#cbd9d2;font-size:12px}
+#field-counter,#field-kit-note{color:#f1d094;letter-spacing:0;font-size:12px}
+#field-kit-note{margin-top:6px;display:block}
+#field-stock [data-gear]{width:100%;min-height:43px;padding:4px 8px;margin-top:4px;display:grid;
+ grid-template-columns:1fr auto;text-align:left;border-color:#77938e}
+#field-stock [data-gear] span{grid-row:2;font-size:11px}
+#field-stock [data-gear] em{grid-column:2;grid-row:1 / 3;align-self:center;color:#edc97d;font-style:normal}
+#field-stock [data-gear]:disabled{opacity:.68;cursor:default}
+@media(max-width:750px),(pointer:coarse) and (max-width:1050px){
+ #field-stock{left:8px;bottom:auto;top:126px;max-height:calc(100dvh - 146px);overflow:auto}
+ #field-stock header button{min-width:44px;min-height:40px}
+ #pad{bottom:calc(86px + env(safe-area-inset-bottom,0px))}
+}
+@media(max-height:450px) and (max-width:1050px){#field-stock{top:45px;max-height:calc(100dvh - 53px)}}
+</style>
+<style>
+.field-floats{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.field-float{position:absolute;left:0;top:0;pointer-events:none;color:#fff5d2;
+ font:800 clamp(14px,1.25vw,21px)/1 system-ui;font-variant-numeric:tabular-nums;
+ text-shadow:0 1px 1px #29251e,1px 0 1px #29251e,-1px 0 1px #29251e,0 2px 4px #282a2b}
+.field-float[hidden],.damage-leader[hidden]{display:none}.damage-leader{position:absolute;left:0;top:0;height:1.5px;background:#fff3c8;box-shadow:0 1px 1px #302c27;transform-origin:0 50%}.field-float.taken{color:#ffc7b6}
+.field-float.coin{font-size:clamp(16px,1.55vw,24px);color:#ffdf72}
+.field-float.coin:before{content:"";display:inline-block;width:.49em;height:.49em;border:.1em solid #ffc155;
+ border-radius:50%;margin-right:.1em;background:#fff0a2;box-shadow:0 1px 2px #75450d}
+</style><style>
+#mapPanel #minimap{width:112px;height:112px;aspect-ratio:1}
+#field-recall{position:fixed;left:16px;bottom:calc(var(--fight-hud-height,110px) + 12px);
+ z-index:3;color:#dff9e8;background:#21473fed;border:1px solid #abc5ac;border-radius:50%;width:48px;height:48px;cursor:pointer;font:650 12px system-ui}
+#field-recall[aria-pressed=true]{background:#3d7768;border-color:#c4ffe6}
+#field-recall:focus-visible{outline:2px solid #f8cf7c}
+body:has(#menu:not(.hidden)) #field-recall,body:has(#end:not(.hidden)) #field-recall{display:none}
+@media(max-width:750px){#mapPanel:not(.map-expanded) #minimap{width:82px;height:82px}#field-recall{left:auto;right:9px;bottom:calc(var(--fight-hud-height,110px) + 13px);width:44px;height:44px}}
+</style><style>
+#bottom .skills {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 196px;
+  height: 172px;
+  display: block;
+  pointer-events: none;
+}
+#bottom .skills button {
+  --size: 53px;
+  width: var(--size);
+  height: var(--size);
+  min-width: 0;
+  min-height: 0;
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  border: 2px solid #c2ba96;
+  border-radius: 50%;
+  background: #183039;
+  box-shadow: 0 0 0 2px #1b2b30, inset 0 0 0 2px #a0916c, 0 3px 6px #15232877;
+  color: #fff8dd;
+  pointer-events: auto;
+}
+#bottom .skills button::before { content: none !important; display: none !important; }
+#bottom .skills [data-key=attack] { --size: 69px; right: 2px; bottom: 2px; border-color: #efda99; }
+#bottom .skills [data-slot=q] { right: 87px; bottom: 3px; }
+#bottom .skills [data-slot=e] { right: 70px; bottom: 69px; }
+#bottom .skills [data-slot=r] { right: 9px; bottom: 94px; border-color: #d6b8db; }
+#bottom .skills .ability-art {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background-image: url("../qa-anime-area-counterplay-20261115-r1/assets/canyon-glyphs.webp");
+  background-size: 400% 400%;
+  background-position: var(--icon-x) var(--icon-y);
+  pointer-events: none;
+}
+#bottom .skills button::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #091721c9 0deg var(--cool,0deg), transparent var(--cool,0deg) 360deg);
+  pointer-events: none;
+}
+#bottom .skills button[data-art=pellet] .ability-art {
+  background-image: url("../qa-anime-area-counterplay-20261115-r1/assets/canyon-pellet.webp");
+  background-size: cover;
+  background-position: center;
+}
+#bottom .skills b {
+  position: absolute;
+  z-index: 1;
+  bottom: 2px;
+  font: 650 9px/1.15 system-ui;
+  color: #fff6d7;
+  background: #111f25b8;
+  border-radius: 8px;
+  padding: 1px 4px;
+  white-space: nowrap;
+}
+#bottom .skills kbd {
+  top: -6px;
+  left: 0;
+  z-index: 1;
+  border: 1px solid #9c9e86;
+  border-radius: 50%;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  font: 650 10px/15px ui-monospace,monospace;
+  text-align: center;
+  color: #f8f0d2;
+  background: #294047;
+}
+#bottom .skills button > span {
+  position: relative;
+  z-index: 1;
+  font: 750 13px/1.1 system-ui;
+  color: #fff4d3;
+  text-shadow: 0 1px 3px #10212a;
+  visibility: hidden;
+}
+#bottom .skills button.cooling > span { visibility: visible; }
+#bottom .skills button:active, #bottom .skills button.raising {
+  transform: scale(.94);
+  border-color: #fff3c6;
+  box-shadow: 0 0 0 2px #708e82, 0 0 7px #ffe7a0a8;
+}
+#bottom .skills button:focus-visible { outline: 2px solid #fff1b9; outline-offset: 3px; }
+#bottom #log { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); max-width: 35vw; }
+#field-recall { bottom: max(15px,env(safe-area-inset-bottom)); left: 199px; width: 46px; height: 46px; }
+@media (max-width:750px), (pointer:coarse) and (max-width:1050px) {
+  #bottom .skills { right: max(10px,env(safe-area-inset-right)); bottom: max(13px,env(safe-area-inset-bottom)); width: 158px; height: 148px; }
+  #bottom .skills button { --size: 46px; }
+  #bottom .skills [data-key=attack] { --size: 60px; right: 0; bottom: 0; }
+  #bottom .skills [data-slot=q] { right: 72px; bottom: 2px; }
+  #bottom .skills [data-slot=e] { right: 57px; bottom: 59px; }
+  #bottom .skills [data-slot=r] { right: 1px; bottom: 83px; }
+  #bottom .skills kbd { display: none; }
+  #bottom .skills b { font-size: 8px; }
+  #bottom .portrait { position: fixed; left: 9px; bottom: max(121px,calc(111px + env(safe-area-inset-bottom))); min-width: 0; max-width: 137px; }
+  #pad { bottom: max(18px,env(safe-area-inset-bottom)); left: 13px; }
+  #field-recall { left: 116px; right: auto; bottom: max(17px,env(safe-area-inset-bottom)); width: 44px; height: 44px; }
+  #bottom #log { display: none; }
+}
+@media (max-height:450px) and (max-width:1050px) {
+  #bottom .portrait { bottom: 8px; left: 112px; max-width: 117px; }
+  #bottom .portrait #role-tip { display: none; }
+  #field-recall { bottom: 13px; left: 242px; }
+}
+
+</style><style>
+#field-stock{max-height:calc(100dvh - 125px);overflow:auto}
+#bottom #field-supplies.received{border-color:#f6d486;box-shadow:0 0 7px #f1c8746b}
+#field-stock .build-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0;color:#d6d3ae;font-size:11px}
+#field-stock [data-build]{white-space:nowrap;padding:4px 6px;font:inherit;min-height:31px;color:#bdebd4}
+#field-stock [data-gear][aria-pressed=true]{border-left:3px solid #95d5ba;opacity:.86}
+
+#mapPanel.field-left{left:12px;right:auto}
+@media(max-width:750px){#mapPanel.field-left{left:7px}}
+</style><style>
+@media (max-width:750px) and (orientation:portrait) {
+  #bottom .portrait { display:grid; grid-template-columns:auto auto; align-content:center; column-gap:5px; min-height:44px; max-width:130px; padding:4px 7px; }
+  #bottom .portrait .health, #bottom .portrait #purse-line, #bottom .portrait #role-tip { grid-column:1/-1; }
+  #bottom .portrait .health { margin:2px 0; height:3px; }
+  #bottom .portrait #hp { grid-column:1/-1; font-size:9px; }
+  #bottom .portrait #role-tip.familiar { display:none; }
+  #bottom .portrait #level { justify-self:end; }
+}
+</style><style>
+#objective[hidden]{display:none}
+#objective[hidden] + #routeHint{top:11px}
+#field-recall{padding:0 1px;white-space:nowrap}
+@media(max-width:750px){#objective[hidden] + #routeHint{top:49px}}
+</style><style>.field-float.missed{color:#d1e7e8;font-weight:650;font-size:13px;text-shadow:0 1px 2px #223d45,0 0 2px #223d45}</style><style>
+.field-float{transform-origin:50% 100%;white-space:nowrap}
+.field-float.hero-hit{color:#fff2b8;font-size:clamp(18px,1.4vw,22px);text-align:center;z-index:2}
+.field-float.hero-hit:before{content:attr(data-hero);display:block;width:max-content;margin:0 auto 1px;
+ padding:1px 3px;border-radius:3px;background:#332a25e8;color:#fff3d1;
+ font:700 10px/12px system-ui;text-shadow:none}
+.field-float.minion-hit{font-size:clamp(12px,1.05vw,16px);font-weight:650;color:#f2e9d4}
+.damage-leader.hero-leader{background:#ffdb87}
+</style><style>
+.damage-leader.hero-leader{height:2px;background:#ffe398;box-shadow:0 0 0 .8px #513b2c;z-index:1}
+.damage-leader.hero-leader:after{content:"";position:absolute;right:-2px;top:50%;width:5px;height:5px;
+ box-sizing:border-box;transform:translateY(-50%) rotate(45deg);background:#fff3b8;border:1px solid #513b2c}
+</style><style>
+.field-float.hero-hit:not([hidden]){display:inline-flex;align-items:baseline;gap:4px;padding:2px 5px 1px;
+ border-radius:4px;background:rgba(42,31,22,.91);line-height:1;box-shadow:0 1px 2px #352c24}
+.field-float.hero-hit:before{display:inline;margin:0;padding:0;background:none;border:0;box-shadow:none}
+
+#mapPanel{background:linear-gradient(145deg,#263d3c,#122829);border-color:#809285;border-radius:7px;box-shadow:0 2px 7px #101d226a}
+#mapPanel small{color:#c3cebd;letter-spacing:.12em}
+#mapPanel #minimap{pointer-events:auto;touch-action:none;cursor:crosshair;border-radius:3px}
+#mapPanel .map-tools{display:flex;align-items:center;gap:2px;justify-content:center}
+#mapPanel button{pointer-events:auto;touch-action:manipulation}
+#mapPanel #map-home{display:block;width:100%;min-height:30px;border:1px solid #8baf9f;border-radius:3px;background:#213f3c;color:#e1f6d6;font-weight:600;font-size:11px}
+#mapPanel #map-home[hidden]{display:none}
+@media(max-width:750px){
+ #mapPanel .map-tools{justify-content:flex-end}
+ #mapPanel #map-size,#mapPanel.map-expanded #map-size{position:static;display:grid;place-items:center;inset:auto;width:30px;min-width:30px;height:26px;min-height:26px;border:0;padding:0;color:#ccdcca;background:transparent;font:17px/1 system-ui}
+ #mapPanel:not(.map-expanded) .map-tools{position:absolute;top:0;right:100%;margin-right:2px;background:#233b38ed;border:1px solid #75867a;border-radius:4px}
+ #mapPanel.field-left:not(.map-expanded) .map-tools{left:100%;right:auto;margin-left:2px}
+ #mapPanel.map-expanded .map-tools{justify-content:space-between}
+ #mapPanel:not(.map-expanded) #map-home{margin-top:2px}
+}
+</style><style>
+#bottom .skills { width: 214px; height: 204px; }
+#bottom .skills [data-key=attack] { right: 6px; bottom: 44px; }
+#bottom .skills [data-slot=q] { right: 143px; bottom: 3px; }
+#bottom .skills [data-slot=e] { right: 135px; bottom: 74px; }
+#bottom .skills [data-slot=r] { right: 75px; bottom: 140px; }
+#bottom .skills .side-attack {
+  --size: 47px;
+  background: radial-gradient(ellipse at 36% 23%, #43535b, #233541 62%, #192731);
+  color: #c3cac0;
+  border: 1px solid #989e90;
+  box-shadow: 0 0 0 2px #1e2a30, inset 0 0 0 2px #506063, 0 2px 5px #19282e99;
+}
+#bottom .skills .side-attack.in-range {
+  color: #ffe7a4;
+  border-color: #efcf83;
+  background: radial-gradient(ellipse at 34% 20%, #726448, #3d4349 60%, #232e38);
+  box-shadow: 0 0 0 2px #303438, inset 0 0 0 2px #998358, 0 0 6px #eedf9c48;
+}
+#bottom .skills [data-key=farm] { right: 81px; bottom: 0; }
+#bottom .skills [data-key=siege] { right: 0; bottom: 135px; }
+#bottom .side-attack .command-symbol {
+  pointer-events: none;
+  position: absolute;
+  top: 11%; left: 27%; width: 46%; height: 49%;
+  background: currentColor;
+}
+.side-attack[data-key=farm] .command-symbol {
+  clip-path: polygon(87% 4%, 81% 36%, 64% 53%, 58% 49%, 31% 79%, 41% 87%, 34% 96%, 21% 87%, 11% 99%, 3% 91%, 14% 79%, 4% 69%, 12% 60%, 23% 69%, 50% 40%, 45% 34%);
+}
+.side-attack[data-key=siege] .command-symbol {
+  clip-path: polygon(6% 6%, 24% 6%, 24% 23%, 40% 23%, 40% 4%, 60% 4%, 60% 23%, 76% 23%, 76% 6%, 94% 6%, 90% 41%, 77% 48%, 82% 85%, 93% 88%, 93% 99%, 57% 99%, 57% 72%, 50% 66%, 43% 72%, 43% 99%, 7% 99%, 7% 88%, 18% 85%, 23% 48%, 10% 41%);
+}
+#bottom .skills .side-attack b { font-size: 10px; bottom: 4px; padding: 0; background: transparent; }
+#attack-notice { position: fixed; z-index: 4; right: 16px; bottom: 227px; padding: 4px 8px; border-radius: 4px;
+  color: #ffe9b4; background: #15272bea; font: 600 12px/1.4 system-ui; pointer-events: none; }
+#attack-notice[hidden] { display: none; }
+#aim-cancel { right: 15px; bottom: max(222px,calc(214px + env(safe-area-inset-bottom))); }
+@media(max-width:750px),(pointer:coarse) and (max-width:1050px) {
+  #bottom .skills { width: 174px; height: 177px; right: max(7px,env(safe-area-inset-right)); bottom: max(10px,env(safe-area-inset-bottom)); }
+  #bottom .skills [data-key=attack] { --size: 62px; right: 2px; bottom: 38px; }
+  #bottom .skills [data-slot=q] { right: 113px; bottom: 3px; }
+  #bottom .skills [data-slot=e] { right: 111px; bottom: 63px; }
+  #bottom .skills [data-slot=r] { right: 57px; bottom: 121px; }
+  #bottom .skills .side-attack { --size: 44px; }
+  #bottom .skills [data-key=farm] { right: 61px; bottom: 0; }
+  #bottom .skills [data-key=siege] { right: 0; bottom: 111px; }
+  #aim-cancel, #attack-notice { bottom: calc(187px + env(safe-area-inset-bottom)); }
+  body:has(#mapPanel.field-left) :is(#objective,#routeHint) {
+    left: 135px; right: 7px; transform: none; max-width: calc(100vw - 142px);
+  }
+}
+@media(max-width:360px) {
+  #bottom .skills [data-slot=q] { right:105px; }
+  #bottom .skills [data-slot=e] { right:106px; }
+  #field-recall { left:108px; }
+}
+#world{touch-action:none}
+</style><style>
+#top #score-open {
+  pointer-events:auto;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  margin:0 auto 0 5px;min-height:40px;min-width:68px;padding:3px 10px;
+  background:linear-gradient(115deg,#152f37f2,#142b31bc);color:#faf0d3;
+  border:1px solid #9b986756;border-radius:6px;font:inherit;cursor:pointer;
+}
+#score-open #stats {color:#d0dacf;line-height:1.25;white-space:nowrap}
+#field-scoreboard {
+  --score-ink:#f4efdf;--score-gold:#eacb89;
+  position:fixed;inset:0;margin:auto;padding:0;box-sizing:border-box;width:min(820px,calc(100vw - 24px));
+  max-height:min(84vh,580px);max-height:min(84dvh,580px);overflow:auto;overscroll-behavior:contain;
+  color:var(--score-ink);border:1px solid #a59a69;border-radius:12px;
+  background:linear-gradient(150deg,#213940,#122831 53%,#162932);box-shadow:0 20px 60px #07131870;
+  font:500 13px/1.38 system-ui,sans-serif;font-variant-numeric:tabular-nums;text-align:left;
+}
+#field-scoreboard::backdrop {background:#09141983}
+#field-scoreboard header {position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;
+  min-height:52px;padding:8px 15px;border-bottom:1px solid #c5bb922d;background:#1a3038}
+#field-scoreboard h2 {margin:0;font-size:19px;letter-spacing:.1em;color:#f5e9c8}
+#field-scoreboard header small {display:block;color:#b2bfb9;font-size:11px}
+#field-scoreboard button {color:#f3e6c5;background:#30454a;border:1px solid #b1ad846f;border-radius:5px;
+  min-height:38px;min-width:48px;font:600 13px system-ui;cursor:pointer}
+#field-scoreboard [data-teams] {display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:12px}
+.score-team {min-width:0;--team:#8ed5d8;--team-wash:#548e962c}
+.score-team.side-1 {--team:#e8aaa1;--team-wash:#ba706e27}
+.team-line {display:flex;align-items:center;justify-content:space-between;margin:0;padding:7px 9px;
+  color:var(--team);background:linear-gradient(90deg,var(--team-wash),transparent);border-left:2px solid var(--team);font-size:14px}
+.team-summary {font-size:11px;letter-spacing:.025em}
+.score-list {list-style:none;padding:0;margin:0}
+.score-row {display:grid;grid-template-columns:32px minmax(64px,1fr) minmax(48px,1.05fr) auto;gap:7px;
+  align-items:center;min-height:52px;padding:6px 5px;border-bottom:1px solid #b1bba322;box-sizing:border-box}
+.score-row.is-me {background:#eacb8912}
+.score-face {display:block;width:30px;height:35px;overflow:hidden;border-radius:4px;border:1px solid #c1b58a72;
+  background-image:var(--draft-art);background-size:500% 100%;background-repeat:no-repeat}
+.score-identity,.score-numbers {min-width:0;display:flex;flex-direction:column;gap:2px}
+.score-name {font-size:12px;overflow-wrap:anywhere}.is-me .score-name {color:var(--score-gold)}
+.score-rank,.score-gold {font-size:10px;color:#c2cbc1}.score-items {color:#d2cfb7;font-size:10px;line-height:1.45}
+.score-numbers {text-align:right;white-space:nowrap}.score-kda {font-size:12px}.score-gold {color:#e1c595}
+#field-stock {max-height:calc(100dvh - 100px);overflow:auto;overscroll-behavior:contain}
+#field-stock .skill-study {display:flex;align-items:center;gap:6px;justify-content:space-between;padding:6px 0;
+  border-bottom:1px solid #94a89b47;font-size:10px;color:#d7d9bc}
+#field-stock [data-train] {background:#29454a;color:#f0d7a2;border:1px solid #a6a07888;border-radius:5px;padding:5px 8px;min-height:30px;font:600 11px system-ui}
+#bottom .skills button.unlearned {--rim:#889094;box-shadow:inset 0 0 0 2px #303940,0 1px 4px #0d182666}
+#bottom .skills button.unlearned .ability-art {filter:saturate(.16) brightness(.34)}
+#bottom .skills button.unlearned > span {
+  visibility:visible;position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);z-index:3;
+  display:flex;align-items:center;gap:3px;padding:2px 4px 2px 5px;min-height:17px;
+  border:1px solid #c5b88a;border-radius:5px;background:#1f2d36;color:#f7e8ba;
+  font:750 10px/1 system-ui;white-space:nowrap;text-shadow:none;pointer-events:none;
+}
+#bottom .skills button.unlearned > span::before {
+  content:"";display:block;width:8px;height:6px;margin-top:3px;border-radius:1.5px;
+  background:radial-gradient(circle at 50% 43%,#37414b 0 1px,transparent 1.15px),#efdfae;
+}
+#bottom .skills button.unlearned > span::after {
+  content:"";position:absolute;left:6.5px;top:2px;width:5px;height:5px;
+  box-sizing:border-box;border:1.4px solid #efdfae;border-bottom:0;border-radius:4px 4px 0 0;
+}
+#bottom .skills button.unlearned > kbd {color:#c1c9cd}
+@media(max-width:670px) {
+  #top #score-open {min-height:42px;min-width:62px;margin-left:0;padding:3px 6px}
+  #field-scoreboard {width:min(410px,calc(100vw - 18px));max-height:87dvh}
+  #field-scoreboard [data-teams] {display:block;padding:7px}
+  #field-scoreboard .score-team + .score-team {margin-top:9px}
+  #field-scoreboard header {min-height:45px;padding:6px 9px}
+  .score-row {min-height:40px;padding:3px 5px;grid-template-columns:28px minmax(74px,1fr) minmax(56px,1.1fr) auto}
+  .score-face {width:25px;height:31px}
+}
+@media(max-height:520px) {#field-scoreboard {max-height:90dvh} #field-stock {bottom:6px;max-height:calc(100dvh - 20px)}}
+
+</style><style>.opening-study{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;margin:4px 9px 4px 0;color:#dfd4b0;font:600 12px system-ui}.opening-study select{max-width:120px;min-height:36px;border-radius:6px;border:1px solid #959779;background:#223a40;color:#f1dfb0;font:600 12px system-ui;padding:3px 6px}.opening-study:focus-within{outline:2px solid #e1c07b;outline-offset:2px}</style><style>
+#menu{background:radial-gradient(ellipse at 76% 20%,#465e52,#233e41 53%,#132c37);backdrop-filter:none}
+#selection-chart{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.76}
+#menu .panel{position:relative;z-index:1;background:linear-gradient(135deg,#19333bf2,#122a34fa 74%);border-color:#a5aa8769}
+#choices .roster-window{background:linear-gradient(116deg,#293f47,#4c5e5c 58%,#2d414b);border:1px solid #abb49a38}
+#choices .selected .roster-window{border-color:#d4be85}
+</style><style>
+:root{--draft-art:url("../qa-anime-area-counterplay-20261115-r1/assets/canyon-strawhat-portraits.webp")}
+#menu .draft-panel{width:min(91vw,840px);max-height:94dvh;padding:clamp(12px,2.4vw,28px);border-radius:14px;scrollbar-width:thin}
+.draft-heading,.draft-launch{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#menu .draft-heading h2{margin:0;font-size:clamp(20px,3vw,34px);line-height:1.14;letter-spacing:.04em}
+.draft-heading span{color:#b3c6c2;font-size:clamp(10px,1.4vw,12px)}
+#menu #choices{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(3px,1vw,10px);margin:14px 0 8px}
+#menu #choices button{min-height:0;display:flex;align-items:center;gap:5px;padding:4px 3px 5px;border-radius:6px;border-width:1px;border-top-width:2px}
+#menu #choices button.selected{border-color:#e0c88e;background:#395053;box-shadow:0 0 0 1px #cfae716b}
+#menu #choices .roster-window{height:clamp(38px,7vw,72px);background:transparent;border:0}
+#menu #choices .roster-window i{width:auto;aspect-ratio:4/5;max-width:100%;border-radius:3px}
+.roster-window i{background-size:500% 200%!important;background-position-y:0%!important}
+#menu #choices b{font-size:clamp(10px,1.7vw,14px);line-height:1.16;text-align:center;white-space:nowrap}
+#menu #choices button>em,#menu #choices button>span:last-child{display:none}
+.draft-showcase{display:grid;grid-template-columns:minmax(120px,.83fr) 1fr;align-items:center;isolation:isolate;position:relative;
+ min-height:126px;background:radial-gradient(ellipse at 23% 70%,#55777366,transparent 48%),linear-gradient(115deg,#294750,#263e47 60%,#263c43);
+ border-block:1px solid #a0b0a050}
+.draft-stage{position:relative;display:grid;place-items:center;height:clamp(150px,27vh,220px);overflow:hidden}
+.draft-stage:before{content:"";position:absolute;bottom:7%;left:16%;width:68%;height:13%;border-radius:50%;
+ background:radial-gradient(ellipse,#a1b09a42 30%,#70887f63 68%,#344d50 73%,#a4ae8b80 77%,transparent 80%)}
+#draft-model{position:relative;display:block;height:100%;aspect-ratio:4/5;background:var(--draft-art) no-repeat 0% 100%/500% 200%}
+.draft-skills{padding:13px 14px 13px 4px}.draft-skills small{color:#dbbf85;font-size:12px;letter-spacing:.06em}
+#menu .draft-skills h3{font-size:clamp(22px,3.7vw,37px);line-height:1.12;margin:6px 0 11px;color:#f1edda}
+#menu .draft-skills p{margin:5px 0;color:#d9e2da;font-size:clamp(11px,1.7vw,15px);line-height:1.55}
+#menu #draft-play{color:#afc3c0;max-width:28em;font-size:clamp(10px,1.5vw,13px)}
+.draft-launch{justify-content:flex-start;flex-wrap:wrap;margin-top:13px}.draft-launch .opening-study{margin:0;white-space:nowrap}
+#menu .draft-launch .primary{margin-left:auto;padding:10px 22px;min-height:40px;white-space:nowrap}
+.draft-help{margin-top:10px;font-size:12px;color:#aec3bc}.draft-help summary{width:fit-content;cursor:pointer;color:#bed0c7}
+#menu .draft-help p,#menu .draft-help small{font-size:12px;line-height:1.54}
+@media(max-width:545px){#menu .draft-panel{width:96vw}.draft-heading span{font-size:9px}#menu .draft-launch{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#menu .draft-launch .primary{grid-column:1/-1;width:100%}.draft-launch .opening-study select{width:100%;min-width:0}
+.draft-showcase{grid-template-columns:42% 58%}.draft-skills{padding-inline:2px 8px}}
+@media(max-height:470px) and (orientation:landscape){#menu .draft-panel{padding:8px 14px;width:min(93vw,760px)}#menu #choices{margin:4px 0;gap:5px}
+#menu .draft-heading h2{font-size:19px}#menu #choices button{flex-direction:row;justify-content:center;gap:5px;padding:2px}
+#menu #choices .roster-window{height:31px;width:25px}#menu #choices b{font-size:10px}
+.draft-showcase{min-height:84px;grid-template-columns:.67fr 1fr}.draft-stage{height:clamp(88px,29vh,130px)}
+#menu .draft-skills h3{font-size:21px;margin:3px 0}.draft-skills{padding-block:3px}
+.draft-launch,.draft-help{margin-top:4px}#menu .draft-launch .primary{padding:5px 15px;min-height:34px}}
+
+#bottom .skills .skill-slot {
+  position:absolute; width:53px; height:53px; pointer-events:none;
+}
+#bottom .skills .skill-slot > [data-key] { inset:0; }
+#bottom .skills .skill-slot > [data-key=r] { border-color:#d6b8db; }
+#bottom .skills .study-key {
+  width:44px; height:44px; left:-45px; top:0;
+  border:0; padding:0; border-radius:50%; background:transparent;
+  box-shadow:none; touch-action:manipulation;
+}
+#bottom .skills .study-key[hidden],
+#bottom .skills .study-key::after,
+#bottom .skills button.can-study > span::before,
+#bottom .skills button.can-study > span::after { display:none; }
+#bottom .skills .study-mark {
+  display:grid; place-items:center; width:28px; height:28px;
+  border-radius:50%; border:1px solid #ffe4a4; color:#302615;
+  background:linear-gradient(160deg,#ffedb2,#e3b25e 63%,#bd873f);
+  box-shadow:0 0 0 2px #344044,0 2px 4px #14252c9c;
+  font:700 24px/1 system-ui; pointer-events:none;
+}
+#bottom .skills .study-key small {
+  position:absolute; bottom:1px; right:3px; padding:0 3px;
+  border:1px solid #d9bf84; border-radius:3px; background:#223137;
+  font:650 9px/12px ui-monospace,monospace; color:#ffe7b0; pointer-events:none;
+}
+#bottom .skills .skill-pips {
+  position:absolute; top:3px; left:50%; height:3px;
+  width:calc(var(--trained-ranks,0) * 4px); transform:translateX(-50%); z-index:2;
+  background:radial-gradient(circle at 2px 1.5px,#ffe1a1 0 1.25px,transparent 1.5px) 0 0/4px 3px repeat-x;
+  filter:drop-shadow(0 1px 1px #263031); pointer-events:none;
+}
+#bottom .skills button.can-study .ability-art { filter:saturate(.62) brightness(.66); }
+#bottom .skills button.can-study > span { background:#42371e; color:#ffdf91; }
+@media (max-width:750px),(pointer:coarse) and (max-width:1050px) {
+  #bottom .skills .skill-slot {width:46px;height:46px;}
+  #bottom .skills .study-key small {display:none;}
+}
+@media (max-width:376px) and (orientation:portrait) {
+  #field-recall {left:16px;bottom:max(218px,calc(207px + env(safe-area-inset-bottom)));}
+}
+
+
+#bridge-pins{position:fixed;inset:0;z-index:2;pointer-events:none}
+#bridge-pins[hidden],#bridge-pins [hidden]{display:none}
+#bridge-pins [data-bridge-pin]{--ink:#ffca91;--panel:#401e22}
+#bridge-pins [data-bridge-pin="self"]{--ink:#adffe6;--panel:#123c39}
+#bridge-pins [data-state="preview"]{--ink:#ffdbb6;--panel:#422c27}
+#bridge-pins b,#bridge-pins i,#bridge-pins em{position:absolute;top:0;left:0}
+#bridge-pins b{display:grid;place-items:center;box-sizing:border-box;width:60px;height:20px;border-radius:4px;border:1px solid var(--ink);background:var(--panel);color:var(--ink);font:800 11px/1 system-ui,sans-serif;white-space:nowrap;box-shadow:0 1px 4px #090e13aa}
+#bridge-pins [data-bridge-pin="self"] b{width:26px;border-radius:11px}
+#bridge-pins i{height:1.5px;transform-origin:0 50%;background:var(--ink);box-shadow:0 1px 1px #091514}
+#bridge-pins em{width:9px;height:9px;margin:-4.5px 0 0 -4.5px;box-sizing:border-box;border:2px solid var(--ink);box-shadow:0 0 0 1px #101719}
+#bridge-pins [data-bridge-pin="self"] em{border-radius:50%;background:var(--panel)}
+#bridge-pins [data-bridge-pin="target"] em{rotate:45deg;width:8px;height:8px;margin:-4px 0 0 -4px}
+#bridge-pins [data-state="preview"] b{border-style:dashed}
+
+</style></head><body><canvas id="world"></canvas><div id="bridge-pins" aria-hidden="true" hidden><span data-bridge-pin="self" hidden><i hidden></i><em></em><b hidden></b></span><span data-bridge-pin="target" hidden><i hidden></i><em></em><b hidden></b></span></div><div id="battle-readouts" aria-hidden="true"></div><div id="top"><div><small>ANIME CROSSROADS · 桥头辨位 r1</small><h1>次元交锋</h1></div><button class="score" id="score-open" type="button" aria-controls="field-scoreboard" aria-haspopup="dialog" aria-expanded="false" aria-label="查看双方战绩与经济，快捷键 G"><b id="time">00:00</b><span id="stats">0 ︱ 0　战绩</span></button><button id="pause">暂停</button><details id="battle-options"><summary>设置</summary><div><button id="focus" aria-pressed="false" title="普通攻击优先英雄和可补的小兵。F 切换为优先拆塔，点选单位可指定目标。">英雄／补刀</button><button type="button" id="map-anchor" aria-pressed="true">小地图 固定左上</button><button id="quality">画质 高</button><button id="sound">音乐 开</button><button id="perfToggle">性能</button></div></details></div><div id="objective">沿同一路推掉三座塔，护送兵线击破核心</div><aside id="routeHint" hidden></aside><section id="menu" class="veil"><!--draft-map--><svg id="selection-chart" viewBox="-38 -38 76 76" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false" fill="none" stroke-linejoin="round"><path d="M-36.0,-36.0L-36.0,-34.5L-17.2,-18.0L-10.5,-14.2L0.8,-3.8L-3.8,0.8L-12.0,-7.5L-24.0,-15.0L-36.0,-26.2L-36.0,36.0L36.0,36.0L36.0,34.5L27.8,28.5L21.0,20.2L12.8,16.5L7.5,9.0L4.5,6.0L-0.8,3.0L3.8,-0.8L6.8,0.0L12.8,5.2L17.2,12.0L25.5,15.8L30.0,21.8L36.0,26.2L36.0,-36.0ZM-36.0,-36.0L-24.0,-24.0L-9.8,-14.2L1.5,-3.8L-4.5,0.8L-13.5,-8.2L-24.8,-15.0L-36.0,-25.5L-36.0,36.0L36.0,36.0L20.2,20.2L14.2,18.0L3.8,6.0L-0.8,3.8L3.8,-0.8L7.5,0.0L12.0,3.8L18.0,12.0L24.0,14.2L36.0,26.2L36.0,-36.0ZM27.0,36.0L36.0,36.0L34.5,33.8L30.0,30.8ZM24.8,26.2L21.0,21.0L12.8,17.2L-0.8,36.0L18.8,36.0L24.8,27.8ZM-20.2,-12.0L-21.8,-12.0L-36.0,8.2L-36.0,36.0L-9.0,-2.2L-10.5,-5.2ZM36.0,-16.5L17.2,10.5L25.5,15.0L30.0,20.2L36.0,11.2ZM-36.0,-25.5L-36.0,-3.0L-27.0,-15.8L-27.0,-17.2ZM36.0,-36.0L22.5,-36.0L20.2,-33.8L0.8,-5.2L1.5,-3.8L-4.5,0.8L-5.2,3.8L-27.8,36.0L-8.2,36.0L8.2,12.0L6.8,9.0L0.0,4.5L-0.8,3.0L5.2,-1.5L12.8,4.5L14.2,3.8L36.0,-27.8ZM14.2,-36.0L-5.2,-36.0L-16.5,-20.2L-16.5,-18.8L-3.8,-9.8ZM-33.8,-33.8L-26.2,-26.2L-21.8,-23.2L-12.8,-36.0L-32.2,-36.0ZM23.2,24.0L21.0,21.0L14.2,18.8L2.2,36.0L16.5,36.0L23.2,26.2ZM-18.8,-11.2L-23.2,-6.8L-36.0,12.0L-36.0,33.0L-10.5,-3.8L-15.0,-9.0ZM36.0,-12.8L19.5,10.5L19.5,12.0L24.8,14.2L28.5,18.0L36.0,7.5ZM-35.2,-24.8L-36.0,-24.8L-36.0,-6.8L-28.5,-17.2ZM36.0,-36.0L24.8,-36.0L3.0,-4.5L-4.5,0.8L-3.0,3.0L-3.8,5.2L-25.5,36.0L-11.2,36.0L6.8,10.5L4.5,6.8L-1.5,3.8L5.2,-1.5L11.2,3.0L12.8,2.2L36.0,-31.5ZM12.0,-36.0L-2.2,-36.0L-15.0,-18.0L-5.2,-11.2ZM-32.2,-32.2L-27.0,-27.0L-23.2,-24.8L-15.8,-36.0L-30.0,-36.0ZM22.5,23.2L19.5,20.2L15.8,19.5L3.8,36.0L14.2,36.0ZM36.0,-10.5L20.2,12.0L27.0,16.5L29.2,15.0L36.0,5.2ZM-18.0,-10.5L-36.0,15.0L-36.0,30.0L-12.0,-4.5L-12.0,-6.0ZM-36.0,-24.8L-36.0,-9.0L-29.2,-18.8ZM36.0,-36.0L27.0,-36.0L3.8,-3.0L2.2,-3.8L-4.5,0.8L-1.5,4.5L-23.2,36.0L-12.8,36.0L6.0,9.0L3.0,6.0L-2.2,3.8L5.2,-1.5L9.8,1.5L11.2,1.5L35.2,-33.0ZM9.8,-36.0L-0.8,-36.0L-13.5,-17.2L-6.8,-12.0ZM-17.2,-36.0L-27.8,-36.0L-30.8,-32.2L-30.8,-30.8L-24.8,-25.5ZM20.2,21.0L17.2,20.2L6.8,36.0L11.2,36.0L20.2,24.0L21.0,22.5ZM3.0,6.0L1.5,5.2L0.0,6.0L-21.0,36.0L-15.8,36.0L3.8,8.2ZM36.0,-6.8L22.5,12.8L25.5,15.0L27.0,14.2L35.2,2.2ZM-16.5,-9.8L-35.2,17.2L-36.0,26.2L-13.5,-6.0L-13.5,-7.5ZM-34.5,-23.2L-36.0,-21.0L-36.0,-13.5L-31.5,-19.5L-31.5,-21.0ZM34.5,-36.0L29.2,-36.0L6.8,-3.0L5.2,-1.5L2.2,-3.8L-4.5,0.8L-2.2,3.8L5.2,-1.5L9.0,0.8ZM6.8,-36.0L2.2,-36.0L-11.2,-17.2L-11.2,-15.8L-8.2,-13.5ZM-20.2,-36.0L-25.5,-36.0L-29.2,-30.8L-29.2,-29.2L-26.2,-27.0Z" stroke="#9ca97c" opacity=".29" stroke-width=".075"/><path d="M-38.0,-32.0L-22.6,-18.3L-19.4,-15.9L-14.6,-13.1L-11.4,-10.7L-5.0,-5.0L0.0,0.0L6.4,3.7L8.0,5.0L9.4,6.6L13.6,12.5L15.0,14.0L16.6,15.1L21.5,17.1L23.0,18.0L24.3,19.2L29.0,25.0L38.0,32.0" stroke="#365e62" stroke-width="4.7" /><path d="M-38.0,-32.0L-22.6,-18.3L-19.4,-15.9L-14.6,-13.1L-11.4,-10.7L-5.0,-5.0L0.0,0.0L6.4,3.7L8.0,5.0L9.4,6.6L13.6,12.5L15.0,14.0L16.6,15.1L21.5,17.1L23.0,18.0L24.3,19.2L29.0,25.0L38.0,32.0" stroke="#55827f" stroke-width="0.15" /><path d="M-28.0,26.0L-29.0,18.0L-29.1,10.6L-28.9,2.1L-28.0,-10.0L-27.8,-17.2L-27.5,-19.2L-27.0,-21.0L-25.2,-24.0L-24.1,-25.2L-22.7,-26.2L-21.0,-27.0L-19.1,-27.5L-14.4,-27.9L-5.8,-28.1L10.8,-27.9L28.0,-26.0M-28.0,26.0L-22.4,21.3L-17.4,16.5L-8.0,6.0L-4.9,3.5L4.9,-3.5L8.0,-6.0L17.4,-16.5L22.4,-21.3L28.0,-26.0M-28.0,26.0L-10.8,27.9L5.8,28.1L14.4,27.9L19.1,27.5L21.0,27.0L22.7,26.2L24.1,25.2L25.2,24.0L27.0,21.0L27.5,19.2L27.8,17.2L28.0,10.0L28.9,-2.1L29.1,-10.6L29.0,-18.0L28.0,-26.0" stroke="#aa9b70" stroke-width="0.55" opacity=".59"/><path d="M-25.0,12.0L-21.0,9.0L-17.0,7.0L-15.1,5.3L-13.6,3.3L-12.0,0.0L-9.0,-4.0M25.0,-12.0L21.0,-9.0L17.0,-7.0L15.1,-5.3L13.6,-3.3L12.0,0.0L9.0,4.0M-22.0,-19.0L-17.3,-12.5L-16.0,-11.0L-13.6,-9.5L-11.2,-9.0L-9.6,-9.2L-8.0,-10.0L-4.0,-14.0L-0.9,-16.5L1.1,-17.4L6.0,-19.0L12.0,-22.0M22.0,19.0L17.3,12.5L16.0,11.0L13.6,9.5L11.2,9.0L9.6,9.2L8.0,10.0L4.0,14.0L0.9,16.5L-1.1,17.4L-6.0,19.0L-12.0,22.0M-20.0,18.0L-16.9,20.4L-13.0,22.4L-11.0,23.0L-8.9,23.3L-6.0,23.0L-4.7,22.1L0.0,16.0L4.0,13.0L7.0,10.0M20.0,-18.0L16.9,-20.4L13.0,-22.4L11.0,-23.0L8.9,-23.3L6.0,-23.0L4.7,-22.1L0.0,-16.0L-4.0,-13.0L-7.0,-10.0" stroke="#b2a87e" stroke-width="0.14" opacity=".53" stroke-dasharray=".38 .3"/><circle cx="-27.8" cy="-14.4" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-28.8" cy="0.3" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-29.1" cy="13.0" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-7.1" cy="5.2" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-14.3" cy="13.2" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-20.8" cy="19.8" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="12.4" cy="27.9" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-2.4" cy="28.1" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-15.1" cy="27.5" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-12.4" cy="-27.9" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="2.4" cy="-28.1" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="15.1" cy="-27.5" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="7.1" cy="-5.2" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="14.3" cy="-13.2" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="20.8" cy="-19.8" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="27.8" cy="14.4" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="28.8" cy="-0.3" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="29.1" cy="-13.0" r=".42" fill="#d6bf86" stroke="#385154" stroke-width=".16"/><circle cx="-28" cy="26" r="1.45" stroke="#e3ca8e" stroke-width=".24"/><circle cx="28" cy="-26" r="1.45" stroke="#e3ca8e" stroke-width=".24"/></svg><!--/draft-map--><div class="panel draft-panel"><header class="draft-heading"><h2>选择英雄</h2><span>同人试玩 · 5 对 5 人机对战</span></header><div id="choices"><button data-hero="0" class="selected" aria-pressed="true"><span class="roster-window" aria-hidden="true"><i style="background-position:0% center"></i></span><b>漩涡鸣人</b><em>突进 / 近战</em><span>螺旋丸 · 影分身突进 · 风遁旋涡</span></button><button data-hero="1" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:25% center"></i></span><b>机器猫</b><em>哆啦A梦 · 道具支援</em><span>空气炮 · 竹蜻蜓 · 任意门</span></button><button data-hero="2" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:50% center"></i></span><b>五条悟</b><em>术式 · 迎弹护送</em><span>术式·苍 · 无下限 · 虚式·茈</span></button><button data-hero="3" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:75% center"></i></span><b>孙悟空</b><em>气功 · 站定蓄劲</em><span>气弹 · 瞬身 · 龟派气功</span></button><button data-hero="4" aria-pressed="false"><span class="roster-window" aria-hidden="true"><i style="background-position:100% center"></i></span><b>蒙奇·D·路飞</b><em>伸缩 / 近战</em><span>橡胶手枪 · 橡胶火箭 · 橡胶机关枪</span></button></div><section class="draft-showcase" aria-label="当前英雄"><div class="draft-stage" aria-hidden="true"><i id="draft-model"></i></div><div class="draft-skills" aria-live="polite"><small id="draft-role">突进 / 近战</small><h3 id="draft-name">漩涡鸣人</h3><p id="draft-kit">螺旋丸 · 影分身突进 · 风遁旋涡</p><p id="draft-play">近身用螺旋丸换血，把影分身留给追击或脱身。</p></div></section><div class="draft-launch"><label class="opening-study">开局 <select id="opening-role" aria-label="开局分路"><option value="lane">线上发育</option><option value="hunt">打野支援</option></select></label><label class="opening-study">一级技能 <select id="opening-skill" aria-label="选择一级技能或进场后决定"><option value="-1" selected>进场后选择</option><option value="0">螺旋丸</option><option value="1">影分身突进</option></select></label><button id="start" class="primary">进入战场 →</button></div><details class="draft-help"><summary>对局目标与操作</summary><p>护送兵线，沿同一路攻破三座塔，再带兵攻入敌方核心。进场有 1 点，点技能旁的金色加号学习。每升一级再得 1 点，可以留点。大招从四级起可学。</p><small class="aim-guide"><span class="thumb-guide">手机用左摇杆移动，右侧拖动战场看远处，松手回英雄。轻点射程内的敌人可锁定普攻。电脑可点地前往、点敌人追击。</span>范围与直线技能可拖动瞄准，松手施放。键盘按住 Shift 和技能键，指向地面后松开技能键。</small><p class="hint">左手移动，右手拖瞄技能，松手释放。普攻旁可点补刀或推塔。<br>WASD 移动 · J 普攻 · K 补刀 · L 推塔 · Q / E / R 技能 · 1 / 2 / 3 加点 · T 回城</p></details></div></section><section id="end" class="veil hidden"><div class="panel"><small>战斗结束</small><h2 id="endtitle"></h2><p id="endstats"></p><button id="restart" class="primary">回到选人</button></div></section><div id="bottom"><button type="button" class="portrait" id="field-supplies" aria-expanded="false" aria-controls="field-stock" aria-label="战场补给，查看铜钱与装备"><b id="heroName">鸣人</b><span id="level" aria-live="polite">Lv.1</span><div class="health"><i id="hpbar"></i></div><small id="hp">生命值</small><small id="role-tip" hidden></small><small id="purse-line">0 铜钱 · 置装 ›</small></button><div id="attack-notice" role="status" hidden></div><div class="skills"><button type="button" class="side-attack" data-key="farm" aria-label="补刀" title="优先攻击能一击收下的小兵。附近没有敌兵时攻击野怪。"><kbd>K</kbd><i class="command-symbol" aria-hidden="true"></i><b>补刀</b></button><button type="button" class="side-attack" data-key="siege" aria-label="推塔" title="攻击射程内可以拆除的塔或核心。"><kbd>L</kbd><i class="command-symbol" aria-hidden="true"></i><b>推塔</b></button><button data-key="attack"><kbd>J</kbd><b>普攻</b><span id="attackPriority">英雄／补刀</span></button><div class="skill-slot" data-slot="q"><button data-key="q"><i class="skill-pips" aria-hidden="true"></i><kbd>Q</kbd><b id="qn">技能</b><span id="qc">就绪</span></button><button class="study-key" data-study="0" type="button" hidden><i class="study-mark" aria-hidden="true">+</i><small aria-hidden="true">1</small></button></div><div class="skill-slot" data-slot="e"><button data-key="e"><i class="skill-pips" aria-hidden="true"></i><kbd>E</kbd><b id="en">技能</b><span id="ec">就绪</span></button><button class="study-key" data-study="1" type="button" hidden><i class="study-mark" aria-hidden="true">+</i><small aria-hidden="true">2</small></button></div><div class="skill-slot" data-slot="r"><button data-key="r"><i class="skill-pips" aria-hidden="true"></i><kbd>R</kbd><b id="rn">终极技能</b><span id="rc">就绪</span></button><button class="study-key" data-study="2" type="button" hidden><i class="study-mark" aria-hidden="true">+</i><small aria-hidden="true">3</small></button></div></div><div id="log"></div></div><dialog id="field-scoreboard" aria-labelledby="score-title"><header><div><h2 id="score-title">对局战绩</h2><small>击败 / 阵亡 / 助攻　·　累计铜钱</small></div><button type="button" data-score-close>关闭</button></header><div data-teams></div></dialog><aside id="field-stock" role="dialog" aria-labelledby="field-heading" hidden>
+<header><b id="field-heading">战场商店</b><button type="button" data-close aria-label="关闭补给">关闭</button></header>
+<div id="field-counter"></div><div class="build-row"><span data-owned></span><button type="button" data-build aria-pressed="true">自动出装已开</button></div>
+<div class="skill-study"><span data-ranks></span><select data-train aria-label="技能加点方式"><option value="-1">手动加点</option><option value="0">自动主升 Q</option><option value="1">自动主升 E</option></select></div>
+<button type="button" data-gear="boots"><b>渡风履</b><span>移动速度提高 18%</span><em>20 铜钱</em></button>
+<button type="button" data-gear="coat"><b>守楼甲</b><span>生命上限和当前生命各加 75</span><em>20 铜钱</em></button>
+<button type="button" data-gear="blade"><b>听潮刃</b><span>普攻伤害增加 14</span><em>55 铜钱</em></button>
+<button type="button" data-gear="focus"><b>流光佩</b><span>技能冷却缩短 16%</span><em>58 铜钱</em></button>
+<button type="button" data-gear="standard"><b>先登旗</b><span>自己在塔前时，友方兵对建筑伤害增加 32%</span><em>76 铜钱</em></button>
+<small id="field-kit-note" aria-live="polite"></small></aside><div id="aim-cancel" hidden>拖到这里取消</div><div id="pad" role="group" aria-label="移动摇杆，推得越远移动越快"><i class="thumb-handle" aria-hidden="true"></i><button aria-label="向上移动" data-dir="0,-1">▲</button><button aria-label="向左移动" data-dir="-1,0">◀</button><button aria-label="向下移动" data-dir="0,1">▼</button><button aria-label="向右移动" data-dir="1,0">▶</button></div><aside id="mapPanel" class="field-left"><small>三路战场</small><canvas id="minimap" aria-label="三路战场地图。点按侦察，拖动查看，松手回到英雄"></canvas><div class="map-tools"><button type="button" id="map-size" aria-label="放大战场地图" aria-expanded="false" aria-controls="minimap" title="切换地图大小"><span aria-hidden="true">⛶</span></button><button type="button" id="camera-view" aria-pressed="false">查看全景</button></div><button type="button" id="map-home" hidden title="回到英雄（C）">回到英雄</button></aside><button type="button" id="field-recall" aria-label="回城，原地引导五秒，T 键" aria-pressed="false">回城</button><pre id="performance" class="hidden"></pre><div id="error" class="hidden"></div><script type="importmap">{"imports":{"three":"../qa-anime-area-counterplay-20261115-r1/vendor/three.module.min.js"}}</script><script type="module" src="river-lobby.mjs?v=20261127-bridge-read-r1"></script></body></html>
